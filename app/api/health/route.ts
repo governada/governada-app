@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
+import { SYNC_FRESHNESS_POLICY } from '@/lib/syncPolicy';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 
 const THRESHOLDS: Record<string, number> = {
   proposals: 90,
-  dreps: 720,
+  dreps: SYNC_FRESHNESS_POLICY.dreps.degradedAfterMinutes,
   votes: 720,
   secondary: 2880,
   slow: 2880,

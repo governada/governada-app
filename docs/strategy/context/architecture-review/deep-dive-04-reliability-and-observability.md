@@ -43,6 +43,12 @@ This pass covers the operational surfaces that determine whether the app can fai
 
 The same outage can be labeled differently depending on which monitor or alert path sees it first. That makes incident triage noisier, increases duplicate retriggers, and makes it harder to answer the first operational question: "Is the system actually degraded, or are we looking at a policy mismatch?"
 
+**Implementation status**
+
+- Partially improved in this worktree for the DRep sync path.
+- `lib/syncPolicy.ts` now defines the shared DRep freshness contract consumed by the read path, health endpoints, integrity alerting, and the freshness guard.
+- Broader threshold duplication still exists for non-DRep sync domains, so this finding remains open.
+
 ### 2. Tier-gated API routes still inherit public CDN cache headers
 
 **Severity:** Fixed in this worktree

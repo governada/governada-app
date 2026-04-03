@@ -45,6 +45,7 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-02 | Run the review as a documented series instead of ad hoc audits | Agents need durable handoff state and execution continuity |
 | 2026-04-02 | Prioritize the data plane first | This app is intelligence-led, so incorrect data invalidates every downstream surface |
 | 2026-04-02 | Keep execution backlog separate from findings docs | Findings and implementation planning change at different rates |
+| 2026-04-03 | Use a layered DRep freshness policy instead of one stale threshold | Reads should retrigger after the sync is overdue without marking the system degraded at the same instant |
 
 ## Progress Log
 
@@ -56,3 +57,4 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-03 | Fixed public API tier enforcement in `lib/api/handler.ts` and corrected dynamic route param forwarding for v1 wrapper-backed endpoints. |
 | 2026-04-03 | Started Deep Dive 02 and Deep Dive 04 in parallel and recorded their first validated findings. |
 | 2026-04-03 | Tightened internal route rate limiting to fail closed on shared limiter errors, aligned v1 API key transport with `X-API-Key`, and made tier-gated GETs non-publicly cacheable. |
+| 2026-04-03 | Fixed the DRep freshness mismatch by introducing a shared policy in `lib/syncPolicy.ts`, retriggering background syncs at 8h, degrading health at 12h, and adding regression coverage for `getAllDReps()`. |

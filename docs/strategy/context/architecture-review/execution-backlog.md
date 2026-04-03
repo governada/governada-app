@@ -127,6 +127,7 @@ None - execute directly.
 **Expected score impact:** Data Architecture and Compounding: remove false-stale behavior and event churn
 **Depends on:** Chunk 1
 **PR group:** C
+**Implementation status:** Completed in this worktree
 
 ### Context
 
@@ -148,6 +149,16 @@ None - execute directly unless the review uncovers conflicting product expectati
 - Normal post-sync data is not treated as stale during the expected sync window.
 - Background sync events are emitted only when the configured stale threshold is truly exceeded.
 - Logs and metrics still expose freshness clearly.
+
+### Result
+
+- Implemented via `lib/syncPolicy.ts` with a layered DRep policy:
+  - cadence: 6h
+  - retrigger threshold: 8h
+  - degraded threshold: 12h
+- Updated `lib/data.ts`, `app/api/health/route.ts`, `app/api/health/sync/route.ts`, `app/api/admin/integrity/alert/route.ts`, and `inngest/functions/sync-freshness-guard.ts`.
+- Verified with `npm run test:unit -- __tests__/lib/data.test.ts __tests__/api/health.test.ts`.
+- Verified with `npm run type-check`.
 
 ### Files to Read First
 

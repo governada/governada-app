@@ -6,12 +6,16 @@
 
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { SYNC_FRESHNESS_POLICY } from '@/lib/syncPolicy';
 import { alertDiscord, alertCritical, emitPostHog, type SyncType } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 
 const FRESHNESS_THRESHOLDS: Record<string, { mins: number; event: string }> = {
   proposals: { mins: 90, event: 'drepscore/sync.proposals' },
-  dreps: { mins: 480, event: 'drepscore/sync.dreps' },
+  dreps: {
+    mins: SYNC_FRESHNESS_POLICY.dreps.retriggerAfterMinutes,
+    event: 'drepscore/sync.dreps',
+  },
   votes: { mins: 480, event: 'drepscore/sync.votes' },
   secondary: { mins: 480, event: 'drepscore/sync.secondary' },
   slow: { mins: 1800, event: 'drepscore/sync.slow' },

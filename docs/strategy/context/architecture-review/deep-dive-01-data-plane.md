@@ -74,21 +74,31 @@ This is the right overall shape. The main review risk is not missing architectur
 
 The intended architecture is database-first reads through cached Supabase data. In degraded mode, the current implementation silently changes semantics by switching to upstream live fetches. That increases latency variance, couples user-facing availability to upstream health, and makes behavior under failure materially different from normal operation.
 
-### 2. DRep freshness logic is misaligned with the actual sync cadence
+### 2. DRep freshness logic was misaligned with the actual sync cadence
 
-**Severity:** High
+**Severity:** Fixed in this worktree
 
 **Evidence**
 
-- `lib/data.ts:13` sets `CACHE_FRESHNESS_MINUTES = 15`.
-- `lib/data.ts:135-136` documents that DRep data changes every 6 hours.
-- `lib/data.ts:154` emits `drepscore/sync.dreps` when the cache is considered stale.
-- `lib/data.ts:133` debounces that trigger for only 10 minutes.
+- `lib/data.ts` previously used a 15-minute freshness threshold for DRep reads even though the canonical sync runs every 6 hours.
 - `inngest/functions/sync-dreps.ts:83` schedules the canonical DRep sync every 6 hours.
+- `lib/syncPolicy.ts` now defines the shared DRep freshness contract for cadence, retrigger threshold, and degraded threshold.
+- `lib/data.ts` now retriggers background sync only after the shared overdue threshold is exceeded.
+- `app/api/health/route.ts`, `app/api/health/sync/route.ts`, `app/api/admin/integrity/alert/route.ts`, and `inngest/functions/sync-freshness-guard.ts` now consume the shared DRep policy instead of hand-maintaining the read-path value.
 
 **Why it matters**
 
-By policy, normal DRep data can be 6 hours old between scheduled syncs. By implementation, data older than 15 minutes is treated as stale. That means the app will classify expected state as stale for most of the sync window and can repeatedly trigger extra background sync events in production.
+By policy, normal DRep data can be 6 hours old between scheduled syncs. The old implementation treated data older than 15 minutes as stale, so expected state looked overdue for most of the sync window and could repeatedly trigger extra background sync events in production.
+
+**Implementation status**
+
+- Fixed in this worktree with a layered policy:
+  - scheduled cadence: 6 hours
+  - read-plane retrigger threshold: 8 hours
+  - operator-facing degraded threshold: 12 hours
+- Added regression coverage in `__tests__/lib/data.test.ts`.
+- Verified with `npm run test:unit -- __tests__/lib/data.test.ts __tests__/api/health.test.ts`.
+- Verified cross-file typing with `npm run type-check`.
 
 ### 3. The public DRep API exposes incorrect semantics for `active_only`
 
@@ -124,21 +134,21 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 ## Risk Ranking
 
 1. Public API contract bug: `active_only` does not mean active.
-2. Freshness policy mismatch causing unnecessary background sync churn.
-3. Database-first boundary violation in degraded reads.
-4. Split ownership of snapshot tables across sync stages and epoch-summary jobs.
+2. Database-first boundary violation in degraded reads.
+3. Split ownership of snapshot tables across sync stages and epoch-summary jobs.
+4. Broader health-policy duplication still exists outside the DRep freshness slice.
 
 ## Open Questions
 
 - Which other read helpers besides the DRep path bypass the database-first boundary under degradation?
-- Should freshness be defined per domain by sync SLA, or should the read layer expose explicit freshness metadata without self-triggering syncs?
+- Should other sync domains adopt the same layered freshness model now used for DReps, or is a broader health-policy refactor still needed first?
 - Which sync stage should be the sole owner of `delegation_snapshots`, `drep_score_history`, and `proposal_vote_snapshots`?
 
 ## Next Actions
 
-1. Split the validated findings above into execution chunks and rank them by blast radius.
-2. Continue tracing proposal, engagement, and workspace data paths to see whether the same boundary problems repeat outside the DRep flow.
-3. Decide the target ownership model for DRep snapshots before implementation starts.
+1. Continue tracing proposal, engagement, and workspace data paths to see whether the same boundary problems repeat outside the DRep flow.
+2. Decide the target ownership model for DRep snapshots before implementation starts.
+3. Remove the remaining direct Koios fallbacks from the shared DRep read layer.
 
 ## Handoff
 
@@ -146,10 +156,10 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 
 **What changed this session**
 
-- Created the architecture review series scaffold.
-- Established the review order and the first active deep dive.
-- Validated four concrete data-plane findings with file-level evidence.
-- Converted the data-plane review from hypothesis gathering into an execution-ready state.
+- Fixed the DRep freshness-policy mismatch by introducing a shared DRep sync policy.
+- Updated the DRep read path to retrigger only when data is actually overdue.
+- Aligned the main health, sync health, admin integrity alert, and freshness-guard surfaces to the shared DRep policy.
+- Added focused regression coverage for the DRep freshness behavior and revalidated the health endpoint behavior.
 
 **Evidence collected**
 
@@ -161,14 +171,17 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 - `instrumentation.ts`
 - `lib/env.ts`
 - `lib/api/handler.ts`
+- `lib/syncPolicy.ts`
 - `vitest.config.ts`
 - `playwright.config.ts`
+- `__tests__/lib/data.test.ts`
+- `__tests__/api/health.test.ts`
 
 **Validated findings**
 
 - The shared DRep read path falls back to Koios and therefore violates the database-first contract.
-- DRep freshness logic is inconsistent with the 6-hour sync cadence and can trigger unnecessary background syncs.
-- The public `active_only` DRep API flag currently maps to documentation completeness rather than active status.
+- DRep freshness is now governed by an explicit layered policy instead of a false-stale 15-minute read threshold.
+- The public `active_only` DRep API flag currently maps to documentation completeness rather than active status. Fixed earlier in this worktree.
 - `delegation_snapshots`, `drep_score_history`, and `proposal_vote_snapshots` have split ownership across multiple sync and epoch-summary jobs.
 
 **Open questions**
@@ -177,10 +190,10 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 
 **Next actions**
 
-- Promote the validated findings into PR-sized execution chunks.
 - Continue the deep dive into proposals and engagement paths to determine whether the same anti-patterns repeat.
+- Remove the remaining shared-read Koios fallback paths.
 - Choose a single-owner model for the affected snapshot tables before implementation.
 
 **Next agent starts here**
 
-Start with the new backlog chunks for the DRep path findings, then inspect proposal and engagement read paths for the same two issues: degraded-mode upstream fallbacks and semantic drift between API names and actual filters.
+Start with `lib/data.ts` and the routes that consume `getAllDReps()`, then remove the remaining shared-read Koios fallbacks without breaking callers that currently assume the helper always returns data. After that, continue the snapshot-ownership audit across DRep and proposal pipelines.

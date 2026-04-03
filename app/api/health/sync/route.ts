@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
+import { SYNC_FRESHNESS_POLICY } from '@/lib/syncPolicy';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ const CORE_SYNCS = ['proposals', 'dreps', 'scoring', 'alignment'] as const;
 
 const CRITICAL_THRESHOLDS_MINS: Record<string, number> = {
   proposals: 120, // 2h (runs every 30min)
-  dreps: 720, // 12h (runs every 6h)
+  dreps: SYNC_FRESHNESS_POLICY.dreps.degradedAfterMinutes,
   scoring: 720, // 12h (runs every 6h)
   alignment: 720, // 12h (runs every 6h)
 };

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, getSupabaseAdmin } from '@/lib/supabase';
 import { inngest } from '@/lib/inngest';
 import { logger } from '@/lib/logger';
+import { SYNC_FRESHNESS_POLICY } from '@/lib/syncPolicy';
 import { alertEmail } from '@/lib/sync-utils';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
@@ -26,7 +27,12 @@ const SYNC_CONFIG: Record<
     event: 'drepscore/sync.proposals',
     label: 'Proposals Sync',
   },
-  dreps: { mins: 720, schedule: 'every 6h', event: 'drepscore/sync.dreps', label: 'DReps Sync' },
+  dreps: {
+    mins: SYNC_FRESHNESS_POLICY.dreps.degradedAfterMinutes,
+    schedule: 'every 6h',
+    event: 'drepscore/sync.dreps',
+    label: 'DReps Sync',
+  },
   votes: { mins: 720, schedule: 'every 6h', event: 'drepscore/sync.votes', label: 'Votes Sync' },
   secondary: {
     mins: 720,

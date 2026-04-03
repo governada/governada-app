@@ -8,9 +8,8 @@ import { getEnrichedDReps, EnrichedDRep } from './koios';
 import { isWellDocumented } from '@/utils/documentation';
 import { logger } from '@/lib/logger';
 import { getCurrentEpoch } from '@/lib/constants';
+import { SYNC_FRESHNESS_POLICY } from './syncPolicy';
 import type { SizeTier } from '@/utils/scoring';
-
-const CACHE_FRESHNESS_MINUTES = 15;
 
 interface DRepRowInfo {
   drepHash?: string;
@@ -143,7 +142,7 @@ let _drepsCache: {
 /**
  * Trigger background sync without blocking.
  * In production, fires an Inngest event to retrigger the DReps sync.
- * Debounced to avoid spamming events on every stale read.
+ * Debounced to avoid spamming events when reads notice the sync is overdue.
  */
 async function triggerBackgroundSync() {
   if (Date.now() - lastSyncTrigger < SYNC_TRIGGER_COOLDOWN_MS) return;
@@ -241,16 +240,21 @@ export async function getAllDReps(): Promise<{
     if (timestamps.length > 0) {
       const maxTimestamp = Math.max(...timestamps);
       const maxUpdatedAt = new Date(maxTimestamp);
-      const freshnessThreshold = new Date(Date.now() - CACHE_FRESHNESS_MINUTES * 60 * 1000);
-      const isStale = maxUpdatedAt < freshnessThreshold;
+      const retriggerThreshold = new Date(
+        Date.now() - SYNC_FRESHNESS_POLICY.dreps.retriggerAfterMinutes * 60 * 1000,
+      );
+      const isStale = maxUpdatedAt < retriggerThreshold;
 
       if (isStale) {
         const ageMinutes = Math.round((Date.now() - maxTimestamp) / 1000 / 60);
         if (isDev) {
-          logger.info('[Data] Cache is stale', { ageMinutes });
+          logger.info('[Data] Cache is overdue for retrigger', {
+            ageMinutes,
+            retriggerAfterMinutes: SYNC_FRESHNESS_POLICY.dreps.retriggerAfterMinutes,
+          });
         }
         // Trigger sync in background (non-blocking)
-        triggerBackgroundSync();
+        void triggerBackgroundSync();
       } else if (isDev) {
         const ageMinutes = Math.round((Date.now() - maxTimestamp) / 1000 / 60);
         logger.info('[Data] Cache is fresh', { ageMinutes });

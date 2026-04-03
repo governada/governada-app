@@ -352,7 +352,7 @@ The executing agent should confirm whether the desired end state is one central 
 **Expected score impact:** Data Architecture and Compounding: eliminate another class of proposal-consumer semantic drift
 **Depends on:** Chunk 1, Chunk 4
 **PR group:** H
-**Implementation status:** In progress in this worktree
+**Implementation status:** Completed in this worktree
 
 ### Context
 
@@ -384,26 +384,43 @@ None - execute directly unless a consumer needs a materially different product i
 - `inngest/functions/generate-cc-briefing.ts` now filters pending CC proposals through the shared eligibility rules.
 - `app/api/workspace/proposals/monitor/route.ts` now uses shared governance-body eligibility and the shared DRep threshold resolver instead of treating its local threshold table as the body-inclusion matrix.
 - The main proposal-detail route now threads `paramChanges` into `ProposalHeroV2`, `ProposalBridge`, `ProposalActionZone`, `ProposalVoterTabs`, `SourceMaterial`, and `LivingBrief`, removing type-only eligibility decisions from that UI path.
+- `app/api/workspace/review-queue/route.ts` now exposes `paramChanges` through the review-queue contract.
+- Reviewer-facing intelligence consumers now use shared governance-body eligibility with parameter context: `ReviewIntelBrief`, `StakeholderLandscape`, `ReviewBrief`, and `IntelPanel`.
+- Passage-prediction background jobs now fetch `param_changes` and resolve thresholds through the shared governance rule layer before caching proposal predictions.
+- `lib/scoring/historical.ts` now reads `delegation_snapshots` through the finalized `epoch` column instead of the stale `epoch_no` field.
 - Added regression coverage in `__tests__/lib/votingBodies.test.ts` and `__tests__/lib/actionQueue.test.ts`.
 - Added regression coverage in `__tests__/api/workspace-proposals-monitor.test.ts`.
-- Verified with `npm run test:unit -- __tests__/lib/governanceThresholds.test.ts __tests__/lib/votingBodies.test.ts __tests__/lib/actionQueue.test.ts __tests__/api/workspace-proposals-monitor.test.ts`.
+- Added focused regression coverage in `__tests__/api/workspace-review-queue.test.ts`, `__tests__/components/StakeholderLandscape.test.tsx`, and `__tests__/lib/passagePrediction.test.ts`.
+- Verified with `npm run test:unit -- __tests__/api/workspace-review-queue.test.ts`.
+- Verified with `npm run test:component -- __tests__/components/StakeholderLandscape.test.tsx`.
+- Verified with `npm run test:unit -- __tests__/lib/passagePrediction.test.ts`.
 - Verified with `npm run type-check`.
-- Follow-up work: thread `param_changes` through workspace-review contracts, then remove the remaining local body-eligibility assumptions in review/intelligence UI.
+
+## Chunk 9: Normalize Authoring Threshold Copy
+
+**Priority:** P2
+**Effort:** S
+**Audit dimension(s):** Data Architecture and Compounding, Product Completeness vs. Vision
+**Expected score impact:** Minor consistency gain by removing threshold-copy drift from authoring UX
+**Depends on:** Chunk 8
+**PR group:** H
+
+### Context
+
+The authoring submission simulator still hardcodes governance threshold copy in `components/workspace/author/submission/FinancialSimulation.tsx`. That does not currently drive live data behavior, but it can drift from the shared governance rule layer and mislead proposal authors.
+
+### Scope
+
+- Replace the static authoring threshold copy table with shared threshold and eligibility helpers, or explicitly centralize the copy source if product wants curated explanatory text.
+- Preserve user-friendly language while removing contradictory threshold claims.
+
+### Verification
+
+- Authoring threshold copy matches the shared governance rule layer for each supported proposal type.
+- Parameter-change authoring copy does not imply SPO participation when only governance parameters are changed.
 
 ### Files to Read First
 
+- `components/workspace/author/submission/FinancialSimulation.tsx`
 - `lib/governance/votingBodies.ts`
 - `lib/governanceThresholds.ts`
-- `lib/actionQueue.ts`
-- `inngest/functions/generate-cc-briefing.ts`
-- `app/api/workspace/proposals/monitor/route.ts`
-- `app/proposal/[txHash]/[index]/page.tsx`
-- `app/api/workspace/review-queue/route.ts`
-- `components/ProposalVoterTabs.tsx`
-- `components/TriBodyVotePanel.tsx`
-- `components/governada/proposals/ProposalHeroV2.tsx`
-- `components/governada/proposals/ProposalBridge.tsx`
-- `components/governada/proposals/ProposalActionZone.tsx`
-- `components/governada/proposals/SourceMaterial.tsx`
-- `components/governada/proposals/LivingBrief.tsx`
-- `components/intelligence/sections/StakeholderLandscape.tsx`

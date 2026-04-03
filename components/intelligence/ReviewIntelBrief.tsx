@@ -34,6 +34,7 @@ interface ReviewIntelBriefProps {
   proposalId: string;
   proposalIndex: number;
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
   proposalContent: {
     title: string;
     abstract: string;
@@ -70,6 +71,7 @@ export function ReviewIntelBrief({
   proposalId,
   proposalIndex,
   proposalType,
+  paramChanges,
   proposalContent,
   interBodyVotes,
   citizenSentiment,
@@ -153,6 +155,7 @@ export function ReviewIntelBrief({
             interBodyVotes={interBodyVotes}
             citizenSentiment={citizenSentiment}
             proposalType={proposalType}
+            paramChanges={paramChanges}
           />
         );
       case 'similar-proposals':

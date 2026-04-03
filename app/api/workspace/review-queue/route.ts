@@ -176,6 +176,7 @@ export const GET = withRouteHandler(async (request) => {
       abstract: p.abstract ?? null,
       aiSummary: p.ai_summary ?? null,
       proposalType: p.proposal_type || 'Proposal',
+      paramChanges: (p.param_changes as Record<string, unknown> | null) ?? null,
       withdrawalAmount: p.withdrawal_amount != null ? Number(p.withdrawal_amount) : null,
       treasuryTier: p.treasury_tier ?? null,
       epochsRemaining,

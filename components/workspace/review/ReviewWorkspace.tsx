@@ -34,7 +34,6 @@ import { DecisionPanel } from '@/components/workspace/review/DecisionPanel';
 import { MobileVoteBar } from '@/components/workspace/review/MobileVoteBar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AgentChatPanel } from '@/components/workspace/agent/AgentChatPanel';
-import { IntelPanel } from '@/components/studio/IntelPanel';
 import { ReviewIntelBrief } from '@/components/intelligence/ReviewIntelBrief';
 import { NotesPanel } from '@/components/studio/NotesPanel';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,6 +62,7 @@ function draftToQueueItem(draft: import('@/lib/workspace/types').ProposalDraft):
     abstract: draft.abstract || null,
     aiSummary: null,
     proposalType: draft.proposalType,
+    paramChanges: null,
     withdrawalAmount: null,
     treasuryTier: null,
     epochsRemaining: null,
@@ -126,6 +126,7 @@ function SectionTOC() {
 interface StudioPanelWrapperProps {
   proposalId: string;
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
   proposalIndex: number;
   userRole: 'proposer' | 'reviewer' | 'cc_member';
   content: {
@@ -160,6 +161,7 @@ interface StudioPanelWrapperProps {
 function StudioPanelWrapper({
   proposalId,
   proposalType,
+  paramChanges,
   proposalIndex,
   userRole,
   content,
@@ -265,6 +267,7 @@ function StudioPanelWrapper({
             proposalId={proposalId}
             proposalIndex={proposalIndex}
             proposalType={proposalType}
+            paramChanges={paramChanges}
             proposalContent={content}
             interBodyVotes={interBodyVotes}
             citizenSentiment={citizenSentiment}
@@ -739,6 +742,7 @@ function StudioReviewInner({
                   proposalId={selectedItem.txHash}
                   proposalIndex={selectedItem.proposalIndex}
                   proposalType={selectedItem.proposalType}
+                  paramChanges={selectedItem.paramChanges}
                   proposalContent={itemContent}
                   interBodyVotes={selectedItem.interBodyVotes}
                   citizenSentiment={selectedItem.citizenSentiment}

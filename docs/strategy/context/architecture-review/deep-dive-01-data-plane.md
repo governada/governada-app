@@ -1,6 +1,6 @@
 # Deep Dive 01 - Data Plane
 
-**Status:** In progress
+**Status:** Completed
 **Started:** 2026-04-02
 **Owner branch:** `feature/platform-architecture-review-series`
 **Review goal:** verify truth boundaries, freshness guarantees, fallback behavior, and read-model correctness from source ingestion through page and API consumption.
@@ -111,7 +111,7 @@ By policy, normal DRep data can be 6 hours old between scheduled syncs. The old 
 
 ### 3. The public DRep API exposes incorrect semantics for `active_only`
 
-**Severity:** High
+**Severity:** Fixed in this worktree
 
 **Evidence**
 
@@ -122,6 +122,11 @@ By policy, normal DRep data can be 6 hours old between scheduled syncs. The old 
 **Why it matters**
 
 External consumers asking for active-only DReps are currently receiving a documentation-quality filter instead of an activity-status filter. This is a contract bug in a public API, not just an internal naming issue.
+
+**Implementation status**
+
+- Fixed earlier in this worktree by aligning `/api/v1/dreps` `active_only` to actual DRep activity instead of documentation completeness.
+- Added regression coverage in `__tests__/api/v1-dreps.test.ts`.
 
 ### 4. Snapshot ownership was split across two sync stages, creating order-dependent writes
 
@@ -153,7 +158,7 @@ Multiple jobs currently own the same snapshot tables. Final state therefore depe
 
 ### 5. Proposal consumers duplicated governance-body eligibility rules and lost parameter-sensitive semantics
 
-**Severity:** Partially fixed in this worktree
+**Severity:** Fixed in this worktree
 
 **Evidence**
 
@@ -168,7 +173,7 @@ For CIP-1694 proposal types, eligibility is not purely a string-to-body lookup. 
 
 **Implementation status**
 
-- Partially fixed in this worktree.
+- Fixed in this worktree.
 - `lib/governance/votingBodies.ts` is now the shared eligibility source and correctly models:
   - `TreasuryWithdrawals` as DRep + CC
   - committee updates as DRep + SPO
@@ -180,34 +185,49 @@ For CIP-1694 proposal types, eligibility is not purely a string-to-body lookup. 
 - `inngest/functions/generate-cc-briefing.ts` now filters pending CC proposals through the shared eligibility rules instead of a duplicated type list.
 - `lib/actionQueue.ts` now filters CC pending proposals through the shared eligibility rules instead of head-counting all open proposals.
 - `app/api/workspace/proposals/monitor/route.ts` now uses shared governance-body eligibility, the Supabase-first DRep threshold resolver, and a small shared governance constant for the fixed deposit value rather than using its local threshold table as both threshold source and body-inclusion matrix.
-- Remaining follow-up: proposal-detail consumers now receive `paramChanges`, but workspace-review consumers still do not. The next step is to thread `param_changes` into review queue contracts and replace remaining local threshold maps in broader proposal/workspace surfaces such as passage prediction and review UI.
+- `app/api/workspace/review-queue/route.ts` now exposes `paramChanges` through the review queue contract.
+- `components/intelligence/ReviewIntelBrief.tsx`, `components/intelligence/sections/StakeholderLandscape.tsx`, `components/studio/IntelPanel.tsx`, and `components/workspace/review/ReviewBrief.tsx` now use the shared governance-body rules with parameter context in reviewer-facing UI.
 
-## Risk Ranking
+### 6. Passage prediction and historical snapshot consumers still encoded stale threshold and schema assumptions
 
-1. Proposal and workspace surfaces still have threshold-constant drift outside the shared resolver path.
-2. Proposal detail and workspace review still have UI consumers that infer voting-body eligibility from `proposalType` alone instead of `param_changes`.
-3. Broader health-policy duplication still exists outside the DRep freshness slice.
-4. Other read helpers may still bypass canonical cached boundaries under degradation.
-5. Proposal and engagement paths still need a broader canonical-read audit beyond the DRep flow.
+**Severity:** Fixed in this worktree
+
+**Evidence**
+
+- `lib/passagePrediction.ts` previously hardcoded a local CIP-1694 threshold map and could not see proposal `param_changes`.
+- `inngest/functions/precompute-proposal-intelligence.ts` and `inngest/functions/update-passage-predictions.ts` selected proposal rows without `param_changes`, so cached predictions could not reflect parameter-sensitive SPO participation.
+- `lib/scoring/historical.ts` queried `delegation_snapshots` with `epoch_no` even though the finalized snapshot lifecycle now uses `epoch`.
+
+**Why it matters**
+
+Cached reviewer intelligence and historical scoring should agree with the same governance rules and snapshot contracts used by the live monitor and shared data layer. If they drift, the app can show internally inconsistent outcomes across surfaces that all claim to describe the same proposal state.
+
+**Implementation status**
+
+- Fixed in this worktree.
+- `lib/passagePrediction.ts` now accepts shared threshold context, resolves eligible bodies through `lib/governance/votingBodies.ts`, and exposes `resolvePassagePredictionThresholds()` for background jobs.
+- `inngest/functions/precompute-proposal-intelligence.ts` and `inngest/functions/update-passage-predictions.ts` now fetch `param_changes` and resolve thresholds through the shared governance rule layer before caching predictions.
+- `lib/scoring/historical.ts` now queries `delegation_snapshots.epoch` instead of `epoch_no`, aligning the historical consumer with the finalized snapshot contract.
+
+## Residual Risks
+
+1. Some non-decisioning authoring surfaces still hardcode governance-threshold copy outside the shared resolver path.
+2. `epoch_params` is now operationally important to the shared threshold resolver but is not yet expressed as a repo-managed typed contract.
+3. Other read helpers may still bypass canonical cached boundaries under degradation and should be revisited in later review passes.
 
 ## Open Questions
 
-- Which other read helpers besides the DRep path bypass the database-first boundary under degradation?
-- Should other sync domains adopt the same layered freshness model now used for DReps, or is a broader health-policy refactor still needed first?
 - Should `epoch_params` be promoted into a typed, repo-managed Supabase contract now that the shared threshold resolver depends on it?
-- Which proposal and workspace surfaces should consume live current-epoch delegation snapshots versus finalized previous-epoch history?
-- Should workspace review expose `param_changes` in its queue item contract so reviewer-facing governance-body UI can consume the same eligibility rules now used by proposal detail pages?
+- Which other read helpers besides the DRep path still need a database-first boundary audit in later deep dives?
 
 ## Next Actions
 
-1. Thread `param_changes` into workspace-review consumers that still decide voting-body eligibility from `proposalType` alone.
-2. Audit remaining proposal and workspace threshold consumers against the new shared resolver.
-3. Verify downstream consumers against the explicit `delegation_snapshots` lifecycle split (current epoch via scoring, previous epoch finalized via epoch summary).
-4. Continue tracing proposal, engagement, and workspace data paths to see whether the same boundary problems repeat outside the DRep flow.
+1. Carry residual authoring-threshold copy drift as a backlog item instead of leaving it implicit.
+2. Use later deep dives to continue the broader audit for other database-first boundary violations outside the DRep/proposal flow.
 
 ## Handoff
 
-**Current status:** In progress
+**Current status:** Completed
 
 **What changed this session**
 
@@ -222,6 +242,9 @@ For CIP-1694 proposal types, eligibility is not purely a string-to-body lookup. 
 - Updated SPO queue, CC queue, CC briefing, and workspace monitor consumers to use the shared eligibility rules instead of local type lists or head-count shortcuts.
 - Moved the fixed governance-action deposit into `lib/governance/constants.ts` so server routes can reuse it without importing wallet-builder code.
 - Threaded `paramChanges` through the main proposal-detail consumer path (`ProposalHeroV2`, `ProposalBridge`, `ProposalActionZone`, `ProposalVoterTabs`, `SourceMaterial`, and `LivingBrief`) so those UI surfaces no longer infer voter eligibility from `proposalType` alone when the page already has the parameter payload.
+- Threaded `paramChanges` through the review-queue contract and reviewer-facing intelligence consumers (`ReviewIntelBrief`, `StakeholderLandscape`, `ReviewBrief`, and `IntelPanel`) so workspace-review now follows the same governance-body rules as proposal detail pages.
+- Replaced the hardcoded passage-prediction threshold matrix with shared threshold resolution plus parameter-sensitive eligibility, and aligned the background cache jobs to fetch `param_changes`.
+- Fixed the historical scoring consumer to query `delegation_snapshots.epoch` instead of the old `epoch_no` column.
 
 **Evidence collected**
 
@@ -239,8 +262,14 @@ For CIP-1694 proposal types, eligibility is not purely a string-to-body lookup. 
 - `lib/governance/constants.ts`
 - `lib/actionQueue.ts`
 - `inngest/functions/generate-cc-briefing.ts`
+- `inngest/functions/precompute-proposal-intelligence.ts`
+- `inngest/functions/update-passage-predictions.ts`
 - `app/api/workspace/proposals/monitor/route.ts`
+- `app/api/workspace/review-queue/route.ts`
 - `app/proposal/[txHash]/[index]/page.tsx`
+- `components/intelligence/ReviewIntelBrief.tsx`
+- `components/intelligence/sections/StakeholderLandscape.tsx`
+- `components/workspace/review/ReviewBrief.tsx`
 - `components/governada/proposals/ProposalHeroV2.tsx`
 - `components/governada/proposals/ProposalBridge.tsx`
 - `components/governada/proposals/ProposalActionZone.tsx`
@@ -249,6 +278,8 @@ For CIP-1694 proposal types, eligibility is not purely a string-to-body lookup. 
 - `components/ProposalVoterTabs.tsx`
 - `components/governada/proposals/SourceMaterial.tsx`
 - `components/governada/proposals/LivingBrief.tsx`
+- `lib/passagePrediction.ts`
+- `lib/scoring/historical.ts`
 - `lib/scoring/delegationSnapshots.ts`
 - `inngest/functions/generate-epoch-summary.ts`
 - `vitest.config.ts`
@@ -257,7 +288,10 @@ For CIP-1694 proposal types, eligibility is not purely a string-to-body lookup. 
 - `__tests__/lib/governanceThresholds.test.ts`
 - `__tests__/lib/votingBodies.test.ts`
 - `__tests__/lib/actionQueue.test.ts`
+- `__tests__/lib/passagePrediction.test.ts`
 - `__tests__/api/workspace-proposals-monitor.test.ts`
+- `__tests__/api/workspace-review-queue.test.ts`
+- `__tests__/components/StakeholderLandscape.test.tsx`
 - `__tests__/api/health.test.ts`
 - `__tests__/scoring/delegationSnapshots.test.ts`
 
@@ -267,19 +301,18 @@ For CIP-1694 proposal types, eligibility is not purely a string-to-body lookup. 
 - DRep freshness is now governed by an explicit layered policy instead of a false-stale 15-minute read threshold.
 - The public `active_only` DRep API flag currently maps to documentation completeness rather than active status. Fixed earlier in this worktree.
 - `proposal_vote_snapshots` is now owned by the epoch-summary path, current-epoch `delegation_snapshots` plus `drep_score_history` are scoring-owned, and previous-epoch `delegation_snapshots` are now explicitly finalized by `generate-epoch-summary.ts`.
-- Governance-body eligibility is now centralized in `lib/governance/votingBodies.ts` with an explicit SPO security-parameter allowlist aligned to current Cardano governance documentation, and queue / briefing / monitor / proposal-detail consumers now use it, but workspace-review UI consumers still need `param_changes` threaded through to fully consume that shared logic.
+- Governance-body eligibility is now centralized in `lib/governance/votingBodies.ts` with an explicit SPO security-parameter allowlist aligned to current Cardano governance documentation, and queue / briefing / monitor / proposal-detail / workspace-review / cached-prediction consumers now use that shared rule layer.
+- Historical scoring now reads `delegation_snapshots` through the finalized `epoch` contract instead of the stale `epoch_no` column.
 
 **Open questions**
 
-- See the `Open Questions` section above.
+- See the `Open Questions` section above. None are blocking for Deep Dive 01 closure.
 
 **Next actions**
 
-- Thread `param_changes` into workspace-review consumers that still infer governance-body eligibility from `proposalType` alone.
-- Audit the remaining proposal/workspace threshold consumers against `lib/governanceThresholds.ts`.
-- Verify downstream consumers against the explicit `delegation_snapshots` lifecycle split before closing the data-plane review.
-- Continue the deep dive into proposals and engagement paths to determine whether the same anti-patterns repeat.
+- Start the next deep dive with Deep Dive 02 or Deep Dive 04.
+- Use the backlog for residual low-priority threshold-copy cleanup outside the active data plane.
 
 **Next agent starts here**
 
-Start by threading `param_changes` into workspace-review consumers that still make type-only governance-eligibility decisions, then continue the proposal/workspace threshold-consumer audit against the shared resolver and snapshot lifecycle.
+Deep Dive 01 is complete. The next agent should continue with the next prioritized review area from the series index.

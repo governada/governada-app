@@ -1,7 +1,8 @@
 'use client';
 
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowRight,
@@ -11,18 +12,24 @@ import {
   Clock3,
   Gauge,
   HeartPulse,
+  Loader2,
   ListChecks,
   ShieldCheck,
   Sparkles,
   Target,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import type {
   SystemsAction,
+  SystemsCommitmentCard,
+  SystemsCommitmentStatus,
   SystemsDashboardData,
   SystemsJourney,
   SystemsPromiseCard,
+  SystemsReviewDiscipline,
   SystemsReviewLoop,
+  SystemsReviewRecord,
   SystemsReviewStep,
   SystemsSloCard,
   SystemsStatus,
@@ -31,7 +38,16 @@ import type {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -40,6 +56,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 async function fetchSystems(): Promise<SystemsDashboardData> {
@@ -49,6 +66,93 @@ async function fetchSystems(): Promise<SystemsDashboardData> {
   const res = await fetch('/api/admin/systems', { headers });
   if (!res.ok) throw new Error('Failed to fetch systems dashboard');
   return res.json();
+}
+
+type ReviewFormState = {
+  reviewDate: string;
+  overallStatus: SystemsStatus;
+  focusArea: string;
+  topRisk: string;
+  changeNotes: string;
+  hardeningCommitmentTitle: string;
+  hardeningCommitmentSummary: string;
+  commitmentOwner: string;
+  commitmentDueDate: string;
+  linkedSloIds: string[];
+};
+
+async function createSystemsReview(payload: ReviewFormState) {
+  const token = getStoredSession();
+  if (!token) throw new Error('Missing session');
+
+  const res = await fetch('/api/admin/systems/reviews', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      ...payload,
+      commitmentDueDate: payload.commitmentDueDate || null,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to log systems review');
+  }
+
+  return res.json();
+}
+
+async function updateSystemsCommitmentStatus(id: string, status: SystemsCommitmentStatus) {
+  const token = getStoredSession();
+  if (!token) throw new Error('Missing session');
+
+  const res = await fetch('/api/admin/systems/commitments', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ id, status }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to update commitment');
+  }
+
+  return res.json();
+}
+
+function todayInputValue() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function buildSuggestedLinkedSloIds(data: SystemsDashboardData) {
+  const nonGood = data.slos.filter((slo) => slo.status !== 'good').map((slo) => slo.id);
+  if (nonGood.length > 0) return nonGood.slice(0, 3);
+  return data.slos.slice(0, 1).map((slo) => slo.id);
+}
+
+function buildInitialReviewForm(data: SystemsDashboardData): ReviewFormState {
+  const primaryAction = data.actions[0]?.title;
+
+  return {
+    reviewDate: todayInputValue(),
+    overallStatus: data.overall.status,
+    focusArea: primaryAction || data.reviewLoop.currentFocus,
+    topRisk: '',
+    changeNotes: '',
+    hardeningCommitmentTitle: primaryAction || '',
+    hardeningCommitmentSummary: '',
+    commitmentOwner: 'Founder + agents',
+    commitmentDueDate: '',
+    linkedSloIds: buildSuggestedLinkedSloIds(data),
+  };
 }
 
 function statusClasses(status: SystemsStatus) {
@@ -90,6 +194,32 @@ function statusLabel(status: SystemsStatus) {
       return 'Act now';
     default:
       return 'Bootstrapping';
+  }
+}
+
+function commitmentStatusLabel(status: SystemsCommitmentStatus) {
+  switch (status) {
+    case 'in_progress':
+      return 'In progress';
+    case 'blocked':
+      return 'Blocked';
+    case 'done':
+      return 'Done';
+    default:
+      return 'Planned';
+  }
+}
+
+function commitmentStatusClasses(status: SystemsCommitmentStatus) {
+  switch (status) {
+    case 'done':
+      return 'border-emerald-500/30 text-emerald-300';
+    case 'in_progress':
+      return 'border-chart-1/40 text-chart-1';
+    case 'blocked':
+      return 'border-red-500/30 text-red-300';
+    default:
+      return 'border-amber-500/30 text-amber-300';
   }
 }
 
@@ -244,6 +374,47 @@ function SloCard({ slo }: { slo: SystemsSloCard }) {
   );
 }
 
+function ReviewDisciplineCard({ reviewDiscipline }: { reviewDiscipline: SystemsReviewDiscipline }) {
+  const classes = statusClasses(reviewDiscipline.status);
+
+  return (
+    <Card className={cn('border-l-2', classes.border)}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <Badge variant="outline" className={classes.badge}>
+              {statusLabel(reviewDiscipline.status)}
+            </Badge>
+            <h3 className="text-sm font-semibold">{reviewDiscipline.headline}</h3>
+          </div>
+          <CalendarDays className={cn('h-4 w-4 shrink-0 mt-1', classes.text)} />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Current cadence</p>
+          <p className="text-2xl font-bold leading-none">{reviewDiscipline.currentValue}</p>
+          <p className="text-xs text-muted-foreground">Target: {reviewDiscipline.target}</p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">{reviewDiscipline.summary}</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Open commitments
+            </p>
+            <p className="text-sm font-semibold mt-1">{reviewDiscipline.openCommitments}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Overdue</p>
+            <p className="text-sm font-semibold mt-1">{reviewDiscipline.overdueCommitments}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function StoryColumn({
   title,
   icon: Icon,
@@ -312,6 +483,149 @@ function ReviewStepCard({ step, index }: { step: SystemsReviewStep; index: numbe
   );
 }
 
+function CommitmentCard({
+  commitment,
+  onStatusChange,
+  isUpdating,
+}: {
+  commitment: SystemsCommitmentCard;
+  onStatusChange: (status: SystemsCommitmentStatus) => void;
+  isUpdating: boolean;
+}) {
+  return (
+    <Card className={cn(commitment.isOverdue && 'border-red-500/40')}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className={commitmentStatusClasses(commitment.status)}>
+                {commitmentStatusLabel(commitment.status)}
+              </Badge>
+              {commitment.isOverdue ? (
+                <Badge variant="outline" className="border-red-500/30 text-red-300">
+                  Overdue
+                </Badge>
+              ) : null}
+            </div>
+            <h3 className="text-sm font-semibold">{commitment.title}</h3>
+          </div>
+          {isUpdating ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+        </div>
+
+        <p className="text-sm text-muted-foreground">{commitment.summary}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Owner</p>
+            <p className="text-sm mt-1">{commitment.owner}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Due</p>
+            <p className="text-sm mt-1">
+              {commitment.dueDate
+                ? new Date(`${commitment.dueDate}T00:00:00`).toLocaleDateString()
+                : 'No due date'}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Age</p>
+            <p className="text-sm mt-1">
+              {commitment.ageDays} day{commitment.ageDays === 1 ? '' : 's'}
+            </p>
+          </div>
+        </div>
+
+        {commitment.linkedSloIds.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {commitment.linkedSloIds.map((sloId) => (
+              <Badge key={sloId} variant="outline" className="text-xs">
+                {sloId}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="space-y-2">
+          <Label htmlFor={`commitment-status-${commitment.id}`}>Update status</Label>
+          <Select
+            value={commitment.status}
+            onValueChange={(value) => onStatusChange(value as SystemsCommitmentStatus)}
+            disabled={isUpdating}
+          >
+            <SelectTrigger id={`commitment-status-${commitment.id}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="planned">Planned</SelectItem>
+              <SelectItem value="in_progress">In progress</SelectItem>
+              <SelectItem value="blocked">Blocked</SelectItem>
+              <SelectItem value="done">Done</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReviewHistoryCard({ review }: { review: SystemsReviewRecord }) {
+  const classes = statusClasses(review.overallStatus);
+
+  return (
+    <Card className={cn('border-l-2', classes.border)}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className={classes.badge}>
+                {statusLabel(review.overallStatus)}
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                {new Date(review.reviewedAt).toLocaleDateString()}
+              </Badge>
+            </div>
+            <h3 className="text-sm font-semibold">{review.focusArea}</h3>
+          </div>
+          <CalendarDays className={cn('h-4 w-4 shrink-0 mt-1', classes.text)} />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Review note</p>
+          <p className="text-sm text-muted-foreground">{review.summary}</p>
+        </div>
+
+        <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Top risk</p>
+          <p className="text-sm mt-1">{review.topRisk}</p>
+        </div>
+
+        {review.commitment ? (
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2 space-y-1">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Hardening commitment
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-medium">{review.commitment.title}</p>
+              <Badge
+                variant="outline"
+                className={commitmentStatusClasses(review.commitment.status)}
+              >
+                {commitmentStatusLabel(review.commitment.status)}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {review.commitment.owner}
+              {review.commitment.dueDate
+                ? ` • due ${new Date(`${review.commitment.dueDate}T00:00:00`).toLocaleDateString()}`
+                : ''}
+            </p>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 function AutomationCard({ candidate }: { candidate: AutomationCandidate }) {
   return (
     <Card>
@@ -337,10 +651,46 @@ function AutomationCard({ candidate }: { candidate: AutomationCandidate }) {
 }
 
 export function SystemsClient() {
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin', 'systems'],
     queryFn: fetchSystems,
     refetchInterval: 60_000,
+  });
+  const [reviewForm, setReviewForm] = useState<ReviewFormState | null>(null);
+  const [pendingCommitmentId, setPendingCommitmentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!data || reviewForm) return;
+    setReviewForm(buildInitialReviewForm(data));
+  }, [data, reviewForm]);
+
+  const createReviewMutation = useMutation({
+    mutationFn: createSystemsReview,
+    onSuccess: () => {
+      toast.success('Weekly systems review logged');
+      queryClient.invalidateQueries({ queryKey: ['admin', 'systems'] });
+      if (data) {
+        setReviewForm(buildInitialReviewForm(data));
+      }
+    },
+    onError: (mutationError: Error) => {
+      toast.error(mutationError.message || 'Failed to log systems review');
+    },
+  });
+
+  const updateCommitmentMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: SystemsCommitmentStatus }) =>
+      updateSystemsCommitmentStatus(id, status),
+    onMutate: ({ id }) => setPendingCommitmentId(id),
+    onSuccess: () => {
+      toast.success('Commitment updated');
+      queryClient.invalidateQueries({ queryKey: ['admin', 'systems'] });
+    },
+    onError: (mutationError: Error) => {
+      toast.error(mutationError.message || 'Failed to update commitment');
+    },
+    onSettled: () => setPendingCommitmentId(null),
   });
 
   if (isLoading) {
@@ -380,6 +730,10 @@ export function SystemsClient() {
     return null;
   }
 
+  if (!reviewForm) {
+    return null;
+  }
+
   const overallClasses = statusClasses(data.overall.status);
   const criticalJourneys = data.journeys.filter((journey) => journey.gateLevel !== 'L2');
   const automatedJourneys = criticalJourneys.filter((journey) => journey.coverage === 'automated');
@@ -387,6 +741,29 @@ export function SystemsClient() {
     criticalJourneys.length === 0
       ? 0
       : Math.round((automatedJourneys.length / criticalJourneys.length) * 100);
+
+  function updateReviewForm(patch: Partial<ReviewFormState>) {
+    setReviewForm((current) => (current ? { ...current, ...patch } : current));
+  }
+
+  function toggleLinkedSlo(sloId: string) {
+    setReviewForm((current) => {
+      if (!current) return current;
+      const alreadySelected = current.linkedSloIds.includes(sloId);
+      return {
+        ...current,
+        linkedSloIds: alreadySelected
+          ? current.linkedSloIds.filter((id) => id !== sloId)
+          : [...current.linkedSloIds, sloId].slice(0, 5),
+      };
+    });
+  }
+
+  async function handleSubmitReview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!reviewForm) return;
+    await createReviewMutation.mutateAsync(reviewForm);
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -464,6 +841,203 @@ export function SystemsClient() {
         </CardContent>
       </Card>
 
+      <section id="operating-rhythm" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-chart-1" />
+          <h2 className="text-lg font-semibold">Operating rhythm</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          This is where the cockpit becomes a management loop: durable weekly reviews, explicit
+          hardening commitments, and a trail that future agents can update without inventing a new
+          process every time.
+        </p>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-6">
+          <div className="space-y-4">
+            <ReviewDisciplineCard reviewDiscipline={data.reviewDiscipline} />
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Open hardening commitments</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {data.openCommitments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No open commitments are recorded yet. Log the next weekly review and leave
+                    behind one named systems move.
+                  </p>
+                ) : (
+                  data.openCommitments.map((commitment) => (
+                    <CommitmentCard
+                      key={commitment.id}
+                      commitment={commitment}
+                      isUpdating={
+                        updateCommitmentMutation.isPending && pendingCommitmentId === commitment.id
+                      }
+                      onStatusChange={(status) =>
+                        updateCommitmentMutation.mutate({ id: commitment.id, status })
+                      }
+                    />
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Log this week&apos;s review</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-4" onSubmit={handleSubmitReview}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="review-date">Review date</Label>
+                    <Input
+                      id="review-date"
+                      type="date"
+                      value={reviewForm.reviewDate}
+                      onChange={(event) => updateReviewForm({ reviewDate: event.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="review-status">Current posture</Label>
+                    <Select
+                      value={reviewForm.overallStatus}
+                      onValueChange={(value) =>
+                        updateReviewForm({ overallStatus: value as SystemsStatus })
+                      }
+                    >
+                      <SelectTrigger id="review-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="good">Healthy</SelectItem>
+                        <SelectItem value="warning">Watch</SelectItem>
+                        <SelectItem value="critical">Act now</SelectItem>
+                        <SelectItem value="bootstrap">Bootstrapping</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="focus-area">Focus area</Label>
+                  <Input
+                    id="focus-area"
+                    value={reviewForm.focusArea}
+                    onChange={(event) => updateReviewForm({ focusArea: event.target.value })}
+                    placeholder="What system are you hardening this week?"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Linked SLOs</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {data.slos.map((slo) => {
+                      const selected = reviewForm.linkedSloIds.includes(slo.id);
+                      return (
+                        <Button
+                          key={slo.id}
+                          type="button"
+                          variant={selected ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleLinkedSlo(slo.id)}
+                        >
+                          {slo.title}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="top-risk">Top risk</Label>
+                  <Textarea
+                    id="top-risk"
+                    value={reviewForm.topRisk}
+                    onChange={(event) => updateReviewForm({ topRisk: event.target.value })}
+                    placeholder="What is the clearest launch risk right now?"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="change-notes">Evidence and notes</Label>
+                  <Textarea
+                    id="change-notes"
+                    value={reviewForm.changeNotes}
+                    onChange={(event) => updateReviewForm({ changeNotes: event.target.value })}
+                    placeholder="What changed this week, what you observed, and why it matters."
+                    rows={4}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="commitment-title">Hardening commitment</Label>
+                  <Input
+                    id="commitment-title"
+                    value={reviewForm.hardeningCommitmentTitle}
+                    onChange={(event) =>
+                      updateReviewForm({ hardeningCommitmentTitle: event.target.value })
+                    }
+                    placeholder="Name the one systems move that matters most this week"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="commitment-summary">Commitment scope</Label>
+                  <Textarea
+                    id="commitment-summary"
+                    value={reviewForm.hardeningCommitmentSummary}
+                    onChange={(event) =>
+                      updateReviewForm({ hardeningCommitmentSummary: event.target.value })
+                    }
+                    placeholder="What exactly should this commitment fix or de-risk?"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="commitment-owner">Owner</Label>
+                    <Input
+                      id="commitment-owner"
+                      value={reviewForm.commitmentOwner}
+                      onChange={(event) =>
+                        updateReviewForm({ commitmentOwner: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="commitment-due-date">Due date</Label>
+                    <Input
+                      id="commitment-due-date"
+                      type="date"
+                      value={reviewForm.commitmentDueDate}
+                      onChange={(event) =>
+                        updateReviewForm({ commitmentDueDate: event.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <Button type="submit" disabled={createReviewMutation.isPending} className="w-full">
+                  {createReviewMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Logging review...
+                    </>
+                  ) : (
+                    'Log weekly review'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       <section id="slos" className="space-y-3">
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-chart-1" />
@@ -471,7 +1045,7 @@ export function SystemsClient() {
         </div>
         <p className="text-sm text-muted-foreground">
           These are the first explicit launch bars for Governada. The purpose is to make it clear
-          what “good enough to trust” actually means week over week.
+          what "good enough to trust" actually means week over week.
         </p>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {data.slos.map((slo) => (
@@ -572,6 +1146,34 @@ export function SystemsClient() {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      <section id="review-history" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <ListChecks className="h-4 w-4 text-chart-1" />
+          <h2 className="text-lg font-semibold">Recent review history</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          This is the durable operating memory for the systems cockpit. If the page is trustworthy,
+          this history should tell you what changed, what risk was called out, and what hardening
+          work was committed next.
+        </p>
+        {data.reviewHistory.length === 0 ? (
+          <Card>
+            <CardContent className="pt-5 pb-5">
+              <p className="text-sm font-medium">No systems reviews have been logged yet.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Use the weekly review form above to create the first durable operating record.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {data.reviewHistory.map((review) => (
+              <ReviewHistoryCard key={review.id} review={review} />
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.45fr_0.85fr] gap-6">

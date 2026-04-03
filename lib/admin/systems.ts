@@ -2,6 +2,7 @@ export type SystemsStatus = 'good' | 'warning' | 'critical' | 'bootstrap';
 export type SystemsConfidence = 'live' | 'partial' | 'manual' | 'bootstrap';
 export type JourneyGateLevel = 'L0' | 'L1' | 'L2';
 export type JourneyCoverage = 'automated' | 'partial' | 'manual';
+export type SystemsCommitmentStatus = 'planned' | 'in_progress' | 'blocked' | 'done';
 
 export interface SystemsPromiseCard {
   id: string;
@@ -84,6 +85,50 @@ export interface SystemsReviewLoop {
   steps: SystemsReviewStep[];
 }
 
+export interface SystemsCommitmentCard {
+  id: string;
+  reviewId?: string | null;
+  title: string;
+  summary: string;
+  owner: string;
+  status: SystemsCommitmentStatus;
+  dueDate?: string | null;
+  linkedSloIds: string[];
+  createdAt: string;
+  isOverdue: boolean;
+  ageDays: number;
+}
+
+export interface SystemsReviewRecord {
+  id: string;
+  reviewDate: string;
+  reviewedAt: string;
+  overallStatus: SystemsStatus;
+  focusArea: string;
+  summary: string;
+  topRisk: string;
+  changeNotes?: string | null;
+  linkedSloIds: string[];
+  commitment?: {
+    id: string;
+    title: string;
+    owner: string;
+    status: SystemsCommitmentStatus;
+    dueDate?: string | null;
+  } | null;
+}
+
+export interface SystemsReviewDiscipline {
+  status: SystemsStatus;
+  headline: string;
+  currentValue: string;
+  target: string;
+  summary: string;
+  lastReviewedAt?: string | null;
+  openCommitments: number;
+  overdueCommitments: number;
+}
+
 export interface SystemsDashboardData {
   generatedAt: string;
   overall: {
@@ -108,10 +153,21 @@ export interface SystemsDashboardData {
   promises: SystemsPromiseCard[];
   actions: SystemsAction[];
   reviewLoop: SystemsReviewLoop;
+  reviewDiscipline: SystemsReviewDiscipline;
+  openCommitments: SystemsCommitmentCard[];
+  reviewHistory: SystemsReviewRecord[];
   journeys: SystemsJourney[];
   automationCandidates: AutomationCandidate[];
   quickLinks: QuickLink[];
 }
+
+export const SYSTEMS_SLO_IDS = [
+  'availability',
+  'freshness',
+  'correctness',
+  'performance',
+  'journeys',
+] as const;
 
 export const CRITICAL_JOURNEYS: SystemsJourney[] = [
   {
@@ -288,8 +344,17 @@ export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
     title: 'Weekly systems review',
     trigger: 'Every Monday morning.',
     action:
-      'Refresh the scorecard, compare current signals against the SLO ledger, and recommend one hardening commitment for the week.',
+      'Refresh the cockpit, compare live signals against the SLO ledger, and log one new weekly review plus one hardening commitment.',
     whyItMatters: 'This turns the dashboard into a repeatable operating loop.',
+  },
+  {
+    id: 'commitment-shepherd',
+    title: 'Commitment shepherd',
+    trigger: 'An open systems commitment becomes overdue or blocked.',
+    action:
+      'Review the commitment list, update the stale item status, and escalate the one systems task most likely to cause launch drift.',
+    whyItMatters:
+      'This gives future agents a durable follow-through loop instead of one-off reminders.',
   },
   {
     id: 'failure-drill',

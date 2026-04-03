@@ -20,6 +20,11 @@ import {
   buildWeeklyReviewLoop,
   type PromiseInput,
 } from '@/lib/admin/systemsStatus';
+import {
+  buildReviewDiscipline,
+  toSystemsCommitment,
+  toSystemsReviewRecord,
+} from '@/lib/admin/systemsReview';
 
 type DependencyProbe = {
   status: 'healthy' | 'unhealthy' | 'unavailable';
@@ -109,6 +114,8 @@ export const GET = withRouteHandler(
       hashVerifyResult,
       reconciliationResult,
       apiUsageResult,
+      reviewsResult,
+      commitmentsResult,
     ] = await Promise.all([
       probeSupabase(),
       probeKoios(),
@@ -134,6 +141,20 @@ export const GET = withRouteHandler(
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .order('created_at', { ascending: false })
         .limit(1000),
+      supabase
+        .from('systems_reviews')
+        .select(
+          'id, review_date, reviewed_at, overall_status, focus_area, summary, top_risk, change_notes, linked_slo_ids',
+        )
+        .order('reviewed_at', { ascending: false })
+        .limit(8),
+      supabase
+        .from('systems_commitments')
+        .select(
+          'id, review_id, title, summary, owner, status, due_date, linked_slo_ids, created_at',
+        )
+        .order('created_at', { ascending: false })
+        .limit(16),
     ]);
 
     const dependencyStatus: SystemsStatus =
@@ -268,6 +289,27 @@ export const GET = withRouteHandler(
         ? Math.round(((syncLogs.length - syncFailureCount) / syncLogs.length) * 100)
         : null;
 
+    const commitmentRows = commitmentsResult.data || [];
+    const allCommitments = commitmentRows.map(toSystemsCommitment);
+    const openCommitments = allCommitments
+      .filter((commitment) => commitment.status !== 'done')
+      .sort((a, b) => {
+        if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
+        if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return a.createdAt < b.createdAt ? 1 : -1;
+      })
+      .slice(0, 6);
+
+    const commitmentsByReview = new Map(
+      allCommitments.map((commitment) => [commitment.reviewId, commitment]),
+    );
+    const reviewHistory = (reviewsResult.data || []).map((row) =>
+      toSystemsReviewRecord(row, commitmentsByReview.get(row.id) ?? null),
+    );
+    const reviewDiscipline = buildReviewDiscipline(reviewHistory, openCommitments);
+
     const promiseInput: PromiseInput = {
       availability: {
         status: dependencyStatus,
@@ -293,13 +335,15 @@ export const GET = withRouteHandler(
         value: performanceValue,
       },
       changeSafety: {
-        status: 'bootstrap',
+        status: reviewDiscipline.status,
         summary:
-          'CI and post-deploy verification are in place, but deploy failure rate still needs to be tracked as an explicit weekly operating signal.',
+          reviewDiscipline.status === 'good'
+            ? 'A recent weekly review exists and the hardening loop is leaving behind explicit commitments.'
+            : reviewDiscipline.summary,
         value:
-          syncSuccessRate === null
-            ? 'Weekly scorecard not started'
-            : `Post-deploy loop exists, sync success ${syncSuccessRate}%`,
+          reviewDiscipline.lastReviewedAt === null
+            ? 'No founder review logged yet'
+            : `${reviewDiscipline.currentValue}${syncSuccessRate === null ? '' : ` - sync success ${syncSuccessRate}%`}`,
       },
       incidentResponse: {
         status: 'bootstrap',
@@ -340,10 +384,12 @@ export const GET = withRouteHandler(
         'DRep workspace and authoring flows still rely too much on manual or lower-layer verification.',
       );
     }
+    if (reviewDiscipline.status !== 'good') watchouts.push(reviewDiscipline.summary);
 
     if (dependencyStatus === 'critical') blockers.push('Core availability is red.');
     if (correctnessStatus === 'critical') blockers.push('Integrity correctness is red.');
     if (freshnessStatus === 'critical') blockers.push('Freshness is outside the launch bar.');
+    if (reviewDiscipline.status === 'critical') blockers.push(reviewDiscipline.headline);
 
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
@@ -375,6 +421,9 @@ export const GET = withRouteHandler(
       promises: cards,
       actions,
       reviewLoop,
+      reviewDiscipline,
+      openCommitments,
+      reviewHistory,
       journeys: CRITICAL_JOURNEYS,
       automationCandidates: AUTOMATION_CANDIDATES,
       quickLinks: SYSTEMS_QUICK_LINKS,

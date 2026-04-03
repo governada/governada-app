@@ -19,19 +19,37 @@ export interface ApiContext {
   rateLimitHeaders?: Record<string, string>;
 }
 
-type ApiHandler = (request: NextRequest, ctx: ApiContext) => Promise<NextResponse>;
+type RouteParams = Record<string, string>;
+
+interface NextRouteContext {
+  params?: Promise<RouteParams> | RouteParams;
+}
+
+type ApiHandler = (
+  request: NextRequest,
+  ctx: ApiContext,
+  params?: RouteParams,
+) => Promise<NextResponse>;
 
 interface HandlerOptions {
   requiredTier?: string;
   skipRateLimit?: boolean;
 }
 
+const TIER_RANK: Record<string, number> = {
+  anon: 0,
+  public: 1,
+  pro: 2,
+  business: 3,
+  enterprise: 4,
+};
+
 function hashIp(ip: string): string {
   return createHash('sha256').update(ip).digest('hex').slice(0, 16);
 }
 
 export function withApiHandler(handler: ApiHandler, options: HandlerOptions = {}) {
-  return async (request: NextRequest): Promise<NextResponse> => {
+  return async (request: NextRequest, routeContext?: NextRouteContext): Promise<NextResponse> => {
     const requestId = generateRequestId();
     const startMs = Date.now();
     const endpoint = normalizeEndpoint(request.nextUrl.pathname);
@@ -55,7 +73,10 @@ export function withApiHandler(handler: ApiHandler, options: HandlerOptions = {}
         }
       }
 
-      if (options.requiredTier && tier === 'anon') {
+      if (
+        options.requiredTier &&
+        (TIER_RANK[tier] ?? -1) < (TIER_RANK[options.requiredTier] ?? Number.MAX_SAFE_INTEGER)
+      ) {
         return apiError(
           'tier_insufficient',
           { required_tier: options.requiredTier, current_tier: tier },
@@ -93,7 +114,8 @@ export function withApiHandler(handler: ApiHandler, options: HandlerOptions = {}
       }
 
       const ctx: ApiContext = { requestId, keyId, keyPrefix, tier, rateLimitHeaders: rlHeaders };
-      const response = await handler(request, ctx);
+      const params = routeContext?.params ? await routeContext.params : undefined;
+      const response = await handler(request, ctx, params);
 
       const responseMs = Date.now() - startMs;
       logApiRequest({

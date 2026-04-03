@@ -47,8 +47,8 @@ async function handler(request: NextRequest, ctx: ApiContext) {
     );
   }
 
-  const { dreps, allDReps } = await getAllDReps();
-  const pool = activeOnly ? dreps : allDReps;
+  const { allDReps } = await getAllDReps();
+  const pool = activeOnly ? allDReps.filter((d) => d.isActive) : allDReps;
 
   let filtered = pool;
   if (search) {

@@ -7,7 +7,7 @@ Work directly on `main` (no branch/PR needed for single-commit hotfixes).
 1. **Fix the bug** on main
 2. **Stage ONLY bug fix files**: `git add <specific-fix-files>` → verify with `git diff --cached --name-only`
 3. **Commit + push**: `git commit` with `fix:` prefix → `git push origin main`
-4. **Monitor CI**: Poll `gh run list --branch main --limit 1` every 30s until green. If fails: read logs, fix, re-push
+4. **Monitor CI**: Run `npm run ci:watch -- --branch main` until green. If it fails: `npm run ci:failed -- --branch main`, fix, re-push
 5. **Railway deploy**: Wait ~5 min, poll until status shows success
 6. **Validate**: Health check (`/api/health`), smoke test, hit the fixed endpoint on `governada.io`
 7. **Report**: Concise summary — what shipped, deploy time, validation results

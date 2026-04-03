@@ -7,7 +7,7 @@ paths:
 
 ## Branch Hygiene
 
-- **Always start from fresh origin/main.** For worktrees: `git worktree add ../governada-<name> -b feat/<name> origin/main`. Never develop on a stale or leftover branch. Session start is diagnostic-only; if you resume an existing worktree, run `npm run worktree:sync` before mutating.
+- **Always start from fresh origin/main.** For worktrees, prefer `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>` so feature branches land in `.claude/worktrees/<name>` inside the repo sandbox. Raw git is `git worktree add .claude/worktrees/<name> -b feat/<name> origin/main`. Never develop on a stale or leftover branch. The sync-worktree hook auto-fast-forwards local main, but always specify `origin/main` as the start point.
 - **Clean up after yourself.** When a worktree session is complete and the PR is merged, remove the worktree.
 - **Delete local branches after merge.** `gh pr merge --squash --delete-branch` only deletes the remote branch. Follow up with `git branch -d <branch>` locally. Use `-D` if squash-merged.
 - **Prune remotes at session start.** Run `git fetch --prune` to remove stale remote tracking refs.
@@ -33,9 +33,11 @@ Every PR must include an **## Impact** section (what changed, user-facing Y/N, r
 
 ## Workspace Cleanup
 
-- **Run `node scripts/cleanup.mjs` at the start of major sessions** to detect stale worktrees, orphaned directories, stale branches, and uncommitted changes.
+- **Run `npm run session:doctor` at the start of major sessions** to inspect branch status, worktrees, stashes, and session files before planning.
+- **Run `npm run cleanup` at the start of major sessions** when you need to detect stale worktrees, orphaned directories, stale branches, and uncommitted changes.
+- **Run `npm run docs:doctor` during hygiene passes** to detect stale manifest state, CLAUDE count drift, and registry mismatch.
 - **Don't accumulate worktrees.** Remove promptly after PR merge.
-- **Run `node scripts/cleanup.mjs --clean` periodically** to auto-delete branches whose remote is gone.
+- **Run `npm run cleanup:clean` periodically** to auto-delete branches whose remote is gone.
 
 ## CI Watching
 
@@ -47,7 +49,7 @@ Set `run_in_background: true` on the Bash call. When the notification arrives, t
 gh pr checks <N>  # single snapshot of final status
 ```
 
-If CI fails: `gh run view <run-id> --log-failed 2>&1 | tail -50`
+If CI fails: `npm run ci:failed`
 
 ## Deploy Verification
 

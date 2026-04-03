@@ -19,8 +19,8 @@ paths:
 - PostgREST limit is 1000 -- use `.range(0, 99999)` for large tables
 - `sync_log` CHECK constraint must include any new sync type -- verify with:
   `SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'sync_log'::regclass`
-- After adding new Inngest function: register in `app/api/inngest/route.ts`, PUT endpoint after deploy
+- After adding new Inngest function: register in `app/api/inngest/route.ts`, then run `npm run inngest:register` after deploy
 - **Inngest is SELF-HOSTED on Railway** (not Inngest Cloud). The server runs at `inngest-server.railway.internal:8288`. Never use `inn.gs` or Inngest Cloud API endpoints.
 - To trigger events manually: `curl -X POST "https://inngest-server-production.up.railway.app/e/<INNGEST_EVENT_KEY>" -H "Content-Type: application/json" -d '{"name":"<event>","data":{}}'`
-- After Inngest server restarts or redeploys: re-register functions with `curl -X PUT "https://governada.io/api/inngest"`
+- After Inngest server restarts or redeploys: re-register functions with `npm run inngest:register`
 - The `serve()` config in `app/api/inngest/route.ts` uses `INNGEST_SERVE_ORIGIN` to route callbacks through Railway private network (avoids Cloudflare timeouts)

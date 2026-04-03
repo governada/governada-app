@@ -30,11 +30,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/report-gh-auth.sh"
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/check-gh-auth.ps1"
           },
           {
             "type": "command",
-            "command": "bash .claude/hooks/report-worktree-status.sh"
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/sync-worktree.ps1"
           }
         ]
       }
@@ -45,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-branch.sh"
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/check-branch.ps1"
           }
         ]
       },
@@ -54,11 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-worktree-before-mutation.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/check-behind-main.sh"
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/check-behind-main.ps1"
           }
         ]
       }
@@ -69,11 +65,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-force-dynamic.sh"
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/check-force-dynamic.ps1"
           },
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-inngest-registration.sh"
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/check-inngest-registration.ps1"
           }
         ]
       },
@@ -82,7 +78,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/post-compact.sh"
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-compact.ps1"
           }
         ]
       }

@@ -30,11 +30,11 @@ When the app officially launches, switch the deploy target to `staging` and:
 
 If production breaks after a deploy:
 
-1. Run `node scripts/rollback.mjs --revert-commit` — auto-detects the broken head, opens a revert PR, files the incident issue, and sends the alert
-2. Manual: Railway dashboard → Deployments → Rollback previous successful deployment
-3. Merge the revert PR through the normal protected-main flow
+1. Run `npm run rollback` — auto-detects broken state, reverts, verifies health
+2. With git revert: `npm run rollback -- --revert-commit`
+3. Manual: Railway dashboard → Deployments → Redeploy previous
 
 ## Error Rate Gate
 
-Pre-merge check now includes Sentry error rate validation (`node scripts/check-error-rate.mjs`).
+Pre-merge check now includes Sentry error rate validation (`npm run check:error-rate`).
 If production error rate exceeds 200 errors/hour, merges are blocked until the rate stabilizes.

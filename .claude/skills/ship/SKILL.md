@@ -6,14 +6,14 @@ description: Execute the full deploy pipeline from current changes to production
 Execute the full Governada deploy pipeline. Do NOT pause between steps.
 
 1. `npm run preflight` -- fix ALL failures before proceeding
-2. `gh auth switch --user governada`
+2. `npm run gh:auth-status`
 3. `git branch --show-current` -- verify not on main (unless hotfix)
 4. Audit new `app/` files for `force-dynamic` if they import Supabase/data
 5. Stage relevant files with `git add`, commit with conventional commit message
 6. `git push -u origin HEAD`
-7. Create PR: `gh pr create --title "<type>: <description>" --body "<summary>"`
-8. Poll CI: `gh pr checks <N> --watch` in **background** (run_in_background: true). When notified, take a single snapshot with `gh pr checks <N>`. If fails, `gh run view <id> --log-failed 2>&1 | tail -50`, fix, push, re-check (max 3 attempts)
-9. Pre-merge check: `node scripts/pre-merge-check.mjs <PR#>`
+7. Create PR: `gh pr create -R governada/governada-app --title "<type>: <description>" --body "<summary>"`
+8. Poll CI with `npm run ci:watch`. If it fails, inspect with `npm run ci:failed`, fix, push, re-check (max 3 attempts)
+9. Pre-merge check: `npm run pre-merge-check -- <PR#>`
 10. Merge: `gh api repos/governada/governada-app/pulls/<N>/merge -X PUT -f merge_method=squash`
 11. Apply pending migrations via Supabase MCP `apply_migration`
 12. If migrations applied: `npm run gen:types`, commit and push updated `types/database.ts`
@@ -24,7 +24,7 @@ Execute the full Governada deploy pipeline. Do NOT pause between steps.
 17. If new analytics events: `npm run posthog:check <event>`
 18. Clean up: if worktree, switch to main worktree to verify
 
-Report merge status after the PR is merged and local verification is complete. Report deploy-verifier status separately when the background notification arrives.
+Report final status only after ALL verification passes.
 
 ## PR Impact Template
 

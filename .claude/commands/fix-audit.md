@@ -33,7 +33,7 @@ Per `docs/strategy/context/work-plan-template.md`:
 
 Present: gap summary, chunk breakdown, fix sequence, scope choices, skip list. Ask for approval. **Do NOT proceed until approved.**
 
-Send notification: `node scripts/notify.mjs "decision_gate" "/fix-audit: Plan ready" "[gap count, chunk count]"`
+Send notification: `npm run notify -- "decision_gate" "/fix-audit: Plan ready" "[gap count, chunk count]"`
 
 **Update checkpoint**: Set status to `PHASE_4_EXECUTING`, record approved decisions.
 

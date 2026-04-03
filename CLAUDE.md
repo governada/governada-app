@@ -4,13 +4,15 @@ Governance intelligence for the Cardano Nation.
 
 ## Autonomous Deployment Pipeline
 
-Implementation is NOT complete until deployed and validated in production. Use `/ship` for the full pipeline (authoritative). Manual steps: preflight → commit → push → PR → CI (background) → pre-merge-check → merge → deploy-verifier (background) → smoke-test → visual verification (UI changes). If Inngest functions changed: `PUT https://governada.io/api/inngest`. If deploy fails: `node scripts/rollback.mjs --revert-commit`, then use the Railway dashboard rollback if production needs immediate recovery.
+Implementation is NOT complete until deployed and validated in production. Use `/ship` for the full pipeline (authoritative). Manual steps: preflight → commit → push → PR → CI (background) → pre-merge-check → merge → deploy-verifier (background) → smoke-test → visual verification (UI changes). If Inngest functions changed: `npm run inngest:register`. If deploy fails: `npm run rollback`.
 
 ## Hard Constraints
 
-Build failures or production bugs if violated. `npm run agent:validate` and CI enforce the critical ones below.
+Build failures or production bugs if violated:
 
-- **Worktree isolation for feature work.** NEVER create feature branches in the main `governada-app` checkout. All feature work MUST happen in a fresh worktree (`powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`, `git worktree add ../governada-<name> -b feat/<name> origin/main`, or `claude --worktree <name>`). The main checkout stays on `main` at all times. Enforced by `check-branch.sh` hook — edits on feature branches in the main checkout are blocked. Only hotfixes (with `ALLOW_MAIN_EDIT=1`) bypass this.
+- **Worktree isolation for feature work.** NEVER create feature branches in the main `governada-app` checkout. All feature work MUST happen in a worktree (`powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>` or `git worktree add .claude/worktrees/<name> -b feat/<name> origin/main`). The main checkout stays on `main` at all times. Enforced by `check-branch.ps1` hook — edits on feature branches in the main checkout are blocked. Only hotfixes (with `ALLOW_MAIN_EDIT=1`) bypass this.
+
+- Sandbox-safe default: `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>` creates `.claude/worktrees/<name>` inside the repo instead of a sibling directory.
 
 - **`force-dynamic`** on any `page.tsx`/`route.ts` touching Supabase/env vars. Railway build has no env vars.
 - **Register Inngest functions** in `app/api/inngest/route.ts` -- same commit as the function file.
@@ -63,7 +65,7 @@ Agents have **full autonomous permission** to execute without asking. The `setti
 - **Client data**: TanStack Query (provider: `components/Providers.tsx`)
 - **Wallet**: MeshJS. Connection optional -- show value first
 - **Hosting**: Railway (Docker, auto-deploy from `main`). CDN: Cloudflare
-- **Jobs**: Inngest self-hosted on Railway (22+ functions, `inngest-server` service). Caching: Upstash Redis
+- **Jobs**: Inngest self-hosted on Railway (57+ functions, `inngest-server` service). Caching: Upstash Redis
 - **Monitoring**: Sentry (errors), PostHog (analytics, `noun_verb` events)
 - **Testing**: Vitest + Playwright. Quality: Prettier + ESLint + lint-staged
 - **AI**: Anthropic Claude (narratives, classification, rationale analysis)
@@ -95,28 +97,29 @@ Agents have **full autonomous permission** to execute without asking. The `setti
 ## Worktrees
 
 ```
-C:\Users\dalto\governada\
-  governada-app/           <- main (production)
-  governada-<feature>/     <- feature worktrees
+C:\Users\dalto\governada\governada-app\
+  .claude\worktrees\<feature>\  <- feature worktrees
 ```
 
-- Hotfixes: direct on main. Features: `git worktree add ../governada-<name> -b feature/<name> origin/main`
-- `gh auth switch --user governada` before gh commands
+- Hotfixes: direct on main. Features: `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`
+- Raw git equivalent: `git worktree add .claude/worktrees/<name> -b feature/<name> origin/main`
+- Codex Desktop PowerShell threads already scope `gh` to the `governada` profile by repo path
+- Windows-native hooks and ship commands are PowerShell-first. Use `scripts/set_gh_context.ps1` for desktop-agent auth context.
 - From worktrees: `gh api .../merge` (not `gh pr merge`)
 - **Parallel agent safety**: Multiple agents may be working simultaneously. Before merging:
-  1. Run `bash scripts/pre-merge-check.sh <PR#>` -- hard requirement
+  1. Run `npm run pre-merge-check -- <PR#>` -- hard requirement
   2. If another PR merged recently, rebase first: `git fetch origin && git rebase origin/main`
   3. Never merge while CI is running on main -- wait for it to finish
 
 ### Worktree Lifecycle Rules
 
-**Session start**: diagnostic-only hooks report branch/auth/freshness without mutating git state. This avoids shared `.git/worktrees/*` lock contention when multiple agents attach at once. If diagnostics show drift or missing setup, run `npm run worktree:sync`. If GitHub auth/remote setup is wrong, run `npm run auth:repair`.
+**Session start**: `sync-worktree.ps1` auto-runs and HARD BLOCKS if behind origin/main with a dirty tree. Fix: stash+rebase or commit+rebase before any work (including planning). Reading stale files produces plans that reference deleted/renamed code.
 
-**During work**: Commit every 2-3 logical steps (even as `wip:`). If another PR lands while you're working, run `npm run worktree:sync` from a clean tree before continuing.
+**During work**: Commit every 2-3 logical steps (even as `wip:`). A clean tree lets the hook auto-rebase when other PRs land.
 
-**Before ending**: Commit or stash all changes. Leftover dirty state will block the next explicit sync/rebase.
+**Before ending**: Commit or stash all changes. Leftover dirty state from one session blocks the NEXT session's auto-sync.
 
-**Before pushing**: `check-behind-main.sh` blocks `git push` if behind origin/main. Fix: `git rebase origin/main`.
+**Before pushing**: `check-behind-main.ps1` blocks `git push` if behind origin/main. Fix: `git rebase origin/main`.
 
 **CI trigger**: CI runs on `pull_request` to main, not on `git push` alone. Create the PR first.
 
@@ -129,26 +132,27 @@ C:\Users\dalto\governada\
 
 ## Scripts
 
-| Script                        | Purpose                                                     |
-| ----------------------------- | ----------------------------------------------------------- |
-| `agent:validate`              | Enforce `force-dynamic` + Inngest registration constraints  |
-| `preflight`                   | format:check + lint + type-check + test                     |
-| `gen:types`                   | Supabase types after migrations                             |
-| `inngest:status`              | Verify function registration                                |
-| `posthog:check`               | Verify analytics events                                     |
-| `smoke-test`                  | Production health checks + response time assertions         |
-| `pre-merge-check.sh`          | Block merge if CI running, branch behind, or errors spiking |
-| `cleanup.mjs`                 | Worktree/dir cleanup (dry-run or --clean)                   |
-| `new-worktree.ps1`            | Create a fresh feature worktree with `.env.local` setup     |
-| `sync-worktree.mjs`           | Explicit fetch/rebase/setup for an existing worktree        |
-| `repair-gh-auth.mjs`          | Explicit GitHub auth + remote repair                        |
-| `generate-registry-index.mjs` | Product registry staleness detection (--check for CI)       |
-| `notify.mjs`                  | Alert founder via Discord/Telegram at decision gates        |
-| `rollback.mjs`                | Automated Railway rollback with health verification         |
-| `check-deploy-health.mjs`     | Post-deploy health + response time validation               |
-| `check-error-rate.mjs`        | Sentry error rate gate (blocks merge if elevated)           |
-| `uptime-check.mjs`            | Ping BetterStack heartbeat URLs                             |
-| `test-migration.mjs`          | Supabase branch database migration testing guide            |
+| Script                      | Purpose                                                                  |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `preflight`                 | format:check + lint + type-check + test                                  |
+| `gen:types`                 | Supabase types after migrations                                          |
+| `inngest:status`            | Verify function registration                                             |
+| `posthog:check`             | Verify analytics events                                                  |
+| `smoke-test`                | Unified production verification (health, response times, data integrity) |
+| `pre-merge-check`           | Block merge if CI running, branch behind, or errors spiking              |
+| `cleanup` / `cleanup:clean` | Worktree/dir cleanup (dry-run or cleanup modes)                          |
+| `registry:index`            | Product registry structural index generation                             |
+| `registry:index:check`      | Product registry staleness detection for CI/preflight                    |
+| `docs:doctor`               | Check documentation drift, stale manifest, and count mismatches          |
+| `notify`                    | Alert founder via Discord/Telegram at decision gates                     |
+| `rollback`                  | Automated Railway rollback with health verification                      |
+| `check:error-rate`          | Sentry error rate gate (blocks merge if elevated)                        |
+| `uptime-check`              | Ping BetterStack heartbeat URLs                                          |
+| `migration:test`            | Supabase branch database migration testing guide                         |
+| `inngest:register`          | Re-register Inngest functions after deploy or server restart             |
+| `deploy:verify`             | Wait, smoke-test, heartbeat ping, optional Inngest registration          |
+
+Legacy `scripts/*.sh` files are compatibility shims. Canonical desktop-agent automation should use the PowerShell hooks and `npm run ...` entrypoints above.
 
 ## Context Files (Agent-Optimized)
 

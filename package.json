@@ -15,7 +15,7 @@
     "test:coverage": "vitest run --coverage",
     "sync": "tsx scripts/sync-dreps.ts",
     "seed:staging": "tsx scripts/seed-staging.ts",
-    "smoke-test": "tsx scripts/smoke-test.ts",
+    "smoke-test": "node scripts/smoke-test.js",
     "preview:ready": "node scripts/preview-ready.js",
     "pre-merge-check": "node scripts/pre-merge-check.js",
     "check:error-rate": "node scripts/check-error-rate.js",

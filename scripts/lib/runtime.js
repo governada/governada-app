@@ -6,6 +6,26 @@ const { getContext } = require('../set-gh-context.js');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 
+function resolveCommand(command) {
+  if (process.platform !== 'win32') {
+    return command;
+  }
+
+  if (path.extname(command)) {
+    return command;
+  }
+
+  if (command === 'npm' || command === 'npx') {
+    return `${command}.cmd`;
+  }
+
+  return command;
+}
+
+function usesShell(command) {
+  return process.platform === 'win32' && (command === 'npm' || command === 'npx');
+}
+
 function loadLocalEnv() {
   const envPath = path.join(repoRoot, '.env.local');
   if (!fs.existsSync(envPath)) {
@@ -61,12 +81,13 @@ function runCommand(command, args, options = {}) {
     ...process.env,
     ...(options.env || {}),
   };
-  const result = spawnSync(command, args, {
+  const shell = usesShell(command);
+  const result = spawnSync(shell ? command : resolveCommand(command), args, {
     cwd: options.cwd || process.cwd(),
     encoding: 'utf8',
     env,
     stdio: options.stdio || ['ignore', 'pipe', 'pipe'],
-    shell: false,
+    shell,
   });
 
   return {

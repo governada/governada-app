@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getOpsEnvReport } from '@/lib/env';
 import { getRuntimeRelease } from '@/lib/runtimeMetadata';
 import { createClient } from '@/lib/supabase';
 import { getSyncHealthLevel, getSyncPolicy, mergeSyncHealthLevel } from '@/lib/syncPolicy';
@@ -8,19 +9,21 @@ export const dynamic = 'force-dynamic';
 
 export const GET = withRouteHandler(async () => {
   const supabase = createClient();
+  const operations = getOpsEnvReport();
   const { data: rows } = await supabase.from('v_sync_health').select('*');
 
   if (!rows?.length) {
     return NextResponse.json({
-      status: 'unknown',
+      status: operations.status === 'healthy' ? 'unknown' : 'degraded',
       message: 'No sync data',
       syncs: [],
+      operations,
       release: getRuntimeRelease(),
     });
   }
 
   const now = Date.now();
-  let worstLevel: 'healthy' | 'degraded' | 'critical' = 'healthy';
+  let worstLevel: 'healthy' | 'degraded' | 'critical' = operations.status;
 
   const syncs = rows.map((row) => {
     const staleMins = row.last_run
@@ -152,6 +155,7 @@ export const GET = withRouteHandler(async () => {
     status: worstLevel,
     syncs,
     snapshots: snapshotHealth,
+    operations,
     release: getRuntimeRelease(),
   });
 });

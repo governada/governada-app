@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequest, parseJson } from '../helpers';
 
 const mockState = {
@@ -78,7 +78,17 @@ describe('GET /api/health', () => {
     mockState.currentEpoch = 0;
     mockState.snapshotError = null;
     mockState.snapshotLatest = {};
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://governada.io');
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_DSN', 'https://public@example.ingest.sentry.io/1');
+    vi.stubEnv('HEARTBEAT_URL_PROPOSALS', 'https://betterstack.example/proposals');
+    vi.stubEnv('HEARTBEAT_URL_BATCH', 'https://betterstack.example/batch');
+    vi.stubEnv('HEARTBEAT_URL_DAILY', 'https://betterstack.example/daily');
+    vi.stubEnv('DISCORD_WEBHOOK_URL', 'https://discord.com/api/webhooks/123/abc');
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('returns "unknown" when no sync data exists', async () => {
@@ -190,6 +200,31 @@ describe('GET /api/health', () => {
     expect(body.status).toBe('degraded');
     expect(body.snapshots.status).toBe('unavailable');
     expect(body.snapshots.error).toBe('snapshot health check failed');
+  });
+
+  it('degrades when ops-critical env wiring is missing', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_DSN', '');
+    mockState.syncRows = [
+      {
+        sync_type: 'proposals',
+        last_run: new Date().toISOString(),
+        last_success: true,
+        success_count: 5,
+        failure_count: 0,
+      },
+    ];
+
+    const res = await GET(makeReq());
+    const body = (await parseJson(res)) as {
+      operations: { missing: Array<{ key: string }>; status: string };
+      status: string;
+    };
+
+    expect(body.status).toBe('degraded');
+    expect(body.operations.status).toBe('degraded');
+    expect(body.operations.missing).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: 'NEXT_PUBLIC_SENTRY_DSN' })]),
+    );
   });
 
   it('returns 500 on unexpected sync query error', async () => {

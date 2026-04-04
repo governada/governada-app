@@ -450,6 +450,7 @@ The authoring submission simulator still hardcodes governance threshold copy in 
 **Expected score impact:** Reliability and observability: prevent silent operation without monitoring or alerting
 **Depends on:** Chunk 7
 **PR group:** I
+**Implementation status:** Completed in this worktree
 
 ### Context
 
@@ -460,6 +461,17 @@ The runtime currently treats major observability and alerting integrations as op
 - Separate environment variables into runtime-critical, ops-critical, and product-optional groups.
 - Add an explicit verification path that fails when ops-critical monitoring and alerting env vars are absent in environments that expect them.
 - Keep local-development ergonomics intact while removing silent production no-op behavior.
+
+### Progress So Far
+
+- `lib/env.ts` now defines and reports an explicit ops-critical env contract instead of treating all monitoring and alerting keys as generic optional vars.
+- `app/api/health/route.ts` now returns `operations` status and degrades top-level health when ops-critical wiring is missing.
+- `app/api/health/deep/route.ts` now returns `dependencies.operational_env` and degrades deep health when ops-critical wiring is missing.
+- Added regression coverage in `__tests__/lib/env.test.ts`, `__tests__/api/health.test.ts`, and `__tests__/api/health-deep.test.ts`.
+- Verified with `npm run test:unit -- __tests__/api/health-ready.test.ts __tests__/api/health.test.ts __tests__/api/health-deep.test.ts __tests__/lib/runtimeMetadata.test.ts __tests__/lib/env.test.ts __tests__/scripts/deployVerification.test.ts`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+- Verified focused lint with `npm run lint -- lib/env.ts app/api/health/route.ts app/api/health/deep/route.ts`.
 
 ### Verification
 
@@ -472,8 +484,8 @@ The runtime currently treats major observability and alerting integrations as op
 - `lib/env.ts`
 - `instrumentation.ts`
 - `lib/sync-utils.ts`
-- `.github/workflows/post-deploy.yml`
-- `scripts/check-deploy-health.mjs`
+- `app/api/health/route.ts`
+- `app/api/health/deep/route.ts`
 
 ## Chunk 11: Expand Tier-1 Cron Observability Coverage
 
@@ -481,8 +493,9 @@ The runtime currently treats major observability and alerting integrations as op
 **Effort:** L
 **Audit dimension(s):** Performance and Reliability, Product Completeness vs. Vision
 **Expected score impact:** Reliability and observability: reduce blind spots in scheduled work
-**Depends on:** Chunk 10
+**Depends on:** Chunk 7
 **PR group:** I
+**Implementation status:** Completed in this worktree
 
 ### Context
 
@@ -500,6 +513,33 @@ The repo has far more cron-triggered jobs than cron instrumentation and heartbea
 - Every tier-1 cron job has Sentry Cron coverage and an external heartbeat path.
 - Missing or broken cron instrumentation is visible during review.
 - The coverage policy is simple enough that future jobs can adopt it mechanically.
+
+### Progress So Far
+
+- Established the tier-1 cron set around freshness, epoch transition, and operator recovery jobs:
+  - `sync-drep-scores`
+  - `sync-alignment`
+  - `sync-freshness-guard`
+  - `generate-epoch-summary`
+- Added runtime-configurable cron monitor options in `lib/sentry-cron.ts` so long-running jobs can declare accurate Sentry monitor budgets.
+- Added regression coverage in `__tests__/lib/sentry-cron.test.ts`, including the runtime-override path.
+- Added Sentry Cron coverage plus dedicated external heartbeat hooks for all four tier-1 jobs.
+- Added optional heartbeat env keys for tier-1 jobs in `lib/env.ts` and `.env.example`:
+  - `HEARTBEAT_URL_SCORING`
+  - `HEARTBEAT_URL_ALIGNMENT`
+  - `HEARTBEAT_URL_FRESHNESS_GUARD`
+  - `HEARTBEAT_URL_EPOCH_SUMMARY`
+- Fixed the `alert-integrity` Sentry monitor schedule drift so the monitor schedule matches the actual cron trigger.
+- Updated `scripts/uptime-check.mjs` and `docs/observability-setup.md` so repo tooling and operator docs reflect the current heartbeat and monitor set instead of the stale 3-heartbeat/6-monitor assumptions.
+- Verified with `npm run test:unit -- __tests__/lib/sentry-cron.test.ts __tests__/api/health-ready.test.ts __tests__/api/health.test.ts __tests__/api/health-deep.test.ts __tests__/lib/runtimeMetadata.test.ts __tests__/lib/env.test.ts __tests__/scripts/deployVerification.test.ts`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+- Verified focused lint with `npm run lint -- lib/sentry-cron.ts lib/env.ts inngest/functions/sync-drep-scores.ts inngest/functions/sync-alignment.ts inngest/functions/sync-freshness-guard.ts inngest/functions/generate-epoch-summary.ts inngest/functions/alert-integrity.ts __tests__/lib/sentry-cron.test.ts` (warning only because the test file is eslint-ignored, no errors).
+
+### Follow-up Work
+
+- Decide whether the new tier-1 heartbeat env vars should graduate into the ops-critical env contract after the external monitors are provisioned.
+- Extend instrumentation beyond the tier-1 set only where the job blast radius justifies it; do not treat every scheduled job as equally critical by default.
 
 ### Files to Read First
 

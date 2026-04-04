@@ -2,7 +2,7 @@
 
 **Started:** 2026-04-02
 **Current status:** In progress
-**Active deep dive:** 04 - Reliability and observability
+**Active deep dive:** 03 - Runtime architecture
 **Canonical worktree:** `C:\Users\dalto\governada\governada-app\.claude\worktrees\platform-architecture-review-series`
 **Canonical branch:** `feature/platform-architecture-review-series`
 
@@ -16,8 +16,8 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | --- | ----------------------------- | ------------------------------------------------------------------------------------------------------ | ----------- | ----------------------------------------------- |
 | 01  | Data plane                    | Verify truth boundaries, freshness, fallbacks, and read-model correctness                              | Completed   | `deep-dive-01-data-plane.md`                    |
 | 02  | Security and trust boundaries | Verify auth, admin, API protection, session handling, and privilege boundaries                         | Completed   | `deep-dive-02-security-and-trust.md`            |
-| 03  | Runtime architecture          | Verify ownership boundaries across server components, client components, routes, jobs, and shared libs | Planned     | `deep-dive-03-runtime-architecture.md`          |
-| 04  | Reliability and observability | Verify env safety, health checks, logging, tracing, and failure diagnosis                              | In progress | `deep-dive-04-reliability-and-observability.md` |
+| 03  | Runtime architecture          | Verify ownership boundaries across server components, client components, routes, jobs, and shared libs | In progress | `deep-dive-03-runtime-architecture.md`          |
+| 04  | Reliability and observability | Verify env safety, health checks, logging, tracing, and failure diagnosis                              | Completed   | `deep-dive-04-reliability-and-observability.md` |
 | 05  | Performance and scalability   | Verify cache strategy, query fan-out, bundle shape, and load readiness                                 | Planned     | `deep-dive-05-performance-and-scale.md`         |
 | 06  | Critical user journeys        | Verify end-to-end flows across anonymous, citizen, delegated, and workspace personas                   | Planned     | `deep-dive-06-critical-journeys.md`             |
 | 07  | Testing and release gates     | Verify regression coverage matches blast radius and release process risk                               | Planned     | `deep-dive-07-testing-and-release-gates.md`     |
@@ -53,6 +53,7 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-03 | Security-adjacent observability should only derive user identity from verified session state                                    | Incident tooling should not trust unsigned cookie payloads even for tagging-only paths                                                                   |
 | 2026-04-04 | Use one layered canonical sync policy instead of four diverging threshold tables                                                | Reliability surfaces need shared truth without forcing monitoring, alerting, and self-healing to use identical thresholds                                |
 | 2026-04-04 | Verify deployments by release identity rather than fixed waits and HTTP-only success                                            | Post-deploy and preview checks should prove the intended release is live and fail on semantic health drift instead of timing assumptions                 |
+| 2026-04-04 | Treat cron instrumentation as tiered coverage, with explicit tier-1 jobs and dedicated heartbeat hooks                          | Not every scheduled job has the same blast radius, but the freshness, epoch-transition, and self-heal jobs need durable coverage by default              |
 
 ## Progress Log
 
@@ -78,3 +79,5 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-04 | Replaced the drifting health, alert, and self-heal threshold tables with a layered canonical sync policy, surfaced snapshot-diagnostic failure in the main health endpoint, and added focused reliability regression coverage.                                                                                                                                             |
 | 2026-04-04 | Seeded the Deep Dive 03 runtime-architecture artifact with the initial boundary map and the top ownership risks from the runtime scout.                                                                                                                                                                                                                                    |
 | 2026-04-04 | Added runtime release metadata plus a canonical `deploy:verify` wrapper, made post-deploy and preview verification prove the expected SHA is live, and tightened smoke tests to fail on semantic health drift instead of accepting any `200`.                                                                                                                              |
+| 2026-04-04 | Added an explicit ops-critical env contract in `lib/env.ts` and surfaced it through health endpoints so missing Sentry, site URL, heartbeat, or alert-webhook wiring degrades health instead of failing open.                                                                                                                                                              |
+| 2026-04-04 | Closed Deep Dive 04 by defining the tier-1 cron set, adding Sentry Cron plus dedicated heartbeat hooks for those jobs, fixing the `alert-integrity` monitor schedule drift, and aligning repo docs/tooling with the current observability posture.                                                                                                                         |

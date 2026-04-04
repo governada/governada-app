@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { executeSecondarySync } from '@/lib/sync/secondary';
 import { pingHeartbeat, errMsg, capMsg, alertCritical } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
+import { withCronMonitor } from '@/lib/sentry-cron';
 
 export const syncSecondary = inngest.createFunction(
   {
@@ -32,9 +33,10 @@ export const syncSecondary = inngest.createFunction(
     },
     triggers: [{ cron: '33 */6 * * *' }, { event: 'drepscore/sync.secondary' }], // Offset to :33
   },
-  async ({ step }) => {
-    const result = await step.run('execute-secondary-sync', () => executeSecondarySync());
-    await step.run('heartbeat-batch', () => pingHeartbeat('HEARTBEAT_URL_BATCH'));
-    return result;
-  },
+  async ({ step }) =>
+    withCronMonitor('sync-secondary', '33 */6 * * *', async () => {
+      const result = await step.run('execute-secondary-sync', () => executeSecondarySync());
+      await step.run('heartbeat-batch', () => pingHeartbeat('HEARTBEAT_URL_BATCH'));
+      return result;
+    }),
 );

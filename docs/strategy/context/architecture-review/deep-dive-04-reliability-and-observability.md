@@ -1,6 +1,6 @@
 # Deep Dive 04 - Reliability and Observability
 
-**Status:** In progress
+**Status:** Completed
 **Started:** 2026-04-03
 **Owner branch:** `feature/platform-architecture-review-series`
 **Review goal:** verify env validation, health checks, deploy/runtime safeguards, logging, Sentry/instrumentation, cron/heartbeat coverage, and operational failure diagnosis.
@@ -121,15 +121,15 @@ If the snapshot diagnostic layer fails, operators need to know that the health e
 - Snapshot diagnostic failure now degrades the top-level health result instead of leaving the route silently optimistic.
 - Snapshot check results are now rolled into a top-level snapshot status instead of being returned as an unranked sidecar payload.
 
-### 4. Operational monitoring still fails open when observability and alerting env wiring is missing
+### 4. Operational monitoring failed open when observability and alerting env wiring was missing
 
-**Severity:** High
+**Severity:** Fixed in this worktree
 
 **Evidence**
 
-- `lib/env.ts` validates only runtime-critical variables and treats Sentry, Discord, email, heartbeat, and related ops integrations as optional.
-- `instrumentation.ts` will simply disable Sentry when `NEXT_PUBLIC_SENTRY_DSN` is absent.
-- `lib/sync-utils.ts` silently no-ops for alert delivery, heartbeat pings, and analytics deploy hooks when related env vars are absent.
+- `lib/env.ts` previously validated only runtime-critical variables and treated Sentry, Discord, email, heartbeat, and related ops integrations as optional.
+- `instrumentation.ts` will disable Sentry when `NEXT_PUBLIC_SENTRY_DSN` is absent.
+- `lib/sync-utils.ts` will silently no-op for alert delivery, heartbeat pings, and analytics deploy hooks when related env vars are absent unless another surface reports that contract loss explicitly.
 
 **Why it matters**
 
@@ -137,12 +137,15 @@ A production deploy can come up "healthy" while error monitoring, operator alert
 
 **Implementation status**
 
-- Open.
-- This should be fixed through an explicit ops-critical env contract rather than by marking every integration universally required in every environment.
+- Fixed in this worktree.
+- `lib/env.ts` now defines and reports an explicit ops-critical env contract instead of treating all monitoring and alerting keys as generic optional vars.
+- `app/api/health/route.ts` now returns `operations` status and degrades top-level health when ops-critical wiring is missing.
+- `app/api/health/deep/route.ts` now returns `dependencies.operational_env` and degrades deep health when ops-critical wiring is missing.
+- This keeps local boot ergonomics intact while making production-targeted verification fail visibly instead of silently accepting missing operator visibility wiring.
 
-### 5. Cron observability coverage is still thin relative to the number of scheduled jobs
+### 5. Cron observability coverage was too thin relative to the number of scheduled jobs
 
-**Severity:** High
+**Severity:** Fixed in this worktree
 
 **Evidence**
 
@@ -155,8 +158,16 @@ World-class observability requires durable visibility into the jobs that gate fr
 
 **Implementation status**
 
-- Open.
-- This needs a tiered cron coverage policy so the most important scheduled jobs are instrumented mechanically instead of opportunistically.
+- Fixed in this worktree for the tier-1 set.
+- The repo now uses an explicit tier-1 scheduled-job set instead of treating cron instrumentation as opportunistic:
+  - `sync-drep-scores`
+  - `sync-alignment`
+  - `sync-freshness-guard`
+  - `generate-epoch-summary`
+- `lib/sentry-cron.ts` now supports monitor runtime overrides so long-running jobs can declare accurate Sentry Cron budgets.
+- All four tier-1 jobs now have Sentry Cron coverage and dedicated external heartbeat hooks.
+- `alert-integrity` no longer has Sentry monitor schedule drift; its monitor schedule now matches the actual cron trigger.
+- `.env.example`, `lib/env.ts`, `scripts/uptime-check.mjs`, and `docs/observability-setup.md` now reflect the current tier-1 heartbeat set instead of the stale 3-heartbeat/6-monitor posture.
 
 ### 6. Deploy and preview verification were time-based and not release-aware
 
@@ -184,25 +195,23 @@ Verification that can target the wrong release or the wrong URL creates false po
 
 ## Risk Ranking
 
-1. Ops-critical env wiring still fails open.
-2. Cron coverage is thinner than the number of scheduled jobs that matter.
-3. Snapshot policy itself is still broader than the freshness-policy layer and may need its own canonical registry in a later pass.
+1. Lower-tier scheduled jobs still rely on explicit product judgment about whether they deserve durable cron instrumentation.
+2. Snapshot policy itself is still broader than the freshness-policy layer and may need its own canonical registry in a later pass.
 
 ## Open Questions
 
-- Should ops-critical env validation fail at startup, deploy verification, or both?
-- Which cron-triggered jobs should be treated as tier 1 for heartbeat and Sentry Cron coverage?
+- Should the new tier-1 heartbeat URLs become part of the ops-critical env contract once production monitors are provisioned?
 - Is the preview URL template sufficient long-term, or should preview verification eventually resolve provider-native preview URLs directly from deployment metadata?
 
 ## Next Actions
 
-1. Define and enforce the ops-critical env contract.
-2. Expand tier-1 cron observability coverage.
-3. Decide whether preview URL resolution should move from a configured template to provider-native deployment metadata.
+1. Decide whether preview URL resolution should move from a configured template to provider-native deployment metadata.
+2. Decide whether the new tier-1 heartbeat URLs should graduate into the ops-critical env contract after infrastructure provisioning.
+3. Treat any broader scheduled-job instrumentation as a separate prioritization exercise, not an automatic follow-on from this deep dive.
 
 ## Handoff
 
-**Current status:** In progress
+**Current status:** Completed
 
 **What changed this session**
 
@@ -214,6 +223,10 @@ Verification that can target the wrong release or the wrong URL creates false po
 - Added `scripts/deploy-verify.ts` and `scripts/lib/deployVerification.ts` so deploy verification waits for the expected release SHA and treats health routes semantically instead of accepting any `200`.
 - Updated `.github/workflows/post-deploy.yml` and `.github/workflows/preview.yml` to use the canonical `npm run deploy:verify` wrapper.
 - Aligned operator docs and wrappers in `package.json`, `AGENTS.md`, and `README.md`.
+- Added an explicit ops-critical env contract in `lib/env.ts` and surfaced it through `app/api/health/route.ts` and `app/api/health/deep/route.ts` so missing Sentry, site URL, heartbeat, or alert-webhook wiring degrades health instead of failing open.
+- Added monitor runtime overrides in `lib/sentry-cron.ts` and regression coverage in `__tests__/lib/sentry-cron.test.ts`.
+- Added dedicated heartbeat env hooks plus Sentry Cron coverage for the tier-1 jobs `sync-drep-scores`, `sync-alignment`, `sync-freshness-guard`, and `generate-epoch-summary`.
+- Fixed `alert-integrity` monitor schedule drift and updated `scripts/uptime-check.mjs`, `.env.example`, and `docs/observability-setup.md` so tooling and docs match the current cron coverage posture.
 - Pulled in parallel scout findings for runtime-boundary mapping, ops env contracts, cron coverage, and deploy verification gaps.
 
 **Validated findings**
@@ -222,16 +235,21 @@ Verification that can target the wrong release or the wrong URL creates false po
 - Tier-gated API routes no longer inherit public CDN cache headers. Fixed earlier in this worktree.
 - Snapshot diagnostic failure now surfaces instead of being silently swallowed. Fixed in this worktree.
 - Deploy and preview verification now prove release identity and fail on semantic health drift instead of sleeping and accepting any `200`.
-- Ops-critical env wiring and cron coverage remain the two open DD04 findings with the highest operator impact.
+- Ops-critical env wiring no longer fails open; health surfaces now expose and degrade on missing operator visibility wiring.
+- Tier-1 cron coverage now has explicit Sentry Cron and external heartbeat coverage instead of depending on opportunistic instrumentation.
 
 **Verification**
 
 - Passed `npm run test:unit -- __tests__/lib/syncPolicy.test.ts __tests__/api/health.test.ts __tests__/api/health-sync.test.ts`.
 - Passed `npm run test:unit -- __tests__/api/health-ready.test.ts __tests__/api/health.test.ts __tests__/lib/runtimeMetadata.test.ts __tests__/scripts/deployVerification.test.ts`.
+- Passed `npm run test:unit -- __tests__/api/health-ready.test.ts __tests__/api/health.test.ts __tests__/api/health-deep.test.ts __tests__/lib/runtimeMetadata.test.ts __tests__/lib/env.test.ts __tests__/scripts/deployVerification.test.ts`.
+- Passed `npm run test:unit -- __tests__/lib/sentry-cron.test.ts __tests__/api/health-ready.test.ts __tests__/api/health.test.ts __tests__/api/health-deep.test.ts __tests__/lib/runtimeMetadata.test.ts __tests__/lib/env.test.ts __tests__/scripts/deployVerification.test.ts`.
 - Passed `npm run agent:validate`.
 - Passed `npm run type-check`.
 - Passed focused lint for `lib/syncPolicy.ts`, `app/api/health/route.ts`, `app/api/health/sync/route.ts`, `app/api/admin/integrity/alert/route.ts`, and `inngest/functions/sync-freshness-guard.ts`.
 - Passed focused lint for `app/api/health/ready/route.ts`, `app/api/health/route.ts`, `app/api/health/deep/route.ts`, and `lib/runtimeMetadata.ts`.
+- Passed focused lint for `lib/env.ts`, `app/api/health/route.ts`, and `app/api/health/deep/route.ts`.
+- Passed focused lint for `lib/sentry-cron.ts`, `lib/env.ts`, `inngest/functions/sync-drep-scores.ts`, `inngest/functions/sync-alignment.ts`, `inngest/functions/sync-freshness-guard.ts`, `inngest/functions/generate-epoch-summary.ts`, and `inngest/functions/alert-integrity.ts` (test-file ignore warning only, no errors).
 
 **Open questions**
 
@@ -239,9 +257,9 @@ Verification that can target the wrong release or the wrong URL creates false po
 
 **Next actions**
 
-- Start with the ops env contract and tier-1 cron coverage instead of reopening deploy verification.
-- Treat provider-native preview URL discovery as a follow-up enhancement, not a blocker to the current DD04 closeout path.
+- Treat provider-native preview URL discovery as a follow-up enhancement, not a blocker to the DD04 closeout.
+- Revisit the ops-critical env contract only after the new tier-1 heartbeat monitors exist in production.
 
 **Next agent starts here**
 
-Start with `lib/env.ts`, `instrumentation.ts`, `lib/sync-utils.ts`, `lib/sentry-cron.ts`, and the tier-1 scheduled functions. The current highest-value DD04 work is enforcing ops-critical observability wiring and expanding cron coverage now that deploy verification is release-aware.
+Deep Dive 04 is closed for the review series. Start with Deep Dive 03 in `docs/strategy/context/architecture-review/deep-dive-03-runtime-architecture.md`, and only reopen DD04 if deployment metadata or heartbeat provisioning exposes a concrete gap.

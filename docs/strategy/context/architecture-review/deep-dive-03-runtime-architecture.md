@@ -1,6 +1,6 @@
 # Deep Dive 03 - Runtime Architecture
 
-**Status:** Planned
+**Status:** In progress
 **Started:** 2026-04-04
 **Owner branch:** `feature/platform-architecture-review-series`
 **Review goal:** verify ownership boundaries across server components, client components, route handlers, background jobs, and shared libraries.

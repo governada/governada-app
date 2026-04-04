@@ -44,7 +44,10 @@ async function extractSessionPayload(
   if (!secret) return null;
 
   try {
-    const { payload } = await jose.jwtVerify(decodeURIComponent(token), new TextEncoder().encode(secret));
+    const { payload } = await jose.jwtVerify(
+      decodeURIComponent(token),
+      new TextEncoder().encode(secret),
+    );
 
     if (typeof payload.walletAddress !== 'string' || payload.walletAddress.length === 0) {
       return null;

@@ -3,6 +3,7 @@ import { createRequest, parseJson } from '../helpers';
 
 const mockSelect = vi.fn();
 const mockUpsert = vi.fn();
+const mockLimit = vi.fn();
 
 const mockRequireAuth = vi.fn();
 
@@ -35,11 +36,22 @@ vi.mock('@/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-// Prevent rate limiter from hitting real Upstash Redis
-vi.mock('@/lib/redis', () => ({
-  getRedis: () => {
-    throw new Error('Redis not available in tests');
+vi.mock('@upstash/ratelimit', () => ({
+  Ratelimit: class {
+    static slidingWindow(max: number, window: string) {
+      return { max, window };
+    }
+
+    limit(identifier: string) {
+      return mockLimit(identifier);
+    }
   },
+}));
+
+// Prevent rate limiter from hitting real Upstash Redis while still allowing
+// the route wrapper to exercise the success path under test.
+vi.mock('@/lib/redis', () => ({
+  getRedis: () => ({}),
 }));
 
 import { NextResponse } from 'next/server';
@@ -48,6 +60,7 @@ import { GET, POST } from '@/app/api/user/notification-prefs/route';
 describe('GET /api/user/notification-prefs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLimit.mockResolvedValue({ success: true, remaining: 19 });
   });
 
   it('returns 401 without auth', async () => {
@@ -81,6 +94,7 @@ describe('GET /api/user/notification-prefs', () => {
 describe('POST /api/user/notification-prefs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLimit.mockResolvedValue({ success: true, remaining: 19 });
   });
 
   it('returns 401 without auth', async () => {

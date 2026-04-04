@@ -75,6 +75,7 @@ export interface ReviewQueueItem {
   abstract: string | null;
   aiSummary: string | null;
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
   withdrawalAmount: number | null;
   treasuryTier: string | null;
   epochsRemaining: number | null;

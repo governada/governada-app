@@ -14,6 +14,7 @@ interface TriBodyVotePanelProps {
   txHash: string;
   proposalIndex: number;
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
   /** DRep vote counts for integrated threshold meter */
   yesCount?: number;
   noCount?: number;
@@ -34,6 +35,7 @@ export function TriBodyVotePanel({
   txHash,
   proposalIndex,
   proposalType,
+  paramChanges,
   yesCount,
   noCount,
   abstainCount,
@@ -51,7 +53,7 @@ export function TriBodyVotePanel({
       .catch(() => {});
   }, [txHash, proposalIndex]);
 
-  const eligibleBodies = getVotingBodies(proposalType);
+  const eligibleBodies = getVotingBodies(proposalType, paramChanges);
   const hasSpo =
     eligibleBodies.includes('spo') && triBody.spo.yes + triBody.spo.no + triBody.spo.abstain > 0;
   const hasCc =
@@ -145,7 +147,7 @@ export function TriBodyVotePanel({
 
         {/* Ineligibility note when some governance bodies cannot vote */}
         {(() => {
-          const note = getIneligibilityNote(proposalType);
+          const note = getIneligibilityNote(proposalType, paramChanges);
           return note ? <p className="text-xs text-muted-foreground text-center">{note}</p> : null;
         })()}
 

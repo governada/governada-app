@@ -283,10 +283,10 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
     const { data: snaps } = await supabase
       .from('delegation_snapshots')
       .select(
-        'drep_id, epoch_no, delegator_count, new_delegators, lost_delegators, total_power_lovelace',
+        'drep_id, epoch, delegator_count, new_delegators, lost_delegators, total_power_lovelace',
       )
-      .gte('epoch_no', startEpoch)
-      .lte('epoch_no', targetEpoch)
+      .gte('epoch', startEpoch)
+      .lte('epoch', targetEpoch)
       .range(0, 99999);
 
     // Group by DRep
@@ -304,7 +304,7 @@ export async function computeDRepScoresForEpoch(targetEpoch: number): Promise<Ep
     for (const s of snaps ?? []) {
       const arr = grouped.get(s.drep_id) ?? [];
       arr.push({
-        epoch: s.epoch_no as number,
+        epoch: s.epoch as number,
         delegatorCount: (s.delegator_count as number) ?? 0,
         totalPowerLovelace: Number(s.total_power_lovelace ?? 0),
         newDelegators: s.new_delegators as number | null,

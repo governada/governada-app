@@ -22,6 +22,7 @@ interface ProposalVerdictProps {
     cc: { yes: number; no: number; abstain: number };
   } | null;
   proposalType?: string;
+  paramChanges?: Record<string, unknown> | null;
   accentColor?: string;
 }
 
@@ -29,12 +30,13 @@ export function ProposalVerdict({
   status,
   triBody,
   proposalType,
+  paramChanges,
   accentColor,
 }: ProposalVerdictProps) {
   const verdict = getVerdict(status, triBody);
   const Icon = VERDICT_ICONS[verdict.type];
   const eligibleBodies = proposalType
-    ? getVotingBodies(proposalType)
+    ? getVotingBodies(proposalType, paramChanges)
     : (['drep', 'spo', 'cc'] as const);
 
   return (

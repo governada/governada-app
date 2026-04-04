@@ -1,3 +1,4 @@
+import * as jose from 'jose';
 import { findCookieValue } from './lib/persistence';
 
 export async function register() {
@@ -32,26 +33,27 @@ export async function register() {
   }
 }
 
-/** Decode base64url to string -- works in both Node.js and Edge runtimes. */
-function decodeBase64Url(input: string): string {
-  // Convert base64url to standard base64
-  const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
-  // Pad if needed
-  const padded = base64 + '=='.slice(0, (4 - (base64.length % 4)) % 4);
-  return atob(padded);
-}
-
-function extractSessionPayload(
+async function extractSessionPayload(
   cookieHeader: string | undefined,
-): { walletAddress?: string } | null {
+): Promise<{ walletAddress?: string } | null> {
   if (!cookieHeader) return null;
   const token = findCookieValue(cookieHeader);
   if (!token) return null;
+
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) return null;
+
   try {
-    const parts = token.split('.');
-    if (parts.length < 2) return null;
-    const payload = JSON.parse(decodeBase64Url(parts[1]));
-    return payload as { walletAddress?: string };
+    const { payload } = await jose.jwtVerify(
+      decodeURIComponent(token),
+      new TextEncoder().encode(secret),
+    );
+
+    if (typeof payload.walletAddress !== 'string' || payload.walletAddress.length === 0) {
+      return null;
+    }
+
+    return { walletAddress: payload.walletAddress };
   } catch {
     return null;
   }
@@ -75,7 +77,7 @@ export async function onRequestError(
 ) {
   const Sentry = await import('@sentry/nextjs');
 
-  const payload = extractSessionPayload(request.headers.cookie ?? request.headers.Cookie);
+  const payload = await extractSessionPayload(request.headers.cookie ?? request.headers.Cookie);
   const hashedAddress = payload?.walletAddress
     ? await hashAddressServer(payload.walletAddress)
     : null;

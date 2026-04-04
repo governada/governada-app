@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, getSupabaseAdmin } from '@/lib/supabase';
 import { inngest } from '@/lib/inngest';
 import { logger } from '@/lib/logger';
+import { getSyncPolicy, SYNC_POLICY, type SyncPolicy } from '@/lib/syncPolicy';
 import { alertEmail } from '@/lib/sync-utils';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
@@ -16,83 +17,7 @@ interface Alert {
   action: string;
 }
 
-const SYNC_CONFIG: Record<
-  string,
-  { mins: number; schedule: string; event: string; label: string }
-> = {
-  proposals: {
-    mins: 90,
-    schedule: 'every 30m',
-    event: 'drepscore/sync.proposals',
-    label: 'Proposals Sync',
-  },
-  dreps: { mins: 720, schedule: 'every 6h', event: 'drepscore/sync.dreps', label: 'DReps Sync' },
-  votes: { mins: 720, schedule: 'every 6h', event: 'drepscore/sync.votes', label: 'Votes Sync' },
-  secondary: {
-    mins: 720,
-    schedule: 'every 6h',
-    event: 'drepscore/sync.secondary',
-    label: 'Secondary Sync',
-  },
-  slow: { mins: 2160, schedule: 'daily', event: 'drepscore/sync.slow', label: 'Slow Sync' },
-  treasury: {
-    mins: 1500,
-    schedule: 'daily',
-    event: 'drepscore/sync.treasury',
-    label: 'Treasury Sync',
-  },
-  scoring: {
-    mins: 480,
-    schedule: 'every 6h',
-    event: 'drepscore/sync.scores',
-    label: 'Scoring Sync',
-  },
-  alignment: {
-    mins: 480,
-    schedule: 'every 6h',
-    event: 'drepscore/sync.alignment',
-    label: 'Alignment Sync',
-  },
-  ghi: { mins: 1500, schedule: 'daily', event: 'drepscore/sync.ghi', label: 'GHI Sync' },
-  benchmarks: {
-    mins: 11520,
-    schedule: 'weekly',
-    event: 'drepscore/sync.benchmarks',
-    label: 'Benchmarks Sync',
-  },
-  spo_votes: {
-    mins: 480,
-    schedule: 'every 6h',
-    event: 'drepscore/sync.spo-votes',
-    label: 'SPO Votes Sync',
-  },
-  cc_votes: {
-    mins: 480,
-    schedule: 'every 6h',
-    event: 'drepscore/sync.cc-votes',
-    label: 'CC Votes Sync',
-  },
-  epoch_recaps: {
-    mins: 8640,
-    schedule: 'per epoch',
-    event: 'drepscore/sync.epoch-recaps',
-    label: 'Epoch Recaps',
-  },
-  spo_scores: {
-    mins: 1500,
-    schedule: 'daily',
-    event: 'drepscore/sync.spo-scores',
-    label: 'SPO Scores',
-  },
-  governance_epoch_stats: {
-    mins: 1500,
-    schedule: 'daily',
-    event: 'drepscore/sync.governance-epoch-stats',
-    label: 'Governance Epoch Stats',
-  },
-};
-
-const ACTIVE_SYNC_TYPES = new Set(Object.keys(SYNC_CONFIG));
+const ACTIVE_SYNC_TYPES = new Set(Object.keys(SYNC_POLICY));
 
 export const GET = withRouteHandler(async (request) => {
   const authHeader = request.headers.get('authorization');
@@ -156,20 +81,22 @@ export const GET = withRouteHandler(async (request) => {
     if (!ACTIVE_SYNC_TYPES.has(row.sync_type)) continue;
     if (!row.last_run) continue;
 
-    const config = SYNC_CONFIG[row.sync_type];
-    if (!config) continue;
+    const config = getSyncPolicy(row.sync_type);
 
     const staleMins = Math.round((now - new Date(row.last_run).getTime()) / 60000);
     const staleHuman =
       staleMins >= 60 ? `${Math.floor(staleMins / 60)}h ${staleMins % 60}m` : `${staleMins}m`;
 
-    if (staleMins > config.mins) {
+    if (staleMins > config.retriggerAfterMinutes) {
+      const staleAction = config.event
+        ? `Trigger via Inngest Cloud (event: ${config.event}). Check Inngest dashboard if recurring.`
+        : `Check ${config.label} manually. No auto-trigger event is configured for ${row.sync_type}.`;
       alerts.push({
         level: 'critical',
         metric: `${config.label} — No runs in ${staleHuman}`,
         value: `Last run: ${staleHuman} ago`,
         threshold: config.schedule,
-        action: `Trigger via Inngest Cloud (event: ${config.event}). Check Inngest dashboard if recurring.`,
+        action: staleAction,
       });
     }
 
@@ -195,7 +122,9 @@ export const GET = withRouteHandler(async (request) => {
         action =
           'Koios returned empty response. Check Koios API status at api.koios.rest. Retry in a few minutes.';
       } else {
-        action = `Check Railway/Inngest logs for ${config.label}. Retrigger via Inngest Cloud (event: ${config.event}).`;
+        action = config.event
+          ? `Check Railway/Inngest logs for ${config.label}. Retrigger via Inngest Cloud (event: ${config.event}).`
+          : `Check Railway/Inngest logs for ${config.label}. No auto-trigger event is configured for ${row.sync_type}.`;
       }
 
       // Determine severity: a single transient failure among hundreds of successes
@@ -454,16 +383,19 @@ export const GET = withRouteHandler(async (request) => {
   const staleTypes: {
     syncType: string;
     staleMins: number;
-    config: (typeof SYNC_CONFIG)[string];
+    config: SyncPolicy & { event: string };
   }[] = [];
   for (const row of sh || []) {
     if (!ACTIVE_SYNC_TYPES.has(row.sync_type)) continue;
     if (!row.last_run) continue;
-    const config = SYNC_CONFIG[row.sync_type];
-    if (!config) continue;
+    const config = getSyncPolicy(row.sync_type);
     const staleMins = Math.round((now - new Date(row.last_run).getTime()) / 60000);
-    if (staleMins > config.mins) {
-      staleTypes.push({ syncType: row.sync_type, staleMins, config });
+    if (staleMins > config.retriggerAfterMinutes && config.event) {
+      staleTypes.push({
+        syncType: row.sync_type,
+        staleMins,
+        config: { ...config, event: config.event },
+      });
     }
   }
 
@@ -473,7 +405,7 @@ export const GET = withRouteHandler(async (request) => {
         context: 'alert-cron',
         syncType,
         staleMins,
-        threshold: config.mins,
+        threshold: config.retriggerAfterMinutes,
       });
       await inngest.send({ name: config.event });
       recoveries.push(`${syncType}: triggered`);

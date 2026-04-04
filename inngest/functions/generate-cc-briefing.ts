@@ -15,7 +15,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { MODELS } from '@/lib/ai';
 import { generateCommitteeBriefing, generateMemberDossier } from '@/lib/cc/briefingGenerator';
 import { generatePrediction } from '@/lib/cc/predictiveSignals';
-import { CC_VOTABLE_TYPES } from '@/lib/governance/votingBodies';
+import { canBodyVote } from '@/lib/governance/votingBodies';
 import { logger } from '@/lib/logger';
 import type { CommitteeBriefingInput } from '@/lib/cc/briefingGenerator';
 import type { MemberDossierInput } from '@/lib/cc/briefingGenerator';
@@ -539,14 +539,22 @@ export const generateCcBriefing = inngest.createFunction(
       const supabase = getSupabaseAdmin();
 
       // Get pending CC-votable proposals (not ratified, enacted, expired, or dropped)
-      const { data: proposals } = await supabase
+      const { data: proposalRows } = await supabase
         .from('proposals')
-        .select('tx_hash, proposal_index, title, proposal_type, proposed_epoch')
-        .in('proposal_type', CC_VOTABLE_TYPES)
+        .select('tx_hash, proposal_index, title, proposal_type, proposed_epoch, param_changes')
         .is('ratified_epoch', null)
         .is('enacted_epoch', null)
         .is('expired_epoch', null)
         .is('dropped_epoch', null);
+
+      const proposals =
+        proposalRows?.filter((proposal) =>
+          canBodyVote(
+            'cc',
+            proposal.proposal_type,
+            (proposal.param_changes as Record<string, unknown> | null) ?? null,
+          ),
+        ) ?? [];
 
       if (!proposals?.length) {
         return { generated: 0, skipped: 0, failed: 0 };

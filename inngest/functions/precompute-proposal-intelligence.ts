@@ -23,6 +23,7 @@ import {
   computePassagePrediction,
   buildPredictionInput,
   fetchPredictionData,
+  resolvePassagePredictionThresholds,
 } from '@/lib/passagePrediction';
 import { MODELS } from '@/lib/ai';
 import { createHash } from 'crypto';
@@ -40,6 +41,7 @@ interface OpenProposal {
   motivation: string | null;
   rationale: string | null;
   withdrawal_amount: number | null;
+  param_changes: Record<string, unknown> | null;
   meta_json: Record<string, unknown> | null;
 }
 
@@ -96,7 +98,7 @@ export const precomputeProposalIntelligence = inngest.createFunction(
       const { data: openProposals } = await supabase
         .from('proposals')
         .select(
-          'tx_hash, proposal_index, title, abstract, proposal_type, withdrawal_amount, meta_json',
+          'tx_hash, proposal_index, title, abstract, proposal_type, withdrawal_amount, param_changes, meta_json',
         )
         .is('ratified_epoch', null)
         .is('enacted_epoch', null)
@@ -271,7 +273,11 @@ export const precomputeProposalIntelligence = inngest.createFunction(
             constMap,
             sentimentMap,
           );
-          const prediction = computePassagePrediction(predInput);
+          const thresholds = await resolvePassagePredictionThresholds({
+            proposalType: p.proposal_type,
+            paramChanges: p.param_changes ?? null,
+          });
+          const prediction = computePassagePrediction({ ...predInput, thresholds });
 
           upsertRows.push({
             proposal_tx_hash: p.tx_hash,

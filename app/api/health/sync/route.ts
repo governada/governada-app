@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
+import { CORE_SYNC_TYPES, getExternalSyncHealthLevel, getSyncPolicy } from '@/lib/syncPolicy';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,16 +9,6 @@ export const dynamic = 'force-dynamic';
  * Returns HTTP 200 when core syncs are healthy, 503 when critical.
  * Designed for simple HTTP status code checks — no auth required.
  */
-
-const CORE_SYNCS = ['proposals', 'dreps', 'scoring', 'alignment'] as const;
-
-const CRITICAL_THRESHOLDS_MINS: Record<string, number> = {
-  proposals: 120, // 2h (runs every 30min)
-  dreps: 720, // 12h (runs every 6h)
-  scoring: 720, // 12h (runs every 6h)
-  alignment: 720, // 12h (runs every 6h)
-};
-
 export async function GET() {
   try {
     const supabase = createClient();
@@ -31,16 +22,22 @@ export async function GET() {
     }
 
     const now = Date.now();
-    const coreStatuses = CORE_SYNCS.map((syncType) => {
+    const coreStatuses = CORE_SYNC_TYPES.map((syncType) => {
       const row = rows.find((r) => r.sync_type === syncType);
       if (!row?.last_run)
         return { type: syncType, stale: true, staleMins: null, lastSuccess: null };
       const staleMins = Math.round((now - new Date(row.last_run).getTime()) / 60_000);
-      const threshold = CRITICAL_THRESHOLDS_MINS[syncType] ?? 720;
       const lastSuccess = row.last_success as boolean | null;
-      // A sync is unhealthy if it's stale OR if it ran recently but failed
-      const stale = staleMins > threshold || lastSuccess === false;
-      return { type: syncType, stale, staleMins, lastSuccess };
+      const status = getExternalSyncHealthLevel(syncType, staleMins, lastSuccess);
+      const policy = getSyncPolicy(syncType);
+
+      return {
+        type: syncType,
+        label: policy.label,
+        stale: status === 'critical',
+        staleMins,
+        lastSuccess,
+      };
     });
 
     const criticalCount = coreStatuses.filter((s) => s.stale).length;

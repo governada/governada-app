@@ -20,6 +20,7 @@ vi.mock('@/lib/api/rateLimit', () => ({
 
 vi.mock('@/lib/api/keys', () => ({
   validateApiKey: vi.fn().mockResolvedValue({ valid: false }),
+  resolveApiKeyFromRequest: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock('@/lib/api/logging', () => ({
@@ -47,21 +48,35 @@ const fakeDrep = {
   totalVotes: 50,
 };
 
+const activeButUndocumentedDrep = {
+  ...fakeDrep,
+  drepId: 'drep1undocumented',
+  name: 'Bob',
+  ticker: 'BOB',
+  drepScore: 64,
+};
+
+const inactiveDrep = {
+  ...fakeDrep,
+  drepId: 'drep1inactive',
+  name: 'Carol',
+  ticker: 'CRL',
+  isActive: false,
+  drepScore: 30,
+};
+
 describe('GET /api/v1/dreps', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetAllDReps.mockResolvedValue({
       dreps: [fakeDrep],
-      allDReps: [
-        fakeDrep,
-        { ...fakeDrep, drepId: 'drep1inactive', isActive: false, drepScore: 30 },
-      ],
+      allDReps: [fakeDrep, activeButUndocumentedDrep, inactiveDrep],
       error: null,
-      totalAvailable: 2,
+      totalAvailable: 3,
     });
   });
 
-  it('returns paginated dreps with meta envelope', async () => {
+  it('returns paginated active dreps with meta envelope by default', async () => {
     const req = createRequest('/api/v1/dreps');
     const res = await GET(req);
     const body = (await parseJson(res)) as any;
@@ -71,7 +86,11 @@ describe('GET /api/v1/dreps', () => {
     expect(body.meta).toBeDefined();
     expect(body.meta.api_version).toBe('v1');
     expect(body.pagination).toBeDefined();
-    expect(body.pagination.total).toBe(1); // active_only defaults true
+    expect(body.pagination.total).toBe(2); // active_only defaults true
+    expect(body.data.every((d: any) => d.is_active === true)).toBe(true);
+    expect(res.headers.get('Cache-Control')).toBe(
+      'public, s-maxage=300, stale-while-revalidate=600',
+    );
   });
 
   it('includes inactive dreps when active_only=false', async () => {
@@ -79,7 +98,16 @@ describe('GET /api/v1/dreps', () => {
     const res = await GET(req);
     const body = (await parseJson(res)) as any;
 
-    expect(body.pagination.total).toBe(2);
+    expect(body.pagination.total).toBe(3);
+  });
+
+  it('filters by activity status, not documentation completeness', async () => {
+    const req = createRequest('/api/v1/dreps');
+    const res = await GET(req);
+    const body = (await parseJson(res)) as any;
+
+    expect(body.data.map((d: any) => d.drep_id)).toContain('drep1undocumented');
+    expect(body.data.map((d: any) => d.drep_id)).not.toContain('drep1inactive');
   });
 
   it('supports search parameter', async () => {
@@ -106,15 +134,17 @@ describe('GET /api/v1/dreps', () => {
   });
 
   it('respects limit and offset', async () => {
+    const testDReps = Array(5)
+      .fill(null)
+      .map((_, i) => ({
+        ...fakeDrep,
+        drepId: `drep1test${i}`,
+        drepScore: 80 - i,
+      }));
+
     mockGetAllDReps.mockResolvedValue({
-      dreps: Array(5)
-        .fill(null)
-        .map((_, i) => ({
-          ...fakeDrep,
-          drepId: `drep1test${i}`,
-          drepScore: 80 - i,
-        })),
-      allDReps: [],
+      dreps: testDReps,
+      allDReps: testDReps,
       error: null,
       totalAvailable: 5,
     });

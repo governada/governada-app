@@ -1,65 +1,41 @@
 import { NextResponse } from 'next/server';
+import { getOpsEnvReport } from '@/lib/env';
+import { getRuntimeRelease } from '@/lib/runtimeMetadata';
 import { createClient } from '@/lib/supabase';
+import { getSyncHealthLevel, getSyncPolicy, mergeSyncHealthLevel } from '@/lib/syncPolicy';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 
-const THRESHOLDS: Record<string, number> = {
-  proposals: 90,
-  dreps: 720,
-  votes: 720,
-  secondary: 2880,
-  slow: 2880,
-  treasury: 2880,
-  full: 1560,
-  scoring: 720,
-  alignment: 720,
-  ghi: 2880,
-  benchmarks: 11520,
-  spo_votes: 720,
-  cc_votes: 720,
-  epoch_recaps: 8640,
-  spo_scores: 2880,
-  governance_epoch_stats: 2880,
-  data_moat: 2880,
-  catalyst: 2880,
-  catalyst_proposals: 2880,
-  catalyst_funds: 2880,
-  delegator_snapshots: 2880,
-  drep_lifecycle: 2880,
-  epoch_summaries: 2880,
-  committee_sync: 2880,
-  metadata_archive: 2880,
-};
-
 export const GET = withRouteHandler(async () => {
   const supabase = createClient();
+  const operations = getOpsEnvReport();
   const { data: rows } = await supabase.from('v_sync_health').select('*');
 
   if (!rows?.length) {
-    return NextResponse.json({ status: 'unknown', message: 'No sync data', syncs: [] });
+    return NextResponse.json({
+      status: operations.status === 'healthy' ? 'unknown' : 'degraded',
+      message: 'No sync data',
+      syncs: [],
+      operations,
+      release: getRuntimeRelease(),
+    });
   }
 
   const now = Date.now();
-  let worstLevel: 'healthy' | 'degraded' | 'critical' = 'healthy';
+  let worstLevel: 'healthy' | 'degraded' | 'critical' = operations.status;
 
   const syncs = rows.map((row) => {
     const staleMins = row.last_run
       ? Math.round((now - new Date(row.last_run).getTime()) / 60000)
       : Infinity;
-    const threshold = THRESHOLDS[row.sync_type] ?? 1560;
-    const failed = row.last_success === false;
-    const stale = staleMins > threshold;
-
-    let level: 'healthy' | 'degraded' | 'critical' = 'healthy';
-    if (failed) level = 'critical';
-    else if (stale) level = staleMins > threshold * 2 ? 'critical' : 'degraded';
-
-    if (level === 'critical') worstLevel = 'critical';
-    else if (level === 'degraded' && worstLevel !== 'critical') worstLevel = 'degraded';
+    const policy = getSyncPolicy(row.sync_type);
+    const level = getSyncHealthLevel(row.sync_type, staleMins, row.last_success as boolean | null);
+    worstLevel = mergeSyncHealthLevel(worstLevel, level);
 
     return {
       type: row.sync_type,
+      label: policy.label,
       level,
       last_run: row.last_run,
       stale_mins: staleMins === Infinity ? null : staleMins,
@@ -155,11 +131,31 @@ export const GET = withRouteHandler(async () => {
         ),
       );
 
-      snapshotHealth = { epoch, checks: snapshotChecks };
+      const snapshotLevel = snapshotChecks.reduce<'healthy' | 'degraded' | 'critical'>(
+        (current, check) => {
+          if (check.level === 'critical') return 'critical';
+          if (check.level === 'degraded' && current !== 'critical') return 'degraded';
+          return current;
+        },
+        'healthy',
+      );
+
+      snapshotHealth = { status: snapshotLevel, epoch, checks: snapshotChecks };
+      worstLevel = mergeSyncHealthLevel(worstLevel, snapshotLevel);
     }
   } catch {
-    // snapshot health is best-effort
+    snapshotHealth = {
+      status: 'unavailable',
+      error: 'snapshot health check failed',
+    };
+    worstLevel = mergeSyncHealthLevel(worstLevel, 'degraded');
   }
 
-  return NextResponse.json({ status: worstLevel, syncs, snapshots: snapshotHealth });
+  return NextResponse.json({
+    status: worstLevel,
+    syncs,
+    snapshots: snapshotHealth,
+    operations,
+    release: getRuntimeRelease(),
+  });
 });

@@ -61,6 +61,7 @@ interface VotingPowerSummary {
 interface IntelPanelProps {
   proposalId: string;
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
   proposalContent: {
     title: string;
     abstract: string;
@@ -307,14 +308,16 @@ function CommunitySentimentCard({
   citizenSentiment,
   votingPowerSummary,
   proposalType,
+  paramChanges,
 }: {
   interBodyVotes?: IntelPanelProps['interBodyVotes'];
   citizenSentiment?: IntelPanelProps['citizenSentiment'];
   votingPowerSummary?: VotingPowerSummary;
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
 }) {
-  const eligibleBodies = getVotingBodies(proposalType);
-  const ineligibilityNote = getIneligibilityNote(proposalType);
+  const eligibleBodies = getVotingBodies(proposalType, paramChanges);
+  const ineligibilityNote = getIneligibilityNote(proposalType, paramChanges);
 
   // Compute projected outcome pill
   const projectedOutcomePill = (() => {
@@ -639,6 +642,7 @@ function StatCell({ label, value, color }: { label: string; value: number; color
 export function IntelPanel({
   proposalId,
   proposalType,
+  paramChanges,
   proposalContent,
   interBodyVotes,
   citizenSentiment,
@@ -651,6 +655,7 @@ export function IntelPanel({
         citizenSentiment={citizenSentiment}
         votingPowerSummary={votingPowerSummary}
         proposalType={proposalType}
+        paramChanges={paramChanges}
       />
       <ConstitutionalCheckCard proposalContent={proposalContent} proposalType={proposalType} />
       <SimilarProposalsCard proposalContent={proposalContent} proposalType={proposalType} />

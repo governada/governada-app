@@ -16,6 +16,7 @@ interface ProposalBridgeProps {
   title: string;
   isOpen: boolean;
   proposalType?: string | null;
+  paramChanges?: Record<string, unknown> | null;
   existingVote?: string | null;
 }
 
@@ -32,6 +33,7 @@ export function ProposalBridge({
   title: _title,
   isOpen,
   proposalType,
+  paramChanges,
   existingVote,
 }: ProposalBridgeProps) {
   const { segment, isLoading } = useSegment();
@@ -43,7 +45,7 @@ export function ProposalBridge({
   const isGovernanceActor = segment === 'drep' || segment === 'spo' || segment === 'cc';
   const effectiveType = proposalType ?? 'InfoAction';
   const voterBody = segment === 'spo' ? 'spo' : segment === 'cc' ? 'cc' : 'drep';
-  const canVote = isGovernanceActor && canBodyVote(voterBody, effectiveType);
+  const canVote = isGovernanceActor && canBodyVote(voterBody, effectiveType, paramChanges);
 
   // Governance actors: show review & vote button
   if (isGovernanceActor) {

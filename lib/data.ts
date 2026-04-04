@@ -1,16 +1,16 @@
 /**
- * Data Layer - Supabase Cache with Koios Fallback
+ * Data Layer - Supabase Cache
  * Fast reads from Supabase with automatic freshness checks and sync triggering
  */
 
 import { createClient } from './supabase';
-import { getEnrichedDReps, EnrichedDRep } from './koios';
+import { EnrichedDRep } from './koios';
 import { isWellDocumented } from '@/utils/documentation';
 import { logger } from '@/lib/logger';
 import { getCurrentEpoch } from '@/lib/constants';
+import { SYNC_FRESHNESS_POLICY } from './syncPolicy';
+import { getGovernanceThresholdForProposal } from './governanceThresholds';
 import type { SizeTier } from '@/utils/scoring';
-
-const CACHE_FRESHNESS_MINUTES = 15;
 
 interface DRepRowInfo {
   drepHash?: string;
@@ -66,6 +66,16 @@ interface SupabaseDRepRow {
   governance_identity: number | null;
   governance_identity_raw: number | null;
   score_momentum: number | null;
+}
+
+export class DRepCacheUnavailableError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'DRepCacheUnavailableError';
+    if (options && 'cause' in options) {
+      this.cause = options.cause;
+    }
+  }
 }
 
 /**
@@ -143,7 +153,7 @@ let _drepsCache: {
 /**
  * Trigger background sync without blocking.
  * In production, fires an Inngest event to retrigger the DReps sync.
- * Debounced to avoid spamming events on every stale read.
+ * Debounced to avoid spamming events when reads notice the sync is overdue.
  */
 async function triggerBackgroundSync() {
   if (Date.now() - lastSyncTrigger < SYNC_TRIGGER_COOLDOWN_MS) return;
@@ -172,8 +182,7 @@ async function triggerProposalsSync() {
 }
 
 /**
- * Get all DReps with caching and fallback
- * Returns same structure as getEnrichedDReps() for drop-in replacement
+ * Get all DReps from the Supabase read model.
  */
 export async function getAllDReps(): Promise<{
   dreps: EnrichedDRep[];
@@ -224,9 +233,9 @@ export async function getAllDReps(): Promise<{
     }
 
     if (!rows || rows.length === 0) {
-      logger.warn('[Data] No data in Supabase, falling back to Koios');
+      logger.warn('[Data] No DRep data in Supabase cache');
       logger.warn('[Data] Run: npm run sync');
-      return await getEnrichedDReps(false);
+      throw new DRepCacheUnavailableError('DRep cache is empty');
     }
 
     if (isDev) {
@@ -241,16 +250,21 @@ export async function getAllDReps(): Promise<{
     if (timestamps.length > 0) {
       const maxTimestamp = Math.max(...timestamps);
       const maxUpdatedAt = new Date(maxTimestamp);
-      const freshnessThreshold = new Date(Date.now() - CACHE_FRESHNESS_MINUTES * 60 * 1000);
-      const isStale = maxUpdatedAt < freshnessThreshold;
+      const retriggerThreshold = new Date(
+        Date.now() - SYNC_FRESHNESS_POLICY.dreps.retriggerAfterMinutes * 60 * 1000,
+      );
+      const isStale = maxUpdatedAt < retriggerThreshold;
 
       if (isStale) {
         const ageMinutes = Math.round((Date.now() - maxTimestamp) / 1000 / 60);
         if (isDev) {
-          logger.info('[Data] Cache is stale', { ageMinutes });
+          logger.info('[Data] Cache is overdue for retrigger', {
+            ageMinutes,
+            retriggerAfterMinutes: SYNC_FRESHNESS_POLICY.dreps.retriggerAfterMinutes,
+          });
         }
         // Trigger sync in background (non-blocking)
-        triggerBackgroundSync();
+        void triggerBackgroundSync();
       } else if (isDev) {
         const ageMinutes = Math.round((Date.now() - maxTimestamp) / 1000 / 60);
         logger.info('[Data] Cache is fresh', { ageMinutes });
@@ -279,16 +293,14 @@ export async function getAllDReps(): Promise<{
     _drepsCache = { data: result, timestamp: Date.now() };
     return result;
   } catch (error: unknown) {
-    logger.error('[Data] Cache read failed, falling back to Koios', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    // Fallback to direct Koios fetch
-    if (isDev) {
-      logger.info('[Data] Fetching directly from Koios (slow)...');
+    if (error instanceof DRepCacheUnavailableError) {
+      throw error;
     }
 
-    return await getEnrichedDReps(false);
+    logger.error('[Data] Cache read failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw new DRepCacheUnavailableError('DRep cache unavailable', { cause: error });
   }
 }
 
@@ -1999,32 +2011,6 @@ export interface VotingPowerSummary {
   thresholdLabel: string | null;
 }
 
-const PROPOSAL_TYPE_THRESHOLD_MAP: Record<string, string> = {
-  TreasuryWithdrawals: 'dvt_treasury_withdrawal',
-  ParameterChange: 'dvt_p_p_network_group',
-  HardForkInitiation: 'dvt_hard_fork_initiation',
-  NewConstitution: 'dvt_update_to_constitution',
-  UpdateConstitution: 'dvt_update_to_constitution',
-  NoConfidence: 'dvt_motion_no_confidence',
-  NewCommittee: 'dvt_committee_normal',
-  NewConstitutionalCommittee: 'dvt_committee_normal',
-};
-
-let cachedThresholds: { data: Record<string, number>; fetchedAt: number } | null = null;
-const THRESHOLD_CACHE_MS = 24 * 60 * 60 * 1000;
-
-async function getGovernanceThresholds(): Promise<Record<string, number> | null> {
-  if (cachedThresholds && Date.now() - cachedThresholds.fetchedAt < THRESHOLD_CACHE_MS) {
-    return cachedThresholds.data;
-  }
-  const { fetchGovernanceThresholds } = await import('@/utils/koios');
-  const data = await fetchGovernanceThresholds();
-  if (data) {
-    cachedThresholds = { data, fetchedAt: Date.now() };
-  }
-  return data;
-}
-
 export async function getVotingPowerSummary(
   txHash: string,
   proposalIndex: number,
@@ -2033,25 +2019,33 @@ export async function getVotingPowerSummary(
   try {
     const supabase = createClient();
 
-    // Prefer canonical proposal_voting_summary (from Koios /proposal_voting_summary)
-    const { data: canonical } = await supabase
-      .from('proposal_voting_summary')
-      .select('*')
-      .eq('proposal_tx_hash', txHash)
-      .eq('proposal_index', proposalIndex)
-      .single();
+    const [canonicalResult, proposalResult] = await Promise.all([
+      supabase
+        .from('proposal_voting_summary')
+        .select('*')
+        .eq('proposal_tx_hash', txHash)
+        .eq('proposal_index', proposalIndex)
+        .single(),
+      supabase
+        .from('proposals')
+        .select('proposal_type, param_changes')
+        .eq('tx_hash', txHash)
+        .eq('proposal_index', proposalIndex)
+        .maybeSingle(),
+    ]);
 
-    const thresholdKey = PROPOSAL_TYPE_THRESHOLD_MAP[proposalType];
-    let threshold: number | null = null;
-    let thresholdLabel: string | null = null;
-
-    if (thresholdKey) {
-      const params = await getGovernanceThresholds();
-      if (params && params[thresholdKey] != null) {
-        threshold = params[thresholdKey];
-        thresholdLabel = `${Math.round(threshold * 100)}% of active DRep stake needed`;
-      }
-    }
+    const canonical = canonicalResult.data;
+    const proposalRow = proposalResult.data as {
+      proposal_type?: string | null;
+      param_changes?: Record<string, unknown> | null;
+    } | null;
+    const thresholdResolution = await getGovernanceThresholdForProposal({
+      proposalType: proposalRow?.proposal_type ?? proposalType,
+      paramChanges: proposalRow?.param_changes ?? null,
+    });
+    const threshold = thresholdResolution.threshold;
+    const thresholdLabel =
+      threshold != null ? `${Math.round(threshold * 100)}% of active DRep stake needed` : null;
 
     if (canonical) {
       const yesPower = Number(canonical.drep_yes_vote_power) || 0;

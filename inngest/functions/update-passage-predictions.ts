@@ -17,6 +17,7 @@ import {
   computePassagePrediction,
   buildPredictionInput,
   fetchPredictionData,
+  resolvePassagePredictionThresholds,
 } from '@/lib/passagePrediction';
 
 export const updatePassagePredictions = inngest.createFunction(
@@ -58,7 +59,7 @@ export const updatePassagePredictions = inngest.createFunction(
       // Get all open proposals
       const { data: proposals } = await supabase
         .from('proposals')
-        .select('tx_hash, proposal_index, proposal_type, withdrawal_amount')
+        .select('tx_hash, proposal_index, proposal_type, withdrawal_amount, param_changes')
         .is('ratified_epoch', null)
         .is('enacted_epoch', null)
         .is('dropped_epoch', null)
@@ -83,7 +84,11 @@ export const updatePassagePredictions = inngest.createFunction(
             constMap,
             sentimentMap,
           );
-          const prediction = computePassagePrediction(predInput);
+          const thresholds = await resolvePassagePredictionThresholds({
+            proposalType: p.proposal_type,
+            paramChanges: (p.param_changes as Record<string, unknown> | null) ?? null,
+          });
+          const prediction = computePassagePrediction({ ...predInput, thresholds });
 
           upsertRows.push({
             proposal_tx_hash: p.tx_hash,

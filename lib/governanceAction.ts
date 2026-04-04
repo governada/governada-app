@@ -14,6 +14,7 @@
  */
 
 import type { BrowserWallet } from '@meshsdk/core';
+import { GOVERNANCE_ACTION_DEPOSIT_LOVELACE } from '@/lib/governance/constants';
 import type {
   GovernanceActionTarget,
   GovernanceActionPreflight,
@@ -25,7 +26,7 @@ import type {
 // ---------------------------------------------------------------------------
 
 /** 100,000 ADA in lovelace — the governance action deposit */
-const DEPOSIT_LOVELACE = 100_000_000_000;
+const DEPOSIT_LOVELACE = GOVERNANCE_ACTION_DEPOSIT_LOVELACE;
 
 /** Estimated transaction fee in lovelace (~0.2 ADA) */
 const ESTIMATED_FEE_LOVELACE = 200_000;

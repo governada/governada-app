@@ -16,6 +16,7 @@ interface ProposalActionZoneProps {
   isOpen: boolean;
   proposalAbstract?: string | null;
   proposalType?: string | null;
+  paramChanges?: Record<string, unknown> | null;
   aiSummary?: string | null;
 }
 
@@ -33,6 +34,7 @@ export function ProposalActionZone({
   isOpen,
   proposalAbstract,
   proposalType,
+  paramChanges,
   aiSummary,
 }: ProposalActionZoneProps) {
   const { segment, isLoading } = useSegment();
@@ -58,7 +60,7 @@ export function ProposalActionZone({
   // For governance actors: check if their body can vote on this proposal type
   const effectiveType = proposalType ?? 'InfoAction';
   const voterBody = segment === 'spo' ? 'spo' : segment === 'cc' ? 'cc' : 'drep';
-  const canVote = isGovernanceActor && canBodyVote(voterBody, effectiveType);
+  const canVote = isGovernanceActor && canBodyVote(voterBody, effectiveType, paramChanges);
 
   if (isGovernanceActor) {
     return (

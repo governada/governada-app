@@ -10,7 +10,12 @@ import {
   parseSessionToken,
   isSessionExpired,
 } from '@/lib/supabaseAuth';
-import { STORAGE_KEYS, readStoredValue, removeStoredValue, writeStoredValue } from '@/lib/persistence';
+import {
+  STORAGE_KEYS,
+  readStoredValue,
+  removeStoredValue,
+  writeStoredValue,
+} from '@/lib/persistence';
 import { deriveDRepIdFromStakeAddress, checkDRepExists } from '@/utils/drepId';
 import { WalletContext, type WalletError } from '@/utils/wallet-context';
 export type { WalletContextType, WalletError, WalletErrorType } from '@/utils/wallet-context';

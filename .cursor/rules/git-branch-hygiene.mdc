@@ -9,8 +9,8 @@ alwaysApply: true
 
 ```
 C:\Users\dalto\governada\
-  governada-app/           ← main (production, merges, hotfixes)
-  .claude\worktrees\<feature>/     ← one per active feature branch
+  governada-app/                         ← main (production, merges, hotfixes)
+    .claude\worktrees\<feature>/         ← one per active feature branch
 ```
 
 Each worktree has its own `node_modules`, `.env.local`, and `.next`. The git history is shared.
@@ -59,9 +59,9 @@ When a feature is complete:
 
 When the user says "merge" from the **main worktree** (`governada-app`):
 
-1. Merge via GitHub CLI:
+1. Merge via the stable repo wrapper:
    ```
-   gh pr merge <pr-number> --squash --delete-branch
+   npm run pr:merge -- <pr-number>
    git pull origin main
    ```
 2. Clean up the worktree (delete `node_modules` first to avoid Windows file-lock hangs):
@@ -74,10 +74,10 @@ When the user says "merge" from the **main worktree** (`governada-app`):
 
 When the user says "merge" from a **feature worktree** (e.g. `.claude\worktrees\<name>`):
 
-`gh pr merge` will fail because it tries to checkout main, which is locked by another worktree. Use the GitHub API directly:
+Use the stable repo wrapper:
 
 ```
-gh api repos/governada/governada-app/pulls/<pr-number>/merge -X PUT -f merge_method=squash -f commit_title="feat: <description> (#<pr-number>)"
+npm run pr:merge -- <pr-number>
 ```
 
 Then pull into the main worktree and clean up:

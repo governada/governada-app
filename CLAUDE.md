@@ -4,7 +4,7 @@ Governance intelligence for the Cardano Nation.
 
 ## Autonomous Deployment Pipeline
 
-Implementation is NOT complete until deployed and validated in production. Use `/ship` for the full pipeline (authoritative). Manual steps: preflight → commit → push → PR → CI (background) → pre-merge-check → merge → deploy-verifier (background) → smoke-test → visual verification (UI changes). If Inngest functions changed: `npm run inngest:register`. If deploy fails: `npm run rollback`.
+Implementation is NOT complete until deployed and validated in production. Use `/ship` for the full pipeline (authoritative). Manual steps: preflight → commit → push → PR → CI (background) → pre-merge-check → `npm run pr:ready` if needed → `npm run pr:merge` → deploy-verifier (background) → smoke-test → visual verification (UI changes). If Inngest functions changed: `npm run inngest:register`. If deploy fails: `npm run rollback`.
 
 ## Hard Constraints
 
@@ -63,8 +63,8 @@ Keep Codex Desktop in `workspace-write`. The target is smooth autonomous shippin
 
 - Best writable root: `C:\Users\dalto\governada\governada-app\` so `.claude/worktrees/` and git worktree metadata stay inside the writable area.
 - Open Codex on the shared repo root only. Do **not** open separate Codex projects rooted at `.claude/worktrees/<name>` or `C:\Users\dalto\.codex\worktrees\...` for this repo.
-- Prefer the repo's `npm run ...` entrypoints for diagnostics, GitHub auth, CI watching, failed-log tails, deploy verification, and Inngest registration. For mutating Git/worktree setup on Windows Codex Desktop, prefer direct approved entrypoints such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`, `git fetch origin main`, and `git worktree add`.
-- Recommended persistent approvals: `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1`, `npm run worktree:new`, `npm run worktree:sync`, `npm run session:doctor`, `npm run gh:auth-status`, `npm run auth:repair`, `npm run ci:watch`, `npm run ci:failed`, `npm run pre-merge-check`, `npm run deploy:verify`, `npm run inngest:register`, `git add`, `git add -A`, `git commit -m`, `git push`, `git fetch origin main`, `git worktree add`, and `gh api repos/governada/governada-app/pulls`.
+- Prefer the repo's `npm run ...` entrypoints for diagnostics, GitHub auth, PR readiness, PR merging, CI watching, failed-log tails, deploy verification, and Inngest registration. For mutating Git/worktree setup on Windows Codex Desktop, prefer direct approved entrypoints such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`, `git fetch origin main`, and `git worktree add`.
+- Recommended persistent approvals: `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1`, `npm run worktree:new`, `npm run worktree:sync`, `npm run session:doctor`, `npm run gh:auth-status`, `npm run auth:repair`, `npm run pr:ready`, `npm run pr:merge`, `npm run ci:watch`, `npm run ci:failed`, `npm run pre-merge-check`, `npm run deploy:verify`, `npm run inngest:register`, `git add`, `git add -A`, `git commit -m`, `git push`, `git fetch origin main`, `git worktree add`, and `gh api repos/governada/governada-app/pulls`.
 - Do **not** persist approvals for broad shells or interpreters like bare `powershell`, `cmd`, `node`, `python`, `git`, or `gh`.
 - On Windows Codex Desktop, if a mutating Git/worktree command or an `npm` wrapper that shells out to Git fails in `workspace-write` with `EPERM`, access denied, or a likely sandbox error, rerun it immediately with `sandbox_permissions=require_escalated` using an already-approved prefix. Do not stop to ask first unless the prefix itself is missing.
 - Desktop GH context should go through `npm run gh:auth-status` and the helpers in `scripts/lib/runtime.js`; do not rely on `gh` inferring the repo from the `github-governada` SSH alias.
@@ -118,7 +118,7 @@ C:\Users\dalto\governada\governada-app\
 - Raw git equivalent: `git worktree add .claude/worktrees/<name> -b feature/<name> origin/main`
 - Codex Desktop PowerShell threads already scope `gh` to the `governada` profile by repo path
 - Windows-native hooks and ship commands are PowerShell-first. Use `scripts/set_gh_context.ps1` for desktop-agent auth context.
-- From worktrees: `gh api .../merge` (not `gh pr merge`)
+- From worktrees: `npm run pr:merge -- <PR#>` (not raw `gh api .../merge` or `gh pr merge`)
 - **Parallel agent safety**: Multiple agents may be working simultaneously. Before merging:
   1. Run `npm run pre-merge-check -- <PR#>` -- hard requirement
   2. If another PR merged recently, rebase first: `git fetch origin && git rebase origin/main`

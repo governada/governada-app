@@ -40,20 +40,21 @@ All code changes compile clean. Execute the full deploy pipeline autonomously. D
 8. **CI**: Wait for CI with minimal context consumption: `npm run ci:watch`
    If fails, see [CI Failure Recovery](#ci-failure-recovery) below (max 3 retries)
 9. **Pre-merge check**: `npm run pre-merge-check -- <PR#>` — includes Sentry error rate gate
-10. **Merge**: `gh api repos/governada/governada-app/pulls/<N>/merge -X PUT -f merge_method=squash`
-11. **Migrations**: If migrations needed, test on Supabase branch first (see `.claude/rules/migration-safety.md`), then apply via Supabase MCP `apply_migration` → `npm run gen:types`
-12. **Post-merge verification** (background — do NOT block):
+10. **Ready PR**: If the PR is draft, run `npm run pr:ready -- <PR#>`
+11. **Merge**: `npm run pr:merge -- <PR#>`
+12. **Migrations**: If migrations needed, test on Supabase branch first (see `.claude/rules/migration-safety.md`), then apply via Supabase MCP `apply_migration` → `npm run gen:types`
+13. **Post-merge verification** (background — do NOT block):
     ```
     Agent(subagent_type="deploy-verifier", run_in_background=true,
       prompt="PR #N merged. Run: npm run deploy:verify. If Inngest functions changed, run: npm run deploy:verify -- --register-inngest")
     ```
     Continue immediately to step 13 without waiting.
-13. **Update tracking docs**: If this PR adds features, fixes scoring, changes counts:
+14. **Update tracking docs**: If this PR adds features, fixes scoring, changes counts:
     - Update `docs/strategy/context/build-manifest.md` — check off items, add new `[x]` entries with PR #
     - Update `CLAUDE.md` if counts changed
     - Commit doc updates as follow-up on main
-14. **Cleanup**: Switch to main, pull, delete local branch (`git branch -d <branch>`), drop stashes
-15. **Report**: Print PR Impact Recap. Note that deploy verification is running in background.
+15. **Cleanup**: Switch to main, pull, delete local branch (`git branch -d <branch>`), drop stashes
+16. **Report**: Print PR Impact Recap. Note that deploy verification is running in background.
 
 **IMPORTANT: For high-risk changes (scoring, matching, delegation, data migrations), use `/ship-careful` instead.**
 

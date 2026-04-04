@@ -1,7 +1,12 @@
 import * as jose from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
-import { STORAGE_KEYS, readStoredValue, removeStoredValue, writeStoredValue } from '@/lib/persistence';
+import {
+  STORAGE_KEYS,
+  readStoredValue,
+  removeStoredValue,
+  writeStoredValue,
+} from '@/lib/persistence';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 

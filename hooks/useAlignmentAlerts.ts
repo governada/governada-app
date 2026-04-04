@@ -3,12 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useWallet } from '@/utils/wallet';
 import { EnrichedDRep } from '@/lib/koios';
-import {
-  STORAGE_KEYS,
-  readStoredJson,
-  readStoredValue,
-  writeStoredValue,
-} from '@/lib/persistence';
+import { STORAGE_KEYS, readStoredJson, readStoredValue, writeStoredValue } from '@/lib/persistence';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 

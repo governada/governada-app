@@ -25,6 +25,7 @@ This pass covers the operational surfaces that determine whether the app can fai
 - `lib/api/handler.ts`
 - `lib/syncPolicy.ts`
 - `lib/sync-utils.ts`
+- `lib/runtimeMetadata.ts`
 - `lib/sentry-cron.ts`
 - `app/api/health/route.ts`
 - `app/api/health/deep/route.ts`
@@ -35,9 +36,14 @@ This pass covers the operational surfaces that determine whether the app can fai
 - `inngest/functions/sync-freshness-guard.ts`
 - `.github/workflows/post-deploy.yml`
 - `.github/workflows/preview.yml`
+- `scripts/deploy-verify.ts`
+- `scripts/lib/deployVerification.ts`
 - `scripts/smoke-test.ts`
 - `scripts/check-deploy-health.mjs`
 - `package.json`
+- `AGENTS.md`
+- `README.md`
+- `__tests__/api/health-ready.test.ts`
 - `__tests__/api/health.test.ts`
 - `__tests__/api/health-sync.test.ts`
 - `__tests__/api/v1-dreps.test.ts`
@@ -45,6 +51,8 @@ This pass covers the operational surfaces that determine whether the app can fai
 - `__tests__/instrumentation.test.ts`
 - `__tests__/proxy.test.ts`
 - `__tests__/lib/syncPolicy.test.ts`
+- `__tests__/lib/runtimeMetadata.test.ts`
+- `__tests__/scripts/deployVerification.test.ts`
 
 ## Findings
 
@@ -150,15 +158,15 @@ World-class observability requires durable visibility into the jobs that gate fr
 - Open.
 - This needs a tiered cron coverage policy so the most important scheduled jobs are instrumented mechanically instead of opportunistically.
 
-### 6. Deploy and preview verification are still too time-based and not release-aware
+### 6. Deploy and preview verification were time-based and not release-aware
 
-**Severity:** Medium
+**Severity:** Fixed in this worktree
 
 **Evidence**
 
-- `.github/workflows/post-deploy.yml` waits a fixed interval before smoke tests rather than proving it is checking the intended release.
-- `.github/workflows/preview.yml` still depends on derived preview-target assumptions and hardcoded success messaging.
-- `scripts/smoke-test.ts` defaults to the production site URL when a specific target is not provided.
+- `.github/workflows/post-deploy.yml` previously waited a fixed interval before smoke tests rather than proving it was checking the intended release.
+- `.github/workflows/preview.yml` previously treated readiness as enough and hardcoded success messaging.
+- `scripts/smoke-test.ts` previously accepted any `200` from the health routes and did not verify release identity.
 
 **Why it matters**
 
@@ -166,27 +174,31 @@ Verification that can target the wrong release or the wrong URL creates false po
 
 **Implementation status**
 
-- Open.
-- This should be fixed by making deploy and preview verification resolve actual deployment targets and report real result counts.
+- Fixed in this worktree.
+- `lib/runtimeMetadata.ts` now exposes runtime release identity, and the health/readiness routes return it.
+- `scripts/deploy-verify.ts` now polls readiness until the expected commit SHA is live before running the endpoint suite.
+- `scripts/lib/deployVerification.ts` now treats health routes semantically instead of accepting any `200`, and it distinguishes production from preview verification.
+- `.github/workflows/post-deploy.yml` now verifies `github.event.workflow_run.head_sha` instead of sleeping for a fixed interval and checking whatever is live.
+- `.github/workflows/preview.yml` now verifies the PR head SHA and no longer hardcodes smoke-test counts in the PR comment.
+- `package.json`, `AGENTS.md`, and `README.md` now point operators at the canonical `npm run deploy:verify` wrapper.
 
 ## Risk Ranking
 
 1. Ops-critical env wiring still fails open.
 2. Cron coverage is thinner than the number of scheduled jobs that matter.
-3. Deploy and preview verification are not yet release-aware.
-4. Snapshot policy itself is still broader than the freshness-policy layer and may need its own canonical registry in a later pass.
+3. Snapshot policy itself is still broader than the freshness-policy layer and may need its own canonical registry in a later pass.
 
 ## Open Questions
 
 - Should ops-critical env validation fail at startup, deploy verification, or both?
 - Which cron-triggered jobs should be treated as tier 1 for heartbeat and Sentry Cron coverage?
-- Should deploy verification prove a build ID, a commit SHA, or a provider-native deployment identifier before smoke tests run?
+- Is the preview URL template sufficient long-term, or should preview verification eventually resolve provider-native preview URLs directly from deployment metadata?
 
 ## Next Actions
 
 1. Define and enforce the ops-critical env contract.
 2. Expand tier-1 cron observability coverage.
-3. Make deploy and preview verification release-aware.
+3. Decide whether preview URL resolution should move from a configured template to provider-native deployment metadata.
 
 ## Handoff
 
@@ -198,6 +210,10 @@ Verification that can target the wrong release or the wrong URL creates false po
 - Updated `app/api/health/route.ts`, `app/api/health/sync/route.ts`, `app/api/admin/integrity/alert/route.ts`, and `inngest/functions/sync-freshness-guard.ts` to consume that shared policy.
 - Fixed the main health endpoint so snapshot-diagnostic failures surface explicitly and degrade the top-level health result instead of being swallowed.
 - Updated `app/api/health/deep/route.ts` to document the current Redis dependency posture accurately after the earlier rate-limit hardening work.
+- Added runtime release metadata in `lib/runtimeMetadata.ts` and exposed it through `app/api/health/ready/route.ts`, `app/api/health/route.ts`, and `app/api/health/deep/route.ts`.
+- Added `scripts/deploy-verify.ts` and `scripts/lib/deployVerification.ts` so deploy verification waits for the expected release SHA and treats health routes semantically instead of accepting any `200`.
+- Updated `.github/workflows/post-deploy.yml` and `.github/workflows/preview.yml` to use the canonical `npm run deploy:verify` wrapper.
+- Aligned operator docs and wrappers in `package.json`, `AGENTS.md`, and `README.md`.
 - Pulled in parallel scout findings for runtime-boundary mapping, ops env contracts, cron coverage, and deploy verification gaps.
 
 **Validated findings**
@@ -205,14 +221,17 @@ Verification that can target the wrong release or the wrong URL creates false po
 - Operational diagnosis no longer depends on four drifting stale-threshold tables. Fixed in this worktree.
 - Tier-gated API routes no longer inherit public CDN cache headers. Fixed earlier in this worktree.
 - Snapshot diagnostic failure now surfaces instead of being silently swallowed. Fixed in this worktree.
-- Ops-critical env wiring, cron coverage, and release-aware deploy verification remain open DD04 findings.
+- Deploy and preview verification now prove release identity and fail on semantic health drift instead of sleeping and accepting any `200`.
+- Ops-critical env wiring and cron coverage remain the two open DD04 findings with the highest operator impact.
 
 **Verification**
 
 - Passed `npm run test:unit -- __tests__/lib/syncPolicy.test.ts __tests__/api/health.test.ts __tests__/api/health-sync.test.ts`.
+- Passed `npm run test:unit -- __tests__/api/health-ready.test.ts __tests__/api/health.test.ts __tests__/lib/runtimeMetadata.test.ts __tests__/scripts/deployVerification.test.ts`.
 - Passed `npm run agent:validate`.
 - Passed `npm run type-check`.
 - Passed focused lint for `lib/syncPolicy.ts`, `app/api/health/route.ts`, `app/api/health/sync/route.ts`, `app/api/admin/integrity/alert/route.ts`, and `inngest/functions/sync-freshness-guard.ts`.
+- Passed focused lint for `app/api/health/ready/route.ts`, `app/api/health/route.ts`, `app/api/health/deep/route.ts`, and `lib/runtimeMetadata.ts`.
 
 **Open questions**
 
@@ -220,9 +239,9 @@ Verification that can target the wrong release or the wrong URL creates false po
 
 **Next actions**
 
-- Start with the ops env contract and tier-1 cron coverage instead of reopening the sync-policy layer.
-- Keep deploy and preview verification hardening as the next DD04 implementation slice after ops visibility is enforced.
+- Start with the ops env contract and tier-1 cron coverage instead of reopening deploy verification.
+- Treat provider-native preview URL discovery as a follow-up enhancement, not a blocker to the current DD04 closeout path.
 
 **Next agent starts here**
 
-Start with `lib/env.ts`, `instrumentation.ts`, `lib/sync-utils.ts`, `.github/workflows/post-deploy.yml`, `.github/workflows/preview.yml`, and `scripts/check-deploy-health.mjs`. The current highest-value DD04 work is enforcing ops-critical observability wiring and making deploy verification release-aware.
+Start with `lib/env.ts`, `instrumentation.ts`, `lib/sync-utils.ts`, `lib/sentry-cron.ts`, and the tier-1 scheduled functions. The current highest-value DD04 work is enforcing ops-critical observability wiring and expanding cron coverage now that deploy verification is release-aware.

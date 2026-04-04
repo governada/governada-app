@@ -91,6 +91,8 @@ describe('GET /api/health', () => {
   });
 
   it('returns "healthy" when all syncs are recent and successful', async () => {
+    vi.stubEnv('RAILWAY_ENVIRONMENT_ID', 'env_123');
+    vi.stubEnv('RAILWAY_GIT_COMMIT_SHA', 'ABCDEF123456');
     const now = new Date().toISOString();
     mockState.syncRows = [
       {
@@ -110,11 +112,16 @@ describe('GET /api/health', () => {
     ];
 
     const res = await GET(makeReq());
-    const body = (await parseJson(res)) as { status: string; syncs: Array<{ level: string }> };
+    const body = (await parseJson(res)) as {
+      status: string;
+      syncs: Array<{ level: string }>;
+      release: { commit_sha: string };
+    };
 
     expect(res.status).toBe(200);
     expect(body.status).toBe('healthy');
     expect(body.syncs).toHaveLength(2);
+    expect(body.release.commit_sha).toBe('abcdef123456');
     body.syncs.forEach((s) => expect(s.level).toBe('healthy'));
   });
 

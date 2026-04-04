@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getRuntimeRelease } from '@/lib/runtimeMetadata';
 import { createClient } from '@/lib/supabase';
 import { getSyncHealthLevel, getSyncPolicy, mergeSyncHealthLevel } from '@/lib/syncPolicy';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
@@ -10,7 +11,12 @@ export const GET = withRouteHandler(async () => {
   const { data: rows } = await supabase.from('v_sync_health').select('*');
 
   if (!rows?.length) {
-    return NextResponse.json({ status: 'unknown', message: 'No sync data', syncs: [] });
+    return NextResponse.json({
+      status: 'unknown',
+      message: 'No sync data',
+      syncs: [],
+      release: getRuntimeRelease(),
+    });
   }
 
   const now = Date.now();
@@ -142,5 +148,10 @@ export const GET = withRouteHandler(async () => {
     worstLevel = mergeSyncHealthLevel(worstLevel, 'degraded');
   }
 
-  return NextResponse.json({ status: worstLevel, syncs, snapshots: snapshotHealth });
+  return NextResponse.json({
+    status: worstLevel,
+    syncs,
+    snapshots: snapshotHealth,
+    release: getRuntimeRelease(),
+  });
 });

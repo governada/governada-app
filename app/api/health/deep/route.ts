@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
+import { getRuntimeRelease } from '@/lib/runtimeMetadata';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { checkKoiosHealthFast } from '@/utils/koios';
 import { getRedis } from '@/lib/redis';
@@ -72,6 +73,7 @@ export const GET = withRouteHandler(
     return NextResponse.json({
       status: allHealthy ? 'healthy' : coreHealthy ? 'degraded' : 'critical',
       dependencies: { supabase, koios, redis },
+      release: getRuntimeRelease(),
       timestamp: new Date().toISOString(),
     });
   },

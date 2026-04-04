@@ -28,8 +28,8 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 4. Make the smallest change that solves the actual problem.
 5. Run `npm run agent:validate` and the relevant local verification for the scope.
 6. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, and `Impact` sections.
-7. Before merging, run `scripts/pre-merge-check.sh`.
-8. After merge, verify deploy health and smoke tests.
+7. Before merging, run `npm run pre-merge-check -- <pr-number>`.
+8. After merge, run `npm run deploy:verify`.
 
 ## Autonomy Boundary
 

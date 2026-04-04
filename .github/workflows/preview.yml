@@ -1,7 +1,6 @@
 name: Preview Environment
 
-# Deploys a preview environment for PRs and runs smoke tests against it.
-# Requires Railway preview environments to be enabled in the project settings.
+# Deploys a preview environment for PRs and verifies the PR head release is live.
 on:
   pull_request:
     branches: [main]
@@ -15,7 +14,6 @@ jobs:
   preview-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Only run if Railway preview environments are configured
     if: vars.RAILWAY_PREVIEW_ENABLED == 'true'
     steps:
       - uses: actions/checkout@v6
@@ -25,48 +23,27 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # Railway automatically creates preview environments for PRs
-      # when configured. The preview URL follows a predictable pattern.
-      - name: Wait for preview deploy
+      - name: Resolve preview URL
         id: preview
         run: |
-          # Railway preview URL pattern: pr-<number>-governada-app.up.railway.app
-          # or custom domain pattern from Railway project settings
-          PREVIEW_URL="https://pr-${{ github.event.pull_request.number }}-governada-app.up.railway.app"
-          echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
-
-          echo "Waiting for preview environment at $PREVIEW_URL..."
-          MAX_ATTEMPTS=30
-          ATTEMPT=0
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PREVIEW_URL/api/health/ready" 2>/dev/null || echo "000")
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "Preview is ready!"
-              break
-            fi
-            ATTEMPT=$((ATTEMPT + 1))
-            echo "  Attempt $ATTEMPT/$MAX_ATTEMPTS: HTTP $HTTP_CODE"
-            sleep 20
-          done
-
-          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-            echo "Preview environment did not become ready in time"
-            exit 1
+          PREVIEW_TEMPLATE="${{ vars.RAILWAY_PREVIEW_URL_TEMPLATE }}"
+          if [ -z "$PREVIEW_TEMPLATE" ]; then
+            PREVIEW_TEMPLATE="https://pr-{pr}-governada-app.up.railway.app"
           fi
 
-      - name: Smoke test preview
-        run: npm run smoke-test -- "${{ steps.preview.outputs.preview_url }}"
+          PREVIEW_URL="${PREVIEW_TEMPLATE//\{pr\}/${{ github.event.pull_request.number }}}"
+          echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+
+      - name: Verify preview release
+        run: npm run deploy:verify -- --base-url=${{ steps.preview.outputs.preview_url }} --profile=preview --expected-sha=${{ github.event.pull_request.head.sha }} --quiet
 
       - name: Comment preview URL on PR
         if: success()
         uses: actions/github-script@v8
         with:
           script: |
-            const body = `🔍 **Preview deployed and smoke tests passed**\n\n` +
-              `Preview URL: ${{ steps.preview.outputs.preview_url }}\n\n` +
-              `All ${8} smoke test checks passed.`;
+            const body = `Preview deployed and verification passed\n\nPreview URL: ${{ steps.preview.outputs.preview_url }}`;
 
-            // Find existing preview comment
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -99,5 +76,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `🚨 **Preview smoke tests failed**\n\nCheck the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`,
+              body: `Preview verification failed\n\nCheck the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`,
             });

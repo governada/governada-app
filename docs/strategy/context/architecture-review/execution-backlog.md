@@ -517,6 +517,7 @@ The repo has far more cron-triggered jobs than cron instrumentation and heartbea
 **Expected score impact:** Reliability and observability: reduce false-positive deploy verification
 **Depends on:** Chunk 10
 **PR group:** I
+**Implementation status:** Completed in this worktree
 
 ### Context
 
@@ -528,6 +529,18 @@ Post-deploy and preview verification currently depend too much on fixed waits an
 - Make preview verification derive the preview URL from deployment output rather than naming assumptions.
 - Remove fixed smoke-test count text from workflow comments and replace it with actual result data.
 
+### Progress So Far
+
+- Added `lib/runtimeMetadata.ts` and exposed release metadata through `/api/health/ready`, `/api/health`, and `/api/health/deep`.
+- Added `scripts/deploy-verify.ts` plus `scripts/lib/deployVerification.ts` as the canonical release-aware verification path.
+- `scripts/smoke-test.ts` now uses semantic health validation, release-SHA checks, and distinct production versus preview profiles.
+- `.github/workflows/post-deploy.yml` now verifies `github.event.workflow_run.head_sha` instead of sleeping for a fixed interval.
+- `.github/workflows/preview.yml` now verifies the PR head SHA and no longer hardcodes success counts in the PR comment.
+- Added wrapper and operator-doc alignment in `package.json`, `AGENTS.md`, and `README.md`.
+- Verified with `npm run test:unit -- __tests__/api/health-ready.test.ts __tests__/api/health.test.ts __tests__/lib/runtimeMetadata.test.ts __tests__/scripts/deployVerification.test.ts`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+
 ### Verification
 
 - Post-deploy checks prove they are testing the intended release.
@@ -538,5 +551,6 @@ Post-deploy and preview verification currently depend too much on fixed waits an
 
 - `.github/workflows/post-deploy.yml`
 - `.github/workflows/preview.yml`
+- `scripts/deploy-verify.ts`
+- `scripts/lib/deployVerification.ts`
 - `scripts/smoke-test.ts`
-- `scripts/check-deploy-health.mjs`

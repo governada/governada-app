@@ -103,6 +103,21 @@ function minutesToLabel(minutes: number | null): string {
   return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}m`;
 }
 
+function sortOpenCommitments(commitments: ReturnType<typeof toSystemsCommitment>[]) {
+  return commitments
+    .filter((commitment) => commitment.status !== 'done')
+    .sort((left, right) => {
+      if ((left.status === 'blocked') !== (right.status === 'blocked')) {
+        return left.status === 'blocked' ? -1 : 1;
+      }
+      if (left.isOverdue !== right.isOverdue) return left.isOverdue ? -1 : 1;
+      if (left.dueDate && right.dueDate) return left.dueDate.localeCompare(right.dueDate);
+      if (left.dueDate) return -1;
+      if (right.dueDate) return 1;
+      return left.createdAt < right.createdAt ? 1 : -1;
+    });
+}
+
 export async function buildSystemsDashboardData(): Promise<SystemsDashboardData> {
   const supabase = getSupabaseAdmin();
 
@@ -118,6 +133,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     apiUsageResult,
     reviewsResult,
     commitmentsResult,
+    openCommitmentsResult,
     automationAuditResult,
     reviewDraftAuditResult,
   ] = await Promise.all([
@@ -157,6 +173,11 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
       .select('id, review_id, title, summary, owner, status, due_date, linked_slo_ids, created_at')
       .order('created_at', { ascending: false })
       .limit(16),
+    supabase
+      .from('systems_commitments')
+      .select('id, review_id, title, summary, owner, status, due_date, linked_slo_ids, created_at')
+      .neq('status', 'done')
+      .order('created_at', { ascending: false }),
     supabase
       .from('admin_audit_log')
       .select('action, target, payload, created_at')
@@ -302,19 +323,10 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
 
   const commitmentRows = commitmentsResult.data || [];
   const allCommitments = commitmentRows.map(toSystemsCommitment);
-  const openCommitments = allCommitments
-    .filter((commitment) => commitment.status !== 'done')
-    .sort((left, right) => {
-      if ((left.status === 'blocked') !== (right.status === 'blocked')) {
-        return left.status === 'blocked' ? -1 : 1;
-      }
-      if (left.isOverdue !== right.isOverdue) return left.isOverdue ? -1 : 1;
-      if (left.dueDate && right.dueDate) return left.dueDate.localeCompare(right.dueDate);
-      if (left.dueDate) return -1;
-      if (right.dueDate) return 1;
-      return left.createdAt < right.createdAt ? 1 : -1;
-    })
-    .slice(0, 6);
+  const automationOpenCommitments = sortOpenCommitments(
+    (openCommitmentsResult.data || []).map(toSystemsCommitment),
+  );
+  const openCommitments = automationOpenCommitments.slice(0, 6);
 
   const commitmentsByReview = new Map(
     allCommitments.map((commitment) => [commitment.reviewId, commitment]),
@@ -322,7 +334,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
   const reviewHistory = (reviewsResult.data || []).map((row) =>
     toSystemsReviewRecord(row, commitmentsByReview.get(row.id) ?? null),
   );
-  const reviewDiscipline = buildReviewDiscipline(reviewHistory, openCommitments);
+  const reviewDiscipline = buildReviewDiscipline(reviewHistory, automationOpenCommitments);
 
   const automationState = buildSystemsAutomationState(automationAuditResult.data || []);
   const automationSummary = buildSystemsAutomationSummary(
@@ -468,6 +480,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     latestOperatorEscalation,
     latestCommitmentShepherd,
     suggestedReviewDraft,
+    automationOpenCommitments,
     openCommitments,
     reviewHistory,
     journeys: CRITICAL_JOURNEYS,

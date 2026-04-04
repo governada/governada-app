@@ -243,6 +243,7 @@ export interface SystemsDashboardData {
   latestOperatorEscalation?: SystemsOperatorEscalationRecord | null;
   latestCommitmentShepherd?: SystemsCommitmentShepherdRecord | null;
   suggestedReviewDraft?: SystemsReviewDraft | null;
+  automationOpenCommitments: SystemsCommitmentCard[];
   openCommitments: SystemsCommitmentCard[];
   reviewHistory: SystemsReviewRecord[];
   journeys: SystemsJourney[];

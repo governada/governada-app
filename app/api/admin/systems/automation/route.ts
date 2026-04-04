@@ -53,7 +53,7 @@ async function fetchAutomationAuditRows() {
     .limit(200);
 }
 
-async function runSystemsAutomationSweep(request: NextRequest, ctx: RouteContext) {
+export async function runSystemsAutomationSweep(request: NextRequest, ctx: RouteContext) {
   const actor = resolveAutomationActor(request, ctx);
   if (!actor) {
     const status = ctx.wallet ? 403 : 401;
@@ -79,7 +79,7 @@ async function runSystemsAutomationSweep(request: NextRequest, ctx: RouteContext
   const nextByKey = new Map(currentByKey);
   const specs = buildSystemsAutomationSpecs({
     reviewDiscipline: dashboard.reviewDiscipline,
-    openCommitments: dashboard.openCommitments,
+    openCommitments: dashboard.automationOpenCommitments,
     actions: dashboard.actions,
   });
 
@@ -191,7 +191,9 @@ async function runSystemsAutomationSweep(request: NextRequest, ctx: RouteContext
     return NextResponse.json({ error: 'Failed to record automation sweep' }, { status: 500 });
   }
 
-  const commitmentShepherdTarget = buildSystemsCommitmentShepherdTarget(dashboard.openCommitments);
+  const commitmentShepherdTarget = buildSystemsCommitmentShepherdTarget(
+    dashboard.automationOpenCommitments,
+  );
   const commitmentShepherd = buildSystemsCommitmentShepherdRecord(
     commitmentShepherdTarget,
     actor.actorType,

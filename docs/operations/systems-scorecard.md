@@ -3,7 +3,7 @@
 > **Purpose:** Weekly operating review for Governada's launch-critical systems.
 > **Cadence:** Update once per week.
 > **Primary references:** `docs/strategy/context/systems-operating-system.md`, `docs/operations/slo-ledger.md`, `docs/operations/weekly-systems-review.md`
-> **Working surface:** `/admin/systems` now keeps the live review log and open hardening commitments.
+> **Working surface:** `/admin/systems` now keeps the live review log, open hardening commitments, and a derived scorecard sync signal for streak, drift, and recurring hotspots.
 
 ---
 
@@ -18,6 +18,13 @@
 ---
 
 ## Scorecard
+
+The live cockpit is now the operational source of truth for scorecard sync. Before logging the next weekly review, use `/admin/systems` to confirm:
+
+- the latest durable review still matches the live posture
+- the weekly streak is intact
+- any current non-good SLOs are explicitly captured in the next review
+- recurring hotspot SLOs are being turned into concrete commitments instead of repeated narration
 
 | Dimension         | Metric                                             | Current status                                                                            | Evidence                                                         | Trend | Owner   | Action                                                   |
 | ----------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----- | ------- | -------------------------------------------------------- |

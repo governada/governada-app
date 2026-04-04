@@ -9,6 +9,7 @@ export type SystemsAutomationTriggerType =
   | 'review_discipline'
   | 'overdue_commitment'
   | 'systems_action';
+export type SystemsScorecardTrend = 'improving' | 'steady' | 'worsening' | 'new';
 
 export interface SystemsPromiseCard {
   id: string;
@@ -212,6 +213,34 @@ export interface SystemsReviewDraft {
   linkedSloIds: string[];
 }
 
+export interface SystemsScorecardReviewRecord {
+  id: string;
+  reviewDate: string;
+  reviewedAt: string;
+  overallStatus: SystemsStatus;
+  focusArea: string;
+  linkedSloIds: string[];
+  commitmentTitle?: string | null;
+  commitmentStatus?: SystemsCommitmentStatus | null;
+}
+
+export interface SystemsScorecardSync {
+  status: SystemsStatus;
+  headline: string;
+  currentValue: string;
+  target: string;
+  summary: string;
+  reviewCount: number;
+  weeklyStreak: number;
+  liveStatus: SystemsStatus;
+  lastReviewStatus?: SystemsStatus | null;
+  lastReviewedAt?: string | null;
+  driftSloIds: string[];
+  hotspotSloIds: string[];
+  trend: SystemsScorecardTrend;
+  recentReviews: SystemsScorecardReviewRecord[];
+}
+
 export interface SystemsDashboardData {
   generatedAt: string;
   overall: {
@@ -237,6 +266,7 @@ export interface SystemsDashboardData {
   actions: SystemsAction[];
   reviewLoop: SystemsReviewLoop;
   reviewDiscipline: SystemsReviewDiscipline;
+  scorecardSync: SystemsScorecardSync;
   automationSummary: SystemsAutomationSummary;
   automationFollowups: SystemsAutomationFollowup[];
   latestAutomationRun?: SystemsAutomationRunRecord | null;

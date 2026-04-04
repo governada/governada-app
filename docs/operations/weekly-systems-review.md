@@ -71,6 +71,7 @@ The review is intentionally shaped so it can be automated later from `/api/admin
 
 - summarize current SLO posture
 - highlight red/yellow shifts from the previous review
+- project the durable review history into a live scorecard sync signal with streak, drift, and recurring hotspot SLOs
 - propose one hardening commitment
 - pick the one blocked or overdue commitment that most needs an unblock-or-replace decision
 - open an inbox item for founder review

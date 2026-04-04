@@ -86,6 +86,23 @@ function buildDashboardFixture(): SystemsDashboardData {
       openCommitments: 2,
       overdueCommitments: 1,
     },
+    scorecardSync: {
+      status: 'warning',
+      headline: 'Live posture has drifted from the last logged review',
+      currentValue: '2 reviews / 2-week streak',
+      target: 'A fresh weekly review within 7 days that matches the live cockpit',
+      summary:
+        'The cockpit is currently different than the last durable review. Refresh the scorecard so the weekly record matches the current risk.',
+      reviewCount: 2,
+      weeklyStreak: 2,
+      liveStatus: 'warning',
+      lastReviewStatus: 'critical',
+      lastReviewedAt: '2026-03-17T12:00:00.000Z',
+      driftSloIds: ['freshness'],
+      hotspotSloIds: ['freshness', 'journeys'],
+      trend: 'improving',
+      recentReviews: [],
+    },
     automationSummary: {
       status: 'warning',
       headline: 'Automation is active, but it still needs founder follow-through',

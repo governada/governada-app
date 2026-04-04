@@ -12,11 +12,15 @@ import {
   Clock3,
   Gauge,
   HeartPulse,
+  History,
   Loader2,
   ListChecks,
+  Minus,
   ShieldCheck,
   Sparkles,
   Target,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getStoredSession } from '@/lib/supabaseAuth';
@@ -381,6 +385,39 @@ function coverageLabel(coverage: SystemsJourney['coverage']) {
   }
 }
 
+function scorecardTrendMeta(trend: SystemsDashboardData['scorecardSync']['trend']) {
+  switch (trend) {
+    case 'improving':
+      return {
+        label: 'Improving',
+        className: 'border-emerald-500/30 text-emerald-300',
+        icon: TrendingUp,
+      };
+    case 'worsening':
+      return {
+        label: 'Worsening',
+        className: 'border-red-500/30 text-red-300',
+        icon: TrendingDown,
+      };
+    case 'steady':
+      return {
+        label: 'Steady',
+        className: 'border-border text-muted-foreground',
+        icon: Minus,
+      };
+    default:
+      return {
+        label: 'New',
+        className: 'border-chart-1/40 text-chart-1',
+        icon: Sparkles,
+      };
+  }
+}
+
+function sloTitle(sloId: string, slos: SystemsDashboardData['slos']) {
+  return slos.find((slo) => slo.id === sloId)?.title ?? sloId;
+}
+
 function ActionCard({ action }: { action: SystemsAction }) {
   const priorityClasses =
     action.priority === 'P0'
@@ -557,6 +594,102 @@ function ReviewDisciplineCard({ reviewDiscipline }: { reviewDiscipline: SystemsR
             <p className="text-sm font-semibold mt-1">{reviewDiscipline.overdueCommitments}</p>
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ScorecardSyncCard({
+  scorecardSync,
+  slos,
+}: {
+  scorecardSync: SystemsDashboardData['scorecardSync'];
+  slos: SystemsDashboardData['slos'];
+}) {
+  const classes = statusClasses(scorecardSync.status);
+  const trend = scorecardTrendMeta(scorecardSync.trend);
+  const TrendIcon = trend.icon;
+
+  return (
+    <Card className={cn('border-l-2', classes.border)}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <Badge variant="outline" className={classes.badge}>
+              {statusLabel(scorecardSync.status)}
+            </Badge>
+            <h3 className="text-sm font-semibold">{scorecardSync.headline}</h3>
+          </div>
+          <History className={cn('h-4 w-4 shrink-0 mt-1', classes.text)} />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Current scorecard sync</p>
+          <p className="text-2xl font-bold leading-none">{scorecardSync.currentValue}</p>
+          <p className="text-xs text-muted-foreground">Target: {scorecardSync.target}</p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">{scorecardSync.summary}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Last review</p>
+            <p className="text-sm font-semibold mt-1">
+              {scorecardSync.lastReviewedAt
+                ? new Date(scorecardSync.lastReviewedAt).toLocaleDateString()
+                : 'Not logged'}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Live posture
+            </p>
+            <p className="text-sm font-semibold mt-1">{statusLabel(scorecardSync.liveStatus)}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Trend</p>
+            <div className="mt-1">
+              <Badge variant="outline" className={trend.className}>
+                <TrendIcon className="h-3 w-3" />
+                {trend.label}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        {scorecardSync.driftSloIds.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Missing live focus
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {scorecardSync.driftSloIds.map((sloId) => (
+                <Badge
+                  key={sloId}
+                  variant="outline"
+                  className="text-xs border-amber-500/30 text-amber-300"
+                >
+                  {sloTitle(sloId, slos)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {scorecardSync.hotspotSloIds.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Recurring hotspots
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {scorecardSync.hotspotSloIds.map((sloId) => (
+                <Badge key={sloId} variant="outline" className="text-xs">
+                  {sloTitle(sloId, slos)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -1473,6 +1606,7 @@ export function SystemsClient() {
         <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-6">
           <div className="space-y-4">
             <ReviewDisciplineCard reviewDiscipline={data.reviewDiscipline} />
+            <ScorecardSyncCard scorecardSync={data.scorecardSync} slos={data.slos} />
             <CommitmentShepherdCard
               shepherd={data.latestCommitmentShepherd}
               onApply={applyCommitmentShepherd}

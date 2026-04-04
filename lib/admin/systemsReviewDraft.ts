@@ -77,6 +77,7 @@ export function buildSystemsReviewDraft(
   const primaryFollowup = data.automationFollowups[0] ?? null;
   const commitmentShepherd =
     data.latestCommitmentShepherd?.status === 'focus' ? data.latestCommitmentShepherd : null;
+  const scorecardSync = data.scorecardSync.status !== 'good' ? data.scorecardSync : null;
   const primaryBlocker = data.story.blockers[0] ?? null;
   const primaryWatchout = data.story.watchouts[0] ?? null;
   const primaryWin = data.story.wins[0] ?? null;
@@ -85,6 +86,7 @@ export function buildSystemsReviewDraft(
     commitmentShepherd?.title ??
       primaryFollowup?.title ??
       primaryAction?.title ??
+      scorecardSync?.headline ??
       data.reviewLoop.currentFocus,
     120,
     'Launch systems hardening',
@@ -94,6 +96,7 @@ export function buildSystemsReviewDraft(
     primaryBlocker ??
       commitmentShepherd?.summary ??
       primaryFollowup?.summary ??
+      scorecardSync?.summary ??
       primaryWatchout ??
       data.overall.narrative,
     500,
@@ -126,6 +129,7 @@ export function buildSystemsReviewDraft(
     commitmentShepherd
       ? `Commitment shepherd: ${commitmentShepherd.summary} ${commitmentShepherd.recommendedAction}`
       : null,
+    scorecardSync ? `Scorecard sync: ${scorecardSync.summary}` : null,
     primaryFollowup
       ? `Automation follow-up: ${primaryFollowup.title}. ${primaryFollowup.recommendedAction}`
       : `Automation posture: ${data.automationSummary.summary}`,

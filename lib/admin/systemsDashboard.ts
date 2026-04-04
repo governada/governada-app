@@ -28,6 +28,7 @@ import {
   toSystemsCommitment,
   toSystemsReviewRecord,
 } from '@/lib/admin/systemsReview';
+import { buildSystemsScorecardSync } from '@/lib/admin/systemsScorecard';
 import {
   parseLatestSystemsReviewDraft,
   SYSTEMS_REVIEW_DRAFT_ACTION,
@@ -415,6 +416,11 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
   const overall = buildOverallNarrative(cards);
   const actions = buildRecommendedActions(cards);
   const reviewLoop = buildWeeklyReviewLoop(slos, actions);
+  const scorecardSync = buildSystemsScorecardSync({
+    reviewHistory,
+    liveStatus: overall.status,
+    liveConcernSloIds: slos.filter((slo) => slo.status !== 'good').map((slo) => slo.id),
+  });
 
   const wins: string[] = [];
   const watchouts: string[] = [];
@@ -474,6 +480,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     actions,
     reviewLoop,
     reviewDiscipline,
+    scorecardSync,
     automationSummary,
     automationFollowups: automationState.openFollowups,
     latestAutomationRun: automationState.latestRun,

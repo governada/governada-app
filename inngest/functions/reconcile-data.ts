@@ -18,6 +18,7 @@ import { alertDiscord, alertCritical } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import { runReconciliation } from '@/lib/reconciliation/comparator';
 import { isAvailable } from '@/lib/reconciliation/blockfrost';
+import { buildReconciliationSyncLogEntry } from '@/lib/reconciliation/sync-log';
 
 export const reconcileData = inngest.createFunction(
   {
@@ -78,19 +79,7 @@ export const reconcileData = inngest.createFunction(
       });
 
       // Also log to sync_log for unified monitoring
-      await supabase.from('sync_log').insert({
-        sync_type: 'reconciliation',
-        started_at: new Date(Date.now() - report.durationMs).toISOString(),
-        finished_at: report.checkedAt,
-        duration_ms: report.durationMs,
-        success: report.overallStatus !== 'mismatch',
-        metrics: {
-          overall_status: report.overallStatus,
-          checks: report.results.length,
-          mismatches: report.mismatches.length,
-          tier_scope: runTier2 ? 'tier1+tier2' : 'tier1',
-        },
-      });
+      await supabase.from('sync_log').insert(buildReconciliationSyncLogEntry(report, runTier2));
     });
 
     // Step 5: Alert on issues

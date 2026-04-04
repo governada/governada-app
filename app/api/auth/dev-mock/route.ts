@@ -8,6 +8,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { LEGACY_SESSION_COOKIE_NAMES, SESSION_COOKIE_NAME } from '@/lib/persistence';
 import { createSessionToken, SESSION_MAX_AGE_SECONDS } from '@/lib/supabaseAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
@@ -80,7 +81,10 @@ export async function POST(request: Request) {
   if (persona === 'anonymous') {
     // Clear session for anonymous testing
     const response = NextResponse.json({ persona: 'anonymous', cleared: true });
-    response.cookies.delete('drepscore_session');
+    response.cookies.delete(SESSION_COOKIE_NAME);
+    for (const legacyCookie of LEGACY_SESSION_COOKIE_NAMES) {
+      response.cookies.delete(legacyCookie);
+    }
     return response;
   }
 
@@ -144,13 +148,16 @@ export async function POST(request: Request) {
 
   const response = NextResponse.json(responseBody);
 
-  response.cookies.set('drepscore_session', sessionToken, {
+  response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
     httpOnly: true,
     secure: false, // Dev only — no HTTPS
     sameSite: 'lax',
     path: '/',
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
+  for (const legacyCookie of LEGACY_SESSION_COOKIE_NAMES) {
+    response.cookies.delete(legacyCookie);
+  }
 
   return response;
 }

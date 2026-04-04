@@ -1,4 +1,4 @@
-const CACHE_NAME = 'drepscore-shell-v1';
+const CACHE_NAME = 'governada-shell-v1';
 const SHELL_ASSETS = ['/offline'];
 
 self.addEventListener('install', (event) => {

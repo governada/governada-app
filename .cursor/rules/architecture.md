@@ -10,7 +10,7 @@ alwaysApply: false
 
 ## What This Is
 
-The civic hub for the Cardano Nation — makes governance visible, accountable, and participatory for every citizen. Ingests every governance action on-chain, layers opinionated scoring and analysis, and delivers personalized, actionable civic intelligence. Formerly DRepScore.
+The civic hub for the Cardano Nation — makes governance visible, accountable, and participatory for every citizen. Ingests every governance action on-chain, layers opinionated scoring and analysis, and delivers personalized, actionable civic intelligence.
 
 **Product vision and build sequence:** See `docs/strategy/ultimate-vision.md` for the definitive north star — citizen-centric vision, scoring audit, build phases, and how every system connects. See `.cursor/rules/strategy.md` for the condensed agent cheat sheet.
 
@@ -39,7 +39,7 @@ This project is fully deployed on Railway (Docker). Railway auto-deploys on merg
 
 ```ts
 import { BASE_URL } from '@/lib/constants';
-// Uses NEXT_PUBLIC_SITE_URL (set to https://drepscore.io in Railway), falls back to localhost
+// Uses NEXT_PUBLIC_SITE_URL (set to https://governada.io in Railway), falls back to localhost
 ```
 
 Never construct base URLs from env vars directly. `BASE_URL` is the single source of truth.
@@ -186,4 +186,4 @@ Any API route that uses JSX (e.g., `ImageResponse` from `next/og`) **must** use 
 
 ## Production URL
 
-https://drepscore.io (Governada domain TBD)
+https://governada.io

@@ -7,8 +7,7 @@ import { useWallet } from '@/utils/wallet';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { spring } from '@/lib/animations';
-
-const STORAGE_KEY = 'drepscore_onboarding_complete';
+import { STORAGE_KEYS, readStoredValue, writeStoredValue } from '@/lib/persistence';
 
 export function OnboardingOverlay() {
   const router = useRouter();
@@ -18,7 +17,7 @@ export function OnboardingOverlay() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (localStorage.getItem(STORAGE_KEY)) return;
+    if (readStoredValue(STORAGE_KEYS.onboardingComplete)) return;
     setVisible(true);
   }, []);
 
@@ -29,7 +28,7 @@ export function OnboardingOverlay() {
 
   const dismiss = () => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, '1');
+      writeStoredValue(STORAGE_KEYS.onboardingComplete, '1');
     }
     setVisible(false);
   };
@@ -44,7 +43,7 @@ export function OnboardingOverlay() {
 
   const handleFindMatch = () => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, '1');
+      writeStoredValue(STORAGE_KEYS.onboardingComplete, '1');
     }
     setVisible(false);
     router.push('/match');

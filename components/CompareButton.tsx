@@ -18,6 +18,7 @@ import { useWallet } from '@/utils/wallet';
 
 import { computeOverallAlignment } from '@/lib/alignment';
 import type { EnrichedDRep } from '@/lib/koios';
+import { STORAGE_KEYS, readStoredJson } from '@/lib/persistence';
 import type { UserPrefKey } from '@/types/drep';
 
 interface CompareButtonProps {
@@ -39,27 +40,13 @@ export function CompareButton({ currentDrepId, currentDrepName }: CompareButtonP
 
   const userPrefs = useMemo<UserPrefKey[]>(() => {
     if (typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem('drepscore_prefs');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed.userPrefs || [];
-      }
-    } catch {
-      /* ignore */
-    }
-    return [];
+    const parsed = readStoredJson<{ userPrefs?: UserPrefKey[] } | null>(STORAGE_KEYS.prefs, null);
+    return parsed?.userPrefs || [];
   }, []);
 
   const watchlist = useMemo<string[]>(() => {
     if (typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem('drepscore_watchlist');
-      if (stored) return JSON.parse(stored);
-    } catch {
-      /* ignore */
-    }
-    return [];
+    return readStoredJson<string[]>(STORAGE_KEYS.watchlist, []);
   }, []);
 
   const sortedDreps = useMemo(() => {

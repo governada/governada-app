@@ -24,7 +24,7 @@ Quick reference for all tools available to agents. Use these for full autonomous
 
 | CLI         | What it does            | Key commands                                                                             |
 | ----------- | ----------------------- | ---------------------------------------------------------------------------------------- |
-| **gh**      | GitHub operations       | `gh pr create`, `gh pr merge`, `gh pr checks --watch`, `gh auth switch --user drepscore` |
+| **gh**      | GitHub operations       | `gh pr create`, `gh pr merge`, `gh pr checks --watch`, `npm run gh:auth-status` |
 | **railway** | Deploy monitoring, logs | `railway logs`, `railway status`, `railway redeploy`                                     |
 | **inngest** | Local dev server        | `npx inngest-cli@latest dev`                                                             |
 

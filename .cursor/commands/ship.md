@@ -8,7 +8,7 @@ Before anything else, create these todos. The task is NOT complete until every t
 
 ```
 TodoWrite (use exact IDs):
-- ship-preflight → Verify gh auth (drepscore) + branch + force-dynamic audit
+- ship-preflight → Verify gh auth (governada) + branch + force-dynamic audit
 - ship-stage    → Stage files (targeted git add), review diff
 - ship-commit   → Write msg to .git/COMMIT_MSG, git commit -F
 - ship-push     → git push -u origin HEAD
@@ -24,7 +24,7 @@ TodoWrite (use exact IDs):
 
 ```powershell
 gh auth status
-# Must show drepscore. If not: gh auth switch --user drepscore
+# Must show governada. If not: npm run gh:auth-status
 git branch --show-current
 # Must NOT be main for features
 ```
@@ -91,16 +91,16 @@ Start-Sleep -Seconds 60 ; gh run view $run --json conclusion --jq '.conclusion'
 
 ```powershell
 # Health check
-Invoke-WebRequest -Uri "https://drepscore.io/api/health" -UseBasicParsing | Select-Object StatusCode
+Invoke-WebRequest -Uri "https://governada.io/api/health" -UseBasicParsing | Select-Object StatusCode
 
 # Inngest sync
-Invoke-WebRequest -Uri "https://drepscore.io/api/inngest" -Method PUT -UseBasicParsing
+Invoke-WebRequest -Uri "https://governada.io/api/inngest" -Method PUT -UseBasicParsing
 
 # Smoke tests
 npm run smoke-test
 ```
 
-Hit at least one changed endpoint/page on `drepscore.io` to verify the new code is live.
+Hit at least one changed endpoint/page on `governada.io` to verify the new code is live.
 
 ## Step 8: Cleanup
 

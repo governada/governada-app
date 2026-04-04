@@ -6,7 +6,7 @@ Dashboard and external service configurations for the Governada observability st
 
 ## 1. Sentry Alert Rules
 
-Navigate to **Sentry > drepscore > Alerts > Create Alert Rule**.
+Navigate to the **Governada Sentry project > Alerts > Create Alert Rule**.
 
 ### 1a. Error Spike
 
@@ -44,7 +44,7 @@ Navigate to **Sentry > drepscore > Alerts > Create Alert Rule**.
 
 ## 2. Sentry Web Vitals Dashboard
 
-Navigate to **Sentry > drepscore > Performance > Web Vitals**.
+Navigate to the **Governada Sentry project > Performance > Web Vitals**.
 
 The built-in Web Vitals view already shows LCP, FID/INP, CLS by page. To create a custom dashboard:
 

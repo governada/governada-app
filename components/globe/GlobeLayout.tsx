@@ -47,6 +47,7 @@ import { ClusterNebulae } from './ClusterNebula';
 import { ConstellationLines } from './GlobeEdges';
 import { setClusterCache } from '@/lib/globe/behaviors/clusterBehavior';
 import { useFeatureFlag } from '@/components/FeatureGate';
+import { STORAGE_KEYS, readStoredValue } from '@/lib/persistence';
 
 const WorkspaceCards = dynamic(
   () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
@@ -226,7 +227,7 @@ export function GlobeLayout({
   // drepId already destructured from useSegment() above
   useEffect(() => {
     if (typeof window === 'undefined' || !isAuthenticated) return;
-    const ts = localStorage.getItem('drepscore_last_visit');
+    const ts = readStoredValue(STORAGE_KEYS.lastVisit);
     if (ts) setPreviousVisitAt(new Date(Number(ts)).toISOString());
   }, [isAuthenticated]);
 

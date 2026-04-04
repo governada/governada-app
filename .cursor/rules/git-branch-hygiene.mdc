@@ -8,9 +8,9 @@ alwaysApply: true
 ## Directory Layout
 
 ```
-C:\Users\dalto\drepscore\
-  drepscore-app/           ← main (production, merges, hotfixes)
-  drepscore-<feature>/     ← one per active feature branch
+C:\Users\dalto\governada\
+  governada-app/           ← main (production, merges, hotfixes)
+  .claude\worktrees\<feature>/     ← one per active feature branch
 ```
 
 Each worktree has its own `node_modules`, `.env.local`, and `.next`. The git history is shared.
@@ -24,11 +24,10 @@ Pre-flight checklist (all steps mandatory, in order):
 1. **Verify plan exists**: Confirm `.cursor/plans/<feature>.plan.md` is written and committed to `main`. If not, write and commit it first (`docs: plan for <feature>`).
 2. **Create worktree and install deps**:
    ```
-   git worktree add ..\drepscore-<name> -b feature/<name>
-   Copy-Item .env.local ..\drepscore-<name>\.env.local
-   cd ..\drepscore-<name>; npm install
+   powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>
+      cd .claude\worktrees\<name>; npm install
    ```
-3. **Continue working in the same Cursor window.** Use `working_directory` on Shell calls to target the new worktree path (`c:\Users\dalto\drepscore\drepscore-<name>`). Do NOT open a new Cursor window.
+3. **Continue working in the same Cursor window.** Use `working_directory` on Shell calls to target the new worktree path (`c:\Users\dalto\governada\governada-app\.claude\worktrees\<name>`). Do NOT open a new Cursor window.
 
 The plan file is already in the worktree because it was committed to main before the worktree was created.
 
@@ -58,7 +57,7 @@ When a feature is complete:
    ```
 3. **Do NOT stop here.** Continue to merge, deploy, and validate autonomously per critical.md rule #2.
 
-When the user says "merge" from the **main worktree** (`drepscore-app`):
+When the user says "merge" from the **main worktree** (`governada-app`):
 
 1. Merge via GitHub CLI:
    ```
@@ -67,26 +66,26 @@ When the user says "merge" from the **main worktree** (`drepscore-app`):
    ```
 2. Clean up the worktree (delete `node_modules` first to avoid Windows file-lock hangs):
    ```
-   Remove-Item -Recurse -Force ..\drepscore-<name>\node_modules -ErrorAction SilentlyContinue
-   git worktree remove ..\drepscore-<name>
+   Remove-Item -Recurse -Force .claude\worktrees\<name>\node_modules -ErrorAction SilentlyContinue
+   git worktree remove .claude\worktrees\<name>
    git branch -d feature/<name>
    ```
 3. If the feature touched sync routes or analytics: trigger a sync and/or verify the analytics deploy hook fired.
 
-When the user says "merge" from a **feature worktree** (e.g. `drepscore-<name>`):
+When the user says "merge" from a **feature worktree** (e.g. `.claude\worktrees\<name>`):
 
 `gh pr merge` will fail because it tries to checkout main, which is locked by another worktree. Use the GitHub API directly:
 
 ```
-gh api repos/drepscore/drepscore-app/pulls/<pr-number>/merge -X PUT -f merge_method=squash -f commit_title="feat: <description> (#<pr-number>)"
+gh api repos/governada/governada-app/pulls/<pr-number>/merge -X PUT -f merge_method=squash -f commit_title="feat: <description> (#<pr-number>)"
 ```
 
 Then pull into the main worktree and clean up:
 ```
-# From drepscore-app (main worktree):
+# From governada-app (shared checkout):
 git pull origin main
-Remove-Item -Recurse -Force ..\drepscore-<name>\node_modules -ErrorAction SilentlyContinue
-git worktree remove ..\drepscore-<name>
+Remove-Item -Recurse -Force .claude\worktrees\<name>\node_modules -ErrorAction SilentlyContinue
+git worktree remove .claude\worktrees\<name>
 git branch -d feature/<name>
 ```
 
@@ -126,7 +125,7 @@ All `analytics/src/data/*.json.ts` files query Postgres directly at build time. 
 After merging to main, Railway deploys automatically. Monitor via:
 
 ```
-gh api repos/drepscore/drepscore-app/commits/<sha>/status --jq '.statuses[] | {state, description}'
+gh api repos/governada/governada-app/commits/<sha>/status --jq '.statuses[] | {state, description}'
 ```
 
 - Railway builds take 3-7 minutes. Poll every 60-120s.

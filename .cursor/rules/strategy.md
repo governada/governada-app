@@ -12,11 +12,11 @@ alwaysApply: false
 
 # Governada Strategy Context
 
-**Governada** (formerly DRepScore) is the civic hub for the Cardano Nation. Every ADA holder is a citizen of a decentralized nation. Governada makes governance visible, accountable, and participatory. Read `docs/strategy/ultimate-vision.md` for the full north star.
+**Governada** is the civic hub for the Cardano Nation. Every ADA holder is a citizen of a decentralized nation. Governada makes governance visible, accountable, and participatory. Read `docs/strategy/ultimate-vision.md` for the full north star.
 
 ## Core Identity
 
-- **Name:** Governada. Not DRepScore. Update all user-facing references.
+- **Name:** Governada. Update all user-facing references.
 - **Thesis:** Civic infrastructure for the Cardano Nation — not a dashboard, not a scoring tool.
 - **Primary persona:** Citizens (ADA holders). Representatives are served because it serves citizens.
 - **Moat:** Compounding historical governance data that grows every epoch. Time is the advantage.

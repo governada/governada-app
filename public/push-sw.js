@@ -3,7 +3,7 @@
  * Handles push notifications, notification click routing, and offline fallback.
  */
 
-const OFFLINE_CACHE = 'drepscore-offline-v1';
+const OFFLINE_CACHE = 'governada-offline-v1';
 const OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', (event) => {
@@ -50,7 +50,7 @@ self.addEventListener('push', (event) => {
       icon,
       badge,
       data: { url },
-      tag: payload.tag || 'drepscore-notification',
+      tag: payload.tag || 'governada-notification',
     })
   );
 });

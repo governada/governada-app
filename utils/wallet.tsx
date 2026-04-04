@@ -10,6 +10,7 @@ import {
   parseSessionToken,
   isSessionExpired,
 } from '@/lib/supabaseAuth';
+import { STORAGE_KEYS, readStoredValue, removeStoredValue, writeStoredValue } from '@/lib/persistence';
 import { deriveDRepIdFromStakeAddress, checkDRepExists } from '@/utils/drepId';
 import { WalletContext, type WalletError } from '@/utils/wallet-context';
 export type { WalletContextType, WalletError, WalletErrorType } from '@/utils/wallet-context';
@@ -126,7 +127,7 @@ function getCardanoApi(name: string): { enable(): Promise<CIP30Api> } | undefine
   return w.cardano?.[name];
 }
 
-const WALLET_NAME_KEY = 'drepscore_wallet_name';
+const WALLET_NAME_KEY = STORAGE_KEYS.walletName.current;
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [wallet, setWallet] = useState<BrowserWallet | null>(null);
@@ -176,7 +177,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // Auto-reconnect: if we have a valid session and a stored wallet name, silently reconnect
   useEffect(() => {
     const token = getStoredSession();
-    const storedWallet = localStorage.getItem(WALLET_NAME_KEY);
+    const storedWallet = readStoredValue(STORAGE_KEYS.walletName);
     if (!token || !storedWallet) return;
 
     const payload = parseSessionToken(token);
@@ -185,7 +186,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     // Peer connect sessions use WebRTC which doesn't survive page reloads.
     // Keep the auth session (userId/sessionAddress) but don't attempt wallet reconnect.
     if (localStorage.getItem('governada_connect_method') === 'peer') {
-      localStorage.removeItem(WALLET_NAME_KEY);
+      removeStoredValue(STORAGE_KEYS.walletName);
       return;
     }
 
@@ -255,7 +256,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         // Wallet extension unavailable — clear stored name but preserve session
-        localStorage.removeItem(WALLET_NAME_KEY);
+        removeStoredValue(STORAGE_KEYS.walletName);
       } finally {
         if (!cancelled) setReconnecting(false);
       }
@@ -295,7 +296,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setAddress(addresses[0]);
         if (hexAddresses.length > 0) setHexAddress(hexAddresses[0]);
         setConnected(true);
-        localStorage.setItem(WALLET_NAME_KEY, name);
+        writeStoredValue(STORAGE_KEYS.walletName, name);
 
         // Detect if this was a peer connect (wallet wasn't in detected extensions)
         const wasPeerConnect = !availableWallets.includes(name);
@@ -374,7 +375,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setBalanceAda(null);
     setError(null);
     setConnectMethod(null);
-    localStorage.removeItem(WALLET_NAME_KEY);
+    removeStoredValue(STORAGE_KEYS.walletName);
     localStorage.removeItem('governada_connect_method');
   };
 
@@ -470,7 +471,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     clearSessionCookie();
     setUserId(null);
     setSessionAddress(null);
-    localStorage.removeItem(WALLET_NAME_KEY);
+    removeStoredValue(STORAGE_KEYS.walletName);
   }, []);
 
   const refreshDelegation = useCallback(() => {

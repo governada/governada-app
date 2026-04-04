@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const STORAGE_KEY = 'drepscore_last_visit';
+import { STORAGE_KEYS, readStoredValue, writeStoredValue } from '@/lib/persistence';
 const HOURS_THRESHOLD = 4;
 const DISMISS_MS = 4000;
 
@@ -17,7 +16,7 @@ export function WelcomeBackToast({ streak }: WelcomeBackToastProps) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const lastVisit = localStorage.getItem(STORAGE_KEY);
+    const lastVisit = readStoredValue(STORAGE_KEYS.lastVisit);
     const now = Date.now();
     const fourHoursMs = HOURS_THRESHOLD * 60 * 60 * 1000;
     const shouldShow = lastVisit && now - parseInt(lastVisit, 10) > fourHoursMs;
@@ -25,10 +24,10 @@ export function WelcomeBackToast({ streak }: WelcomeBackToastProps) {
     if (shouldShow) {
       setVisible(true);
       const t = setTimeout(() => setVisible(false), DISMISS_MS);
-      localStorage.setItem(STORAGE_KEY, String(now));
+      writeStoredValue(STORAGE_KEYS.lastVisit, String(now));
       return () => clearTimeout(t);
     }
-    localStorage.setItem(STORAGE_KEY, String(now));
+    writeStoredValue(STORAGE_KEYS.lastVisit, String(now));
   }, []);
 
   return (

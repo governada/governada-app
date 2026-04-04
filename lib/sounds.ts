@@ -1,3 +1,5 @@
+import { STORAGE_KEYS, readStoredValue, writeStoredValue } from '@/lib/persistence';
+
 let audioCtx: AudioContext | null = null;
 
 function getCtx(): AudioContext | null {
@@ -13,12 +15,11 @@ function getCtx(): AudioContext | null {
 }
 
 function isSoundEnabled(): boolean {
-  if (typeof localStorage === 'undefined') return false;
-  return localStorage.getItem('drepscore-sound-enabled') === '1';
+  return readStoredValue(STORAGE_KEYS.soundEnabled) === '1';
 }
 
 export function setSoundEnabled(enabled: boolean): void {
-  localStorage.setItem('drepscore-sound-enabled', enabled ? '1' : '0');
+  writeStoredValue(STORAGE_KEYS.soundEnabled, enabled ? '1' : '0');
 }
 
 export function getSoundEnabled(): boolean {

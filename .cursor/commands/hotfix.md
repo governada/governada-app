@@ -54,7 +54,7 @@ Wait ~5 min after push.
 ```powershell
 Start-Sleep -Seconds 120
 $sha = (git rev-parse HEAD)
-gh api repos/drepscore/drepscore-app/commits/$sha/status --jq '.statuses[] | {state, description}'
+gh api repos/governada/governada-app/commits/$sha/status --jq '.statuses[] | {state, description}'
 # Repeat every 60s until state is 'success'
 ```
 
@@ -63,11 +63,11 @@ If failure: push empty retrigger commit. Mark `hotfix-deploy` complete.
 ## Step 5: Validate
 
 ```powershell
-Invoke-WebRequest -Uri "https://drepscore.io/api/health" -UseBasicParsing | Select-Object StatusCode
+Invoke-WebRequest -Uri "https://governada.io/api/health" -UseBasicParsing | Select-Object StatusCode
 npm run smoke-test
 ```
 
-Hit the fixed page/endpoint on `drepscore.io`. Mark `hotfix-validate` complete.
+Hit the fixed page/endpoint on `governada.io`. Mark `hotfix-validate` complete.
 
 ## Step 6: Report
 

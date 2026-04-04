@@ -55,23 +55,23 @@ Any `app/` file importing `@/lib/supabase` (directly or via `@/lib/data`) that i
 ## Environment
 
 - **Supabase project**: `pbfprhbaayvcrxokgicr`
-- **Production URL**: `https://drepscore.io` (Governada domain TBD)
-- **GitHub CLI**: Always `gh auth switch --user drepscore` before `gh` API calls. `tim-dd` account lacks collaborator perms.
+- **Production URL**: `https://governada.io`
+- **GitHub CLI**: Use `npm run gh:auth-status` to confirm the repo-scoped governada profile before `gh` API calls.
 - **MCP config** (`.cursor/mcp.json`): gitignored, contains secrets — NEVER overwrite
-- **Railway CLI**: Installed globally (`railway`). Use `railway logs` for build/deploy logs, `railway status` for current state. Linked to the Governada (formerly drepscore) project
-- **Inngest**: PUT `https://drepscore.io/api/inngest` after every deploy to sync functions. 22 durable functions total (see `architecture.md`). Verify with `npm run inngest:status`
+- **Railway CLI**: Installed globally (`railway`). Use `railway logs` for build/deploy logs, `railway status` for current state. Linked to the Governada project
+- **Inngest**: PUT `https://governada.io/api/inngest` after every deploy to sync functions. 22 durable functions total (see `architecture.md`). Verify with `npm run inngest:status`
 - **Post-deploy autonomous**: After any deploy, autonomously:
   1. Poll `railway deployment list` until latest shows `SUCCESS` — do not skip this step
-  2. `Invoke-WebRequest -Uri "https://drepscore.io" -Method GET` — verify HTTP 200
+  2. `Invoke-WebRequest -Uri "https://governada.io" -Method GET` — verify HTTP 200
   3. Apply pending migrations via Supabase MCP `apply_migration`
   4. PUT Inngest to sync functions
   5. `npm run inngest:status` — verify functions registered + recent runs healthy
   6. `npm run posthog:check <event>` — verify new instrumentation is firing (when deploying features with new events)
   7. Trigger new compute functions if they need initial data
-  8. Hit new/changed endpoints on `drepscore.io` to verify 200 responses
+  8. Hit new/changed endpoints on `governada.io` to verify 200 responses
      Do not ask the user for permission on these steps
-- **INNGEST_SERVE_HOST**: `https://drepscore.io`
+- **INNGEST_SERVE_HOST**: `https://governada.io`
 
 ## Key Env Vars (managed in Railway dashboard)
 
-`KOIOS_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `SESSION_SECRET`, `ADMIN_WALLETS`, `ANTHROPIC_API_KEY`, `POSTHOG_PERSONAL_API_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY`, `NEXT_PUBLIC_SITE_URL=https://drepscore.io`
+`KOIOS_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `SESSION_SECRET`, `ADMIN_WALLETS`, `ANTHROPIC_API_KEY`, `POSTHOG_PERSONAL_API_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY`, `NEXT_PUBLIC_SITE_URL=https://governada.io`

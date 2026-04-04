@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { LEGACY_SESSION_COOKIE_NAMES, SESSION_COOKIE_NAME } from '@/lib/persistence';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { createSessionToken, SESSION_MAX_AGE_SECONDS } from '@/lib/supabaseAuth';
 import { getFeatureFlag } from '@/lib/featureFlags';
@@ -116,13 +117,22 @@ export const POST = withRouteHandler(
       cohortId: invite.cohort_id,
     });
 
-    response.cookies.set('drepscore_session', sessionToken, {
+    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: SESSION_MAX_AGE_SECONDS,
     });
+    for (const legacyCookie of LEGACY_SESSION_COOKIE_NAMES) {
+      response.cookies.set(legacyCookie, '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0,
+      });
+    }
 
     logger.info('Preview session created', {
       context: 'auth/preview',

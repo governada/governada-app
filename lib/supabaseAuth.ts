@@ -1,10 +1,10 @@
 import * as jose from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
+import { STORAGE_KEYS, readStoredValue, removeStoredValue, writeStoredValue } from '@/lib/persistence';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
-const SESSION_KEY = 'drepscore_session';
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 export const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
@@ -140,17 +140,17 @@ export async function refreshSession(token: string): Promise<string | null> {
 
 export function saveSession(token: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(SESSION_KEY, token);
+  writeStoredValue(STORAGE_KEYS.session, token);
+  removeStoredValue(STORAGE_KEYS.sessionToken);
 }
 
 export function getStoredSession(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(SESSION_KEY);
+  return readStoredValue(STORAGE_KEYS.session) || readStoredValue(STORAGE_KEYS.sessionToken);
 }
 
 export function clearSession(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(SESSION_KEY);
+  removeStoredValue(STORAGE_KEYS.session);
+  removeStoredValue(STORAGE_KEYS.sessionToken);
 }
 
 export async function clearSessionCookie(): Promise<void> {

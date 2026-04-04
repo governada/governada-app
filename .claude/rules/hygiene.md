@@ -8,6 +8,8 @@ paths:
 ## Branch Hygiene
 
 - **Always start from fresh origin/main.** For worktrees, prefer `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>` so feature branches land in `.claude/worktrees/<name>` inside the repo sandbox. Raw git is `git worktree add .claude/worktrees/<name> -b feat/<name> origin/main`. Never develop on a stale or leftover branch. The sync-worktree hook auto-fast-forwards local main, but always specify `origin/main` as the start point.
+- **Use one Codex project root.** Open Codex on `C:\Users\dalto\governada\governada-app` and keep worktrees under `.claude/worktrees/`. Do not open separate Codex projects from individual worktree folders for this repo.
+- **If Windows sandbox blocks a mutating Git command, escalate with an approved prefix.** On Codex Desktop, `workspace-write` can still reject `git` writes or `node -> git` wrappers with `EPERM` / access denied. Rerun with `sandbox_permissions=require_escalated` using an already-approved prefix instead of asking the user first.
 - **Clean up after yourself.** When a worktree session is complete and the PR is merged, remove the worktree.
 - **Delete local branches after merge.** `gh pr merge --squash --delete-branch` only deletes the remote branch. Follow up with `git branch -d <branch>` locally. Use `-D` if squash-merged.
 - **Prune remotes at session start.** Run `git fetch --prune` to remove stale remote tracking refs.

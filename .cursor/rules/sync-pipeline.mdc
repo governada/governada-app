@@ -94,8 +94,8 @@ All Koios responses are validated via Zod schemas (`utils/koios-schemas.ts`) bef
 npx tsx scripts/sync-smoke-test.ts
 
 # Trigger a specific sync manually
-curl -H "Authorization: Bearer $CRON_SECRET" https://drepscore.io/api/sync/proposals
+curl -H "Authorization: Bearer $CRON_SECRET" https://governada.io/api/sync/proposals
 
 # Check sync health
-curl https://drepscore.io/api/health
+curl https://governada.io/api/health
 ```

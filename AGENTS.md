@@ -22,7 +22,7 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 
 ## Workflow
 
-1. If the task is feature work, create a fresh worktree first with `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`. Do not start feature work in the shared checkout.
+1. If the task is feature work, create a fresh worktree first with `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`. Do not start feature work in the shared checkout. `npm run worktree:new -- <name>` is a convenience wrapper, but on Windows Codex Desktop the direct PowerShell entrypoint is more reliable because it matches persistent approval prefixes cleanly.
 2. Start from fresh `origin/main`. When resuming an existing worktree or when session diagnostics show drift/setup gaps, run `npm run worktree:sync`.
 3. Read only the minimal context needed. Use the strategy registry and manifest before diving into the full vision docs.
 4. Make the smallest change that solves the actual problem.
@@ -44,11 +44,15 @@ Routine reads, edits, local verification, git hygiene, and PR preparation should
 
 Keep Codex Desktop in `workspace-write`. The goal is not removing the sandbox; it is removing prompts for routine shipping.
 
-- Preferred writable root: the repo parent, `C:\Users\dalto\governada\`, so worktree metadata and in-repo worktrees stay inside the writable area.
-- Prefer stable `npm run ...` wrappers over ad hoc shell commands for CI, deploy, and GitHub operations. They produce narrower, reusable approval prefixes.
-- Persist approvals for safe recurring prefixes such as `npm run gh:auth-status`, `npm run ci:watch`, `npm run ci:failed`, `npm run pre-merge-check`, `npm run deploy:verify`, `npm run inngest:register`, `git add`, `git commit -m`, `git push`, `git fetch origin main`, `git worktree add`, and `gh api repos/governada/governada-app/pulls`.
+- Preferred writable root: the repo root, `C:\Users\dalto\governada\governada-app\`, so `.claude/worktrees/` and git worktree metadata stay inside the writable area.
+- Open Codex on the shared repo root only. Do not open separate Codex projects rooted at `.claude/worktrees/<name>` or `C:\Users\dalto\.codex\worktrees\...` for this repo.
+- Prefer stable `npm run ...` wrappers for diagnostics, CI, deploy, and GitHub operations. For mutating Git/worktree setup on Windows Codex Desktop, prefer direct approved entrypoints such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`, `git fetch origin main`, and `git worktree add`.
+- For repo orientation, prefer `npm run session:doctor` over one-off `git branch`, `git worktree`, or `git stash` reads when it gives enough context.
+- Persist approvals for safe recurring prefixes such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1`, `npm run worktree:new`, `npm run worktree:sync`, `npm run session:doctor`, `npm run gh:auth-status`, `npm run auth:repair`, `npm run ci:watch`, `npm run ci:failed`, `npm run pre-merge-check`, `npm run deploy:verify`, `npm run inngest:register`, `git add`, `git commit -m`, `git push`, `git fetch origin main`, `git worktree add`, and `gh api repos/governada/governada-app/pulls`.
 - Do not persist approvals for broad shells or interpreters such as bare `powershell`, `cmd`, `node`, `python`, `git`, or `gh`.
+- On Windows Codex Desktop, if a mutating Git/worktree command or an `npm` wrapper that shells out to Git fails in `workspace-write` with `EPERM`, access denied, or a likely sandbox error, rerun it immediately with `sandbox_permissions=require_escalated` using an already-approved prefix. Do not stop to ask first unless the prefix itself is missing.
 - Repo-local GH context is provided by `npm run gh:auth-status` and the scripts in `scripts/lib/runtime.js`; do not rely on `gh` inferring the repo from the SSH remote alias.
+- The governada repo uses its own `GH_CONFIG_DIR` profile. `npm run gh:auth-status` and `npm run auth:repair` only affect that repo-scoped profile; they do not switch `gh` for unrelated repos or Claude Code projects.
 
 ## Setup Files
 

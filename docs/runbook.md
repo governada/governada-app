@@ -113,7 +113,7 @@
 
 ### Rollback Steps
 
-1. Go to Railway Dashboard > drepscore service > Deployments
+1. Go to Railway Dashboard > the Governada app service > Deployments
 2. Find the last known-good deployment
 3. Click the three-dot menu > "Rollback to this deployment"
 4. Verify health: `GET /api/health/deep`

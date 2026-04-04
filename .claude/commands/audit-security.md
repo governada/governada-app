@@ -68,7 +68,7 @@ Read and verify the complete auth flow:
 | Signature verification   | `app/api/auth/wallet/route.ts` | Uses `checkSignature()` from `@meshsdk/core`. Verifies against the claimed address.                       |
 | Address resolution       | `app/api/auth/wallet/route.ts` | Properly resolves reward/stake addresses via `resolveRewardAddress()`.                                    |
 | Session token generation | `lib/supabaseAuth.ts`          | JWT signed with `SESSION_SECRET` (HS256). Contains userId, walletAddress, expiresAt, jti.                 |
-| Token storage            | Client                         | httpOnly cookie (`drepscore_session`) + localStorage. Cookie has Secure flag in production. SameSite=Lax. |
+| Token storage            | Client                         | httpOnly cookie (`governada_session`) + localStorage. Cookie has Secure flag in production. SameSite=Lax. |
 
 **Attack scenarios to test mentally:**
 
@@ -162,7 +162,7 @@ For each route category, verify auth enforcement:
 
 - [ ] State-changing routes using Bearer tokens → immune to CSRF (browser doesn't auto-send Authorization headers)
 - [ ] State-changing routes using cookies only → need CSRF tokens or SameSite=Strict
-- [ ] Check: does any POST/PATCH/DELETE route rely solely on the `drepscore_session` cookie for auth?
+- [ ] Check: does any POST/PATCH/DELETE route rely solely on the `governada_session` cookie for auth?
 - [ ] The wallet auth flow (nonce → sign → submit) is inherently CSRF-resistant (requires wallet interaction)
 
 ---

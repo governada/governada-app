@@ -6,6 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $false
 
 function Get-Slug([string]$Value) {
   $slug = $Value.ToLowerInvariant() -replace '[^a-z0-9]+', '-'
@@ -13,6 +14,7 @@ function Get-Slug([string]$Value) {
   if ([string]::IsNullOrWhiteSpace($slug)) {
     throw "Name must contain at least one alphanumeric character."
   }
+
   return $slug
 }
 
@@ -23,12 +25,14 @@ if (-not $repoRoot) {
 
 $slug = Get-Slug $Name
 $branchName = if ($Branch) { $Branch } else { "feat/$slug" }
-$workspaceRoot = Split-Path -Parent $repoRoot
-$worktreePath = Join-Path $workspaceRoot "governada-$slug"
+$worktreesRoot = Join-Path $repoRoot '.claude\worktrees'
+$worktreePath = Join-Path $worktreesRoot $slug
 
 if (Test-Path $worktreePath) {
   throw "Target worktree path already exists: $worktreePath"
 }
+
+New-Item -ItemType Directory -Path $worktreesRoot -Force | Out-Null
 
 Write-Host "Fetching origin/main..."
 git fetch origin main

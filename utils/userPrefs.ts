@@ -1,12 +1,13 @@
 import { DRep, UserPrefKey, UserPrefs } from '@/types/drep';
+import { STORAGE_KEYS, readStoredValue, writeStoredValue } from '@/lib/persistence';
 
-export const LS_KEY = 'drepscore_prefs';
+export const LS_KEY = STORAGE_KEYS.prefs.current;
 
 export function getUserPrefs(): UserPrefs | null {
   if (typeof window === 'undefined') return null;
 
   try {
-    const stored = localStorage.getItem(LS_KEY);
+    const stored = readStoredValue(STORAGE_KEYS.prefs);
     if (!stored) return null;
     return JSON.parse(stored) as UserPrefs;
   } catch (error) {
@@ -19,7 +20,7 @@ export function saveUserPrefs(prefs: UserPrefs): void {
   if (typeof window === 'undefined') return;
 
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(prefs));
+    writeStoredValue(STORAGE_KEYS.prefs, JSON.stringify(prefs));
   } catch (error) {
     console.error('Failed to save user prefs:', error);
   }

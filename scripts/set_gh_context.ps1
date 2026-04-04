@@ -4,15 +4,8 @@ function Set-RepoGhContext {
   $env:GH_CONFIG_DIR = $ghConfigDir
   $env:GH_HOST = 'github.com'
   $env:GH_REPO = 'governada/governada-app'
-
-  $tokenPath = Join-Path $ghConfigDir 'token.txt'
-  if (Test-Path $tokenPath) {
-    $token = (Get-Content -LiteralPath $tokenPath -Raw -ErrorAction SilentlyContinue).Trim()
-    if ($token) {
-      $env:GH_TOKEN = $token
-      $env:GITHUB_TOKEN = $token
-    }
-  }
+  Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
+  Remove-Item Env:GITHUB_TOKEN -ErrorAction SilentlyContinue
 
   return $ghConfigDir
 }

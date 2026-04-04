@@ -1,15 +1,15 @@
 ---
-description: Product vision and UX principles for DRepScore — ensures all UI work aligns with the "wow" product vision
+description: Product vision and UX principles for Governada — ensures all UI work aligns with the "wow" product vision
 globs:
   - components/**
   - app/**
 alwaysApply: false
 ---
 
-# Product Vision — DRepScore
+# Product Vision — Governada
 
 ## Core Thesis
-DRepScore is a **governance relationship platform**, not a DRep directory. Treat users as governance citizens, not DRep shoppers.
+Governada is a **governance relationship platform**, not a DRep directory. Treat users as governance citizens, not DRep shoppers.
 
 ## Design Principles
 1. **Story first, data second.** Every screen tells a story before showing a spreadsheet.
@@ -35,11 +35,11 @@ DRepScore is a **governance relationship platform**, not a DRep directory. Treat
 
 ## Ambitious by Default — Engineering Standard
 
-DRepScore must be unmistakably premium. Every user-facing surface should look purpose-built, not assembled from a component library.
+Governada must be unmistakably premium. Every user-facing surface should look purpose-built, not assembled from a component library.
 
 1. **Default to the most visually distinctive option.** Custom SVG over Recharts, physics-based animations (Framer Motion/spring) over CSS transitions, bespoke visualizations over chart libraries. The user must explicitly request the simpler option.
 2. **Performance is a constraint, not a goal.** Lazy-loading (`next/dynamic`, `ssr: false`), code splitting, and adaptive quality tiers handle bundle concerns. A 200KB lazy-loaded package with zero LCP impact is always acceptable for a premium result.
-3. **Every screenshot must be unmistakably DRepScore.** If a component could exist in any shadcn/Next.js app, it needs more work.
+3. **Every screenshot must be unmistakably Governada.** If a component could exist in any shadcn/Next.js app, it needs more work.
 4. **"Good enough" creates rework; "premium" ships once.** The constellation hero is React Three Fiber with WebGL bloom — that's the baseline for hero-level visuals.
 
 **Applies to:** hero sections, profile pages, data visualizations, OG images, share cards, onboarding.

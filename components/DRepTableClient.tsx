@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, LayoutGrid, TableProperties } from 'lucide-react';
 import { SizeTier } from '@/utils/scoring';
 import { GitCompareArrows, X } from 'lucide-react';
+import { STORAGE_KEYS, readStoredValue, writeStoredValue } from '@/lib/persistence';
 import { useWallet } from '@/utils/wallet';
 import { cn } from '@/lib/utils';
 
@@ -34,15 +35,12 @@ type ViewMode = 'table' | 'cards';
 
 const PAGE_SIZE = 10;
 const CARD_PAGE_SIZE = 21;
-const VIEW_MODE_KEY = 'drepscore_view_mode';
 
 function getInitialViewMode(): ViewMode {
   if (typeof window === 'undefined') return 'cards';
-  try {
-    const stored = localStorage.getItem(VIEW_MODE_KEY);
-    if (stored === 'table' || stored === 'cards') return stored;
-  } catch {
-    /* noop */
+  const stored = readStoredValue(STORAGE_KEYS.viewMode);
+  if (stored === 'table' || stored === 'cards') {
+    return stored;
   }
   return window.innerWidth >= 768 ? 'table' : 'cards';
 }
@@ -84,7 +82,9 @@ export function DRepTableClient({
     }
     let cancelled = false;
     const token =
-      typeof window !== 'undefined' ? localStorage.getItem('drepscore_session_token') : null;
+      typeof window !== 'undefined'
+        ? readStoredValue(STORAGE_KEYS.session) || readStoredValue(STORAGE_KEYS.sessionToken)
+        : null;
     if (!token) return;
 
     fetch(`/api/governance/matches/detail?drepId=${encodeURIComponent(quickViewDrep.drepId)}`, {
@@ -187,11 +187,7 @@ export function DRepTableClient({
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
     setCurrentPage(1);
-    try {
-      localStorage.setItem(VIEW_MODE_KEY, mode);
-    } catch {
-      /* noop */
-    }
+    writeStoredValue(STORAGE_KEYS.viewMode, mode);
     import('@/lib/posthog')
       .then(({ posthog }) => {
         posthog.capture('drep_view_mode_changed', { mode });

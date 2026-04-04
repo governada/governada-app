@@ -2,18 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { ProposalVoteDetail } from '@/lib/data';
+import { STORAGE_KEYS, readStoredJson } from '@/lib/persistence';
 import { ProposalVotersClient } from '@/components/ProposalVotersClient';
 import { useWallet } from '@/utils/wallet';
 
-const WATCHLIST_KEY = 'drepscore_watchlist';
-
 function getLocalWatchlist(): string[] {
   if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || '[]');
-  } catch {
-    return [];
-  }
+  return readStoredJson<string[]>(STORAGE_KEYS.watchlist, []);
 }
 
 interface Props {

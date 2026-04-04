@@ -15,6 +15,7 @@ import {
   isValidLocale,
   parseAcceptLanguage,
 } from '@/lib/i18n/config';
+import { LEGACY_SESSION_COOKIE_NAMES, SESSION_COOKIE_NAME } from '@/lib/persistence';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -35,6 +36,13 @@ const DISCOVER_TAB_MAP: Record<string, string> = {
 };
 
 const AUTH_REQUIRED_PATHS = ['/workspace', '/you'];
+
+function getSessionCookie(request: NextRequest) {
+  return (
+    request.cookies.get(SESSION_COOKIE_NAME) ??
+    LEGACY_SESSION_COOKIE_NAMES.map((name) => request.cookies.get(name)).find(Boolean)
+  );
+}
 
 /**
  * Build the Content-Security-Policy header with a per-request nonce.
@@ -114,7 +122,7 @@ export function proxy(request: NextRequest) {
 
   // ── Anonymous /governance redirect (server-side for faster nav) ──
   if (pathname === '/governance') {
-    const session = request.cookies.get('drepscore_session');
+    const session = getSessionCookie(request);
     if (!session?.value) {
       return withLocale(
         NextResponse.redirect(new URL('/governance/proposals', request.url)),
@@ -125,7 +133,7 @@ export function proxy(request: NextRequest) {
 
   // ── Auth gate ─────────────────────────────────────────────────────
   if (AUTH_REQUIRED_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
-    const session = request.cookies.get('drepscore_session');
+    const session = getSessionCookie(request);
     const isPrefetch =
       request.headers.get('next-router-prefetch') === '1' ||
       request.headers.get('purpose') === 'prefetch' ||
@@ -140,7 +148,7 @@ export function proxy(request: NextRequest) {
 
   // Block preview users from admin routes
   if (pathname.startsWith('/admin')) {
-    const session = request.cookies.get('drepscore_session');
+    const session = getSessionCookie(request);
     if (session?.value) {
       try {
         const payload = JSON.parse(atob(session.value.split('.')[1]));

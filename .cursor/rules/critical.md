@@ -19,7 +19,7 @@ These override all other guidance when in conflict.
    4. Apply pending migrations via Supabase MCP `apply_migration`
    5. Monitor Railway deployment (`railway logs` to watch build, poll until healthy)
    6. PUT `/api/inngest` if Inngest functions were added/modified → `npm run inngest:status` to verify
-   7. Hit new/changed endpoints on `drepscore.io` to verify 200 responses
+   7. Hit new/changed endpoints on `governada.io` to verify 200 responses
    8. `npm run posthog:check <event>` if new analytics events were added
    9. Clean up worktree
       Never say "PR created — merge when ready." Never say "build complete — PR when ready." Never present a deployment checklist. Just do it. Corrected 5 times. See `workflow.md` "Post-Build: Ship It" for the full sequence.
@@ -41,7 +41,7 @@ These override all other guidance when in conflict.
 
 10. **Read `tasks/lessons.md` at session start. [violated 1x, last: 2026-02-26]** Before doing anything, check for patterns that prevent repeat mistakes.
 
-11. **Verify deploy — don't assume. [violated 4x, last: 2026-03-03]** After merge: poll CI until green, poll Railway until deployed, hit `drepscore.io` to smoke-test. Never report completion while CI is red or deploy is pending.
+11. **Verify deploy — don't assume. [violated 4x, last: 2026-03-03]** After merge: poll CI until green, poll Railway until deployed, hit `governada.io` to smoke-test. Never report completion while CI is red or deploy is pending.
 
 12. **`.env.local` is PRODUCTION. [violated 1x, last: 2026-02-28]** Any local operation hitting Supabase/Koios/external services is a production operation. Never run sync, backfills, or write-path tests from localhost without explicit user approval.
 

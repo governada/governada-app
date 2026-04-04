@@ -7,25 +7,24 @@ import { Search, X, Clock } from 'lucide-react';
 import { EnrichedDRep } from '@/lib/koios';
 import { getDRepDisplayName } from '@/utils/display';
 import { cn } from '@/lib/utils';
+import { STORAGE_KEYS, readStoredJson, writeStoredValue } from '@/lib/persistence';
 import { posthog } from '@/lib/posthog';
 
-const RECENT_KEY = 'drepscore_recent_searches';
 const MAX_RECENT = 5;
 const MAX_SUGGESTIONS = 5;
 
 function getRecentSearches(): string[] {
   if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]').slice(0, MAX_RECENT);
-  } catch {
-    return [];
-  }
+  return readStoredJson<string[]>(STORAGE_KEYS.recentSearches, []).slice(0, MAX_RECENT);
 }
 
 function saveRecentSearch(query: string) {
   if (typeof window === 'undefined' || !query.trim()) return;
   const existing = getRecentSearches().filter((s) => s !== query);
-  localStorage.setItem(RECENT_KEY, JSON.stringify([query, ...existing].slice(0, MAX_RECENT)));
+  writeStoredValue(
+    STORAGE_KEYS.recentSearches,
+    JSON.stringify([query, ...existing].slice(0, MAX_RECENT)),
+  );
 }
 
 interface SmartSearchProps {

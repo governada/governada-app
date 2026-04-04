@@ -37,16 +37,16 @@ CI green does NOT mean deployed — Railway builds independently. Budget 5 min a
 
 ```powershell
 # 1. Health check — expect 200
-Invoke-WebRequest -Uri "https://drepscore.io/api/health" -UseBasicParsing | Select-Object StatusCode
+Invoke-WebRequest -Uri "https://governada.io/api/health" -UseBasicParsing | Select-Object StatusCode
 
 # 2. Inngest function sync — expect 200
-Invoke-WebRequest -Uri "https://drepscore.io/api/inngest" -Method PUT -UseBasicParsing
+Invoke-WebRequest -Uri "https://governada.io/api/inngest" -Method PUT -UseBasicParsing
 
 # 3. Smoke tests
 npm run smoke-test
 
 # 4. Feature-specific — hit the changed page or endpoint
-Invoke-WebRequest -Uri "https://drepscore.io/<changed-route>" -UseBasicParsing
+Invoke-WebRequest -Uri "https://governada.io/<changed-route>" -UseBasicParsing
 ```
 
 If ANY check fails: investigate, fix, push follow-up commit. Never report "done" until all 4 pass.

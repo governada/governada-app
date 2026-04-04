@@ -133,7 +133,7 @@ Prompt template:
 > })
 >   .then((r) => r.json())
 >   .then((data) => {
->     localStorage.setItem('drepscore_session', data.sessionToken);
+>     localStorage.setItem('governada_session', data.sessionToken);
 >     if (data.segmentOverride) {
 >       sessionStorage.setItem(
 >         'governada_segment',

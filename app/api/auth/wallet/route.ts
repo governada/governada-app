@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { DataSignature } from '@meshsdk/core';
+import { LEGACY_SESSION_COOKIE_NAMES, SESSION_COOKIE_NAME } from '@/lib/persistence';
 import { createSessionToken, SESSION_MAX_AGE_SECONDS } from '@/lib/supabaseAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { verifyNonce } from '@/lib/nonce';
@@ -124,13 +125,22 @@ export const POST = withRouteHandler(
       address,
     });
 
-    response.cookies.set('drepscore_session', sessionToken, {
+    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: SESSION_MAX_AGE_SECONDS,
     });
+    for (const legacyCookie of LEGACY_SESSION_COOKIE_NAMES) {
+      response.cookies.set(legacyCookie, '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0,
+      });
+    }
 
     captureServerEvent('wallet_authenticated_server', { wallet_address: address }, address);
 

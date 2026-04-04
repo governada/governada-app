@@ -1,3 +1,5 @@
+import { findCookieValue } from './lib/persistence';
+
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     const { validateEnv } = await import('./lib/env');
@@ -43,10 +45,10 @@ function extractSessionPayload(
   cookieHeader: string | undefined,
 ): { walletAddress?: string } | null {
   if (!cookieHeader) return null;
-  const match = cookieHeader.match(/drepscore_session=([^;]+)/);
-  if (!match) return null;
+  const token = findCookieValue(cookieHeader);
+  if (!token) return null;
   try {
-    const parts = match[1].split('.');
+    const parts = token.split('.');
     if (parts.length < 2) return null;
     const payload = JSON.parse(decodeBase64Url(parts[1]));
     return payload as { walletAddress?: string };

@@ -68,10 +68,10 @@
 
 ## 2026-03-02 — Sessions 14-15
 
-### Production domain is drepscore.io, NOT drepscore.com
+### Production domain is governada.io, not the legacy .com redirect
 
-- **Context**: `drepscore.com` is a legacy domain (previously pointed to Vercel, now a redirect). The production domain is `drepscore.io` on Railway.
-- **Pattern**: Always use `drepscore.io` for production URLs. Never reference Vercel for hosting — we migrated fully to Railway (see ADR-003).
+- **Context**: The legacy `.com` domain previously pointed to Vercel and now redirects. The production domain is `governada.io` on Railway.
+- **Pattern**: Always use `governada.io` for production URLs. Never reference Vercel for hosting — we migrated fully to Railway (see ADR-003).
 - **Promoted to rule**: `architecture.md`, `critical.md` (#3).
 
 ### PowerShell — consolidated (appeared 6+ times across Sessions 8-21)
@@ -99,7 +99,7 @@
 
 - **Context**: Added `sync-drep-scores` Inngest function, deployed to Railway, sent events — nothing happened. No sync_log entry, no errors, no score columns populated.
 - **Root cause**: Inngest cloud didn't know about the new function. After deploy, you must hit `PUT /api/inngest` to register new functions. Railway auto-deploys the code but doesn't trigger the Inngest sync.
-- **Fix**: `Invoke-WebRequest -Uri "https://drepscore.io/api/inngest" -Method PUT -Body '{}' -ContentType "application/json"`. Returns `{"modified":true}` when new functions are registered.
+- **Fix**: `Invoke-WebRequest -Uri "https://governada.io/api/inngest" -Method PUT -Body '{}' -ContentType "application/json"`. Returns `{"modified":true}` when new functions are registered.
 - **Pattern**: After any deploy that adds/modifies Inngest functions, always PUT the `/api/inngest` endpoint.
 - **Promoted to rule**: `deploy.md` Post-deploy Validation step 2; `workflow.md` Ship It Checklist step 9.
 

@@ -23,7 +23,7 @@ After code compiles clean, execute this IMMEDIATELY without asking:
 7. Apply pending migrations via Supabase MCP `apply_migration` → then `npm run gen:types`
 8. Monitor Railway deployment: `railway logs` to watch build, poll until healthy
 9. PUT `/api/inngest` if Inngest functions were added/modified → `npm run inngest:status` to verify
-10. Hit new/changed endpoints on `drepscore.io` to verify
+10. Hit new/changed endpoints on `governada.io` to verify
 11. `npm run posthog:check <event>` if new analytics events were added
 12. `git checkout main; git pull`
 13. Update `tasks/lessons.md` if corrections occurred
@@ -38,7 +38,7 @@ When a `.cursor/plans/*.plan.md` drove the work, audit before PR. See global wor
 
 **Process**: Spawn a readonly `generalPurpose` subagent with the plan file + `git diff main...HEAD`. It reports each plan item as Done / Adapted / Gap. Fix all Gaps, then include the audit summary in the PR body under `## Plan Audit`.
 
-**DRepScore-specific checks** the auditor must also verify:
+**Governada-specific checks** the auditor must also verify:
 
 - PostHog events for every new user interaction (per `analytics.mdc`)
 - Supabase RLS policies if new tables/columns were added

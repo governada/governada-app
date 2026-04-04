@@ -3,6 +3,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useWallet } from '@/utils/wallet';
 import { EnrichedDRep } from '@/lib/koios';
+import {
+  STORAGE_KEYS,
+  readStoredJson,
+  readStoredValue,
+  writeStoredValue,
+} from '@/lib/persistence';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -46,10 +52,6 @@ export interface VoteActivityItem {
 
 // ── LocalStorage keys ───────────────────────────────────────────────────────
 
-const PREV_MATCH_SCORES_KEY = 'drepscore_prev_match_scores';
-const LAST_VISIT_KEY = 'drepscore_last_visit';
-const DISMISSED_ALERTS_KEY = 'drepscore_dismissed_alerts';
-const WATCHLIST_KEY = 'drepscore_watchlist';
 const NCL_LAST_THRESHOLD_KEY = 'governada_ncl_last_threshold';
 
 // ── Thresholds ──────────────────────────────────────────────────────────────
@@ -59,50 +61,34 @@ const SHIFT_THRESHOLD = 8;
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function getStoredMatchScores(): Record<string, { score: number; timestamp: number }> {
-  if (typeof window === 'undefined') return {};
-  try {
-    return JSON.parse(localStorage.getItem(PREV_MATCH_SCORES_KEY) || '{}');
-  } catch {
-    return {};
-  }
+  return readStoredJson<Record<string, { score: number; timestamp: number }>>(
+    STORAGE_KEYS.prevMatchScores,
+    {},
+  );
 }
 
 function storeMatchScores(data: Record<string, { score: number; timestamp: number }>) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PREV_MATCH_SCORES_KEY, JSON.stringify(data));
+  writeStoredValue(STORAGE_KEYS.prevMatchScores, JSON.stringify(data));
 }
 
 function getLastVisit(): number {
-  if (typeof window === 'undefined') return 0;
-  return parseInt(localStorage.getItem(LAST_VISIT_KEY) || '0', 10);
+  return parseInt(readStoredValue(STORAGE_KEYS.lastVisit) || '0', 10);
 }
 
 function setLastVisit(ts: number) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(LAST_VISIT_KEY, String(ts));
+  writeStoredValue(STORAGE_KEYS.lastVisit, String(ts));
 }
 
 function getDismissedAlerts(): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    return new Set(JSON.parse(localStorage.getItem(DISMISSED_ALERTS_KEY) || '[]'));
-  } catch {
-    return new Set();
-  }
+  return new Set(readStoredJson<string[]>(STORAGE_KEYS.dismissedAlerts, []));
 }
 
 function persistDismissedAlerts(ids: Set<string>) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify([...ids]));
+  writeStoredValue(STORAGE_KEYS.dismissedAlerts, JSON.stringify([...ids]));
 }
 
 function getWatchlist(): string[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(WATCHLIST_KEY) || '[]');
-  } catch {
-    return [];
-  }
+  return readStoredJson<string[]>(STORAGE_KEYS.watchlist, []);
 }
 
 function getNclLastThreshold(): number {

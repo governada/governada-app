@@ -4,8 +4,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, symlinkSync } from '
 import path from 'node:path';
 import { commandOutput, getScriptContext } from './lib/runtime.mjs';
 
-const usage =
-  'npm run worktree:new -- <name> [--branch <branch>] [--no-node-modules-link]';
+const usage = 'npm run worktree:new -- <name> [--branch <branch>] [--no-node-modules-link]';
 
 function parseArgs(argv) {
   const options = {
@@ -57,7 +56,10 @@ function parseArgs(argv) {
 }
 
 function slugify(value) {
-  const slug = value.toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-+|-+$/gu, '');
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-+|-+$/gu, '');
   if (!slug) {
     throw new Error('Name must contain at least one alphanumeric character.');
   }

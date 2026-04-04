@@ -46,7 +46,7 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
     let proposalCount = 0;
     let voteCount = 0;
     let summaryCount = 0;
-    let voteSnapshotCount = 0;
+    const voteSnapshotCount = 0;
     let pushSent = 0;
 
     let openProposals: { txHash: string; index: number }[] = [];

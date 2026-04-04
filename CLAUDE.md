@@ -4,6 +4,8 @@ Governance intelligence for the Cardano Nation.
 
 ## Autonomous Deployment Pipeline
 
+Windows Codex Desktop agents should use `npm run git:stage -- ...`, `npm run git:commit -- --message "..."`, and `npm run git:push` for local git mutation. For live production checks, use `npm run health:ready`, `npm run health:status`, `npm run health:api`, and `npm run health:reconciliation`.
+
 Implementation is NOT complete until deployed and validated in production. Use `/ship` for the full pipeline (authoritative). Manual steps: preflight → commit → push → PR → CI (background) → pre-merge-check → `npm run pr:ready` if needed → `npm run pr:merge` → deploy-verifier (background) → smoke-test → visual verification (UI changes). If Inngest functions changed: `npm run inngest:register`. If deploy fails: `npm run rollback`.
 
 ## Hard Constraints
@@ -60,6 +62,11 @@ Agents have **full autonomous permission** to execute without asking. The `setti
 ## Codex Desktop Sandbox
 
 Keep Codex Desktop in `workspace-write`. The target is smooth autonomous shipping with narrow persistent approvals, not unrestricted machine access.
+
+- Wrapper-first rule: use `npm run git:stage -- ...`, `npm run git:commit -- --message "..."`, `npm run git:push`, `npm run health:ready`, `npm run health:status`, `npm run health:api`, and `npm run health:reconciliation` instead of raw git or ad hoc PowerShell HTTP commands.
+- Add the wrapper approvals too: `npm run git:stage`, `npm run git:commit`, `npm run git:push`, `npm run health:ready`, `npm run health:status`, `npm run health:api`, and `npm run health:reconciliation`.
+- After pulling wrapper changes on a new machine or after repo hardening updates, run `npm run codex:sync-windows-rules` once to seed the exact persistent Codex approvals for these wrapper commands.
+- Treat raw `git add`, raw `git commit`, raw `git push`, `Invoke-RestMethod`, and `Invoke-WebRequest` as fallback-only for this repo.
 
 - Best writable root: `C:\Users\dalto\governada\governada-app\` so `.claude/worktrees/` and git worktree metadata stay inside the writable area.
 - Open Codex on the shared repo root only. Do **not** open separate Codex projects rooted at `.claude/worktrees/<name>` or `C:\Users\dalto\.codex\worktrees\...` for this repo.

@@ -14,15 +14,16 @@ Execute the full Governada deploy pipeline. Do NOT pause between steps.
 7. Create PR: `gh pr create -R governada/governada-app --title "<type>: <description>" --body "<summary>"`
 8. Poll CI with `npm run ci:watch`. If it fails, inspect with `npm run ci:failed`, fix, push, re-check (max 3 attempts)
 9. Pre-merge check: `npm run pre-merge-check -- <PR#>`
-10. Merge: `gh api repos/governada/governada-app/pulls/<N>/merge -X PUT -f merge_method=squash`
-11. Apply pending migrations via Supabase MCP `apply_migration`
-12. If migrations applied: `npm run gen:types`, commit and push updated `types/database.ts`
-13. **Verify production** — Railway auto-deploys from merge. **Always** launch `deploy-verifier` subagent in background (run_in_background: true). Do NOT wait for it — continue with cleanup or respond to the user. Report result when the notification arrives.
-14. If Inngest functions changed: `curl -X PUT https://governada.io/api/inngest` then `npm run inngest:status`
-15. Verify endpoints: `curl -s -o /dev/null -w "%{http_code}" https://governada.io/<path>` for each new/changed route
-16. `npm run smoke-test`
-17. If new analytics events: `npm run posthog:check <event>`
-18. Clean up: if worktree, switch to main worktree to verify
+10. If the PR is draft, promote it with `npm run pr:ready -- <PR#>`
+11. Merge: `npm run pr:merge -- <PR#>`
+12. Apply pending migrations via Supabase MCP `apply_migration`
+13. If migrations applied: `npm run gen:types`, commit and push updated `types/database.ts`
+14. **Verify production** — Railway auto-deploys from merge. **Always** launch `deploy-verifier` subagent in background (run_in_background: true). Do NOT wait for it — continue with cleanup or respond to the user. Report result when the notification arrives.
+15. If Inngest functions changed: `curl -X PUT https://governada.io/api/inngest` then `npm run inngest:status`
+16. Verify endpoints: `curl -s -o /dev/null -w "%{http_code}" https://governada.io/<path>` for each new/changed route
+17. `npm run smoke-test`
+18. If new analytics events: `npm run posthog:check <event>`
+19. Clean up: if worktree, switch to main worktree to verify
 
 Report final status only after ALL verification passes.
 

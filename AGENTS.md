@@ -28,8 +28,10 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 4. Make the smallest change that solves the actual problem.
 5. Run `npm run agent:validate` and the relevant local verification for the scope.
 6. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, and `Impact` sections.
-7. Before merging, run `npm run pre-merge-check -- <PR#>`.
-8. After merge, verify deploy health and smoke tests with `npm run deploy:verify`.
+7. If a draft PR is ready to ship, promote it with `npm run pr:ready -- <PR#>`.
+8. Before merging, run `npm run pre-merge-check -- <PR#>`.
+9. Merge with `npm run pr:merge -- <PR#>`.
+10. After merge, verify deploy health and smoke tests with `npm run deploy:verify`.
 
 ## Autonomy Boundary
 
@@ -48,7 +50,8 @@ Keep Codex Desktop in `workspace-write`. The goal is not removing the sandbox; i
 - Open Codex on the shared repo root only. Do not open separate Codex projects rooted at `.claude/worktrees/<name>` or `C:\Users\dalto\.codex\worktrees\...` for this repo.
 - Prefer stable `npm run ...` wrappers for diagnostics, CI, deploy, and GitHub operations. For mutating Git/worktree setup on Windows Codex Desktop, prefer direct approved entrypoints such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`, `git fetch origin main`, and `git worktree add`.
 - For repo orientation, prefer `npm run session:doctor` over one-off `git branch`, `git worktree`, or `git stash` reads when it gives enough context.
-- Persist approvals for safe recurring prefixes such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1`, `npm run worktree:new`, `npm run worktree:sync`, `npm run session:doctor`, `npm run gh:auth-status`, `npm run auth:repair`, `npm run ci:watch`, `npm run ci:failed`, `npm run pre-merge-check`, `npm run deploy:verify`, `npm run inngest:register`, `git add`, `git commit -m`, `git push`, `git fetch origin main`, `git worktree add`, and `gh api repos/governada/governada-app/pulls`.
+- Use `npm run pr:ready -- <PR#>` and `npm run pr:merge -- <PR#>` instead of raw `gh pr ready` or inline `gh api .../merge` commands.
+- Persist approvals for safe recurring prefixes such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1`, `npm run worktree:new`, `npm run worktree:sync`, `npm run session:doctor`, `npm run gh:auth-status`, `npm run auth:repair`, `npm run pr:ready`, `npm run pr:merge`, `npm run ci:watch`, `npm run ci:failed`, `npm run pre-merge-check`, `npm run deploy:verify`, `npm run inngest:register`, `git add`, `git commit -m`, `git push`, `git fetch origin main`, `git worktree add`, and `gh api repos/governada/governada-app/pulls`.
 - Do not persist approvals for broad shells or interpreters such as bare `powershell`, `cmd`, `node`, `python`, `git`, or `gh`.
 - On Windows Codex Desktop, if a mutating Git/worktree command or an `npm` wrapper that shells out to Git fails in `workspace-write` with `EPERM`, access denied, or a likely sandbox error, rerun it immediately with `sandbox_permissions=require_escalated` using an already-approved prefix. Do not stop to ask first unless the prefix itself is missing.
 - Repo-local GH context is provided by `npm run gh:auth-status` and the scripts in `scripts/lib/runtime.js`; do not rely on `gh` inferring the repo from the SSH remote alias.

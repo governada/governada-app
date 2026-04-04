@@ -20,7 +20,7 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 - [x] PCA-based Quick Match | `lib/matching/`, `/match` route
 - [x] User governance profiles | table: `user_governance_profiles`
 - [x] Persona-agnostic matching (`match_type` param) | `lib/matching/`
-- [x] Treasury intelligence | `/api/treasury/*` (8 routes)
+- [x] Treasury intelligence | `/api/treasury/*` (11 routes)
 - [x] SPO + CC vote fetching & sync | `lib/sync/`
 - [x] Inter-body alignment | table: `inter_body_alignment`
 - [x] Governance calendar + AI epoch recaps | table: `epoch_recaps`
@@ -29,7 +29,7 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 - [x] SPO 6D alignment, SPO matching | `lib/alignment/`, `lib/matching/`
 - [x] CC Transparency Index | `lib/scoring/ccTransparency.ts`
 - [x] Daily snapshots: drep_score_history, alignment_snapshots, ghi_snapshots, decentralization_snapshots, spo_score_snapshots, spo_alignment_snapshots
-- [x] 36 Inngest sync functions | `inngest/functions/`
+- [x] 57 Inngest sync functions | `inngest/functions/`
 - [x] 75+ database tables
 - verify: `GET /api/v1/drep-scores`, `GET /api/v1/spo-scores`, `POST /api/governance/quick-match` return data
 

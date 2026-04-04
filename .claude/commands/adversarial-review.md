@@ -108,7 +108,7 @@ Prompt template:
 > **Start the dev server:**
 >
 > 1. Use `preview_start` with name "dev" to start the local server. Note the port from the response.
-> 2. Wait for the server to be ready: use Bash to `curl -s -o /dev/null -w "%{http_code}" --max-time 90 http://localhost:<port>/api/health`. Wait until you get HTTP 200.
+> 2. Wait for the server to be ready: run `npm run preview:ready -- http://localhost:<port>`. Wait until it reports ready or times out.
 > 3. **CRITICAL**: Do NOT let the browser load the homepage (`/`) first — the Globe (Three.js/R3F) will hang the headless browser. Navigate to a safe page first:
 >    ```js
 >    // via preview_eval — use the port from preview_start

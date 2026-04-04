@@ -82,7 +82,7 @@ Read all Phase 1 checkpoint files + Phase 1B discussion outcomes. Synthesize int
 
 Present full plan. Ask: chunk breakdown OK? Decision point preferences? Solid vs world-class per chunk? Scope changes? Foundation-first ordering acceptable? Visual acceptance criteria match your vision? **Do NOT proceed until user approves.**
 
-Send notification: `node scripts/notify.mjs "decision_gate" "/build-step [N]: Plan ready" "[chunk count, migration count, estimated time]"`
+Send notification: `npm run notify -- "decision_gate" "/build-step [N]: Plan ready" "[chunk count, migration count, estimated time]"`
 
 **Update checkpoint**: Set status to `PHASE_4_EXECUTING`, record approved decisions, approved visual acceptance criteria.
 
@@ -146,7 +146,7 @@ Parallelism: independent chunks launch simultaneously. Same-PR groups = one agen
 
 Read `.claude/rules/deploy-config.md` for mode. Follow deploy pipeline in `docs/strategy/context/commands-reference.md`.
 
-For each PR group in merge order: rebase check → `node scripts/pre-merge-check.mjs` → merge (squash) → apply migrations → wait for Railway → Inngest sync if needed → smoke test. If smoke test FAILS → STOP entire sequence, alert user.
+For each PR group in merge order: rebase check → `npm run pre-merge-check -- <PR#>` → merge (squash) → apply migrations → wait for Railway → Inngest sync if needed → smoke test. If smoke test FAILS → STOP entire sequence, alert user.
 
 Between groups: rebase next group's branches onto updated main.
 
@@ -169,7 +169,7 @@ Between groups: rebase next group's branches onto updated main.
    - Screenshots as evidence
    - Remaining work (honest — what didn't make it and why)
 
-Send notification: `node scripts/notify.mjs "complete" "/build-step [N] finished" "[results summary]"`
+Send notification: `npm run notify -- "complete" "/build-step [N] finished" "[results summary]"`
 
 **Update checkpoint**: Set status to `COMPLETE`, record final scores and verification evidence.
 

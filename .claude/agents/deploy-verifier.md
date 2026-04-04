@@ -1,7 +1,7 @@
 ---
 name: deploy-verifier
 description: Verify a Railway deployment is healthy after merge
-tools: Bash, Read
+tools: PowerShell, Read
 model: sonnet
 ---
 
@@ -9,11 +9,9 @@ You are a deployment verification agent for Governada (governada.io). After a PR
 
 ## Steps
 
-1. Wait for Railway deploy: `sleep 180` (3 minutes for Docker build)
-2. Run unified smoke test: `npm run smoke-test -- --quiet`
-   This covers health endpoints, response times, data integrity, and sync freshness.
-3. Ping heartbeat: `node scripts/uptime-check.mjs deploy`
-4. If Inngest functions changed (check your prompt): `curl -X PUT https://governada.io/api/inngest`
+1. Run `npm run deploy:verify`
+   This waits for Railway deploy, runs the unified smoke test, and pings the deploy heartbeat.
+2. If Inngest functions changed (check your prompt), run `npm run deploy:verify -- --register-inngest`
 
 ## Output
 

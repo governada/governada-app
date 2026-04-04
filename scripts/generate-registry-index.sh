@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Legacy compatibility shim.
+# Canonical path: `npm run registry:index` or `npm run registry:index:check`
+
 set -euo pipefail
 
-node "$(dirname "$0")/generate-registry-index.mjs" "$@"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "$SCRIPT_DIR/generate-registry-index.js" "$@"

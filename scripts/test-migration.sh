@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Legacy compatibility shim.
+# Canonical path: `npm run migration:test`
+
 set -euo pipefail
 
-node "$(dirname "$0")/test-migration.mjs" "$@"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "$SCRIPT_DIR/test-migration.js" "$@"

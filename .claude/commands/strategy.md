@@ -256,9 +256,9 @@ Update `strategic-state.md` with learnings and adjusted priorities.
 Workspace and documentation health. Run these checks:
 
 1. **Stale branches**: `git branch` — flag any that aren't `main` or an active feature
-2. **Worktree cleanup**: `node scripts/cleanup.mjs` if it exists
+2. **Worktree cleanup**: `npm run cleanup` if needed
 3. **Stash accumulation**: `git stash list` — clear if > 5 stashes
-4. **Doc staleness**: Check CLAUDE.md counts (Inngest functions, components, routes) against reality
+4. **Doc staleness**: Run `npm run docs:doctor` and inspect any reported drift
 5. **Memory freshness**: Read memory files, flag anything outdated
 6. **Manifest accuracy**: Spot-check 3-5 manifest checkboxes against actual codebase
 7. **Decision log**: Are recent decisions captured? Any open questions resolved but not recorded?

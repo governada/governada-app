@@ -22,7 +22,8 @@ if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
     exit 0
   fi
   echo "BLOCKED: You're on '$branch'. Create a feature branch in a worktree:"
-  echo "  git worktree add ../governada-<name> -b feat/<name>"
+  echo "  powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>"
+  echo "  # Creates .claude/worktrees/<name> on feat/<name> from origin/main"
   echo ""
   echo "For intentional hotfixes, set ALLOW_MAIN_EDIT=1"
   exit 2
@@ -43,7 +44,7 @@ if [ -d "$toplevel/.git" ]; then
   echo ""
   echo "Create a worktree instead:"
   echo "  git checkout main"
-  echo "  git worktree add ../governada-<name> -b $branch"
+  echo "  powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 $branch -Branch $branch"
   echo ""
   echo "Or start Claude Code with:  claude --worktree <name>"
   echo ""

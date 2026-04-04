@@ -160,6 +160,18 @@ export interface SystemsAutomationRunRecord {
   createdAt: string;
 }
 
+export interface SystemsOperatorEscalationRecord {
+  actorType: 'manual' | 'cron';
+  status: 'sent' | 'failed';
+  title: string;
+  details: string;
+  criticalCount: number;
+  followupSourceKeys: string[];
+  channelCount: number;
+  channels: string[];
+  createdAt: string;
+}
+
 export interface SystemsAutomationSummary {
   status: SystemsStatus;
   headline: string;
@@ -212,6 +224,7 @@ export interface SystemsDashboardData {
   automationSummary: SystemsAutomationSummary;
   automationFollowups: SystemsAutomationFollowup[];
   latestAutomationRun?: SystemsAutomationRunRecord | null;
+  latestOperatorEscalation?: SystemsOperatorEscalationRecord | null;
   suggestedReviewDraft?: SystemsReviewDraft | null;
   openCommitments: SystemsCommitmentCard[];
   reviewHistory: SystemsReviewRecord[];
@@ -413,14 +426,6 @@ export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
     trigger: 'Risky route or caching changes land without a fresh baseline.',
     action: 'Run the minimum k6 baseline and attach the result to the systems review.',
     whyItMatters: 'This lets performance discipline become an agentic maintenance loop.',
-  },
-  {
-    id: 'operator-escalation',
-    title: 'Operator escalation digest',
-    trigger: 'Critical follow-ups remain open after the daily sweep.',
-    action:
-      'Push the highest-severity systems follow-ups into the founder operator channel with context and next-action links.',
-    whyItMatters: 'This makes the cockpit useful even when you are not staring at it.',
   },
   {
     id: 'trust-surface-audit',

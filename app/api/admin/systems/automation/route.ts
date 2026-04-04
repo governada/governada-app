@@ -5,15 +5,21 @@ import { isAdminWallet } from '@/lib/adminAuth';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import type { SystemsAutomationFollowupStatus } from '@/lib/admin/systems';
+import { BASE_URL } from '@/lib/constants';
+import { sendFounderNotification } from '@/lib/founderNotifications';
 import { buildSystemsDashboardData } from '@/lib/admin/systemsDashboard';
 import {
+  buildLatestSuccessfulEscalationBySource,
   buildSystemsAutomationSpecs,
   buildSystemsAutomationState,
+  buildSystemsOperatorEscalationTargets,
   followupMatchesSpec,
+  formatSystemsOperatorEscalationDigest,
   summarizeSystemsAutomationRun,
   SYSTEMS_AUTOMATION_AUDIT_ACTIONS,
   SYSTEMS_AUTOMATION_FOLLOWUP_ACTION,
   SYSTEMS_AUTOMATION_SWEEP_ACTION,
+  SYSTEMS_OPERATOR_ESCALATION_ACTION,
 } from '@/lib/admin/systemsAutomation';
 
 type AutomationActor = {
@@ -63,6 +69,7 @@ async function runSystemsAutomationSweep(request: NextRequest, ctx: RouteContext
 
   const auditRows = auditRowsResult.data || [];
   const currentState = buildSystemsAutomationState(auditRows);
+  const latestEscalationBySource = buildLatestSuccessfulEscalationBySource(auditRows);
   const currentByKey = new Map(
     currentState.allFollowups.map((followup) => [followup.sourceKey, followup]),
   );
@@ -181,6 +188,55 @@ async function runSystemsAutomationSweep(request: NextRequest, ctx: RouteContext
     return NextResponse.json({ error: 'Failed to record automation sweep' }, { status: 500 });
   }
 
+  const baseUrl = BASE_URL.startsWith('http://localhost') ? 'https://governada.io' : BASE_URL;
+  const escalationTargets = buildSystemsOperatorEscalationTargets(
+    nextOpenFollowups,
+    latestEscalationBySource,
+  );
+
+  let operatorEscalation: {
+    status: 'sent' | 'failed';
+    criticalCount: number;
+    channelCount: number;
+  } | null = null;
+
+  if (escalationTargets.length > 0) {
+    const digest = formatSystemsOperatorEscalationDigest(escalationTargets, baseUrl);
+    const delivery = await sendFounderNotification({
+      level: 'escalation',
+      title: digest.title,
+      details: digest.details,
+    });
+
+    operatorEscalation = {
+      status: delivery.ok ? 'sent' : 'failed',
+      criticalCount: escalationTargets.length,
+      channelCount: delivery.channelCount,
+    };
+
+    const { error: escalationError } = await supabase.from('admin_audit_log').insert({
+      user_id: actor.actor,
+      action: SYSTEMS_OPERATOR_ESCALATION_ACTION,
+      target: 'systems',
+      payload: {
+        actorType: actor.actorType,
+        status: delivery.ok ? 'sent' : 'failed',
+        title: digest.title,
+        details: delivery.ok
+          ? digest.details
+          : `${digest.details}\n\nDelivery failure: ${delivery.failureReason ?? 'unknown'}`,
+        criticalCount: escalationTargets.length,
+        followupSourceKeys: escalationTargets.map((target) => target.sourceKey),
+        channelCount: delivery.channelCount,
+        channels: delivery.channels,
+      },
+    });
+
+    if (escalationError) {
+      return NextResponse.json({ error: 'Failed to record operator escalation' }, { status: 500 });
+    }
+  }
+
   return NextResponse.json({
     status: runSummary.status,
     summary: runSummary.summary,
@@ -189,6 +245,7 @@ async function runSystemsAutomationSweep(request: NextRequest, ctx: RouteContext
     openedCount,
     updatedCount,
     resolvedCount,
+    operatorEscalation,
   });
 }
 

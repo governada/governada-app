@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildLatestSuccessfulEscalationBySource,
   buildSystemsAutomationSpecs,
+  buildSystemsOperatorEscalationTargets,
   buildSystemsAutomationState,
   buildSystemsAutomationSummary,
+  formatSystemsOperatorEscalationDigest,
+  parseLatestSystemsOperatorEscalation,
   summarizeSystemsAutomationRun,
   SYSTEMS_AUTOMATION_FOLLOWUP_ACTION,
   SYSTEMS_AUTOMATION_SWEEP_ACTION,
+  SYSTEMS_OPERATOR_ESCALATION_ACTION,
 } from '@/lib/admin/systemsAutomation';
 import { toSystemsCommitment } from '@/lib/admin/systemsReview';
 
@@ -109,5 +114,86 @@ describe('systems automation helpers', () => {
 
     expect(run.status).toBe('good');
     expect(run.summary).toMatch(/no unresolved systems follow-ups/i);
+  });
+
+  it('selects new and reminder-worthy critical followups for founder escalation', () => {
+    const targets = buildSystemsOperatorEscalationTargets(
+      [
+        {
+          sourceKey: 'systems:action:resolve-integrity-alerts',
+          triggerType: 'systems_action',
+          severity: 'critical',
+          status: 'open',
+          title: 'Resolve integrity alerts before more feature work',
+          summary: 'Integrity has drifted out of the launch comfort zone.',
+          recommendedAction: 'Resolve integrity now.',
+          actionHref: '/admin/integrity',
+          updatedAt: '2026-04-03T10:00:00.000Z',
+        },
+        {
+          sourceKey: 'systems:review-discipline',
+          triggerType: 'review_discipline',
+          severity: 'critical',
+          status: 'open',
+          title: 'Refresh the weekly systems review now',
+          summary: 'The review loop is stale.',
+          recommendedAction: 'Log a fresh review.',
+          actionHref: '/admin/systems#weekly-review',
+          updatedAt: '2026-04-02T09:00:00.000Z',
+        },
+      ],
+      new Map([['systems:review-discipline', '2026-04-02T09:30:00.000Z']]),
+      new Date('2026-04-03T10:30:00.000Z'),
+    );
+
+    expect(targets).toHaveLength(2);
+    expect(targets.map((target) => target.reason)).toEqual(
+      expect.arrayContaining(['new', 'reminder']),
+    );
+  });
+
+  it('reads the latest successful escalation state from audit rows', () => {
+    const rows = [
+      {
+        action: SYSTEMS_OPERATOR_ESCALATION_ACTION,
+        target: 'systems',
+        payload: {
+          actorType: 'cron',
+          status: 'sent',
+          title: 'Systems cockpit: 1 critical follow-up still open',
+          details: 'Digest body',
+          criticalCount: 1,
+          followupSourceKeys: ['systems:review-discipline'],
+          channelCount: 2,
+          channels: ['discord', 'telegram'],
+        },
+        created_at: '2026-04-03T10:00:00.000Z',
+      },
+    ];
+
+    expect(buildLatestSuccessfulEscalationBySource(rows).get('systems:review-discipline')).toBe(
+      '2026-04-03T10:00:00.000Z',
+    );
+    expect(parseLatestSystemsOperatorEscalation(rows)?.channelCount).toBe(2);
+  });
+
+  it('formats a concise operator escalation digest with direct links', () => {
+    const digest = formatSystemsOperatorEscalationDigest(
+      [
+        {
+          sourceKey: 'systems:review-discipline',
+          title: 'Refresh the weekly systems review now',
+          summary: 'The review loop is stale.',
+          actionHref: '/admin/systems#weekly-review',
+          updatedAt: '2026-04-03T10:00:00.000Z',
+          reason: 'new',
+        },
+      ],
+      'https://governada.io',
+    );
+
+    expect(digest.title).toMatch(/1 critical follow-up/i);
+    expect(digest.details).toMatch(/https:\/\/governada\.io\/admin\/systems#weekly-review/i);
+    expect(digest.details).toMatch(/\[New\]/);
   });
 });

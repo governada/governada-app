@@ -73,3 +73,4 @@ The review is intentionally shaped so it can be automated later from `/api/admin
 - highlight red/yellow shifts from the previous review
 - propose one hardening commitment
 - open an inbox item for founder review
+- escalate unresolved critical follow-ups into the founder operator channel with next-action links

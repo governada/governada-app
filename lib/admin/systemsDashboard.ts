@@ -20,6 +20,7 @@ import {
   SYSTEMS_AUTOMATION_AUDIT_ACTIONS,
   buildSystemsAutomationState,
   buildSystemsAutomationSummary,
+  parseLatestSystemsOperatorEscalation,
 } from '@/lib/admin/systemsAutomation';
 import {
   buildReviewDiscipline,
@@ -324,6 +325,9 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationState.openFollowups,
     automationState.latestRun,
   );
+  const latestOperatorEscalation = parseLatestSystemsOperatorEscalation(
+    automationAuditResult.data || [],
+  );
   const suggestedReviewDraft = parseLatestSystemsReviewDraft(reviewDraftAuditResult.data || []);
 
   const promiseInput: PromiseInput = {
@@ -454,6 +458,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationSummary,
     automationFollowups: automationState.openFollowups,
     latestAutomationRun: automationState.latestRun,
+    latestOperatorEscalation,
     suggestedReviewDraft,
     openCommitments,
     reviewHistory,

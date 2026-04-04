@@ -3,6 +3,8 @@ import type {
   SystemsAction,
   SystemsAutomationFollowup,
   SystemsAutomationFollowupStatus,
+  SystemsCommitmentShepherdRecord,
+  SystemsCommitmentStatus,
   SystemsOperatorEscalationRecord,
   SystemsAutomationRunRecord,
   SystemsAutomationSeverity,
@@ -16,10 +18,12 @@ import type {
 export const SYSTEMS_AUTOMATION_FOLLOWUP_ACTION = 'systems_automation_followup_sync';
 export const SYSTEMS_AUTOMATION_SWEEP_ACTION = 'systems_automation_sweep';
 export const SYSTEMS_OPERATOR_ESCALATION_ACTION = 'systems_operator_escalation';
+export const SYSTEMS_COMMITMENT_SHEPHERD_ACTION = 'systems_commitment_shepherd';
 export const SYSTEMS_AUTOMATION_AUDIT_ACTIONS = [
   SYSTEMS_AUTOMATION_FOLLOWUP_ACTION,
   SYSTEMS_AUTOMATION_SWEEP_ACTION,
   SYSTEMS_OPERATOR_ESCALATION_ACTION,
+  SYSTEMS_COMMITMENT_SHEPHERD_ACTION,
 ] as const;
 export const SYSTEMS_OPERATOR_ESCALATION_REMINDER_HOURS = 24;
 
@@ -53,6 +57,12 @@ type SystemsOperatorEscalationAuditRow = {
   created_at: string;
 };
 
+type SystemsCommitmentShepherdAuditRow = {
+  action: string;
+  payload: unknown;
+  created_at: string;
+};
+
 export type SystemsOperatorEscalationTarget = {
   sourceKey: string;
   title: string;
@@ -60,6 +70,18 @@ export type SystemsOperatorEscalationTarget = {
   actionHref?: string | null;
   updatedAt: string;
   reason: 'new' | 'reminder';
+};
+
+export type SystemsCommitmentShepherdTarget = {
+  commitmentId: string;
+  commitmentTitle: string;
+  commitmentStatus: SystemsCommitmentStatus;
+  owner: string;
+  dueDate?: string | null;
+  reason: 'blocked' | 'overdue';
+  actionHref: string;
+  summary: string;
+  recommendedAction: string;
 };
 
 function reasonLabel(reason: SystemsOperatorEscalationTarget['reason']) {
@@ -104,6 +126,25 @@ const operatorEscalationPayloadSchema = z.object({
   followupSourceKeys: z.array(z.string().min(1)).min(1),
   channelCount: z.number().int().nonnegative(),
   channels: z.array(z.string().min(1)),
+});
+
+const commitmentShepherdPayloadSchema = z.object({
+  actorType: z.enum(['manual', 'cron']),
+  status: z.enum(['focus', 'clear']),
+  title: z.string().min(1),
+  summary: z.string().min(1),
+  recommendedAction: z.string().min(1),
+  commitmentId: z.string().uuid().nullable().optional(),
+  commitmentTitle: z.string().min(1).nullable().optional(),
+  commitmentStatus: z.enum(['planned', 'in_progress', 'blocked', 'done']).nullable().optional(),
+  owner: z.string().min(1).nullable().optional(),
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional(),
+  reason: z.enum(['blocked', 'overdue']).nullable().optional(),
+  actionHref: z.string().min(1).nullable().optional(),
 });
 
 export const updateSystemsAutomationFollowupSchema = z.object({
@@ -299,6 +340,141 @@ export function parseLatestSystemsOperatorEscalation(
       followupSourceKeys: parsed.data.followupSourceKeys,
       channelCount: parsed.data.channelCount,
       channels: parsed.data.channels,
+      createdAt: row.created_at,
+    };
+  }
+
+  return null;
+}
+
+function commitmentShepherdReasonRank(reason: SystemsCommitmentShepherdTarget['reason']) {
+  return reason === 'blocked' ? 0 : 1;
+}
+
+function overdueDays(commitment: SystemsCommitmentCard) {
+  if (!commitment.dueDate || !commitment.isOverdue) return 0;
+  const dueDate = new Date(`${commitment.dueDate}T00:00:00Z`).getTime();
+  return Math.max(0, Math.floor((Date.now() - dueDate) / (1000 * 60 * 60 * 24)));
+}
+
+export function buildSystemsCommitmentShepherdTarget(
+  openCommitments: SystemsCommitmentCard[],
+): SystemsCommitmentShepherdTarget | null {
+  const candidates = openCommitments
+    .filter((commitment) => commitment.status === 'blocked' || commitment.isOverdue)
+    .map((commitment) => {
+      const reason: SystemsCommitmentShepherdTarget['reason'] =
+        commitment.status === 'blocked' ? 'blocked' : 'overdue';
+      return {
+        commitmentId: commitment.id,
+        commitmentTitle: commitment.title,
+        commitmentStatus: commitment.status,
+        owner: commitment.owner,
+        dueDate: commitment.dueDate ?? null,
+        reason,
+        actionHref: `/admin/systems#commitment-${commitment.id}`,
+        summary:
+          reason === 'blocked'
+            ? `${commitment.title} is blocked under ${commitment.owner}. Leaving it stale will keep the same launch risk alive until the blocker is named and either cleared or replaced.`
+            : `${commitment.title} is overdue under ${commitment.owner}. The weekly loop loses credibility when overdue hardening work sits open without an honest status change.`,
+        recommendedAction:
+          reason === 'blocked'
+            ? 'Open the commitment card, confirm the blocker, and decide today whether to unblock this work this week or replace it in the next review.'
+            : 'Open the commitment card and either move it forward, mark it blocked with the real blocker, or close it honestly if it no longer deserves to stay open.',
+        sortPriority: commitmentShepherdReasonRank(reason),
+        overdueDays: overdueDays(commitment),
+        ageDays: commitment.ageDays,
+      };
+    })
+    .sort((left, right) => {
+      if (left.sortPriority !== right.sortPriority) {
+        return left.sortPriority - right.sortPriority;
+      }
+      if (left.overdueDays !== right.overdueDays) {
+        return right.overdueDays - left.overdueDays;
+      }
+      if ((left.dueDate ?? '') !== (right.dueDate ?? '')) {
+        return (left.dueDate ?? '9999-12-31').localeCompare(right.dueDate ?? '9999-12-31');
+      }
+      return right.ageDays - left.ageDays;
+    });
+
+  const target = candidates[0];
+  if (!target) return null;
+
+  return {
+    commitmentId: target.commitmentId,
+    commitmentTitle: target.commitmentTitle,
+    commitmentStatus: target.commitmentStatus,
+    owner: target.owner,
+    dueDate: target.dueDate,
+    reason: target.reason,
+    actionHref: target.actionHref,
+    summary: target.summary,
+    recommendedAction: target.recommendedAction,
+  };
+}
+
+export function buildSystemsCommitmentShepherdRecord(
+  target: SystemsCommitmentShepherdTarget | null,
+  actorType: 'manual' | 'cron',
+) {
+  if (!target) {
+    return {
+      actorType,
+      status: 'clear' as const,
+      title: 'Commitment shepherd: no stale commitment needs focus',
+      summary: 'No blocked or overdue hardening commitment currently needs a rescue loop.',
+      recommendedAction:
+        'Keep the weekly review leaving behind one honest commitment and rerun the sweep tomorrow.',
+      commitmentId: null,
+      commitmentTitle: null,
+      commitmentStatus: null,
+      owner: null,
+      dueDate: null,
+      reason: null,
+      actionHref: null,
+    };
+  }
+
+  return {
+    actorType,
+    status: 'focus' as const,
+    title: `Commitment shepherd: ${target.commitmentTitle}`,
+    summary: target.summary,
+    recommendedAction: target.recommendedAction,
+    commitmentId: target.commitmentId,
+    commitmentTitle: target.commitmentTitle,
+    commitmentStatus: target.commitmentStatus,
+    owner: target.owner,
+    dueDate: target.dueDate ?? null,
+    reason: target.reason,
+    actionHref: target.actionHref,
+  };
+}
+
+export function parseLatestSystemsCommitmentShepherd(
+  rows: SystemsCommitmentShepherdAuditRow[],
+): SystemsCommitmentShepherdRecord | null {
+  for (const row of rows) {
+    if (row.action !== SYSTEMS_COMMITMENT_SHEPHERD_ACTION) continue;
+
+    const parsed = commitmentShepherdPayloadSchema.safeParse(row.payload);
+    if (!parsed.success) continue;
+
+    return {
+      actorType: parsed.data.actorType,
+      status: parsed.data.status,
+      title: parsed.data.title,
+      summary: parsed.data.summary,
+      recommendedAction: parsed.data.recommendedAction,
+      commitmentId: parsed.data.commitmentId ?? null,
+      commitmentTitle: parsed.data.commitmentTitle ?? null,
+      commitmentStatus: parsed.data.commitmentStatus ?? null,
+      owner: parsed.data.owner ?? null,
+      dueDate: parsed.data.dueDate ?? null,
+      reason: parsed.data.reason ?? null,
+      actionHref: parsed.data.actionHref ?? null,
       createdAt: row.created_at,
     };
   }

@@ -236,6 +236,24 @@ function buildReviewFormFromDraft(draft: SystemsReviewDraft): ReviewFormState {
   };
 }
 
+function buildReviewFormFromCommitmentShepherd(
+  data: SystemsDashboardData,
+  shepherd: NonNullable<SystemsDashboardData['latestCommitmentShepherd']>,
+): ReviewFormState {
+  return {
+    reviewDate: todayInputValue(),
+    overallStatus: data.overall.status,
+    focusArea: shepherd.commitmentTitle ?? shepherd.title,
+    topRisk: shepherd.summary,
+    changeNotes: `Commitment shepherd: ${shepherd.summary} ${shepherd.recommendedAction}`,
+    hardeningCommitmentTitle: shepherd.commitmentTitle ?? shepherd.title,
+    hardeningCommitmentSummary: shepherd.recommendedAction,
+    commitmentOwner: shepherd.owner ?? 'Founder + agents',
+    commitmentDueDate: shepherd.dueDate ?? '',
+    linkedSloIds: buildSuggestedLinkedSloIds(data),
+  };
+}
+
 function statusClasses(status: SystemsStatus) {
   switch (status) {
     case 'good':
@@ -324,6 +342,26 @@ function automationFollowupStatusClasses(status: SystemsAutomationFollowupStatus
     default:
       return 'border-amber-500/30 text-amber-300';
   }
+}
+
+function commitmentShepherdStatusLabel(
+  status: NonNullable<SystemsDashboardData['latestCommitmentShepherd']>['status'],
+) {
+  return status === 'focus' ? 'Needs focus' : 'Clear';
+}
+
+function commitmentShepherdStatusClasses(
+  status: NonNullable<SystemsDashboardData['latestCommitmentShepherd']>['status'],
+) {
+  return status === 'focus'
+    ? 'border-amber-500/30 text-amber-300'
+    : 'border-emerald-500/30 text-emerald-300';
+}
+
+function commitmentShepherdReasonLabel(
+  reason: NonNullable<SystemsDashboardData['latestCommitmentShepherd']>['reason'],
+) {
+  return reason === 'blocked' ? 'Blocked' : 'Overdue';
 }
 
 function automationSeverityClasses(severity: SystemsAutomationFollowup['severity']) {
@@ -721,6 +759,118 @@ function ReviewStepCard({ step, index }: { step: SystemsReviewStep; index: numbe
   );
 }
 
+function CommitmentShepherdCard({
+  shepherd,
+  onApply,
+}: {
+  shepherd: SystemsDashboardData['latestCommitmentShepherd'];
+  onApply: () => void;
+}) {
+  const isFocused = shepherd?.status === 'focus';
+
+  return (
+    <Card className={cn(isFocused && shepherd.reason === 'blocked' && 'border-red-500/40')}>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-chart-1" />
+            Commitment shepherd
+          </span>
+          {shepherd ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className={commitmentShepherdStatusClasses(shepherd.status)}>
+                {commitmentShepherdStatusLabel(shepherd.status)}
+              </Badge>
+              <Badge variant="outline" className="capitalize">
+                {shepherd.actorType === 'cron' ? 'Scheduled' : 'Manual'}
+              </Badge>
+            </div>
+          ) : null}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isFocused ? (
+          <>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge
+                variant="outline"
+                className={commitmentStatusClasses(shepherd.commitmentStatus!)}
+              >
+                {commitmentStatusLabel(shepherd.commitmentStatus!)}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={
+                  shepherd.reason === 'blocked'
+                    ? 'border-red-500/30 text-red-300'
+                    : 'border-amber-500/30 text-amber-300'
+                }
+              >
+                {commitmentShepherdReasonLabel(shepherd.reason)}
+              </Badge>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">{shepherd.commitmentTitle ?? shepherd.title}</p>
+              <p className="text-sm text-muted-foreground">{shepherd.summary}</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Owner</p>
+                <p className="text-sm mt-1">{shepherd.owner}</p>
+              </div>
+              <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Due</p>
+                <p className="text-sm mt-1">
+                  {shepherd.dueDate
+                    ? new Date(`${shepherd.dueDate}T00:00:00`).toLocaleDateString()
+                    : 'No due date'}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Recommended action
+              </p>
+              <p className="text-sm mt-1">{shepherd.recommendedAction}</p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button type="button" variant="secondary" className="flex-1" onClick={onApply}>
+                Apply to weekly review
+              </Button>
+              {shepherd.actionHref ? (
+                <Button asChild size="sm" variant="outline" className="flex-1 justify-between">
+                  <Link href={shepherd.actionHref}>
+                    Open commitment
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+          </>
+        ) : shepherd ? (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">{shepherd.title}</p>
+            <p className="text-sm text-muted-foreground">{shepherd.summary}</p>
+            <p className="text-sm text-muted-foreground">{shepherd.recommendedAction}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">No commitment shepherd recommendation yet.</p>
+            <p className="text-sm text-muted-foreground">
+              Run the daily sweep to pick the one blocked or overdue hardening commitment that
+              deserves founder attention next.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function CommitmentCard({
   commitment,
   onStatusChange,
@@ -731,7 +881,10 @@ function CommitmentCard({
   isUpdating: boolean;
 }) {
   return (
-    <Card className={cn(commitment.isOverdue && 'border-red-500/40')}>
+    <Card
+      id={`commitment-${commitment.id}`}
+      className={cn(commitment.isOverdue && 'border-red-500/40')}
+    >
       <CardContent className="pt-5 pb-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
@@ -1223,6 +1376,13 @@ export function SystemsClient() {
     toast.success('Suggested draft applied to the weekly review form');
   }
 
+  function applyCommitmentShepherd() {
+    const shepherd = data?.latestCommitmentShepherd;
+    if (!data || !shepherd || shepherd.status !== 'focus') return;
+    setReviewForm(buildReviewFormFromCommitmentShepherd(data, shepherd));
+    toast.success('Commitment shepherd applied to the weekly review form');
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -1313,6 +1473,10 @@ export function SystemsClient() {
         <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-6">
           <div className="space-y-4">
             <ReviewDisciplineCard reviewDiscipline={data.reviewDiscipline} />
+            <CommitmentShepherdCard
+              shepherd={data.latestCommitmentShepherd}
+              onApply={applyCommitmentShepherd}
+            />
 
             <Card>
               <CardHeader className="pb-3">
@@ -1833,8 +1997,9 @@ export function SystemsClient() {
             <h3 className="text-base font-semibold">Next automations</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            The daily sweep, weekly draft, and critical follow-up escalation are live now. These are
-            the next routines that can compound on top of the same feed and audit trail.
+            The daily sweep, weekly draft, critical follow-up escalation, and commitment shepherd
+            are live now. These are the next routines that can compound on top of the same feed and
+            audit trail.
           </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {data.automationCandidates.map((candidate) => (

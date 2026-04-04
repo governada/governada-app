@@ -121,6 +121,22 @@ function buildDashboardFixture(): SystemsDashboardData {
       createdAt: '2026-04-02T11:55:00.000Z',
     },
     latestOperatorEscalation: null,
+    latestCommitmentShepherd: {
+      actorType: 'cron',
+      status: 'focus',
+      title: 'Commitment shepherd: Repair scorecard drift',
+      summary: 'Repair scorecard drift is blocked and needs a clear unblock-or-replace decision.',
+      recommendedAction:
+        'Open the commitment card, confirm the blocker, and decide today whether to unblock it or replace it in the next review.',
+      commitmentId: '4375fe7d-f712-48d5-ac2a-c17b62d8d7ce',
+      commitmentTitle: 'Repair scorecard drift',
+      commitmentStatus: 'blocked',
+      owner: 'Founder + agents',
+      dueDate: '2026-04-04',
+      reason: 'blocked',
+      actionHref: '/admin/systems#commitment-4375fe7d-f712-48d5-ac2a-c17b62d8d7ce',
+      createdAt: '2026-04-02T11:55:00.000Z',
+    },
     suggestedReviewDraft: null,
     openCommitments: [],
     reviewHistory: [],
@@ -136,11 +152,12 @@ describe('systems review draft helpers', () => {
 
     expect(draft.actorType).toBe('cron');
     expect(draft.overallStatus).toBe('warning');
-    expect(draft.focusArea).toMatch(/weekly systems review/i);
-    expect(draft.topRisk).toMatch(/Weekly review rhythm is stale/i);
-    expect(draft.hardeningCommitmentTitle).toMatch(/weekly systems review/i);
+    expect(draft.focusArea).toMatch(/repair scorecard drift/i);
+    expect(draft.topRisk).toMatch(/Weekly review rhythm is stale and needs immediate attention/i);
+    expect(draft.hardeningCommitmentTitle).toBe('Repair scorecard drift');
+    expect(draft.hardeningCommitmentSummary).toMatch(/confirm the blocker/i);
     expect(draft.linkedSloIds).toEqual(['freshness', 'journeys']);
-    expect(draft.changeNotes).toMatch(/Automation follow-up/i);
+    expect(draft.changeNotes).toMatch(/Commitment shepherd/i);
     expect(draft.commitmentDueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 

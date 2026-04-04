@@ -20,6 +20,7 @@ import {
   SYSTEMS_AUTOMATION_AUDIT_ACTIONS,
   buildSystemsAutomationState,
   buildSystemsAutomationSummary,
+  parseLatestSystemsCommitmentShepherd,
   parseLatestSystemsOperatorEscalation,
 } from '@/lib/admin/systemsAutomation';
 import {
@@ -304,6 +305,9 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
   const openCommitments = allCommitments
     .filter((commitment) => commitment.status !== 'done')
     .sort((left, right) => {
+      if ((left.status === 'blocked') !== (right.status === 'blocked')) {
+        return left.status === 'blocked' ? -1 : 1;
+      }
       if (left.isOverdue !== right.isOverdue) return left.isOverdue ? -1 : 1;
       if (left.dueDate && right.dueDate) return left.dueDate.localeCompare(right.dueDate);
       if (left.dueDate) return -1;
@@ -326,6 +330,9 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationState.latestRun,
   );
   const latestOperatorEscalation = parseLatestSystemsOperatorEscalation(
+    automationAuditResult.data || [],
+  );
+  const latestCommitmentShepherd = parseLatestSystemsCommitmentShepherd(
     automationAuditResult.data || [],
   );
   const suggestedReviewDraft = parseLatestSystemsReviewDraft(reviewDraftAuditResult.data || []);
@@ -459,6 +466,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationFollowups: automationState.openFollowups,
     latestAutomationRun: automationState.latestRun,
     latestOperatorEscalation,
+    latestCommitmentShepherd,
     suggestedReviewDraft,
     openCommitments,
     reviewHistory,

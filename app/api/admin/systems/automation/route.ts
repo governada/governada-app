@@ -9,6 +9,8 @@ import { BASE_URL } from '@/lib/constants';
 import { sendFounderNotification } from '@/lib/founderNotifications';
 import { buildSystemsDashboardData } from '@/lib/admin/systemsDashboard';
 import {
+  buildSystemsCommitmentShepherdRecord,
+  buildSystemsCommitmentShepherdTarget,
   buildLatestSuccessfulEscalationBySource,
   buildSystemsAutomationSpecs,
   buildSystemsAutomationState,
@@ -19,6 +21,7 @@ import {
   SYSTEMS_AUTOMATION_AUDIT_ACTIONS,
   SYSTEMS_AUTOMATION_FOLLOWUP_ACTION,
   SYSTEMS_AUTOMATION_SWEEP_ACTION,
+  SYSTEMS_COMMITMENT_SHEPHERD_ACTION,
   SYSTEMS_OPERATOR_ESCALATION_ACTION,
 } from '@/lib/admin/systemsAutomation';
 
@@ -188,6 +191,26 @@ async function runSystemsAutomationSweep(request: NextRequest, ctx: RouteContext
     return NextResponse.json({ error: 'Failed to record automation sweep' }, { status: 500 });
   }
 
+  const commitmentShepherdTarget = buildSystemsCommitmentShepherdTarget(dashboard.openCommitments);
+  const commitmentShepherd = buildSystemsCommitmentShepherdRecord(
+    commitmentShepherdTarget,
+    actor.actorType,
+  );
+
+  const { error: shepherdError } = await supabase.from('admin_audit_log').insert({
+    user_id: actor.actor,
+    action: SYSTEMS_COMMITMENT_SHEPHERD_ACTION,
+    target: commitmentShepherdTarget?.commitmentId ?? 'systems',
+    payload: commitmentShepherd,
+  });
+
+  if (shepherdError) {
+    return NextResponse.json(
+      { error: 'Failed to record commitment shepherd state' },
+      { status: 500 },
+    );
+  }
+
   const baseUrl = BASE_URL.startsWith('http://localhost') ? 'https://governada.io' : BASE_URL;
   const escalationTargets = buildSystemsOperatorEscalationTargets(
     nextOpenFollowups,
@@ -245,6 +268,7 @@ async function runSystemsAutomationSweep(request: NextRequest, ctx: RouteContext
     openedCount,
     updatedCount,
     resolvedCount,
+    commitmentShepherd,
     operatorEscalation,
   });
 }

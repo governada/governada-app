@@ -75,24 +75,34 @@ export function buildSystemsReviewDraft(
   const linkedSloIds = buildLinkedSloIds(data);
   const primaryAction = data.actions[0] ?? null;
   const primaryFollowup = data.automationFollowups[0] ?? null;
+  const commitmentShepherd =
+    data.latestCommitmentShepherd?.status === 'focus' ? data.latestCommitmentShepherd : null;
   const primaryBlocker = data.story.blockers[0] ?? null;
   const primaryWatchout = data.story.watchouts[0] ?? null;
   const primaryWin = data.story.wins[0] ?? null;
 
   const focusArea = clampText(
-    primaryFollowup?.title ?? primaryAction?.title ?? data.reviewLoop.currentFocus,
+    commitmentShepherd?.title ??
+      primaryFollowup?.title ??
+      primaryAction?.title ??
+      data.reviewLoop.currentFocus,
     120,
     'Launch systems hardening',
   );
 
   const topRisk = clampText(
-    primaryBlocker ?? primaryFollowup?.summary ?? primaryWatchout ?? data.overall.narrative,
+    primaryBlocker ??
+      commitmentShepherd?.summary ??
+      primaryFollowup?.summary ??
+      primaryWatchout ??
+      data.overall.narrative,
     500,
     'The operating posture needs a fresh founder review.',
   );
 
   const hardeningCommitmentTitle = clampText(
-    primaryFollowup?.title ??
+    commitmentShepherd?.commitmentTitle ??
+      primaryFollowup?.title ??
       primaryAction?.title ??
       `Close the ${linkedSloIds[0] ?? 'top'} launch gap`,
     140,
@@ -100,7 +110,8 @@ export function buildSystemsReviewDraft(
   );
 
   const hardeningCommitmentSummary = clampText(
-    primaryFollowup?.recommendedAction ??
+    commitmentShepherd?.recommendedAction ??
+      primaryFollowup?.recommendedAction ??
       primaryAction?.summary ??
       data.reviewLoop.narrative ??
       data.reviewDiscipline.summary,
@@ -112,6 +123,9 @@ export function buildSystemsReviewDraft(
     `Overall posture is ${summarizeOverallStatus(data.overall.status)}: ${data.overall.narrative}`,
     primaryBlocker ? `Primary blocker: ${primaryBlocker}` : null,
     !primaryBlocker && primaryWatchout ? `Primary watch item: ${primaryWatchout}` : null,
+    commitmentShepherd
+      ? `Commitment shepherd: ${commitmentShepherd.summary} ${commitmentShepherd.recommendedAction}`
+      : null,
     primaryFollowup
       ? `Automation follow-up: ${primaryFollowup.title}. ${primaryFollowup.recommendedAction}`
       : `Automation posture: ${data.automationSummary.summary}`,

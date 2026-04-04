@@ -172,6 +172,22 @@ export interface SystemsOperatorEscalationRecord {
   createdAt: string;
 }
 
+export interface SystemsCommitmentShepherdRecord {
+  actorType: 'manual' | 'cron';
+  status: 'focus' | 'clear';
+  title: string;
+  summary: string;
+  recommendedAction: string;
+  commitmentId?: string | null;
+  commitmentTitle?: string | null;
+  commitmentStatus?: SystemsCommitmentStatus | null;
+  owner?: string | null;
+  dueDate?: string | null;
+  reason?: 'blocked' | 'overdue' | null;
+  actionHref?: string | null;
+  createdAt: string;
+}
+
 export interface SystemsAutomationSummary {
   status: SystemsStatus;
   headline: string;
@@ -225,6 +241,7 @@ export interface SystemsDashboardData {
   automationFollowups: SystemsAutomationFollowup[];
   latestAutomationRun?: SystemsAutomationRunRecord | null;
   latestOperatorEscalation?: SystemsOperatorEscalationRecord | null;
+  latestCommitmentShepherd?: SystemsCommitmentShepherdRecord | null;
   suggestedReviewDraft?: SystemsReviewDraft | null;
   openCommitments: SystemsCommitmentCard[];
   reviewHistory: SystemsReviewRecord[];
@@ -404,21 +421,22 @@ export const CRITICAL_JOURNEYS: SystemsJourney[] = [
 
 export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
   {
-    id: 'commitment-shepherd',
-    title: 'Commitment shepherd',
-    trigger: 'An open systems commitment becomes overdue or blocked.',
+    id: 'review-history-sync',
+    title: 'Review history + scorecard sync',
+    trigger: 'A weekly review lands or the current scorecard drifts from the durable review trail.',
     action:
-      'Review the commitment list, update the stale item status, and escalate the one systems task most likely to cause launch drift.',
+      'Project the latest review history into a tighter trendline so the cockpit shows whether launch confidence is actually compounding week over week.',
     whyItMatters:
-      'This gives future agents a durable follow-through loop instead of one-off reminders.',
+      'This turns the weekly review log into a true operating memory instead of a stack of isolated entries.',
   },
   {
-    id: 'failure-drill',
-    title: 'Monthly failure drill',
-    trigger: 'Incident response remains bootstrap or no drill has been logged in 30 days.',
+    id: 'incident-drill-log',
+    title: 'Incident + drill log workflow',
+    trigger: 'A deploy, dependency issue, or tabletop drill produces real operating learning.',
     action:
-      'Run a tabletop for a dependency, data freshness, or deploy failure mode and log follow-up work.',
-    whyItMatters: 'It converts passive runbooks into practiced launch readiness.',
+      'Capture the event, mitigation, and follow-up directly in the systems operating trail so incidents become permanent improvements.',
+    whyItMatters:
+      'This converts passive runbooks into practiced launch readiness and a durable lessons-learned loop.',
   },
   {
     id: 'performance-baseline',

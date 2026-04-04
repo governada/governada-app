@@ -2,14 +2,18 @@ import { describe, expect, it } from 'vitest';
 import {
   buildLatestSuccessfulEscalationBySource,
   buildSystemsAutomationSpecs,
+  buildSystemsCommitmentShepherdRecord,
+  buildSystemsCommitmentShepherdTarget,
   buildSystemsOperatorEscalationTargets,
   buildSystemsAutomationState,
   buildSystemsAutomationSummary,
   formatSystemsOperatorEscalationDigest,
+  parseLatestSystemsCommitmentShepherd,
   parseLatestSystemsOperatorEscalation,
   summarizeSystemsAutomationRun,
   SYSTEMS_AUTOMATION_FOLLOWUP_ACTION,
   SYSTEMS_AUTOMATION_SWEEP_ACTION,
+  SYSTEMS_COMMITMENT_SHEPHERD_ACTION,
   SYSTEMS_OPERATOR_ESCALATION_ACTION,
 } from '@/lib/admin/systemsAutomation';
 import { toSystemsCommitment } from '@/lib/admin/systemsReview';
@@ -114,6 +118,70 @@ describe('systems automation helpers', () => {
 
     expect(run.status).toBe('good');
     expect(run.summary).toMatch(/no unresolved systems follow-ups/i);
+  });
+
+  it('selects the most urgent blocked or overdue commitment for shepherding', () => {
+    const target = buildSystemsCommitmentShepherdTarget([
+      toSystemsCommitment({
+        id: '8a6bb2b7-0dd9-4d67-9f59-20f5f2e31d54',
+        review_id: '1d9cad5c-6ba5-4c9a-8f70-9835cff31568',
+        title: 'Unblock the weekly review commitment',
+        summary: 'Keep the operating loop honest.',
+        owner: 'Founder + agents',
+        status: 'blocked',
+        due_date: '2026-03-25',
+        linked_slo_ids: ['freshness'],
+        created_at: '2026-03-20T00:00:00.000Z',
+      }),
+      toSystemsCommitment({
+        id: '2be66a2b-0f24-4f03-9b2b-7c67d3646c31',
+        review_id: '9d4fb0f3-9c82-4e7a-8ab5-9ef8bafcaa4d',
+        title: 'Close the performance baseline gap',
+        summary: 'Protect the slow-route bar.',
+        owner: 'Founder + agents',
+        status: 'planned',
+        due_date: '2026-03-18',
+        linked_slo_ids: ['performance'],
+        created_at: '2026-03-15T00:00:00.000Z',
+      }),
+    ]);
+
+    expect(target?.commitmentId).toBe('8a6bb2b7-0dd9-4d67-9f59-20f5f2e31d54');
+    expect(target?.reason).toBe('blocked');
+    expect(target?.actionHref).toBe(
+      '/admin/systems#commitment-8a6bb2b7-0dd9-4d67-9f59-20f5f2e31d54',
+    );
+  });
+
+  it('builds and parses the latest commitment shepherd record', () => {
+    const target = buildSystemsCommitmentShepherdTarget([
+      toSystemsCommitment({
+        id: '8a6bb2b7-0dd9-4d67-9f59-20f5f2e31d54',
+        review_id: '1d9cad5c-6ba5-4c9a-8f70-9835cff31568',
+        title: 'Unblock the weekly review commitment',
+        summary: 'Keep the operating loop honest.',
+        owner: 'Founder + agents',
+        status: 'blocked',
+        due_date: '2026-03-25',
+        linked_slo_ids: ['freshness'],
+        created_at: '2026-03-20T00:00:00.000Z',
+      }),
+    ]);
+
+    const record = buildSystemsCommitmentShepherdRecord(target, 'cron');
+
+    expect(record.status).toBe('focus');
+    expect(record.commitmentTitle).toBe('Unblock the weekly review commitment');
+
+    expect(
+      parseLatestSystemsCommitmentShepherd([
+        {
+          action: SYSTEMS_COMMITMENT_SHEPHERD_ACTION,
+          payload: record,
+          created_at: '2026-04-03T11:00:00.000Z',
+        },
+      ])?.commitmentId,
+    ).toBe('8a6bb2b7-0dd9-4d67-9f59-20f5f2e31d54');
   });
 
   it('selects new and reminder-worthy critical followups for founder escalation', () => {

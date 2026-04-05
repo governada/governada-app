@@ -98,17 +98,26 @@ The HTTP edge should not be the place where workspace domain rules live. Pulling
 
 ### 4. Intelligence context is split across two competing builders
 
-**Severity:** Open
+**Severity:** Partially reduced in this worktree
 
 **Evidence**
 
 - `lib/intelligence/context.ts` is about 1,300 lines and performs route detection plus route-specific Supabase reads, treasury reads, personal-context stitching, and Redis caching.
 - `lib/workspace/agent/context.ts` is about 670 lines and separately assembles proposal, voting, treasury, precedent, and personal context with its own in-memory cache and its own proposal-fetch helpers.
-- Both modules define different answers to what the canonical proposal/governance context should contain.
+- Both modules were separately reading on-chain proposal facts such as proposal identity, CIP-108 motivation/rationale, vote summary, and epochs remaining.
 
 **Why it matters**
 
 This creates semantic drift. The workspace agent, page intelligence, and any future server-side assistant can present different “ground truth” for the same proposal because they are built from parallel context systems instead of one owned service boundary.
+
+**Implementation status**
+
+- Partially reduced in this worktree.
+- Added `lib/governance/proposalContext.ts` as the shared on-chain proposal facts seam for proposal key normalization, normalized proposal snapshots, tri-body voting snapshots, and reduced classification summaries.
+- `lib/intelligence/context.ts` now consumes the shared proposal context seed instead of assembling proposal and voting facts independently.
+- `lib/workspace/agent/context.ts` now consumes the same shared proposal snapshot/voting primitives for on-chain proposal context and precedent lookup.
+- `components/governada/panel/ProposalPanel.tsx` now resolves the current `/proposal/[txHash]/[index]` route into an explicit proposal ref before calling `/api/intelligence/context`, which closes the prior index-loss bug in the panel/intelligence path.
+- Remaining gap: cache ownership and higher-level context composition are still split between Redis-backed page intelligence and the workspace agent's in-memory bundle cache.
 
 ### 5. Background jobs still mix orchestration, domain logic, and persistence
 
@@ -154,7 +163,7 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 
 ## Next Actions
 
-1. Define a shared proposal/governance context service that can sit underneath both `lib/intelligence/context.ts` and `lib/workspace/agent/context.ts`.
+1. Finish the proposal/governance context boundary by deciding how cache ownership and higher-level context composition should be shared across page intelligence and the workspace agent.
 2. Split `ReviewWorkspace.tsx` into a thinner session/controller layer and smaller presentation-focused subcomponents.
 3. Continue extracting domain read services out of `lib/data.ts`, starting with proposal/governance reads that already feed multiple consumers.
 4. Extract pure domain services from `precompute-proposal-intelligence.ts` and `sync-spo-scores.ts` so the Inngest jobs become orchestration wrappers.
@@ -168,12 +177,16 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 - Validated the runtime-boundary scout with concrete ownership evidence across `lib/data.ts`, `ReviewWorkspace.tsx`, the workspace routes, and the two context builders.
 - Fixed one concrete DD03 slice by extracting workspace review queue and proposal monitor assembly into `lib/workspace/reviewQueue.ts` and `lib/workspace/proposalMonitor.ts`.
 - Reduced `app/api/workspace/review-queue/route.ts` and `app/api/workspace/proposals/monitor/route.ts` to thin HTTP boundaries.
+- Added `lib/governance/proposalContext.ts` as the shared on-chain proposal facts boundary for page intelligence and workspace-agent proposal consumers.
+- Removed the duplicate `lib/governance/proposalSnapshot.ts` branch of the same responsibility.
+- Fixed proposal-panel route drift so the intelligence panel now passes the canonical proposal ref, including index, when reading proposal context.
 
 **Verification**
 
 - Passed `npm run test:unit -- __tests__/api/workspace-review-queue.test.ts __tests__/api/workspace-proposals-monitor.test.ts`.
+- Passed `npm run test:unit -- __tests__/lib/proposalContext.test.ts`.
 - Passed `npm run type-check`.
 
 ## Next Agent Starts Here
 
-Start with `lib/intelligence/context.ts`, `lib/workspace/agent/context.ts`, `components/workspace/review/ReviewWorkspace.tsx`, and `lib/data.ts`. The workspace route extraction is already done in this worktree; the next highest-value DD03 step is to define the shared proposal/governance context boundary and reduce the client-orchestrator sprawl in `ReviewWorkspace.tsx`.
+Start with `components/workspace/review/ReviewWorkspace.tsx`, `lib/intelligence/context.ts`, `lib/workspace/agent/context.ts`, and `lib/data.ts`. The shared on-chain proposal facts seam is now in place; the next highest-value DD03 step is to reduce `ReviewWorkspace.tsx` and then decide whether Redis plus in-memory context caching should remain intentionally split or move behind one explicit server-side contract.

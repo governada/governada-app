@@ -13,6 +13,8 @@
  */
 
 import { createClient } from '@/lib/supabase';
+import { parseRoutePath } from '@/lib/entity/entityId';
+import { fetchGovernanceProposalContextSeed } from '@/lib/governance/proposalContext';
 import { logger } from '@/lib/logger';
 import { cached } from '@/lib/redis';
 import { getCurrentEpoch } from '@/lib/constants';
@@ -99,13 +101,27 @@ interface ParsedRoute {
 }
 
 function parseRoute(pathname: string): ParsedRoute {
-  // /proposals/[txHash]-[index]
-  const proposalMatch = pathname.match(/\/proposals\/([a-f0-9]+)-?(\d+)?/);
-  if (proposalMatch) {
-    return { type: 'proposal', entityId: proposalMatch[1] };
+  const entityRoute = parseRoutePath(pathname);
+  if (entityRoute?.type === 'proposal') {
+    return {
+      type: 'proposal',
+      entityId: `${entityRoute.id}#${entityRoute.secondaryId ?? '0'}`,
+    };
+  }
+  if (entityRoute?.type === 'drep') {
+    return { type: 'drep', entityId: entityRoute.id };
   }
 
-  // /dreps/[drepId]
+  // Legacy proposal path: /proposals/[txHash]-[index]
+  const proposalMatch = pathname.match(/\/proposals\/([a-f0-9]+)-?(\d+)?/);
+  if (proposalMatch) {
+    return {
+      type: 'proposal',
+      entityId: proposalMatch[2] ? `${proposalMatch[1]}#${proposalMatch[2]}` : proposalMatch[1],
+    };
+  }
+
+  // Legacy DRep path: /dreps/[drepId]
   const drepMatch = pathname.match(/\/dreps\/([^/]+)/);
   if (drepMatch) {
     return { type: 'drep', entityId: decodeURIComponent(drepMatch[1]) };
@@ -150,43 +166,21 @@ function parseRoute(pathname: string): ParsedRoute {
 // ---------------------------------------------------------------------------
 
 async function synthesizeProposalContext(
-  txHash: string,
+  proposalId: string,
   stakeAddress?: string,
 ): Promise<ContextSynthesisResult> {
   const supabase = createClient();
 
-  // Fetch proposal data
-  const { data: proposal } = await supabase
-    .from('proposals')
-    .select(
-      'tx_hash, proposal_index, title, abstract, ai_summary, proposal_type, withdrawal_amount, treasury_tier, expiration_epoch, proposed_epoch, relevant_prefs',
-    )
-    .eq('tx_hash', txHash)
-    .maybeSingle();
-
-  if (!proposal) {
+  const seed = await fetchGovernanceProposalContextSeed(supabase, proposalId);
+  if (!seed) {
     return emptyResult('proposal');
   }
 
-  // Parallel: vote counts, constitutional classification, similarity
-  const [voteResult, classificationResult] = await Promise.all([
-    supabase
-      .from('drep_votes')
-      .select('vote')
-      .eq('proposal_tx_hash', txHash)
-      .eq('proposal_index', proposal.proposal_index),
-    supabase
-      .from('proposal_classifications')
-      .select('*')
-      .eq('proposal_tx_hash', txHash)
-      .eq('proposal_index', proposal.proposal_index)
-      .maybeSingle(),
-  ]);
+  const { proposal, voting, classification } = seed;
 
-  const votes = voteResult.data ?? [];
-  const yes = votes.filter((v) => v.vote === 'Yes').length;
-  const no = votes.filter((v) => v.vote === 'No').length;
-  const abstain = votes.filter((v) => v.vote === 'Abstain').length;
+  const yes = voting.drep.yes;
+  const no = voting.drep.no;
+  const abstain = voting.drep.abstain;
   const total = yes + no + abstain;
 
   const highlights: ContextHighlight[] = [];
@@ -203,8 +197,8 @@ async function synthesizeProposalContext(
   }
 
   // Treasury impact
-  if (proposal.withdrawal_amount) {
-    const adaAmount = Math.round(Number(proposal.withdrawal_amount) / 1_000_000);
+  if (proposal.withdrawalAmount) {
+    const adaAmount = Math.round(Number(proposal.withdrawalAmount) / 1_000_000);
     highlights.push({
       label: 'Treasury Impact',
       value: `${adaAmount.toLocaleString()} ADA`,
@@ -213,29 +207,17 @@ async function synthesizeProposalContext(
   }
 
   // Constitutional classification strength
-  if (classificationResult.data) {
-    const dims = classificationResult.data as Record<string, number>;
-    const maxDim = Math.max(
-      dims.dim_treasury_conservative ?? 0,
-      dims.dim_treasury_growth ?? 0,
-      dims.dim_decentralization ?? 0,
-      dims.dim_security ?? 0,
-      dims.dim_innovation ?? 0,
-      dims.dim_transparency ?? 0,
-    );
-    if (maxDim > 0.5) {
-      highlights.push({
-        label: 'Alignment Signal',
-        value: maxDim > 0.8 ? 'Strong' : 'Moderate',
-        sentiment: 'neutral',
-      });
-    }
+  if (classification) {
+    highlights.push({
+      label: 'Alignment Signal',
+      value: classification.strength === 'strong' ? 'Strong' : 'Moderate',
+      sentiment: 'neutral',
+    });
   }
 
   // Expiration
-  if (proposal.expiration_epoch) {
-    const currentEpoch = getCurrentEpoch();
-    const epochsRemaining = proposal.expiration_epoch - currentEpoch;
+  if (proposal.expirationEpoch) {
+    const epochsRemaining = voting.epochsRemaining ?? proposal.expirationEpoch - getCurrentEpoch();
     if (epochsRemaining <= 2 && epochsRemaining > 0) {
       highlights.push({
         label: 'Expiration',
@@ -246,8 +228,8 @@ async function synthesizeProposalContext(
   }
 
   // Treasury context for withdrawal proposals
-  if (proposal.withdrawal_amount) {
-    const withdrawalAda = Math.round(Number(proposal.withdrawal_amount) / 1_000_000);
+  if (proposal.withdrawalAmount) {
+    const withdrawalAda = Math.round(Number(proposal.withdrawalAmount) / 1_000_000);
     const treasury = await getTreasuryContext().catch(() => null);
     if (treasury?.treasuryData) {
       // Runway impact
@@ -299,10 +281,10 @@ async function synthesizeProposalContext(
   // Build briefing text
   const briefingParts: string[] = [];
   briefingParts.push(
-    `${proposal.title || 'Untitled Proposal'} is a ${proposal.proposal_type} proposal.`,
+    `${proposal.title || 'Untitled Proposal'} is a ${proposal.proposalType} proposal.`,
   );
-  if (proposal.ai_summary) {
-    briefingParts.push(proposal.ai_summary);
+  if (proposal.aiSummary) {
+    briefingParts.push(proposal.aiSummary);
   }
   if (total > 0) {
     const yesPct = Math.round((yes / total) * 100);
@@ -313,7 +295,7 @@ async function synthesizeProposalContext(
   if (stakeAddress) {
     suggestedActions.push({
       label: 'View Full Analysis',
-      href: `/proposals/${txHash}-${proposal.proposal_index}`,
+      href: `/proposal/${proposal.txHash}/${proposal.proposalIndex}`,
       priority: 'medium',
     });
   }
@@ -1206,7 +1188,7 @@ async function synthesizeWorkspaceContext(stakeAddress?: string): Promise<Contex
 // Treasury — dedicated treasury page intelligence
 // ---------------------------------------------------------------------------
 
-async function synthesizeTreasuryContext(stakeAddress?: string): Promise<ContextSynthesisResult> {
+async function synthesizeTreasuryContext(_stakeAddress?: string): Promise<ContextSynthesisResult> {
   const highlights: ContextHighlight[] = [];
   const suggestedActions: SuggestedAction[] = [];
 

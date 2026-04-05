@@ -644,6 +644,7 @@ The workspace review routes were doing too much work at the HTTP edge. They owne
 **Expected score impact:** Runtime architecture: remove competing definitions of proposal context
 **Depends on:** Chunk 13
 **PR group:** J
+**Implementation status:** In progress in this worktree
 
 ### Context
 
@@ -654,6 +655,23 @@ The workspace review routes were doing too much work at the HTTP edge. They owne
 - Define the shared server-side proposal/governance context primitives.
 - Move overlapping proposal, voting, treasury, precedent, and personal-context reads behind that shared service boundary.
 - Keep page-intelligence formatting and workspace-agent prompt formatting separate, but make them consume the same underlying context model.
+
+### Progress So Far
+
+- Added `lib/governance/proposalContext.ts` as the shared on-chain proposal facts module.
+- Standardized proposal-key normalization plus normalized proposal snapshot and tri-body voting reads behind that shared boundary.
+- Added a shared reduced proposal-classification summary for page-intelligence consumers.
+- Updated `lib/intelligence/context.ts` to consume the shared proposal context seed instead of rebuilding those on-chain facts inline.
+- Updated `lib/workspace/agent/context.ts` to consume the same shared proposal snapshot/voting primitives for on-chain proposal context and precedent lookup.
+- Removed the duplicate `lib/governance/proposalSnapshot.ts` branch of the same responsibility.
+- Fixed the proposal-panel route contract so the intelligence API call now preserves proposal index instead of silently defaulting to index `0`.
+- Verified with `npm run test:unit -- __tests__/lib/proposalContext.test.ts`.
+- Verified with `npm run type-check`.
+
+### Follow-up Work
+
+- Decide whether cache ownership should stay split between Redis-backed page intelligence and the workspace agent's in-memory cache, or move behind one explicit server-side boundary.
+- Continue moving higher-level treasury, personal-context, and feedback/annotation assembly behind shared services only where that boundary is stable instead of merging the two builders wholesale.
 
 ### Verification
 

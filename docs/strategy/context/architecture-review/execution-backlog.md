@@ -746,3 +746,52 @@ The workspace review routes were doing too much work at the HTTP edge. They owne
 - `components/workspace/review/ReviewWorkspaceStudio.tsx`
 - `components/workspace/review/ReviewWorkspaceDecisionPanels.tsx`
 - `hooks/useReviewDecisionFlow.ts`
+
+## Chunk 16: Extract Proposal Enrichment Leaves From `lib/data.ts`
+
+**Priority:** P1
+**Effort:** M
+**Audit dimension(s):** Architecture and Code Health, API and Integration Readiness
+**Expected score impact:** Runtime architecture: reduce cross-domain ownership inside the shared read plane
+**Depends on:** Chunk 14
+**PR group:** J
+**Implementation status:** Completed in this worktree
+
+### Context
+
+`lib/data.ts` still mixes unrelated DRep cache, proposal, committee, and intelligence reads. The lowest-churn extraction target is the proposal-enrichment leaf cluster that many routes already depend on for proposal/rationale/vote enrichment.
+
+### Scope
+
+- Move `getProposalsByIds()`, `getRationalesByVoteTxHashes()`, and `getVotesByDRepId()` plus their shared types into a dedicated governance read module.
+- Keep `lib/data.ts` as a compatibility re-export surface for now so callers do not all need to migrate in the same checkpoint.
+- Add focused unit coverage for the new module seam.
+
+### Progress So Far
+
+- Added `lib/governance/proposalEnrichment.ts` as the dedicated proposal-enrichment leaf module.
+- Moved `CachedProposal`, `RationaleRecord`, and `DRepVoteRow` into that module with their existing Supabase-backed read helpers.
+- Reduced `lib/data.ts` by re-exporting those helpers and types instead of owning their implementation directly.
+- Added focused regression coverage in `__tests__/lib/proposalEnrichment.test.ts`.
+- Verified with `npm run test:unit -- __tests__/lib/proposalEnrichment.test.ts`.
+- Verified with `npm run lint -- lib/data.ts lib/governance/proposalEnrichment.ts`.
+- Verified with `npm run type-check`.
+
+### Follow-up Work
+
+- Decide whether `getVotingPowerSummary()` is the next low-churn proposal read to extract from `lib/data.ts`, or whether the heavier proposal-summary pipeline should move first.
+- Migrate callers directly to `lib/governance/proposalEnrichment.ts` only when a later DD03 slice already needs to touch those imports.
+
+### Verification
+
+- The shared proposal-enrichment reads now live outside `lib/data.ts`.
+- Existing callers still compile through the compatibility re-export.
+- The extracted module has direct unit coverage instead of relying only on downstream route tests.
+
+### Files to Read First
+
+- `lib/data.ts`
+- `lib/governance/proposalEnrichment.ts`
+- `app/api/compare/route.ts`
+- `app/api/v1/dreps/[drepId]/votes/route.ts`
+- `app/drep/[drepId]/page.tsx`

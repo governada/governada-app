@@ -80,6 +80,9 @@ The review flow is one of the most important operator surfaces in the product. K
 **Implementation status**
 
 - Partially reduced in this worktree.
+- Extracted the shared proposal-enrichment leaf into `lib/governance/proposalEnrichment.ts`, moving `getProposalsByIds()`, `getRationalesByVoteTxHashes()`, and `getVotesByDRepId()` plus their shared types behind a dedicated governance read module.
+- Kept `lib/data.ts` as a compatibility boundary by re-exporting that leaf module instead of forcing broad caller churn in the same checkpoint.
+- Added focused unit coverage for the extracted proposal-enrichment module, including compound-key proposal filtering, rationale mapping, and DRep-vote ordering.
 - `hooks/useReviewWorkspaceController.ts` now owns queue/session/navigation state as the explicit client controller boundary.
 - `lib/workspace/reviewWorkspaceController.ts` now owns the pure selection/progress helpers used by that controller.
 - `components/workspace/review/ReviewWorkspaceStudio.tsx` now owns the interactive studio shell instead of leaving that view tree embedded inside `ReviewWorkspace.tsx`.
@@ -89,7 +92,7 @@ The review flow is one of the most important operator surfaces in the product. K
 - Removed the duplicate `useReviewWorkspaceSelection.ts` and `lib/workspace/reviewNavigation.ts` branch so the review flow no longer has two competing queue/navigation abstractions.
 - Added focused component-project coverage for the decision-flow hook, including success propagation, rationale submission, and mobile vote selection.
 - Added focused component-project coverage for the shared decision-panel wrappers, including desktop intel passthrough, hidden voted state, mobile vote forwarding, and mobile-sheet reuse.
-- Remaining gap: the review workspace client boundary is materially thinner now; the next DD03 priority is the deeper shared-read/server-runtime seams rather than more presentational extraction in the studio shell.
+- Remaining gap: `lib/data.ts` is still the largest cross-domain read plane in the repo, but the first low-churn proposal-enrichment leaf is now out. The next DD03 priority is deeper shared-read/server-runtime seams rather than more presentational extraction in the studio shell.
 
 ### 3. Workspace route handlers were assembling read models at the HTTP edge
 
@@ -185,7 +188,7 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 ## Next Actions
 
 1. Continue the proposal/governance context boundary by evaluating whether personal-context or feedback/annotation assembly is stable enough to share; cache ownership is intentionally staying consumer-owned for now.
-2. Continue extracting domain read services out of `lib/data.ts`, starting with proposal/governance reads that already feed multiple consumers.
+2. Continue extracting domain read services out of `lib/data.ts`, with `getVotingPowerSummary()` or the heavier proposal-summary pipeline as the next candidate now that the proposal-enrichment leaf is isolated.
 3. Extract pure domain services from `precompute-proposal-intelligence.ts` and `sync-spo-scores.ts` so the Inngest jobs become orchestration wrappers.
 4. Revisit the review workspace only if DD06 exposes operator-journey regressions that the current controller, decision-flow, and decision-panel seams do not isolate cleanly.
 
@@ -207,6 +210,7 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 - Added `hooks/useReviewDecisionFlow.ts` so vote/rationale/mobile decision orchestration has its own client hook boundary instead of living inside the studio shell component.
 - Added `lib/governance/treasuryContext.ts` so page intelligence and workspace-agent context share one treasury read seam while keeping their different cache/output contracts.
 - Added `components/workspace/review/ReviewWorkspaceDecisionPanels.tsx` so shared desktop/mobile decision-panel composition has one presenter boundary instead of duplicated prop wiring in the studio shell.
+- Added `lib/governance/proposalEnrichment.ts` so the shared proposal/rationale/DRep-vote enrichment helpers no longer live inside the `lib/data.ts` god-module.
 - Fixed intelligence-comment drift by aligning the top-level `lib/intelligence/context.ts` description with its actual route-local personalization behavior.
 
 **Verification**
@@ -215,13 +219,15 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 - Passed `npm run test:unit -- __tests__/lib/proposalContext.test.ts`.
 - Passed `npm run test:unit -- __tests__/lib/reviewWorkspaceController.test.ts`.
 - Passed `npm run test:unit -- __tests__/lib/treasuryContext.test.ts`.
+- Passed `npm run test:unit -- __tests__/lib/proposalEnrichment.test.ts`.
 - Passed `npm run test:component -- __tests__/hooks/useReviewDecisionFlow.test.tsx`.
 - Passed `npm run test:component -- __tests__/components/ReviewWorkspaceDecisionPanels.test.tsx`.
 - Passed `npm run lint -- components/workspace/review/ReviewWorkspace.tsx components/workspace/review/ReviewWorkspaceStudio.tsx hooks/useReviewWorkspaceController.ts lib/workspace/reviewWorkspaceController.ts`.
 - Passed `npm run lint -- components/workspace/review/ReviewWorkspaceStudio.tsx hooks/useReviewDecisionFlow.ts hooks/useReviewWorkspaceController.ts components/workspace/review/ReviewWorkspace.tsx lib/workspace/reviewWorkspaceController.ts lib/governance/treasuryContext.ts lib/intelligence/context.ts lib/workspace/agent/context.ts`.
 - Passed `npm run lint -- components/workspace/review/ReviewWorkspaceStudio.tsx components/workspace/review/ReviewWorkspaceDecisionPanels.tsx hooks/useReviewDecisionFlow.ts`.
+- Passed `npm run lint -- lib/data.ts lib/governance/proposalEnrichment.ts`.
 - Passed `npm run type-check`.
 
 ## Next Agent Starts Here
 
-Start with `lib/governance/treasuryContext.ts`, `lib/intelligence/context.ts`, `lib/workspace/agent/context.ts`, `lib/data.ts`, `inngest/functions/precompute-proposal-intelligence.ts`, and `inngest/functions/sync-spo-scores.ts`. The review workspace now has distinct controller, decision-flow, and decision-panel seams; the next DD03 move should be a deeper shared-read or job-orchestration boundary, not more UI wrapper extraction.
+Start with `lib/governance/proposalEnrichment.ts`, `lib/data.ts`, `lib/governance/treasuryContext.ts`, `lib/intelligence/context.ts`, `lib/workspace/agent/context.ts`, `inngest/functions/precompute-proposal-intelligence.ts`, and `inngest/functions/sync-spo-scores.ts`. The review workspace now has distinct controller, decision-flow, and decision-panel seams, and `lib/data.ts` has its first extracted proposal leaf; the next DD03 move should be either the next `lib/data.ts` server-read seam or a job-orchestration extraction.

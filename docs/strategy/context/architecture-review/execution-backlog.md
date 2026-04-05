@@ -694,6 +694,7 @@ The workspace review routes were doing too much work at the HTTP edge. They owne
 **Expected score impact:** Runtime architecture: reduce client-side coordination blast radius
 **Depends on:** Chunk 13
 **PR group:** J
+**Implementation status:** In progress in this worktree
 
 ### Context
 
@@ -704,6 +705,23 @@ The workspace review routes were doing too much work at the HTTP edge. They owne
 - Split session/controller state from presentation.
 - Extract vote-flow orchestration, queue navigation state, and studio-panel coordination into smaller focused modules.
 - Keep the top-level review workspace focused on composition rather than owning every side effect directly.
+
+### Progress So Far
+
+- Added `hooks/useReviewWorkspaceController.ts` as the explicit review-workspace controller seam for queue/session/navigation state.
+- Added `lib/workspace/reviewWorkspaceController.ts` as the pure helper layer for initial selection, progress, and queue traversal.
+- Added `components/workspace/review/ReviewWorkspaceStudio.tsx` as the extracted interactive studio shell.
+- Reduced `components/workspace/review/ReviewWorkspace.tsx` to route-level state selection, fallback states, and studio-shell composition.
+- Removed the duplicate `hooks/useReviewWorkspaceSelection.ts` and `lib/workspace/reviewNavigation.ts` branch so the review flow has one queue/navigation ownership path.
+- Removed dead `agentUserRole` and `editorRef` exposure from the top-level review-workspace boundary.
+- Verified with `npm run test:unit -- __tests__/lib/reviewWorkspaceController.test.ts`.
+- Verified with `npm run lint -- components/workspace/review/ReviewWorkspace.tsx components/workspace/review/ReviewWorkspaceStudio.tsx hooks/useReviewWorkspaceController.ts lib/workspace/reviewWorkspaceController.ts`.
+- Verified with `npm run type-check`.
+
+### Follow-up Work
+
+- Decide whether the remaining vote/rationale/mobile-sheet orchestration in `ReviewWorkspaceStudio.tsx` deserves its own hook before the critical-user-journeys pass.
+- Add direct component-level coverage for the review studio shell only if later DD03 or DD06 work changes that interaction surface materially.
 
 ### Verification
 

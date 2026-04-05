@@ -63,18 +63,29 @@ Representative jobs like `sync-spo-scores.ts` and `precompute-proposal-intellige
 
 This keeps proposal, representative, committee, and intelligence read paths coupled at the module boundary. It raises blast radius for changes, makes ownership unclear, and forces unrelated consumers to depend on one giant server surface.
 
-### 2. `ReviewWorkspace.tsx` is an oversized client orchestrator
+### 2. `ReviewWorkspace.tsx` was an oversized client orchestrator
 
-**Severity:** Open
+**Severity:** Partially reduced in this worktree
 
 **Evidence**
 
-- `components/workspace/review/ReviewWorkspace.tsx` is about 1,100 lines and contains queue selection, local queue persistence, keyboard registration, agent-chat wiring, rationale drafting, vote submission, mobile/desktop layout switching, and analytics tracking.
-- The same file owns `StudioPanelWrapper`, `StudioReviewInner`, and `ReviewWorkspace`, which mixes domain flow, UI composition, and client-side side effects in one component tree.
+- `components/workspace/review/ReviewWorkspace.tsx` previously sat at about 1,100 lines and mixed queue selection, keyboard registration, rationale drafting, vote submission, layout composition, and fallback states in one client file.
+- The review path had started to split into competing ownership models: a live `useReviewWorkspaceController.ts` path, an unreferenced `useReviewWorkspaceSelection.ts` path, and a duplicate `reviewNavigation.ts` helper layer.
+- The old file also carried dead `StudioPanelWrapper` and agent-role plumbing that was no longer part of the rendered review flow.
 
 **Why it matters**
 
 The review flow is one of the most important operator surfaces in the product. Keeping state orchestration, command handling, and presentation in one client file makes regressions harder to isolate and reduces the chance of safe iteration on voting and review UX.
+
+**Implementation status**
+
+- Partially reduced in this worktree.
+- `hooks/useReviewWorkspaceController.ts` now owns queue/session/navigation state as the explicit client controller boundary.
+- `lib/workspace/reviewWorkspaceController.ts` now owns the pure selection/progress helpers used by that controller.
+- `components/workspace/review/ReviewWorkspaceStudio.tsx` now owns the interactive studio shell instead of leaving that view tree embedded inside `ReviewWorkspace.tsx`.
+- `components/workspace/review/ReviewWorkspace.tsx` is now a thin route-level entrypoint for loading/error/empty/complete states plus studio-shell composition.
+- Removed the duplicate `useReviewWorkspaceSelection.ts` and `lib/workspace/reviewNavigation.ts` branch so the review flow no longer has two competing queue/navigation abstractions.
+- Remaining gap: vote/rationale orchestration still lives inside `ReviewWorkspaceStudio.tsx`, so the studio shell is smaller and better bounded but not yet fully decomposed.
 
 ### 3. Workspace route handlers were assembling read models at the HTTP edge
 
@@ -158,13 +169,13 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 ## Open Questions
 
 - Should proposal/governance context for workspace agents and page intelligence collapse into one shared server service, or should they intentionally diverge behind an explicit “full context” versus “page context” contract?
-- Should `ReviewWorkspace.tsx` split first by product responsibility (`review session`, `vote flow`, `studio shell`) or by runtime boundary (`data hooks`, `client controller`, `render-only panels`)?
+- Does the remaining vote/rationale path in `ReviewWorkspaceStudio.tsx` justify its own hook now, or is the current controller-shell split sufficient until deeper user-journey work starts?
 - Is `lib/data.ts` best decomposed by domain (`dreps`, `proposals`, `committee`, `analytics`) or by consumer surface (`public API`, `workspace`, `intelligence`)?
 
 ## Next Actions
 
 1. Finish the proposal/governance context boundary by deciding how cache ownership and higher-level context composition should be shared across page intelligence and the workspace agent.
-2. Split `ReviewWorkspace.tsx` into a thinner session/controller layer and smaller presentation-focused subcomponents.
+2. Decide whether the remaining vote/rationale/mobile-sheet logic in `ReviewWorkspaceStudio.tsx` should become its own hook, or stay colocated until the critical-user-journeys pass exercises it end to end.
 3. Continue extracting domain read services out of `lib/data.ts`, starting with proposal/governance reads that already feed multiple consumers.
 4. Extract pure domain services from `precompute-proposal-intelligence.ts` and `sync-spo-scores.ts` so the Inngest jobs become orchestration wrappers.
 
@@ -180,13 +191,18 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 - Added `lib/governance/proposalContext.ts` as the shared on-chain proposal facts boundary for page intelligence and workspace-agent proposal consumers.
 - Removed the duplicate `lib/governance/proposalSnapshot.ts` branch of the same responsibility.
 - Fixed proposal-panel route drift so the intelligence panel now passes the canonical proposal ref, including index, when reading proposal context.
+- Split the review workspace first by runtime boundary: `ReviewWorkspace.tsx` is now a thin route-level entrypoint, `useReviewWorkspaceController.ts` is the controller seam, and `ReviewWorkspaceStudio.tsx` is the interactive studio shell.
+- Removed the duplicate `useReviewWorkspaceSelection.ts` and `lib/workspace/reviewNavigation.ts` branch so queue navigation has one owning helper layer.
+- Removed dead `agentUserRole` and `editorRef` exposure from the public review-workspace boundary.
 
 **Verification**
 
 - Passed `npm run test:unit -- __tests__/api/workspace-review-queue.test.ts __tests__/api/workspace-proposals-monitor.test.ts`.
 - Passed `npm run test:unit -- __tests__/lib/proposalContext.test.ts`.
+- Passed `npm run test:unit -- __tests__/lib/reviewWorkspaceController.test.ts`.
+- Passed `npm run lint -- components/workspace/review/ReviewWorkspace.tsx components/workspace/review/ReviewWorkspaceStudio.tsx hooks/useReviewWorkspaceController.ts lib/workspace/reviewWorkspaceController.ts`.
 - Passed `npm run type-check`.
 
 ## Next Agent Starts Here
 
-Start with `components/workspace/review/ReviewWorkspace.tsx`, `lib/intelligence/context.ts`, `lib/workspace/agent/context.ts`, and `lib/data.ts`. The shared on-chain proposal facts seam is now in place; the next highest-value DD03 step is to reduce `ReviewWorkspace.tsx` and then decide whether Redis plus in-memory context caching should remain intentionally split or move behind one explicit server-side contract.
+Start with `components/workspace/review/ReviewWorkspaceStudio.tsx`, `lib/intelligence/context.ts`, `lib/workspace/agent/context.ts`, and `lib/data.ts`. The review workspace now has one controller/helper path plus a separate studio shell; the next DD03 choice is whether to keep the remaining vote/rationale flow inside `ReviewWorkspaceStudio.tsx` for now or extract it, then decide whether Redis plus in-memory context caching should remain intentionally split or move behind one explicit server-side contract.

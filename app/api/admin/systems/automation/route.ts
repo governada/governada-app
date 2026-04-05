@@ -79,6 +79,8 @@ export async function runSystemsAutomationSweep(request: NextRequest, ctx: Route
   const nextByKey = new Map(currentByKey);
   const specs = buildSystemsAutomationSpecs({
     reviewDiscipline: dashboard.reviewDiscipline,
+    incidentSummary: dashboard.incidentSummary,
+    incidentHistory: dashboard.incidentHistory,
     openCommitments: dashboard.automationOpenCommitments,
     actions: dashboard.actions,
   });

@@ -3,6 +3,7 @@
 > **Purpose:** Durable record of production incidents, near misses, mitigations, and lessons learned.
 > **Rule:** If a production issue changes user trust, launch confidence, or founder load, log it.
 > **Working surface:** `/admin/systems#incident-log` is now the live incident and drill trail. This doc keeps the template and longer-form write-up structure when a fuller narrative is worth preserving in-repo.
+> **Automation:** The daily systems sweep now opens a drill-cadence follow-up when no recent failure drill is logged, with the next suggested scenario pulled from the launch plan.
 
 ---
 

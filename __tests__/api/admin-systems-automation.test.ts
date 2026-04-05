@@ -69,6 +69,19 @@ describe('systems automation route', () => {
         openCommitments: 7,
         overdueCommitments: 0,
       },
+      incidentSummary: {
+        status: 'good',
+        headline: 'Incident and drill trail is current',
+        currentValue: '0 open incidents / last drill 3d ago',
+        target: 'Monthly drills with no unresolved high-severity incidents',
+        summary: 'Recent incidents are resolved, and the drill cadence is fresh enough.',
+        lastDrillAt: '2026-04-01',
+        lastIncidentAt: null,
+        openIncidentCount: 0,
+        drillCount: 1,
+        recentEntries: [],
+      },
+      incidentHistory: [],
       automationOpenCommitments: [
         {
           id: '11111111-1111-4111-8111-111111111111',
@@ -119,6 +132,60 @@ describe('systems automation route', () => {
         action: 'systems_commitment_shepherd',
         target: '11111111-1111-4111-8111-111111111111',
       }),
+    );
+  });
+
+  it('opens a drill cadence follow-up when no drill is logged yet', async () => {
+    mockBuildSystemsDashboardData.mockResolvedValue({
+      reviewDiscipline: {
+        status: 'good',
+        headline: 'Weekly review rhythm is on track',
+        currentValue: 'Reviewed today',
+        target: 'A founder review recorded every 7 days',
+        summary: 'The weekly loop is healthy.',
+        lastReviewedAt: '2026-04-04T00:00:00.000Z',
+        openCommitments: 0,
+        overdueCommitments: 0,
+      },
+      incidentSummary: {
+        status: 'warning',
+        headline: 'Failure drills have not started yet',
+        currentValue: '0 open incidents / no drill yet',
+        target: 'Monthly drills with no unresolved high-severity incidents',
+        summary:
+          'Real incidents may not happen on schedule, so drills are the only reliable way to practice detection and mitigation before launch pressure arrives.',
+        lastDrillAt: null,
+        lastIncidentAt: null,
+        openIncidentCount: 0,
+        drillCount: 0,
+        recentEntries: [],
+      },
+      incidentHistory: [],
+      automationOpenCommitments: [],
+      openCommitments: [],
+      actions: [],
+    });
+
+    const response = await runSystemsAutomationSweep(
+      createRequest('/api/admin/systems/automation', {
+        headers: { authorization: `Bearer ${CRON_SECRET}` },
+      }),
+      { requestId: 'req-2' },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'systems_automation_followup_sync',
+          target: 'systems:drill-cadence',
+          payload: expect.objectContaining({
+            sourceKey: 'systems:drill-cadence',
+            triggerType: 'drill_cadence',
+            actionHref: '/admin/systems#incident-log',
+          }),
+        }),
+      ]),
     );
   });
 });

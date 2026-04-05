@@ -15,6 +15,58 @@ const DRILL_CRITICAL_DAYS = 60;
 const MAX_RESPONSE_MINUTES = 7 * 24 * 60;
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
+type DrillScenarioId = 'data_freshness' | 'deploy_failure' | 'dependency_degradation';
+
+type DrillScenario = {
+  id: DrillScenarioId;
+  title: string;
+  summary: string;
+  systems: string[];
+  keywords: string[];
+};
+
+export type SystemsDrillCadenceTarget = {
+  sourceKey: string;
+  title: string;
+  summary: string;
+  recommendedAction: string;
+  actionHref: string;
+  severity: 'warning' | 'critical';
+  reason: 'missing' | 'stale';
+  drillCount: number;
+  lastDrillAt: string | null;
+  suggestedScenario: DrillScenarioId;
+  suggestedTitle: string;
+  suggestedSystems: string[];
+};
+
+const DRILL_SCENARIOS: DrillScenario[] = [
+  {
+    id: 'data_freshness',
+    title: 'Data freshness drill',
+    summary:
+      'Rehearse stale sync detection, founder communication, and the user-facing honesty path.',
+    systems: ['pipeline', 'supabase', 'freshness'],
+    keywords: ['freshness', 'stale', 'sync', 'supabase', 'reconciliation', 'data drift', 'drift'],
+  },
+  {
+    id: 'deploy_failure',
+    title: 'Deploy rollback drill',
+    summary:
+      'Rehearse a bad deploy, rollback decision, readiness checks, and public recovery posture.',
+    systems: ['deploy', 'rollback', 'readiness'],
+    keywords: ['deploy', 'rollback', 'release', 'readiness', 'build', 'migration'],
+  },
+  {
+    id: 'dependency_degradation',
+    title: 'Dependency degradation drill',
+    summary:
+      'Rehearse upstream dependency degradation and the fallback path before it happens under pressure.',
+    systems: ['koios', 'redis', 'dependency'],
+    keywords: ['koios', 'redis', 'dependency', 'upstream', 'outage', 'degradation'],
+  },
+];
+
 const systemsIncidentPayloadSchema = z.object({
   incidentDate: dateString,
   entryType: z.enum(['incident', 'drill']),
@@ -170,6 +222,96 @@ function severityRank(severity: SystemsIncidentSeverity) {
     default:
       return 0;
   }
+}
+
+function classifyDrillScenario(entry: SystemsIncidentRecord): DrillScenarioId | null {
+  if (entry.entryType !== 'drill') return null;
+
+  const haystack = [
+    entry.title,
+    entry.summary,
+    entry.userImpact,
+    entry.rootCause,
+    entry.mitigation,
+    entry.permanentFix,
+    entry.systemsAffected.join(' '),
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  for (const scenario of DRILL_SCENARIOS) {
+    if (scenario.keywords.some((keyword) => haystack.includes(keyword))) {
+      return scenario.id;
+    }
+  }
+
+  return null;
+}
+
+function chooseNextDrillScenario(history: SystemsIncidentRecord[]): DrillScenario {
+  const drills = history.filter((entry) => entry.entryType === 'drill');
+  const lastDrillByScenario = new Map<DrillScenarioId, string>();
+
+  for (const drill of drills) {
+    const scenarioId = classifyDrillScenario(drill);
+    if (!scenarioId || lastDrillByScenario.has(scenarioId)) continue;
+    lastDrillByScenario.set(scenarioId, drill.incidentDate);
+  }
+
+  for (const scenario of DRILL_SCENARIOS) {
+    if (!lastDrillByScenario.has(scenario.id)) {
+      return scenario;
+    }
+  }
+
+  return [...DRILL_SCENARIOS].sort((left, right) =>
+    (lastDrillByScenario.get(left.id) ?? '9999-12-31').localeCompare(
+      lastDrillByScenario.get(right.id) ?? '9999-12-31',
+    ),
+  )[0]!;
+}
+
+export function buildSystemsDrillCadenceTarget(input: {
+  summary: SystemsIncidentSummary;
+  history: SystemsIncidentRecord[];
+  now?: Date;
+}): SystemsDrillCadenceTarget | null {
+  const now = input.now ?? new Date();
+  const lastDrillAt = input.summary.lastDrillAt ?? null;
+  const lastDrillAgeDays = lastDrillAt ? daysSince(lastDrillAt, now) : null;
+
+  if (lastDrillAt && (lastDrillAgeDays ?? 0) <= DRILL_WARNING_DAYS) {
+    return null;
+  }
+
+  const nextScenario = chooseNextDrillScenario(input.history);
+  const reason: SystemsDrillCadenceTarget['reason'] = lastDrillAt ? 'stale' : 'missing';
+  const severity: SystemsDrillCadenceTarget['severity'] =
+    lastDrillAt && (lastDrillAgeDays ?? 0) > DRILL_CRITICAL_DAYS ? 'critical' : 'warning';
+  const title =
+    reason === 'missing'
+      ? `Run the first failure drill: ${nextScenario.title}`
+      : `Refresh failure drill cadence: ${nextScenario.title}`;
+
+  const cadenceSummary =
+    reason === 'missing'
+      ? 'No drill is logged yet, so response readiness is still theoretical.'
+      : `The last logged drill was ${lastDrillAgeDays} days ago, so the monthly rehearsal loop has drifted.`;
+
+  return {
+    sourceKey: 'systems:drill-cadence',
+    title,
+    summary: `${cadenceSummary} Next scenario: ${nextScenario.summary}`,
+    recommendedAction: `Run a ${nextScenario.title.toLowerCase()} this week, log it in /admin/systems#incident-log, capture the detection path, and carry one permanent-fix follow-up into the next weekly review.`,
+    actionHref: '/admin/systems#incident-log',
+    severity,
+    reason,
+    drillCount: input.summary.drillCount,
+    lastDrillAt,
+    suggestedScenario: nextScenario.id,
+    suggestedTitle: nextScenario.title,
+    suggestedSystems: nextScenario.systems,
+  };
 }
 
 export function buildSystemsIncidentSummary(input: {

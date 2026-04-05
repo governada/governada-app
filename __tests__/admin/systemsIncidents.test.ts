@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildSystemsDrillCadenceTarget,
   buildSystemsIncidentPayload,
   buildSystemsIncidentSummary,
   parseSystemsIncidentHistory,
@@ -90,6 +91,104 @@ describe('systems incident helpers', () => {
     expect(summary.status).toBe('good');
     expect(summary.drillCount).toBe(1);
     expect(summary.currentValue).toMatch(/last drill 3d ago/i);
+  });
+
+  it('suggests the first missing launch drill scenario when cadence has not started', () => {
+    const summary = buildSystemsIncidentSummary({
+      history: [],
+      now: new Date('2026-04-05T12:00:00.000Z'),
+    });
+
+    const target = buildSystemsDrillCadenceTarget({
+      summary,
+      history: [],
+      now: new Date('2026-04-05T12:00:00.000Z'),
+    });
+
+    expect(target?.reason).toBe('missing');
+    expect(target?.suggestedScenario).toBe('data_freshness');
+    expect(target?.title).toMatch(/first failure drill/i);
+  });
+
+  it('rotates to the next uncovered failure mode when cadence is stale', () => {
+    const history = parseSystemsIncidentHistory([
+      {
+        action: SYSTEMS_INCIDENT_LOG_ACTION,
+        target: 'drill:2026-01-20:stale-sync',
+        created_at: '2026-01-20T12:00:00.000Z',
+        payload: {
+          incidentDate: '2026-01-20',
+          entryType: 'drill',
+          severity: 'drill',
+          status: 'resolved',
+          title: 'Stale sync drill',
+          detectedBy: 'Manual review',
+          systemsAffected: ['pipeline', 'supabase', 'freshness'],
+          userImpact: 'Rehearsed stale governance data before public trust degraded.',
+          rootCause: 'Simulated sync freshness drift and founder communications.',
+          mitigation: 'Walked through detection, acknowledgement, and freeze criteria.',
+          permanentFix: 'Keep the failure drill cadence alive.',
+          followUpOwner: 'Founder + agents',
+          timeToAcknowledgeMinutes: 5,
+          timeToMitigateMinutes: 15,
+          timeToResolveMinutes: 25,
+        },
+      },
+    ]);
+
+    const summary = buildSystemsIncidentSummary({
+      history,
+      now: new Date('2026-04-05T12:00:00.000Z'),
+    });
+    const target = buildSystemsDrillCadenceTarget({
+      summary,
+      history,
+      now: new Date('2026-04-05T12:00:00.000Z'),
+    });
+
+    expect(target?.reason).toBe('stale');
+    expect(target?.severity).toBe('critical');
+    expect(target?.suggestedScenario).toBe('deploy_failure');
+  });
+
+  it('does not create a cadence nudge when the latest drill is still fresh', () => {
+    const history = parseSystemsIncidentHistory([
+      {
+        action: SYSTEMS_INCIDENT_LOG_ACTION,
+        target: 'drill:2026-04-01:rollback-rehearsal',
+        created_at: '2026-04-01T12:00:00.000Z',
+        payload: {
+          incidentDate: '2026-04-01',
+          entryType: 'drill',
+          severity: 'drill',
+          status: 'resolved',
+          title: 'Deploy rollback drill',
+          detectedBy: 'Manual review',
+          systemsAffected: ['deploy', 'rollback', 'readiness'],
+          userImpact: 'Rehearsed a failed deploy and rollback decision path.',
+          rootCause: 'Simulated a broken release that required immediate recovery.',
+          mitigation: 'Walked through rollback, readiness verification, and founder comms.',
+          permanentFix: 'Keep a monthly drill rhythm for bad deploys.',
+          followUpOwner: 'Founder + agents',
+          timeToAcknowledgeMinutes: 4,
+          timeToMitigateMinutes: 14,
+          timeToResolveMinutes: 20,
+        },
+      },
+    ]);
+
+    const summary = buildSystemsIncidentSummary({
+      history,
+      now: new Date('2026-04-05T12:00:00.000Z'),
+    });
+
+    expect(
+      buildSystemsDrillCadenceTarget({
+        summary,
+        history,
+        now: new Date('2026-04-05T12:00:00.000Z'),
+      }),
+    ).toBeNull();
   });
 
   it('rejects drill entries that use incident-only statuses', () => {

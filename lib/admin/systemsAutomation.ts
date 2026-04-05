@@ -11,9 +11,12 @@ import type {
   SystemsAutomationSummary,
   SystemsAutomationTriggerType,
   SystemsCommitmentCard,
+  SystemsIncidentRecord,
+  SystemsIncidentSummary,
   SystemsReviewDiscipline,
   SystemsStatus,
 } from '@/lib/admin/systems';
+import { buildSystemsDrillCadenceTarget } from '@/lib/admin/systemsIncidents';
 
 export const SYSTEMS_AUTOMATION_FOLLOWUP_ACTION = 'systems_automation_followup_sync';
 export const SYSTEMS_AUTOMATION_SWEEP_ACTION = 'systems_automation_sweep';
@@ -89,7 +92,12 @@ function reasonLabel(reason: SystemsOperatorEscalationTarget['reason']) {
 }
 
 const followupStatusSchema = z.enum(['open', 'acknowledged', 'resolved']);
-const triggerTypeSchema = z.enum(['review_discipline', 'overdue_commitment', 'systems_action']);
+const triggerTypeSchema = z.enum([
+  'review_discipline',
+  'drill_cadence',
+  'overdue_commitment',
+  'systems_action',
+]);
 const severitySchema = z.enum(['warning', 'critical']);
 
 const recordSchema = z.record(z.string(), z.unknown());
@@ -561,6 +569,8 @@ export function formatSystemsOperatorEscalationDigest(
 
 export function buildSystemsAutomationSpecs(input: {
   reviewDiscipline: SystemsReviewDiscipline;
+  incidentSummary: SystemsIncidentSummary;
+  incidentHistory: SystemsIncidentRecord[];
   openCommitments: SystemsCommitmentCard[];
   actions: SystemsAction[];
 }): SystemsAutomationSpec[] {
@@ -583,6 +593,31 @@ export function buildSystemsAutomationSpecs(input: {
         lastReviewedAt: input.reviewDiscipline.lastReviewedAt ?? null,
         overdueCommitments: input.reviewDiscipline.overdueCommitments,
         openCommitments: input.reviewDiscipline.openCommitments,
+      },
+    });
+  }
+
+  const drillCadenceTarget = buildSystemsDrillCadenceTarget({
+    summary: input.incidentSummary,
+    history: input.incidentHistory,
+  });
+
+  if (drillCadenceTarget) {
+    specs.push({
+      sourceKey: drillCadenceTarget.sourceKey,
+      triggerType: 'drill_cadence',
+      severity: drillCadenceTarget.severity,
+      title: drillCadenceTarget.title,
+      summary: drillCadenceTarget.summary,
+      recommendedAction: drillCadenceTarget.recommendedAction,
+      actionHref: drillCadenceTarget.actionHref,
+      evidence: {
+        reason: drillCadenceTarget.reason,
+        drillCount: drillCadenceTarget.drillCount,
+        lastDrillAt: drillCadenceTarget.lastDrillAt,
+        suggestedScenario: drillCadenceTarget.suggestedScenario,
+        suggestedTitle: drillCadenceTarget.suggestedTitle,
+        suggestedSystems: drillCadenceTarget.suggestedSystems,
       },
     });
   }

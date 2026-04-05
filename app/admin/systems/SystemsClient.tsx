@@ -2763,9 +2763,9 @@ export function SystemsClient() {
             <h3 className="text-base font-semibold">Next automations</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            The daily sweep, weekly draft, critical follow-up escalation, and commitment shepherd
-            are live now. These are the next routines that can compound on top of the same feed and
-            audit trail.
+            The daily sweep, weekly draft, critical follow-up escalation, commitment shepherd, and
+            drill cadence nudger are live now. These are the next routines that can compound on top
+            of the same feed and audit trail.
           </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {data.automationCandidates.map((candidate) => (

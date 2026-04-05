@@ -74,6 +74,7 @@ The review is intentionally shaped so it can be automated later from `/api/admin
 - project the durable review history into a live scorecard sync signal with streak, drift, and recurring hotspot SLOs
 - propose one hardening commitment
 - pick the one blocked or overdue commitment that most needs an unblock-or-replace decision
+- open a founder-ready drill brief when `/admin/systems#incident-log` shows that the monthly failure drill cadence is missing or stale
 - open an inbox item for founder review
 - apply the commitment shepherd brief into the weekly review form
 - escalate unresolved critical follow-ups into the founder operator channel with next-action links

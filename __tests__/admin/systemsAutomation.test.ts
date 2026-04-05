@@ -43,6 +43,20 @@ describe('systems automation helpers', () => {
         openCommitments: 2,
         overdueCommitments: 1,
       },
+      incidentSummary: {
+        status: 'warning',
+        headline: 'Failure drills have not started yet',
+        currentValue: '0 open incidents / no drill yet',
+        target: 'Monthly drills with no unresolved high-severity incidents',
+        summary:
+          'Real incidents may not happen on schedule, so drills are the only reliable way to practice detection and mitigation before launch pressure arrives.',
+        lastDrillAt: null,
+        lastIncidentAt: null,
+        openIncidentCount: 0,
+        drillCount: 0,
+        recentEntries: [],
+      },
+      incidentHistory: [],
       openCommitments: [overdueCommitment],
       actions: [
         {
@@ -60,6 +74,7 @@ describe('systems automation helpers', () => {
     expect(specs.map((spec) => spec.sourceKey)).toEqual(
       expect.arrayContaining([
         'systems:review-discipline',
+        'systems:drill-cadence',
         'systems:commitment:4375fe7d-f712-48d5-ac2a-c17b62d8d7ce',
         'systems:action:resolve-integrity-alerts',
       ]),

@@ -7,6 +7,7 @@ export type SystemsAutomationSeverity = 'warning' | 'critical';
 export type SystemsAutomationFollowupStatus = 'open' | 'acknowledged' | 'resolved';
 export type SystemsAutomationTriggerType =
   | 'review_discipline'
+  | 'drill_cadence'
   | 'overdue_commitment'
   | 'systems_action';
 export type SystemsScorecardTrend = 'improving' | 'steady' | 'worsening' | 'new';
@@ -496,15 +497,6 @@ export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
     trigger: 'Risky route or caching changes land without a fresh baseline.',
     action: 'Run the minimum k6 baseline and attach the result to the systems review.',
     whyItMatters: 'This lets performance discipline become an agentic maintenance loop.',
-  },
-  {
-    id: 'drill-cadence-nudger',
-    title: 'Drill cadence nudger',
-    trigger: 'No dependency, deploy, or freshness drill has been logged inside the monthly window.',
-    action:
-      'Open a founder-ready drill brief with the next failure mode, detection path, and follow-up prompt when the drill loop goes stale.',
-    whyItMatters:
-      'The incident log only compounds if drills keep happening without the founder having to remember the cadence manually.',
   },
   {
     id: 'incident-retro-followup',

@@ -103,6 +103,19 @@ function buildDashboardFixture(): SystemsDashboardData {
       trend: 'improving',
       recentReviews: [],
     },
+    incidentSummary: {
+      status: 'warning',
+      headline: 'Failure drills have not started yet',
+      currentValue: '0 open incidents / no drill yet',
+      target: 'Monthly drills with no unresolved high-severity incidents',
+      summary:
+        'No incidents or drills are logged yet. Run the first tabletop drill so response readiness stops living only in the runbook.',
+      lastDrillAt: null,
+      lastIncidentAt: null,
+      openIncidentCount: 0,
+      drillCount: 0,
+      recentEntries: [],
+    },
     automationSummary: {
       status: 'warning',
       headline: 'Automation is active, but it still needs founder follow-through',
@@ -158,6 +171,7 @@ function buildDashboardFixture(): SystemsDashboardData {
     automationOpenCommitments: [],
     openCommitments: [],
     reviewHistory: [],
+    incidentHistory: [],
     journeys: [],
     automationCandidates: [],
     quickLinks: [],
@@ -176,6 +190,7 @@ describe('systems review draft helpers', () => {
     expect(draft.hardeningCommitmentSummary).toMatch(/confirm the blocker/i);
     expect(draft.linkedSloIds).toEqual(['freshness', 'journeys']);
     expect(draft.changeNotes).toMatch(/Commitment shepherd/i);
+    expect(draft.changeNotes).toMatch(/Incident response/i);
     expect(draft.commitmentDueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 

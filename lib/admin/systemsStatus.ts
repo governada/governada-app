@@ -138,8 +138,8 @@ export function buildPromiseCards(
       currentValue: input.incidentResponse.value,
       target: 'Alert, acknowledge, mitigate, learn',
       summary: input.incidentResponse.summary,
-      actionLabel: 'Run first drill',
-      actionHref: '/admin/systems#automation',
+      actionLabel: 'Open incident log',
+      actionHref: '/admin/systems#incident-log',
     },
     {
       id: 'user-honesty',
@@ -350,7 +350,7 @@ export function buildRecommendedActions(promises: SystemsPromiseCard[]): Systems
       priority: 'P1',
       timeframe: 'foundation',
       summary: incidentResponse.summary,
-      href: '/admin/systems#automation',
+      href: '/admin/systems#incident-log',
       automationReady: true,
     });
   }

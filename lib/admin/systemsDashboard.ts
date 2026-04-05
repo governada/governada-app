@@ -30,6 +30,11 @@ import {
 } from '@/lib/admin/systemsReview';
 import { buildSystemsScorecardSync } from '@/lib/admin/systemsScorecard';
 import {
+  buildSystemsIncidentSummary,
+  parseSystemsIncidentHistory,
+  SYSTEMS_INCIDENT_LOG_ACTION,
+} from '@/lib/admin/systemsIncidents';
+import {
   parseLatestSystemsReviewDraft,
   SYSTEMS_REVIEW_DRAFT_ACTION,
 } from '@/lib/admin/systemsReviewDraft';
@@ -137,6 +142,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     openCommitmentsResult,
     automationAuditResult,
     reviewDraftAuditResult,
+    incidentAuditResult,
   ] = await Promise.all([
     probeSupabase(),
     probeKoios(),
@@ -191,6 +197,12 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
       .eq('action', SYSTEMS_REVIEW_DRAFT_ACTION)
       .order('created_at', { ascending: false })
       .limit(16),
+    supabase
+      .from('admin_audit_log')
+      .select('action, target, payload, created_at')
+      .eq('action', SYSTEMS_INCIDENT_LOG_ACTION)
+      .order('created_at', { ascending: false })
+      .limit(24),
   ]);
 
   const dependencyStatus: SystemsStatus =
@@ -349,6 +361,8 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationAuditResult.data || [],
   );
   const suggestedReviewDraft = parseLatestSystemsReviewDraft(reviewDraftAuditResult.data || []);
+  const incidentHistory = parseSystemsIncidentHistory(incidentAuditResult.data || []);
+  const incidentSummary = buildSystemsIncidentSummary({ history: incidentHistory });
 
   const promiseInput: PromiseInput = {
     availability: {
@@ -386,19 +400,9 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
           : `${reviewDiscipline.currentValue}${syncSuccessRate === null ? '' : ` - sync success ${syncSuccessRate}%`}`,
     },
     incidentResponse: {
-      status: automationSummary.status === 'bootstrap' ? 'bootstrap' : automationSummary.status,
-      summary:
-        automationSummary.status === 'good'
-          ? 'The founder automation loop is producing clean sweeps and a current inbox.'
-          : automationSummary.status === 'bootstrap'
-            ? 'The automation loop exists in the product, but it still needs the first sweep to prove it works as an operating habit.'
-            : automationSummary.summary,
-      value:
-        automationState.latestRun === null
-          ? 'Sweep not started'
-          : automationState.latestRun.status === 'good'
-            ? 'Sweep healthy'
-            : automationState.latestRun.summary,
+      status: incidentSummary.status,
+      summary: incidentSummary.summary,
+      value: incidentSummary.currentValue,
     },
     userHonesty: {
       status: freshnessStatus === 'critical' ? 'warning' : 'bootstrap',
@@ -442,12 +446,14 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
   }
   if (reviewDiscipline.status !== 'good') watchouts.push(reviewDiscipline.summary);
   if (automationSummary.status === 'warning') watchouts.push(automationSummary.summary);
+  if (incidentSummary.status === 'warning') watchouts.push(incidentSummary.summary);
 
   if (dependencyStatus === 'critical') blockers.push('Core availability is red.');
   if (correctnessStatus === 'critical') blockers.push('Integrity correctness is red.');
   if (freshnessStatus === 'critical') blockers.push('Freshness is outside the launch bar.');
   if (reviewDiscipline.status === 'critical') blockers.push(reviewDiscipline.headline);
   if (automationSummary.status === 'critical') blockers.push(automationSummary.headline);
+  if (incidentSummary.status === 'critical') blockers.push(incidentSummary.headline);
 
   return {
     generatedAt: new Date().toISOString(),
@@ -481,6 +487,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     reviewLoop,
     reviewDiscipline,
     scorecardSync,
+    incidentSummary,
     automationSummary,
     automationFollowups: automationState.openFollowups,
     latestAutomationRun: automationState.latestRun,
@@ -490,6 +497,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationOpenCommitments,
     openCommitments,
     reviewHistory,
+    incidentHistory,
     journeys: CRITICAL_JOURNEYS,
     automationCandidates: AUTOMATION_CANDIDATES,
     quickLinks: SYSTEMS_QUICK_LINKS,

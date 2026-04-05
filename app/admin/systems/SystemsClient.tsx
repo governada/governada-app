@@ -31,6 +31,10 @@ import type {
   SystemsCommitmentCard,
   SystemsCommitmentStatus,
   SystemsDashboardData,
+  SystemsIncidentRecord,
+  SystemsIncidentSeverity,
+  SystemsIncidentStatus,
+  SystemsIncidentType,
   SystemsJourney,
   SystemsPromiseCard,
   SystemsReviewDiscipline,
@@ -87,6 +91,24 @@ type ReviewFormState = {
   linkedSloIds: string[];
 };
 
+type IncidentFormState = {
+  incidentDate: string;
+  entryType: SystemsIncidentType;
+  severity: SystemsIncidentSeverity;
+  status: SystemsIncidentStatus;
+  title: string;
+  detectedBy: string;
+  systemsAffected: string;
+  userImpact: string;
+  rootCause: string;
+  mitigation: string;
+  permanentFix: string;
+  followUpOwner: string;
+  timeToAcknowledgeMinutes: string;
+  timeToMitigateMinutes: string;
+  timeToResolveMinutes: string;
+};
+
 async function createSystemsReview(payload: ReviewFormState) {
   const token = getStoredSession();
   if (!token) throw new Error('Missing session');
@@ -106,6 +128,53 @@ async function createSystemsReview(payload: ReviewFormState) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || 'Failed to log systems review');
+  }
+
+  return res.json();
+}
+
+async function createSystemsIncident(payload: IncidentFormState) {
+  const token = getStoredSession();
+  if (!token) throw new Error('Missing session');
+
+  const systemsAffected = payload.systemsAffected
+    .split(/[\n,]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const parseMinutes = (value: string) => {
+    if (!value.trim()) return null;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const res = await fetch('/api/admin/systems/incidents', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      incidentDate: payload.incidentDate,
+      entryType: payload.entryType,
+      severity: payload.severity,
+      status: payload.status,
+      title: payload.title,
+      detectedBy: payload.detectedBy,
+      systemsAffected,
+      userImpact: payload.userImpact,
+      rootCause: payload.rootCause,
+      mitigation: payload.mitigation,
+      permanentFix: payload.permanentFix,
+      followUpOwner: payload.followUpOwner,
+      timeToAcknowledgeMinutes: parseMinutes(payload.timeToAcknowledgeMinutes),
+      timeToMitigateMinutes: parseMinutes(payload.timeToMitigateMinutes),
+      timeToResolveMinutes: parseMinutes(payload.timeToResolveMinutes),
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to log systems incident');
   }
 
   return res.json();
@@ -258,6 +327,26 @@ function buildReviewFormFromCommitmentShepherd(
   };
 }
 
+function buildInitialIncidentForm(): IncidentFormState {
+  return {
+    incidentDate: todayInputValue(),
+    entryType: 'drill',
+    severity: 'drill',
+    status: 'resolved',
+    title: '',
+    detectedBy: 'Manual review',
+    systemsAffected: 'systems cockpit',
+    userImpact: '',
+    rootCause: '',
+    mitigation: '',
+    permanentFix: '',
+    followUpOwner: 'Founder + agents',
+    timeToAcknowledgeMinutes: '',
+    timeToMitigateMinutes: '',
+    timeToResolveMinutes: '',
+  };
+}
+
 function statusClasses(status: SystemsStatus) {
   switch (status) {
     case 'good':
@@ -324,6 +413,66 @@ function commitmentStatusClasses(status: SystemsCommitmentStatus) {
     default:
       return 'border-amber-500/30 text-amber-300';
   }
+}
+
+function incidentStatusLabel(status: SystemsIncidentStatus) {
+  switch (status) {
+    case 'mitigated':
+      return 'Mitigated';
+    case 'resolved':
+      return 'Resolved';
+    case 'follow_up_pending':
+      return 'Follow-up pending';
+    default:
+      return 'Open';
+  }
+}
+
+function incidentStatusClasses(status: SystemsIncidentStatus) {
+  switch (status) {
+    case 'resolved':
+      return 'border-emerald-500/30 text-emerald-300';
+    case 'mitigated':
+      return 'border-chart-1/40 text-chart-1';
+    case 'follow_up_pending':
+      return 'border-amber-500/30 text-amber-300';
+    default:
+      return 'border-red-500/30 text-red-300';
+  }
+}
+
+function incidentSeverityLabel(severity: SystemsIncidentSeverity) {
+  switch (severity) {
+    case 'p0':
+      return 'P0';
+    case 'p1':
+      return 'P1';
+    case 'p2':
+      return 'P2';
+    case 'near_miss':
+      return 'Near miss';
+    default:
+      return 'Drill';
+  }
+}
+
+function incidentSeverityClasses(severity: SystemsIncidentSeverity) {
+  switch (severity) {
+    case 'p0':
+      return 'border-red-500/30 text-red-300';
+    case 'p1':
+      return 'border-amber-500/30 text-amber-300';
+    case 'p2':
+      return 'border-chart-1/40 text-chart-1';
+    case 'near_miss':
+      return 'border-border text-muted-foreground';
+    default:
+      return 'border-emerald-500/30 text-emerald-300';
+  }
+}
+
+function incidentTypeLabel(entryType: SystemsIncidentType) {
+  return entryType === 'drill' ? 'Drill' : 'Incident';
 }
 
 function automationFollowupStatusLabel(status: SystemsAutomationFollowupStatus) {
@@ -416,6 +565,14 @@ function scorecardTrendMeta(trend: SystemsDashboardData['scorecardSync']['trend'
 
 function sloTitle(sloId: string, slos: SystemsDashboardData['slos']) {
   return slos.find((slo) => slo.id === sloId)?.title ?? sloId;
+}
+
+function formatMinutesLabel(minutes?: number | null) {
+  if (minutes === null || minutes === undefined) return 'Not recorded';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}m`;
 }
 
 function ActionCard({ action }: { action: SystemsAction }) {
@@ -1150,6 +1307,154 @@ function ReviewHistoryCard({ review }: { review: SystemsReviewRecord }) {
   );
 }
 
+function IncidentSummaryCard({ summary }: { summary: SystemsDashboardData['incidentSummary'] }) {
+  const classes = statusClasses(summary.status);
+
+  return (
+    <Card className={cn('border-l-2', classes.border)}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <Badge variant="outline" className={classes.badge}>
+              {statusLabel(summary.status)}
+            </Badge>
+            <h3 className="text-sm font-semibold">{summary.headline}</h3>
+          </div>
+          <AlertTriangle className={cn('h-4 w-4 shrink-0 mt-1', classes.text)} />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Current response posture</p>
+          <p className="text-2xl font-bold leading-none">{summary.currentValue}</p>
+          <p className="text-xs text-muted-foreground">Target: {summary.target}</p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">{summary.summary}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Last drill</p>
+            <p className="text-sm font-semibold mt-1">
+              {summary.lastDrillAt
+                ? new Date(`${summary.lastDrillAt}T00:00:00`).toLocaleDateString()
+                : 'Not logged'}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Last incident
+            </p>
+            <p className="text-sm font-semibold mt-1">
+              {summary.lastIncidentAt
+                ? new Date(`${summary.lastIncidentAt}T00:00:00`).toLocaleDateString()
+                : 'None logged'}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Logged drills
+            </p>
+            <p className="text-sm font-semibold mt-1">{summary.drillCount}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function IncidentHistoryCard({ entry }: { entry: SystemsIncidentRecord }) {
+  return (
+    <Card
+      className={cn(
+        entry.entryType === 'incident' && entry.status === 'open' && 'border-red-500/40',
+      )}
+    >
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className={incidentSeverityClasses(entry.severity)}>
+                {incidentSeverityLabel(entry.severity)}
+              </Badge>
+              <Badge variant="outline" className={incidentStatusClasses(entry.status)}>
+                {incidentStatusLabel(entry.status)}
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                {incidentTypeLabel(entry.entryType)}
+              </Badge>
+            </div>
+            <h3 className="text-sm font-semibold">{entry.title}</h3>
+          </div>
+          <History className="h-4 w-4 shrink-0 mt-1 text-muted-foreground" />
+        </div>
+
+        <p className="text-sm text-muted-foreground">{entry.summary}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Date</p>
+            <p className="text-sm mt-1">
+              {new Date(`${entry.incidentDate}T00:00:00`).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Detected by</p>
+            <p className="text-sm mt-1">{entry.detectedBy}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Follow-up owner
+            </p>
+            <p className="text-sm mt-1">{entry.followUpOwner}</p>
+          </div>
+        </div>
+
+        {entry.systemsAffected.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {entry.systemsAffected.map((system) => (
+              <Badge key={system} variant="outline" className="text-xs">
+                {system}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="space-y-2">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Root cause</p>
+            <p className="text-sm mt-1">{entry.rootCause}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Mitigation</p>
+            <p className="text-sm mt-1">{entry.mitigation}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Permanent fix
+            </p>
+            <p className="text-sm mt-1">{entry.permanentFix}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Ack</p>
+            <p className="text-sm mt-1">{formatMinutesLabel(entry.timeToAcknowledgeMinutes)}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Mitigate</p>
+            <p className="text-sm mt-1">{formatMinutesLabel(entry.timeToMitigateMinutes)}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Resolve</p>
+            <p className="text-sm mt-1">{formatMinutesLabel(entry.timeToResolveMinutes)}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function AutomationInboxSummaryCard({
   data,
   onRunSweep,
@@ -1340,6 +1645,7 @@ export function SystemsClient() {
     refetchInterval: 60_000,
   });
   const [reviewForm, setReviewForm] = useState<ReviewFormState | null>(null);
+  const [incidentForm, setIncidentForm] = useState<IncidentFormState | null>(null);
   const [pendingCommitmentId, setPendingCommitmentId] = useState<string | null>(null);
   const [pendingFollowupId, setPendingFollowupId] = useState<string | null>(null);
 
@@ -1347,6 +1653,12 @@ export function SystemsClient() {
     if (!data || reviewForm) return;
     setReviewForm(buildInitialReviewForm(data));
   }, [data, reviewForm]);
+
+  useEffect(() => {
+    if (!incidentForm) {
+      setIncidentForm(buildInitialIncidentForm());
+    }
+  }, [incidentForm]);
 
   const createReviewMutation = useMutation({
     mutationFn: createSystemsReview,
@@ -1374,6 +1686,18 @@ export function SystemsClient() {
       toast.error(mutationError.message || 'Failed to update commitment');
     },
     onSettled: () => setPendingCommitmentId(null),
+  });
+
+  const createIncidentMutation = useMutation({
+    mutationFn: createSystemsIncident,
+    onSuccess: (result: { entryType: SystemsIncidentType; title: string }) => {
+      toast.success(`${incidentTypeLabel(result.entryType)} logged: ${result.title}`);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'systems'] });
+      setIncidentForm(buildInitialIncidentForm());
+    },
+    onError: (mutationError: Error) => {
+      toast.error(mutationError.message || 'Failed to log systems incident');
+    },
   });
 
   const runSweepMutation = useMutation({
@@ -1471,6 +1795,10 @@ export function SystemsClient() {
     return null;
   }
 
+  if (!incidentForm) {
+    return null;
+  }
+
   const overallClasses = statusClasses(data.overall.status);
   const criticalJourneys = data.journeys.filter((journey) => journey.gateLevel !== 'L2');
   const automatedJourneys = criticalJourneys.filter((journey) => journey.coverage === 'automated');
@@ -1500,6 +1828,31 @@ export function SystemsClient() {
     event.preventDefault();
     if (!reviewForm) return;
     await createReviewMutation.mutateAsync(reviewForm);
+  }
+
+  function updateIncidentForm(patch: Partial<IncidentFormState>) {
+    setIncidentForm((current) => {
+      if (!current) return current;
+
+      const next = { ...current, ...patch };
+      if (patch.entryType === 'drill') {
+        next.severity = 'drill';
+        if (next.status === 'open' || next.status === 'mitigated') {
+          next.status = 'resolved';
+        }
+      } else if (patch.entryType === 'incident' && current.severity === 'drill') {
+        next.severity = 'p1';
+        next.status = 'open';
+      }
+
+      return next;
+    });
+  }
+
+  async function handleSubmitIncident(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!incidentForm) return;
+    await createIncidentMutation.mutateAsync(incidentForm);
   }
 
   function applySuggestedDraft() {
@@ -1944,6 +2297,285 @@ export function SystemsClient() {
             ))}
           </div>
         )}
+      </section>
+
+      <section id="incident-log" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-chart-1" />
+          <h2 className="text-lg font-semibold">Incident + drill trail</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Capture real incidents, near misses, and tabletop drills here so launch readiness is
+          practiced and durable instead of living only in the runbook.
+        </p>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-6">
+          <div className="space-y-4">
+            <IncidentSummaryCard summary={data.incidentSummary} />
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Log incident or drill</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form className="space-y-4" onSubmit={handleSubmitIncident}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="incident-date">Date</Label>
+                      <Input
+                        id="incident-date"
+                        type="date"
+                        value={incidentForm.incidentDate}
+                        onChange={(event) =>
+                          updateIncidentForm({ incidentDate: event.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="incident-type">Entry type</Label>
+                      <Select
+                        value={incidentForm.entryType}
+                        onValueChange={(value) =>
+                          updateIncidentForm({ entryType: value as SystemsIncidentType })
+                        }
+                      >
+                        <SelectTrigger id="incident-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="drill">Drill</SelectItem>
+                          <SelectItem value="incident">Incident</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="incident-severity">Severity</Label>
+                      <Select
+                        value={incidentForm.severity}
+                        onValueChange={(value) =>
+                          updateIncidentForm({ severity: value as SystemsIncidentSeverity })
+                        }
+                      >
+                        <SelectTrigger id="incident-severity">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {incidentForm.entryType === 'drill' ? (
+                            <SelectItem value="drill">Drill</SelectItem>
+                          ) : (
+                            <>
+                              <SelectItem value="p0">P0</SelectItem>
+                              <SelectItem value="p1">P1</SelectItem>
+                              <SelectItem value="p2">P2</SelectItem>
+                              <SelectItem value="near_miss">Near miss</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="incident-status">Status</Label>
+                      <Select
+                        value={incidentForm.status}
+                        onValueChange={(value) =>
+                          updateIncidentForm({ status: value as SystemsIncidentStatus })
+                        }
+                      >
+                        <SelectTrigger id="incident-status">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {incidentForm.entryType === 'drill' ? (
+                            <>
+                              <SelectItem value="resolved">Resolved</SelectItem>
+                              <SelectItem value="follow_up_pending">Follow-up pending</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="open">Open</SelectItem>
+                              <SelectItem value="mitigated">Mitigated</SelectItem>
+                              <SelectItem value="resolved">Resolved</SelectItem>
+                              <SelectItem value="follow_up_pending">Follow-up pending</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="incident-title">Title</Label>
+                    <Input
+                      id="incident-title"
+                      value={incidentForm.title}
+                      onChange={(event) => updateIncidentForm({ title: event.target.value })}
+                      placeholder="Koios outage drill for stale governance reads"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="incident-detected-by">Detected by</Label>
+                      <Input
+                        id="incident-detected-by"
+                        value={incidentForm.detectedBy}
+                        onChange={(event) => updateIncidentForm({ detectedBy: event.target.value })}
+                        placeholder="Alert, user report, manual review, audit"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="incident-owner">Follow-up owner</Label>
+                      <Input
+                        id="incident-owner"
+                        value={incidentForm.followUpOwner}
+                        onChange={(event) =>
+                          updateIncidentForm({ followUpOwner: event.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="incident-systems">Systems affected</Label>
+                    <Input
+                      id="incident-systems"
+                      value={incidentForm.systemsAffected}
+                      onChange={(event) =>
+                        updateIncidentForm({ systemsAffected: event.target.value })
+                      }
+                      placeholder="pipeline, supabase, readiness endpoint"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="incident-impact">User impact or drill scenario</Label>
+                    <Textarea
+                      id="incident-impact"
+                      value={incidentForm.userImpact}
+                      onChange={(event) => updateIncidentForm({ userImpact: event.target.value })}
+                      placeholder="What broke, what users would have seen, or what failure mode was rehearsed."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="incident-root-cause">Root cause</Label>
+                    <Textarea
+                      id="incident-root-cause"
+                      value={incidentForm.rootCause}
+                      onChange={(event) => updateIncidentForm({ rootCause: event.target.value })}
+                      placeholder="What actually caused the incident or what weakness the drill exposed?"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="incident-mitigation">Mitigation</Label>
+                    <Textarea
+                      id="incident-mitigation"
+                      value={incidentForm.mitigation}
+                      onChange={(event) => updateIncidentForm({ mitigation: event.target.value })}
+                      placeholder="How did you contain the issue or walk through the response?"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="incident-permanent-fix">Permanent fix</Label>
+                    <Textarea
+                      id="incident-permanent-fix"
+                      value={incidentForm.permanentFix}
+                      onChange={(event) => updateIncidentForm({ permanentFix: event.target.value })}
+                      placeholder="What needs to change in code, alerts, runbooks, or UX so this gets easier next time?"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="incident-ack">Time to acknowledge (min)</Label>
+                      <Input
+                        id="incident-ack"
+                        type="number"
+                        min="0"
+                        value={incidentForm.timeToAcknowledgeMinutes}
+                        onChange={(event) =>
+                          updateIncidentForm({
+                            timeToAcknowledgeMinutes: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="incident-mitigate">Time to mitigate (min)</Label>
+                      <Input
+                        id="incident-mitigate"
+                        type="number"
+                        min="0"
+                        value={incidentForm.timeToMitigateMinutes}
+                        onChange={(event) =>
+                          updateIncidentForm({
+                            timeToMitigateMinutes: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="incident-resolve">Time to resolve (min)</Label>
+                      <Input
+                        id="incident-resolve"
+                        type="number"
+                        min="0"
+                        value={incidentForm.timeToResolveMinutes}
+                        onChange={(event) =>
+                          updateIncidentForm({
+                            timeToResolveMinutes: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={createIncidentMutation.isPending}
+                    className="w-full"
+                  >
+                    {createIncidentMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Logging incident...
+                      </>
+                    ) : (
+                      'Log incident or drill'
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-4">
+            {data.incidentHistory.length === 0 ? (
+              <Card>
+                <CardContent className="pt-5 pb-5">
+                  <p className="text-sm font-medium">No incidents or drills are logged yet.</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Start with a tabletop drill so response readiness becomes a durable part of the
+                    weekly operating system.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              data.incidentHistory.map((entry) => (
+                <IncidentHistoryCard key={entry.id} entry={entry} />
+              ))
+            )}
+          </div>
+        </div>
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.45fr_0.85fr] gap-6">

@@ -10,6 +10,9 @@ export type SystemsAutomationTriggerType =
   | 'overdue_commitment'
   | 'systems_action';
 export type SystemsScorecardTrend = 'improving' | 'steady' | 'worsening' | 'new';
+export type SystemsIncidentType = 'incident' | 'drill';
+export type SystemsIncidentSeverity = 'drill' | 'p0' | 'p1' | 'p2' | 'near_miss';
+export type SystemsIncidentStatus = 'open' | 'mitigated' | 'resolved' | 'follow_up_pending';
 
 export interface SystemsPromiseCard {
   id: string;
@@ -241,6 +244,40 @@ export interface SystemsScorecardSync {
   recentReviews: SystemsScorecardReviewRecord[];
 }
 
+export interface SystemsIncidentRecord {
+  id: string;
+  loggedAt: string;
+  incidentDate: string;
+  entryType: SystemsIncidentType;
+  severity: SystemsIncidentSeverity;
+  status: SystemsIncidentStatus;
+  title: string;
+  summary: string;
+  detectedBy: string;
+  systemsAffected: string[];
+  userImpact: string;
+  rootCause: string;
+  mitigation: string;
+  permanentFix: string;
+  followUpOwner: string;
+  timeToAcknowledgeMinutes?: number | null;
+  timeToMitigateMinutes?: number | null;
+  timeToResolveMinutes?: number | null;
+}
+
+export interface SystemsIncidentSummary {
+  status: SystemsStatus;
+  headline: string;
+  currentValue: string;
+  target: string;
+  summary: string;
+  lastDrillAt?: string | null;
+  lastIncidentAt?: string | null;
+  openIncidentCount: number;
+  drillCount: number;
+  recentEntries: SystemsIncidentRecord[];
+}
+
 export interface SystemsDashboardData {
   generatedAt: string;
   overall: {
@@ -267,6 +304,7 @@ export interface SystemsDashboardData {
   reviewLoop: SystemsReviewLoop;
   reviewDiscipline: SystemsReviewDiscipline;
   scorecardSync: SystemsScorecardSync;
+  incidentSummary: SystemsIncidentSummary;
   automationSummary: SystemsAutomationSummary;
   automationFollowups: SystemsAutomationFollowup[];
   latestAutomationRun?: SystemsAutomationRunRecord | null;
@@ -276,6 +314,7 @@ export interface SystemsDashboardData {
   automationOpenCommitments: SystemsCommitmentCard[];
   openCommitments: SystemsCommitmentCard[];
   reviewHistory: SystemsReviewRecord[];
+  incidentHistory: SystemsIncidentRecord[];
   journeys: SystemsJourney[];
   automationCandidates: AutomationCandidate[];
   quickLinks: QuickLink[];
@@ -452,29 +491,30 @@ export const CRITICAL_JOURNEYS: SystemsJourney[] = [
 
 export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
   {
-    id: 'review-history-sync',
-    title: 'Review history + scorecard sync',
-    trigger: 'A weekly review lands or the current scorecard drifts from the durable review trail.',
-    action:
-      'Project the latest review history into a tighter trendline so the cockpit shows whether launch confidence is actually compounding week over week.',
-    whyItMatters:
-      'This turns the weekly review log into a true operating memory instead of a stack of isolated entries.',
-  },
-  {
-    id: 'incident-drill-log',
-    title: 'Incident + drill log workflow',
-    trigger: 'A deploy, dependency issue, or tabletop drill produces real operating learning.',
-    action:
-      'Capture the event, mitigation, and follow-up directly in the systems operating trail so incidents become permanent improvements.',
-    whyItMatters:
-      'This converts passive runbooks into practiced launch readiness and a durable lessons-learned loop.',
-  },
-  {
     id: 'performance-baseline',
     title: 'Performance baseline rerun',
     trigger: 'Risky route or caching changes land without a fresh baseline.',
     action: 'Run the minimum k6 baseline and attach the result to the systems review.',
     whyItMatters: 'This lets performance discipline become an agentic maintenance loop.',
+  },
+  {
+    id: 'drill-cadence-nudger',
+    title: 'Drill cadence nudger',
+    trigger: 'No dependency, deploy, or freshness drill has been logged inside the monthly window.',
+    action:
+      'Open a founder-ready drill brief with the next failure mode, detection path, and follow-up prompt when the drill loop goes stale.',
+    whyItMatters:
+      'The incident log only compounds if drills keep happening without the founder having to remember the cadence manually.',
+  },
+  {
+    id: 'incident-retro-followup',
+    title: 'Incident retro follow-up',
+    trigger:
+      'A real incident or drill is logged with a permanent fix but no named operating commitment yet.',
+    action:
+      'Turn the logged lesson into a suggested weekly hardening commitment so the incident trail changes the next week of work automatically.',
+    whyItMatters:
+      'This closes the loop between learning from failures and actually hardening the system in the next founder review.',
   },
   {
     id: 'trust-surface-audit',

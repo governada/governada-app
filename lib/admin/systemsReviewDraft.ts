@@ -78,6 +78,7 @@ export function buildSystemsReviewDraft(
   const commitmentShepherd =
     data.latestCommitmentShepherd?.status === 'focus' ? data.latestCommitmentShepherd : null;
   const scorecardSync = data.scorecardSync.status !== 'good' ? data.scorecardSync : null;
+  const incidentSummary = data.incidentSummary.status !== 'good' ? data.incidentSummary : null;
   const primaryBlocker = data.story.blockers[0] ?? null;
   const primaryWatchout = data.story.watchouts[0] ?? null;
   const primaryWin = data.story.wins[0] ?? null;
@@ -130,6 +131,7 @@ export function buildSystemsReviewDraft(
       ? `Commitment shepherd: ${commitmentShepherd.summary} ${commitmentShepherd.recommendedAction}`
       : null,
     scorecardSync ? `Scorecard sync: ${scorecardSync.summary}` : null,
+    incidentSummary ? `Incident response: ${incidentSummary.summary}` : null,
     primaryFollowup
       ? `Automation follow-up: ${primaryFollowup.title}. ${primaryFollowup.recommendedAction}`
       : `Automation posture: ${data.automationSummary.summary}`,

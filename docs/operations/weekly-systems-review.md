@@ -38,7 +38,7 @@
 
 - Log the weekly review directly in `/admin/systems` so the cockpit keeps durable operating history and open commitments
 - Update `docs/operations/systems-scorecard.md`
-- Log any real incident, drill, or meaningful regression in `docs/operations/incident-log.md`
+- Log any real incident, drill, or meaningful regression in `/admin/systems#incident-log`; use `docs/operations/incident-log.md` when the fuller narrative is worth preserving in-repo
 - If methodology or scoring changed, update `docs/operations/methodology-changelog.md`
 
 **Required output:** refreshed operating record

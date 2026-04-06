@@ -37,6 +37,7 @@
 ### 3. Update the scorecard and incident trail
 
 - Log the weekly review directly in `/admin/systems` so the cockpit keeps durable operating history and open commitments
+- Check `/admin/systems#automation` for the latest sweep history, escalations, and follow-up state before you change the written scorecard
 - Update `docs/operations/systems-scorecard.md`
 - Log any real incident, drill, or meaningful regression in `/admin/systems#incident-log`; use `docs/operations/incident-log.md` when the fuller narrative is worth preserving in-repo
 - If methodology or scoring changed, update `docs/operations/methodology-changelog.md`
@@ -69,6 +70,7 @@ Use this order every week:
 
 The review is intentionally shaped so it can be automated later from `/api/admin/systems` and `/api/admin/systems/reviews`:
 
+- centralize the founder review of sweep history, escalations, and follow-up state in `/admin/systems#automation`
 - summarize current SLO posture
 - highlight red/yellow shifts from the previous review
 - project the durable review history into a live scorecard sync signal with streak, drift, and recurring hotspot SLOs

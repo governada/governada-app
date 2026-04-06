@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SystemsDashboardData } from '@/lib/admin/systems';
 import {
+  buildSystemsReviewDraftHistory,
   buildSystemsReviewDraft,
   parseLatestSystemsReviewDraft,
   SYSTEMS_REVIEW_DRAFT_ACTION,
@@ -139,6 +140,7 @@ function buildDashboardFixture(): SystemsDashboardData {
         updatedAt: '2026-04-02T11:55:00.000Z',
       },
     ],
+    automationHistory: [],
     latestAutomationRun: {
       actorType: 'cron',
       status: 'warning',
@@ -223,5 +225,36 @@ describe('systems review draft helpers', () => {
 
     expect(state?.focusArea).toBe('Protect freshness and review discipline');
     expect(state?.linkedSloIds).toEqual(['freshness']);
+  });
+
+  it('builds review draft history entries for the automation cockpit', () => {
+    const history = buildSystemsReviewDraftHistory([
+      {
+        action: SYSTEMS_REVIEW_DRAFT_ACTION,
+        payload: {
+          actorType: 'cron',
+          generatedAt: '2026-04-02T12:30:00.000Z',
+          reviewDate: '2026-04-02',
+          overallStatus: 'warning',
+          focusArea: 'Protect freshness and review discipline',
+          topRisk: 'Freshness and cadence are both drifting.',
+          changeNotes: 'Freshness is drifting and the founder loop needs a refresh.',
+          hardeningCommitmentTitle: 'Refresh the systems cadence',
+          hardeningCommitmentSummary: 'Log a fresh review and reset the hardening loop.',
+          commitmentOwner: 'Founder + agents',
+          commitmentDueDate: '2026-04-03',
+          linkedSloIds: ['freshness'],
+        },
+        created_at: '2026-04-02T12:30:00.000Z',
+      },
+    ]);
+
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      type: 'review_draft',
+      statusLabel: 'Scheduled draft',
+      tone: 'warning',
+      actionHref: '/admin/systems#weekly-review',
+    });
   });
 });

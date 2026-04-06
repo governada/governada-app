@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import type { SystemsDashboardData, SystemsReviewDraft, SystemsStatus } from '@/lib/admin/systems';
+import type {
+  SystemsAutomationActivityRecord,
+  SystemsDashboardData,
+  SystemsReviewDraft,
+  SystemsStatus,
+} from '@/lib/admin/systems';
 
 export const SYSTEMS_REVIEW_DRAFT_ACTION = 'systems_review_draft_generated';
 
@@ -175,4 +180,37 @@ export function parseLatestSystemsReviewDraft(
   }
 
   return null;
+}
+
+export function buildSystemsReviewDraftHistory(
+  rows: SystemsReviewDraftAuditRow[],
+): SystemsAutomationActivityRecord[] {
+  const history: SystemsAutomationActivityRecord[] = [];
+
+  for (const row of rows) {
+    if (row.action !== SYSTEMS_REVIEW_DRAFT_ACTION) continue;
+
+    const parsed = reviewDraftPayloadSchema.safeParse(row.payload);
+    if (!parsed.success) continue;
+
+    history.push({
+      id: ['review_draft', parsed.data.generatedAt || row.created_at, parsed.data.reviewDate].join(
+        ':',
+      ),
+      type: 'review_draft',
+      actorType: parsed.data.actorType,
+      statusLabel: parsed.data.actorType === 'cron' ? 'Scheduled draft' : 'Manual draft',
+      tone: parsed.data.overallStatus === 'bootstrap' ? 'neutral' : parsed.data.overallStatus,
+      title: `Weekly review draft for ${parsed.data.reviewDate}`,
+      summary: `${parsed.data.focusArea} ${parsed.data.topRisk}`,
+      createdAt: parsed.data.generatedAt || row.created_at,
+      actionHref: '/admin/systems#weekly-review',
+      metricItems: [
+        { label: 'Review date', value: parsed.data.reviewDate },
+        { label: 'Linked SLOs', value: String(parsed.data.linkedSloIds.length) },
+      ],
+    });
+  }
+
+  return history;
 }

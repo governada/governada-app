@@ -18,6 +18,7 @@ import {
 } from '@/lib/admin/systemsStatus';
 import {
   SYSTEMS_AUTOMATION_AUDIT_ACTIONS,
+  buildSystemsAutomationHistory,
   buildSystemsAutomationState,
   buildSystemsAutomationSummary,
   parseLatestSystemsCommitmentShepherd,
@@ -35,6 +36,7 @@ import {
   SYSTEMS_INCIDENT_LOG_ACTION,
 } from '@/lib/admin/systemsIncidents';
 import {
+  buildSystemsReviewDraftHistory,
   parseLatestSystemsReviewDraft,
   SYSTEMS_REVIEW_DRAFT_ACTION,
 } from '@/lib/admin/systemsReviewDraft';
@@ -361,6 +363,12 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationAuditResult.data || [],
   );
   const suggestedReviewDraft = parseLatestSystemsReviewDraft(reviewDraftAuditResult.data || []);
+  const automationHistory = [
+    ...buildSystemsAutomationHistory(automationAuditResult.data || []),
+    ...buildSystemsReviewDraftHistory(reviewDraftAuditResult.data || []),
+  ]
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .slice(0, 14);
   const incidentHistory = parseSystemsIncidentHistory(incidentAuditResult.data || []);
   const incidentSummary = buildSystemsIncidentSummary({ history: incidentHistory });
 
@@ -490,6 +498,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     incidentSummary,
     automationSummary,
     automationFollowups: automationState.openFollowups,
+    automationHistory,
     latestAutomationRun: automationState.latestRun,
     latestOperatorEscalation,
     latestCommitmentShepherd,

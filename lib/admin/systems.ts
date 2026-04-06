@@ -165,6 +165,34 @@ export interface SystemsAutomationRunRecord {
   createdAt: string;
 }
 
+export type SystemsAutomationActivityType =
+  | 'sweep'
+  | 'followup'
+  | 'review_draft'
+  | 'operator_escalation'
+  | 'commitment_shepherd';
+
+export type SystemsAutomationActivityTone = 'good' | 'warning' | 'critical' | 'neutral';
+
+export interface SystemsAutomationActivityMetric {
+  label: string;
+  value: string;
+}
+
+export interface SystemsAutomationActivityRecord {
+  id: string;
+  type: SystemsAutomationActivityType;
+  actorType: 'manual' | 'cron' | 'system';
+  statusLabel: string;
+  tone: SystemsAutomationActivityTone;
+  title: string;
+  summary: string;
+  createdAt: string;
+  actionHref?: string | null;
+  sourceKey?: string | null;
+  metricItems: SystemsAutomationActivityMetric[];
+}
+
 export interface SystemsOperatorEscalationRecord {
   actorType: 'manual' | 'cron';
   status: 'sent' | 'failed';
@@ -308,6 +336,7 @@ export interface SystemsDashboardData {
   incidentSummary: SystemsIncidentSummary;
   automationSummary: SystemsAutomationSummary;
   automationFollowups: SystemsAutomationFollowup[];
+  automationHistory: SystemsAutomationActivityRecord[];
   latestAutomationRun?: SystemsAutomationRunRecord | null;
   latestOperatorEscalation?: SystemsOperatorEscalationRecord | null;
   latestCommitmentShepherd?: SystemsCommitmentShepherdRecord | null;

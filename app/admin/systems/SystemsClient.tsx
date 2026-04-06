@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { getStoredSession } from '@/lib/supabaseAuth';
 import type {
   SystemsAction,
+  SystemsAutomationActivityRecord,
   SystemsAutomationFollowup,
   SystemsAutomationFollowupStatus,
   SystemsCommitmentCard,
@@ -494,6 +495,60 @@ function automationFollowupStatusClasses(status: SystemsAutomationFollowupStatus
       return 'border-emerald-500/30 text-emerald-300';
     default:
       return 'border-amber-500/30 text-amber-300';
+  }
+}
+
+function automationActivityToneClasses(tone: SystemsAutomationActivityRecord['tone']) {
+  switch (tone) {
+    case 'good':
+      return 'border-emerald-500/30 text-emerald-300';
+    case 'warning':
+      return 'border-amber-500/30 text-amber-300';
+    case 'critical':
+      return 'border-red-500/30 text-red-300';
+    default:
+      return 'border-border text-muted-foreground';
+  }
+}
+
+function automationActivityTypeLabel(type: SystemsAutomationActivityRecord['type']) {
+  switch (type) {
+    case 'review_draft':
+      return 'Review draft';
+    case 'operator_escalation':
+      return 'Escalation';
+    case 'commitment_shepherd':
+      return 'Shepherd';
+    case 'followup':
+      return 'Follow-up';
+    default:
+      return 'Sweep';
+  }
+}
+
+function automationActorLabel(actorType: SystemsAutomationActivityRecord['actorType']) {
+  switch (actorType) {
+    case 'cron':
+      return 'Scheduled';
+    case 'manual':
+      return 'Manual';
+    default:
+      return 'Synced';
+  }
+}
+
+function automationActivityIcon(type: SystemsAutomationActivityRecord['type']) {
+  switch (type) {
+    case 'review_draft':
+      return Sparkles;
+    case 'operator_escalation':
+      return AlertTriangle;
+    case 'commitment_shepherd':
+      return Target;
+    case 'followup':
+      return ListChecks;
+    default:
+      return Bot;
   }
 }
 
@@ -1608,6 +1663,169 @@ function AutomationFollowupCard({
             </Link>
           </Button>
         ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AutomationCadenceCard({ data }: { data: SystemsDashboardData }) {
+  const cadenceRows = [
+    {
+      label: 'Daily sweep',
+      schedule: 'Every day at 9:00 AM ET',
+      latest: data.latestAutomationRun
+        ? `${new Date(data.latestAutomationRun.createdAt).toLocaleString()} • ${data.latestAutomationRun.summary}`
+        : 'No sweep recorded yet.',
+    },
+    {
+      label: 'Weekly draft',
+      schedule: 'Mondays at 9:15 AM ET',
+      latest: data.suggestedReviewDraft
+        ? `${new Date(data.suggestedReviewDraft.generatedAt).toLocaleString()} • ${data.suggestedReviewDraft.focusArea}`
+        : 'No review draft recorded yet.',
+    },
+    {
+      label: 'Commitment shepherd',
+      schedule: 'Runs after each sweep',
+      latest: data.latestCommitmentShepherd
+        ? `${new Date(data.latestCommitmentShepherd.createdAt).toLocaleString()} • ${data.latestCommitmentShepherd.title}`
+        : 'No shepherd record yet.',
+    },
+    {
+      label: 'Founder escalation',
+      schedule: 'Only when critical follow-ups stay open',
+      latest: data.latestOperatorEscalation
+        ? `${new Date(data.latestOperatorEscalation.createdAt).toLocaleString()} • ${data.latestOperatorEscalation.status === 'sent' ? 'digest sent' : 'delivery failed'}`
+        : 'No escalation digest recorded yet.',
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-chart-1" />
+          Automation cadence
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Backend automations run through Inngest. This card shows the intended cadence and the
+          latest durable record for each automation loop.
+        </p>
+        <div className="space-y-3">
+          {cadenceRows.map((row) => (
+            <div
+              key={row.label}
+              className="rounded-md border border-border/60 bg-card/40 px-3 py-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">{row.label}</p>
+                <Badge variant="outline" className="text-xs">
+                  {row.schedule}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">{row.latest}</p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AutomationHistoryCard({
+  history,
+}: {
+  history: SystemsDashboardData['automationHistory'];
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <History className="h-4 w-4 text-chart-1" />
+          Automation history and outcomes
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Every sweep, follow-up sync, review draft, escalation, and commitment shepherd record
+          lands here so you can see what ran, what it created, and what later got resolved.
+        </p>
+
+        {history.length === 0 ? (
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-4">
+            <p className="text-sm font-medium">No automation history yet.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Run the first sweep or generate the first draft to start the durable operating trail.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {history.map((entry) => {
+              const Icon = automationActivityIcon(entry.type);
+
+              return (
+                <div
+                  key={entry.id}
+                  className="rounded-md border border-border/60 bg-card/40 px-3 py-3 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge
+                          variant="outline"
+                          className={automationActivityToneClasses(entry.tone)}
+                        >
+                          {entry.statusLabel}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {automationActivityTypeLabel(entry.type)}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {automationActorLabel(entry.actorType)}
+                        </Badge>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Icon className="h-4 w-4 text-chart-1 mt-0.5 shrink-0" />
+                        <div>
+                          <h3 className="text-sm font-semibold">{entry.title}</h3>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(entry.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {entry.actionHref ? (
+                      <Button asChild size="sm" variant="ghost" className="shrink-0">
+                        <Link href={entry.actionHref}>Open</Link>
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">{entry.summary}</p>
+
+                  {entry.metricItems.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+                      {entry.metricItems.map((metric) => (
+                        <div
+                          key={`${entry.id}-${metric.label}`}
+                          className="rounded-md border border-border/60 px-3 py-2"
+                        >
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                            {metric.label}
+                          </p>
+                          <p className="text-sm mt-1">{metric.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -2755,6 +2973,11 @@ export function SystemsClient() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[0.8fr_1.2fr] gap-4">
+          <AutomationCadenceCard data={data} />
+          <AutomationHistoryCard history={data.automationHistory} />
         </div>
 
         <div className="space-y-3 pt-2">

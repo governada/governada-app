@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildSystemsAutomationHistory,
   buildLatestSuccessfulEscalationBySource,
   buildSystemsAutomationSpecs,
   buildSystemsCommitmentShepherdRecord,
@@ -119,6 +120,94 @@ describe('systems automation helpers', () => {
     expect(state.openFollowups).toHaveLength(1);
     expect(state.openFollowups[0]?.sourceKey).toBe('systems:review-discipline');
     expect(state.latestRun?.status).toBe('warning');
+  });
+
+  it('builds centralized automation history from audit rows', () => {
+    const history = buildSystemsAutomationHistory([
+      {
+        action: SYSTEMS_AUTOMATION_SWEEP_ACTION,
+        target: 'systems',
+        payload: {
+          actorType: 'cron',
+          status: 'warning',
+          summary: 'Sweep surfaced 1 warning-level follow-up.',
+          followupCount: 1,
+          criticalCount: 0,
+          openedCount: 1,
+          updatedCount: 0,
+          resolvedCount: 0,
+        },
+        created_at: '2026-04-03T10:05:00.000Z',
+      },
+      {
+        action: SYSTEMS_AUTOMATION_FOLLOWUP_ACTION,
+        target: 'systems:review-discipline',
+        payload: {
+          sourceKey: 'systems:review-discipline',
+          triggerType: 'review_discipline',
+          severity: 'warning',
+          status: 'resolved',
+          title: 'Refresh the weekly systems review soon',
+          summary: 'The review loop is back on cadence.',
+          recommendedAction: 'Keep the weekly review fresh.',
+          actionHref: '/admin/systems#weekly-review',
+        },
+        created_at: '2026-04-03T10:04:00.000Z',
+      },
+      {
+        action: SYSTEMS_OPERATOR_ESCALATION_ACTION,
+        target: 'systems',
+        payload: {
+          actorType: 'cron',
+          status: 'sent',
+          title: 'Systems cockpit: 1 critical follow-up still open',
+          details: 'Digest body',
+          criticalCount: 1,
+          followupSourceKeys: ['systems:review-discipline'],
+          channelCount: 2,
+          channels: ['discord', 'telegram'],
+        },
+        created_at: '2026-04-03T10:03:00.000Z',
+      },
+      {
+        action: SYSTEMS_COMMITMENT_SHEPHERD_ACTION,
+        target: '8a6bb2b7-0dd9-4d67-9f59-20f5f2e31d54',
+        payload: {
+          actorType: 'cron',
+          status: 'focus',
+          title: 'Commitment shepherd: Unblock the weekly review commitment',
+          summary: 'The commitment is blocked and needs attention.',
+          recommendedAction: 'Unblock or replace it.',
+          commitmentId: '8a6bb2b7-0dd9-4d67-9f59-20f5f2e31d54',
+          commitmentTitle: 'Unblock the weekly review commitment',
+          commitmentStatus: 'blocked',
+          owner: 'Founder + agents',
+          dueDate: '2026-04-04',
+          reason: 'blocked',
+          actionHref: '/admin/systems#commitment-8a6bb2b7-0dd9-4d67-9f59-20f5f2e31d54',
+        },
+        created_at: '2026-04-03T10:02:00.000Z',
+      },
+    ]);
+
+    expect(history.map((entry) => entry.type)).toEqual([
+      'sweep',
+      'followup',
+      'operator_escalation',
+      'commitment_shepherd',
+    ]);
+    expect(history[0]).toMatchObject({
+      statusLabel: 'Watch sweep',
+      tone: 'warning',
+    });
+    expect(history[1]).toMatchObject({
+      actorType: 'system',
+      statusLabel: 'Resolved',
+      tone: 'good',
+    });
+    expect(history[2]?.metricItems).toEqual(
+      expect.arrayContaining([{ label: 'Channels', value: '2' }]),
+    );
   });
 
   it('marks automation summary bootstrap when no sweep has run yet', () => {

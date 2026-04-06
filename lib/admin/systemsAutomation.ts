@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type {
   SystemsAction,
+  SystemsAutomationActivityRecord,
+  SystemsAutomationActivityTone,
   SystemsAutomationFollowup,
   SystemsAutomationFollowupStatus,
   SystemsCommitmentShepherdRecord,
@@ -190,6 +192,151 @@ function buildFollowup(
     actionHref: payload.actionHref ?? null,
     evidence: payload.evidence,
     updatedAt: createdAt,
+  };
+}
+
+function triggerTypeLabel(triggerType: SystemsAutomationTriggerType) {
+  switch (triggerType) {
+    case 'review_discipline':
+      return 'Review discipline';
+    case 'drill_cadence':
+      return 'Drill cadence';
+    case 'overdue_commitment':
+      return 'Commitment health';
+    default:
+      return 'Systems action';
+  }
+}
+
+function followupStatusLabel(status: SystemsAutomationFollowupStatus) {
+  switch (status) {
+    case 'acknowledged':
+      return 'Acknowledged';
+    case 'resolved':
+      return 'Resolved';
+    default:
+      return 'Open follow-up';
+  }
+}
+
+function followupActivityTone(
+  severity: SystemsAutomationSeverity,
+  status: SystemsAutomationFollowupStatus,
+): SystemsAutomationActivityTone {
+  if (status === 'resolved') return 'good';
+  if (status === 'acknowledged') return 'neutral';
+  return severity === 'critical' ? 'critical' : 'warning';
+}
+
+function sweepStatusLabel(status: SystemsAutomationRunRecord['status']) {
+  switch (status) {
+    case 'good':
+      return 'Healthy sweep';
+    case 'warning':
+      return 'Watch sweep';
+    default:
+      return 'Critical sweep';
+  }
+}
+
+function buildAutomationActivityId(
+  type: SystemsAutomationActivityRecord['type'],
+  createdAt: string,
+  target?: string | null,
+) {
+  return [type, createdAt, target ?? 'systems'].join(':');
+}
+
+function buildSweepActivity(
+  row: SystemsAutomationAuditRow,
+  payload: z.infer<typeof sweepPayloadSchema>,
+): SystemsAutomationActivityRecord {
+  return {
+    id: buildAutomationActivityId('sweep', row.created_at, row.target),
+    type: 'sweep',
+    actorType: payload.actorType,
+    statusLabel: sweepStatusLabel(payload.status),
+    tone: payload.status,
+    title: payload.actorType === 'cron' ? 'Scheduled daily sweep' : 'Manual automation sweep',
+    summary: payload.summary,
+    createdAt: row.created_at,
+    actionHref: '/admin/systems#automation',
+    metricItems: [
+      { label: 'Open follow-ups', value: String(payload.followupCount) },
+      { label: 'Critical', value: String(payload.criticalCount) },
+      { label: 'Opened', value: String(payload.openedCount) },
+      { label: 'Resolved', value: String(payload.resolvedCount) },
+    ],
+  };
+}
+
+function buildFollowupActivity(
+  row: SystemsAutomationAuditRow,
+  payload: z.infer<typeof followupPayloadSchema>,
+): SystemsAutomationActivityRecord {
+  return {
+    id: buildAutomationActivityId('followup', row.created_at, payload.sourceKey),
+    type: 'followup',
+    actorType: 'system',
+    statusLabel: followupStatusLabel(payload.status),
+    tone: followupActivityTone(payload.severity, payload.status),
+    title: payload.title,
+    summary: payload.summary,
+    createdAt: row.created_at,
+    actionHref: payload.actionHref ?? null,
+    sourceKey: payload.sourceKey,
+    metricItems: [
+      { label: 'Trigger', value: triggerTypeLabel(payload.triggerType) },
+      { label: 'Severity', value: payload.severity === 'critical' ? 'Critical' : 'Warning' },
+      { label: 'State', value: followupStatusLabel(payload.status) },
+    ],
+  };
+}
+
+function buildOperatorEscalationActivity(
+  row: SystemsAutomationAuditRow,
+  payload: z.infer<typeof operatorEscalationPayloadSchema>,
+): SystemsAutomationActivityRecord {
+  return {
+    id: buildAutomationActivityId('operator_escalation', row.created_at, row.target),
+    type: 'operator_escalation',
+    actorType: payload.actorType,
+    statusLabel: payload.status === 'sent' ? 'Digest sent' : 'Delivery failed',
+    tone: payload.status === 'sent' ? 'warning' : 'critical',
+    title: payload.title,
+    summary: payload.details,
+    createdAt: row.created_at,
+    actionHref: '/admin/systems#automation',
+    metricItems: [
+      { label: 'Critical follow-ups', value: String(payload.criticalCount) },
+      { label: 'Channels', value: String(payload.channelCount) },
+    ],
+  };
+}
+
+function buildCommitmentShepherdActivity(
+  row: SystemsAutomationAuditRow,
+  payload: z.infer<typeof commitmentShepherdPayloadSchema>,
+): SystemsAutomationActivityRecord {
+  return {
+    id: buildAutomationActivityId(
+      'commitment_shepherd',
+      row.created_at,
+      payload.commitmentId ?? row.target,
+    ),
+    type: 'commitment_shepherd',
+    actorType: payload.actorType,
+    statusLabel: payload.status === 'focus' ? 'Needs focus' : 'Clear',
+    tone:
+      payload.status === 'clear' ? 'good' : payload.reason === 'blocked' ? 'critical' : 'warning',
+    title: payload.title,
+    summary: payload.summary,
+    createdAt: row.created_at,
+    actionHref: payload.actionHref ?? '/admin/systems#weekly-review',
+    metricItems: [
+      { label: 'Commitment', value: payload.commitmentTitle ?? 'No stale commitment' },
+      ...(payload.owner ? [{ label: 'Owner', value: payload.owner }] : []),
+    ],
   };
 }
 
@@ -488,6 +635,43 @@ export function parseLatestSystemsCommitmentShepherd(
   }
 
   return null;
+}
+
+export function buildSystemsAutomationHistory(
+  rows: SystemsAutomationAuditRow[],
+): SystemsAutomationActivityRecord[] {
+  const history: SystemsAutomationActivityRecord[] = [];
+
+  for (const row of rows) {
+    if (row.action === SYSTEMS_AUTOMATION_FOLLOWUP_ACTION) {
+      const parsed = followupPayloadSchema.safeParse(row.payload);
+      if (!parsed.success) continue;
+      history.push(buildFollowupActivity(row, parsed.data));
+      continue;
+    }
+
+    if (row.action === SYSTEMS_AUTOMATION_SWEEP_ACTION) {
+      const parsed = sweepPayloadSchema.safeParse(row.payload);
+      if (!parsed.success) continue;
+      history.push(buildSweepActivity(row, parsed.data));
+      continue;
+    }
+
+    if (row.action === SYSTEMS_OPERATOR_ESCALATION_ACTION) {
+      const parsed = operatorEscalationPayloadSchema.safeParse(row.payload);
+      if (!parsed.success) continue;
+      history.push(buildOperatorEscalationActivity(row, parsed.data));
+      continue;
+    }
+
+    if (row.action === SYSTEMS_COMMITMENT_SHEPHERD_ACTION) {
+      const parsed = commitmentShepherdPayloadSchema.safeParse(row.payload);
+      if (!parsed.success) continue;
+      history.push(buildCommitmentShepherdActivity(row, parsed.data));
+    }
+  }
+
+  return history;
 }
 
 export function buildSystemsOperatorEscalationTargets(

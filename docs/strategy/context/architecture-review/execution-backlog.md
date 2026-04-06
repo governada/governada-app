@@ -971,7 +971,11 @@ The workspace review routes were doing too much work at the HTTP edge. They owne
 
 ### Follow-up Work
 
-- If DD03 continues in the proposal read plane, move the remaining `proposal_voting_summary` and voter-ID query orchestration out of `lib/data.ts` and decide whether `lib/workspace/proposalMonitor.ts` should consume the same shared summary primitives.
+- Added `lib/governance/proposalVotingSummary.ts` as the shared proposal-voting-summary runtime reader for `lib/data.ts`, `lib/workspace/reviewQueue.ts`, `lib/workspace/proposalMonitor.ts`, `lib/governance/proposalContext.ts`, `app/api/proposals/route.ts`, and the workspace voting-summary route.
+- Added focused regression coverage in `__tests__/lib/proposalVotingSummary.test.ts`.
+- Verified with `npm run test:unit -- __tests__/lib/proposalVotingSummary.test.ts __tests__/api/workspace-proposals-monitor.test.ts __tests__/api/workspace-review-queue.test.ts __tests__/lib/proposalContext.test.ts __tests__/lib/data.test.ts`.
+- Verified with `npm run lint -- lib/governance/proposalVotingSummary.ts lib/data.ts lib/governance/proposalContext.ts lib/workspace/proposalMonitor.ts lib/workspace/reviewQueue.ts app/api/proposals/route.ts app/api/workspace/proposals/[txHash]/[index]/voting-summary/route.ts`.
+- Verified with `npm run type-check`.
 - Audit the remaining proposal-list intelligence consumers for any other hidden `index`/`status` alias assumptions that are not yet covered by direct types.
 
 ### Verification
@@ -1036,3 +1040,51 @@ Even after the pool-info helper extraction, `sync-spo-scores.ts` still owned ip-
 - `lib/scoring/spoRelayLocations.ts`
 - `inngest/functions/sync-spo-scores.ts`
 - `__tests__/lib/spoRelayLocations.test.ts`
+
+## Chunk 22: Extract SPO Score Sync Artifacts From `sync-spo-scores.ts`
+
+**Priority:** P1
+**Effort:** M
+**Audit dimension(s):** Architecture and Code Health, Performance and Reliability, Testing and Code Quality
+**Expected score impact:** Runtime architecture: move core scoring assembly out of the SPO sync job
+**Depends on:** Chunk 21
+**PR group:** J
+**Implementation status:** Completed in this worktree
+
+### Context
+
+Even after the pool-info and relay-geocoding helper extractions, `sync-spo-scores.ts` still owned the highest-risk part of the scoring run: proposal weighting, vote-change detection, deliberation/confidence assembly, sybil penalty application, alignment mapping, and score snapshot row shaping.
+
+### Scope
+
+- Move the core score-computation and persistence-artifact assembly into a shared scoring helper.
+- Reduce `sync-spo-scores.ts` so the compute step orchestrates Supabase reads, helper invocation, and persistence writes.
+- Add focused unit coverage for the new scoring helper.
+
+### Progress So Far
+
+- Added `lib/scoring/spoScoreSync.ts` as the shared SPO scoring-run helper.
+- `inngest/functions/sync-spo-scores.ts` now delegates the compute-scores step through that helper instead of owning the main scoring assembly inline.
+- Added focused regression coverage in `__tests__/lib/spoScoreSync.test.ts`.
+- Verified with `npm run test:unit -- __tests__/lib/proposalVotingSummary.test.ts __tests__/api/workspace-proposals-monitor.test.ts __tests__/api/workspace-review-queue.test.ts __tests__/lib/proposalContext.test.ts __tests__/lib/data.test.ts __tests__/lib/spoScoreSync.test.ts`.
+- Verified with `npm run lint -- lib/governance/proposalVotingSummary.ts lib/scoring/spoScoreSync.ts lib/data.ts lib/governance/proposalContext.ts lib/workspace/proposalMonitor.ts lib/workspace/reviewQueue.ts app/api/proposals/route.ts app/api/workspace/proposals/[txHash]/[index]/voting-summary/route.ts inngest/functions/sync-spo-scores.ts`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+
+### Follow-up Work
+
+- DD03 is now closed. Remaining runtime-architecture work is explicitly deferred rather than unresolved.
+- If a later deep dive re-enters the scoring pipeline, continue with the relay-discovery loop and the later power-snapshot / tier-assignment orchestration in `sync-spo-scores.ts`.
+- If a later deep dive re-enters proposal intelligence, continue with the remaining AI-generation orchestration in `precompute-proposal-intelligence.ts`.
+
+### Verification
+
+- The compute-scores step now delegates core scoring assembly through one shared helper.
+- The new helper has direct unit coverage.
+- Shared proposal/workspace consumers and the thinner SPO scoring job both compile and pass focused verification together.
+
+### Files to Read First
+
+- `lib/scoring/spoScoreSync.ts`
+- `inngest/functions/sync-spo-scores.ts`
+- `__tests__/lib/spoScoreSync.test.ts`

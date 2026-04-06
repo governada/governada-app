@@ -2,7 +2,7 @@
 
 **Started:** 2026-04-02
 **Current status:** In progress
-**Active deep dive:** 03 - Runtime architecture
+**Active deep dive:** 05 - Performance and scalability (next)
 **Canonical worktree:** `C:\Users\dalto\governada\governada-app\.claude\worktrees\platform-architecture-review-series`
 **Canonical branch:** `feature/platform-architecture-review-series`
 
@@ -12,16 +12,16 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 
 ## Review Order
 
-| #   | Area                          | Primary Goal                                                                                           | Status      | Artifact                                        |
-| --- | ----------------------------- | ------------------------------------------------------------------------------------------------------ | ----------- | ----------------------------------------------- |
-| 01  | Data plane                    | Verify truth boundaries, freshness, fallbacks, and read-model correctness                              | Completed   | `deep-dive-01-data-plane.md`                    |
-| 02  | Security and trust boundaries | Verify auth, admin, API protection, session handling, and privilege boundaries                         | Completed   | `deep-dive-02-security-and-trust.md`            |
-| 03  | Runtime architecture          | Verify ownership boundaries across server components, client components, routes, jobs, and shared libs | In progress | `deep-dive-03-runtime-architecture.md`          |
-| 04  | Reliability and observability | Verify env safety, health checks, logging, tracing, and failure diagnosis                              | Completed   | `deep-dive-04-reliability-and-observability.md` |
-| 05  | Performance and scalability   | Verify cache strategy, query fan-out, bundle shape, and load readiness                                 | Planned     | `deep-dive-05-performance-and-scale.md`         |
-| 06  | Critical user journeys        | Verify end-to-end flows across anonymous, citizen, delegated, and workspace personas                   | Planned     | `deep-dive-06-critical-journeys.md`             |
-| 07  | Testing and release gates     | Verify regression coverage matches blast radius and release process risk                               | Planned     | `deep-dive-07-testing-and-release-gates.md`     |
-| 08  | Global readiness              | Verify localization, timezone behavior, accessibility, mobile resilience, and legal/privacy baseline   | Planned     | `deep-dive-08-global-readiness.md`              |
+| #   | Area                          | Primary Goal                                                                                           | Status    | Artifact                                        |
+| --- | ----------------------------- | ------------------------------------------------------------------------------------------------------ | --------- | ----------------------------------------------- |
+| 01  | Data plane                    | Verify truth boundaries, freshness, fallbacks, and read-model correctness                              | Completed | `deep-dive-01-data-plane.md`                    |
+| 02  | Security and trust boundaries | Verify auth, admin, API protection, session handling, and privilege boundaries                         | Completed | `deep-dive-02-security-and-trust.md`            |
+| 03  | Runtime architecture          | Verify ownership boundaries across server components, client components, routes, jobs, and shared libs | Completed | `deep-dive-03-runtime-architecture.md`          |
+| 04  | Reliability and observability | Verify env safety, health checks, logging, tracing, and failure diagnosis                              | Completed | `deep-dive-04-reliability-and-observability.md` |
+| 05  | Performance and scalability   | Verify cache strategy, query fan-out, bundle shape, and load readiness                                 | Planned   | `deep-dive-05-performance-and-scale.md`         |
+| 06  | Critical user journeys        | Verify end-to-end flows across anonymous, citizen, delegated, and workspace personas                   | Planned   | `deep-dive-06-critical-journeys.md`             |
+| 07  | Testing and release gates     | Verify regression coverage matches blast radius and release process risk                               | Planned   | `deep-dive-07-testing-and-release-gates.md`     |
+| 08  | Global readiness              | Verify localization, timezone behavior, accessibility, mobile resilience, and legal/privacy baseline   | Planned   | `deep-dive-08-global-readiness.md`              |
 
 ## Series Exit Criteria
 
@@ -97,3 +97,5 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-05 | Added `lib/scoring/spoPoolInfo.ts` so `sync-spo-scores.ts` shares one Koios batching/normalization helper for metadata and delegator refresh, with direct unit coverage for the new helper.                                                                                                                                                                                |
 | 2026-04-05 | Added `lib/governance/proposalSummary.ts` so proposal status, tri-body vote grouping, and list/detail summary shaping now share one contract, then aligned the first API and intelligence consumers to stop relying on stale vote fields or implicit `index` aliases.                                                                                                      |
 | 2026-04-05 | Added `lib/scoring/spoRelayLocations.ts` so relay geocoding and per-pool centroid assembly now sit behind a shared helper, reducing `sync-spo-scores.ts` to pool discovery plus persistence in that step.                                                                                                                                                                  |
+| 2026-04-05 | Added `lib/governance/proposalVotingSummary.ts` so proposal/workspace consumers share one runtime `proposal_voting_summary` reader instead of each assembling those reads independently.                                                                                                                                                                                   |
+| 2026-04-05 | Added `lib/scoring/spoScoreSync.ts` so the core SPO scoring run now shares one computation and persistence-artifact seam outside `sync-spo-scores.ts`, then closed Deep Dive 03 with focused verification and explicit deferred follow-ups.                                                                                                                                |

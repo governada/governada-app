@@ -1,4 +1,6 @@
 import type { createClient } from '@/lib/supabase';
+import { fetchLatestProposalVotingSummary } from '@/lib/governance/proposalVotingSummary';
+import { buildTriBodyVotes } from '@/lib/governance/proposalSummary';
 
 type QueryClient = Pick<ReturnType<typeof createClient>, 'from'>;
 
@@ -129,14 +131,8 @@ export async function fetchGovernanceProposalVotingSnapshot(
     cc: { yes: 0, no: 0, abstain: 0 },
   };
 
-  const [{ data: summaryRows }, { data: proposalRow }, { data: epochData }] = await Promise.all([
-    supabase
-      .from('proposal_voting_summary')
-      .select('*')
-      .eq('proposal_tx_hash', txHash)
-      .eq('proposal_index', proposalIndex)
-      .order('epoch_no', { ascending: false })
-      .limit(1),
+  const [summary, { data: proposalRow }, { data: epochData }] = await Promise.all([
+    fetchLatestProposalVotingSummary(supabase, { txHash, proposalIndex }),
     supabase
       .from('proposals')
       .select('expiration_epoch')
@@ -151,7 +147,6 @@ export async function fetchGovernanceProposalVotingSnapshot(
       .maybeSingle(),
   ]);
 
-  const summary = summaryRows?.[0];
   if (!summary) {
     return emptyVoting;
   }
@@ -162,21 +157,7 @@ export async function fetchGovernanceProposalVotingSnapshot(
     expirationEpoch != null && currentEpoch > 0 ? expirationEpoch - currentEpoch : undefined;
 
   return {
-    drep: {
-      yes: summary.drep_yes_votes_cast ?? 0,
-      no: summary.drep_no_votes_cast ?? 0,
-      abstain: summary.drep_abstain_votes_cast ?? 0,
-    },
-    spo: {
-      yes: summary.pool_yes_votes_cast ?? 0,
-      no: summary.pool_no_votes_cast ?? 0,
-      abstain: summary.pool_abstain_votes_cast ?? 0,
-    },
-    cc: {
-      yes: summary.committee_yes_votes_cast ?? 0,
-      no: summary.committee_no_votes_cast ?? 0,
-      abstain: summary.committee_abstain_votes_cast ?? 0,
-    },
+    ...buildTriBodyVotes(summary),
     epochsRemaining: epochsRemaining != null && epochsRemaining >= 0 ? epochsRemaining : undefined,
   };
 }

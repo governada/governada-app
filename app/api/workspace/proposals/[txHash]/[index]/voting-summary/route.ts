@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
+import { fetchLatestProposalVotingSummary } from '@/lib/governance/proposalVotingSummary';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -27,18 +28,15 @@ export const GET = withRouteHandler(
     const admin = getSupabaseAdmin();
 
     // Fetch the most recent voting summary for this proposal
-    const { data: row, error } = await admin
-      .from('proposal_voting_summary')
-      .select('*')
-      .eq('proposal_tx_hash', params.txHash)
-      .eq('proposal_index', params.index)
-      .order('epoch_no', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      return NextResponse.json({ error: 'Failed to fetch voting summary' }, { status: 500 });
-    }
+    const row = await fetchLatestProposalVotingSummary(
+      admin,
+      {
+        txHash: params.txHash,
+        proposalIndex: params.index,
+      },
+      '*',
+      { throwOnError: true },
+    );
 
     if (!row) {
       return NextResponse.json({ summary: null });

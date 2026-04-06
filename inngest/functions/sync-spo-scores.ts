@@ -11,78 +11,22 @@ import {
   alertCritical,
 } from '@/lib/sync-utils';
 import {
-  computeSpoScores,
-  computeProposalMarginMultipliers,
-  type SpoVoteDataV3,
-} from '@/lib/scoring/spoScore';
-import {
-  computeSpoGovernanceIdentity,
-  type SpoProfileData,
-} from '@/lib/scoring/spoGovernanceIdentity';
-import { computeSpoDeliberationQuality } from '@/lib/scoring/spoDeliberationQuality';
-import { computeConfidence } from '@/lib/scoring/confidence';
-import { detectSybilPairs } from '@/lib/scoring/sybilDetection';
-import {
-  computeSybilConfidencePenalty,
-  applySybilPenalty,
-  type SybilConfidenceFlag,
-} from '@/lib/scoring/sybilPenalty';
-import {
   buildPoolMetadataUpdate,
   buildPoolStakeUpdate,
   fetchKoiosPoolInfoBatches,
   type KoiosPoolInfo,
 } from '@/lib/scoring/spoPoolInfo';
 import { buildRelayLocationUpdates, geocodeRelayIps } from '@/lib/scoring/spoRelayLocations';
-import { getExtendedImportanceWeight } from '@/lib/scoring';
+import {
+  buildSpoScoreSyncArtifacts,
+  type ClassificationRow,
+  type PoolRow,
+  type SpoProposalRow,
+  type SpoScoreHistoryRow,
+  type SpoVoteRow,
+} from '@/lib/scoring/spoScoreSync';
 import { getFeatureFlag } from '@/lib/featureFlags';
-import { CURRENT_SPO_SCORE_VERSION } from '@/lib/scoring/versioning';
 import { logger } from '@/lib/logger';
-
-interface SpoProposalRow {
-  tx_hash: string;
-  proposal_index: number;
-  proposal_type: string;
-  treasury_tier: string | null;
-  withdrawal_amount: number | null;
-  block_time: number;
-  proposed_epoch: number | null;
-  expired_epoch: number | null;
-  ratified_epoch: number | null;
-  dropped_epoch: number | null;
-}
-
-interface SpoVoteRow {
-  pool_id: string;
-  proposal_tx_hash: string;
-  proposal_index: number;
-  vote: string;
-  block_time: number;
-  epoch: number | null;
-  tx_hash: string;
-}
-
-interface ClassificationRow {
-  proposal_tx_hash: string;
-  proposal_index: number;
-  dim_treasury_conservative: number | null;
-  dim_treasury_growth: number | null;
-  dim_decentralization: number | null;
-  dim_security: number | null;
-  dim_innovation: number | null;
-  dim_transparency: number | null;
-}
-
-interface PoolRow {
-  pool_id: string;
-  ticker: string | null;
-  pool_name: string | null;
-  governance_statement: string | null;
-  homepage_url: string | null;
-  social_links: Array<{ uri: string; label?: string }> | null;
-  metadata_hash_verified: boolean | null;
-  delegator_count: number | null;
-}
 
 const KOIOS_BASE = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
 
@@ -181,496 +125,95 @@ export const syncSpoScores = inngest.createFunction(
       }
 
       try {
-        const nowSeconds = Math.floor(Date.now() / 1000);
-
-        // CIP-1694: SPOs can only vote on these governance action types.
-        // TreasuryWithdrawals, InfoAction, and NewConstitution/UpdateConstitution
-        // are DRep-only — SPOs must NOT be penalized for not voting on them.
-        const SPO_ELIGIBLE_TYPES = new Set([
-          'HardForkInitiation',
-          'NoConfidence',
-          'NewCommittee',
-          'NewConstitutionalCommittee',
-          'ParameterChange',
-        ]);
-
-        const proposalContexts = new Map<
-          string,
-          { blockTime: number; importanceWeight: number; proposalType: string }
-        >();
-        const allProposalTypes = new Set<string>();
-        const proposalBlockTimes = new Map<string, number>();
-        const proposalEpochs = new Map<string, number>();
-
-        for (const p of (proposalRows || []) as SpoProposalRow[]) {
-          const key = `${p.tx_hash}-${p.proposal_index}`;
-          const weight = getExtendedImportanceWeight(
-            p.proposal_type,
-            p.treasury_tier,
-            p.withdrawal_amount != null ? Number(p.withdrawal_amount) : null,
-          );
-          proposalContexts.set(key, {
-            blockTime: p.block_time || 0,
-            importanceWeight: weight,
-            proposalType: p.proposal_type,
-          });
-          proposalBlockTimes.set(key, p.block_time || 0);
-          allProposalTypes.add(p.proposal_type);
-          if (p.proposed_epoch != null) {
-            proposalEpochs.set(key, p.proposed_epoch);
-          }
-        }
-
-        // Build set of epochs that had votable proposals (for proposal-aware reliability)
-        // Only count epochs with SPO-eligible proposals
-        const activeEpochs = new Set<number>();
-        for (const [key, epoch] of proposalEpochs) {
-          const ctx = proposalContexts.get(key);
-          if (ctx && SPO_ELIGIBLE_TYPES.has(ctx.proposalType)) {
-            activeEpochs.add(epoch);
-          }
-        }
-        // Also include epochs where votes were cast
-        for (const v of voteRows as SpoVoteRow[]) {
-          const epoch = v.epoch ?? blockTimeToEpoch(v.block_time);
-          activeEpochs.add(epoch);
-        }
-
-        // Total weighted pool: only SPO-eligible proposals count in the denominator.
-        // Including TreasuryWithdrawals/InfoAction (58% of proposals) was inflating
-        // the denominator with proposals SPOs literally cannot vote on.
-        let totalWeightedPool = 0;
-        const { DECAY_LAMBDA } = await import('@/lib/scoring/types');
-        for (const [, ctx] of proposalContexts) {
-          if (!SPO_ELIGIBLE_TYPES.has(ctx.proposalType)) continue;
-          const ageDays = Math.max(0, (nowSeconds - ctx.blockTime) / 86400);
-          totalWeightedPool += ctx.importanceWeight * Math.exp(-DECAY_LAMBDA * ageDays);
-        }
-
-        // Detect vote changes: pool_id + proposalKey with multiple distinct tx_hash entries
-        // means the SPO changed their vote on that proposal (sign of deliberation).
-        const voteChanges = new Set<string>(); // "pool_id::proposalKey"
-        {
-          const poolProposalTxHashes = new Map<string, Set<string>>();
-          for (const v of voteRows as SpoVoteRow[]) {
-            const compositeKey = `${v.pool_id}::${v.proposal_tx_hash}-${v.proposal_index}`;
-            const txSet = poolProposalTxHashes.get(compositeKey) ?? new Set();
-            txSet.add(v.tx_hash);
-            poolProposalTxHashes.set(compositeKey, txSet);
-          }
-          for (const [compositeKey, txSet] of poolProposalTxHashes) {
-            if (txSet.size > 1) {
-              voteChanges.add(compositeKey);
-            }
-          }
-        }
-
-        // Build vote data with V3 fields
-        const allVotes: SpoVoteDataV3[] = [];
-        const poolVotes = new Map<string, SpoVoteDataV3[]>();
-        const poolVoteMap = new Map<string, Map<string, 'Yes' | 'No' | 'Abstain'>>();
-
-        for (const v of voteRows as SpoVoteRow[]) {
-          const proposalKey = `${v.proposal_tx_hash}-${v.proposal_index}`;
-          const ctx = proposalContexts.get(proposalKey);
-          const proposal = ((proposalRows || []) as SpoProposalRow[]).find(
-            (p) => `${p.tx_hash}-${p.proposal_index}` === proposalKey,
-          );
-
-          const voteData: SpoVoteDataV3 = {
-            poolId: v.pool_id,
-            proposalKey,
-            vote: v.vote as 'Yes' | 'No' | 'Abstain',
-            blockTime: v.block_time,
-            epoch: v.epoch ?? blockTimeToEpoch(v.block_time),
-            proposalType: proposal?.proposal_type ?? 'InfoAction',
-            importanceWeight: ctx?.importanceWeight ?? 1,
-            proposalBlockTime: proposalBlockTimes.get(proposalKey) ?? 0,
-            hasRationale: false, // SPO votes don't have rationale anchors yet
-          };
-
-          allVotes.push(voteData);
-          if (!poolVotes.has(v.pool_id)) poolVotes.set(v.pool_id, []);
-          poolVotes.get(v.pool_id)!.push(voteData);
-
-          // Build pool vote map for sybil detection
-          if (!poolVoteMap.has(v.pool_id)) poolVoteMap.set(v.pool_id, new Map());
-          poolVoteMap.get(v.pool_id)!.set(proposalKey, v.vote as 'Yes' | 'No' | 'Abstain');
-        }
-
-        // Compute SPO majority per proposal (by simple vote count, for dissent scoring)
-        const spoMajorityByProposal = new Map<string, 'Yes' | 'No' | null>();
-        {
-          const proposalVoteCounts = new Map<string, { yes: number; no: number }>();
-          for (const votes of poolVotes.values()) {
-            for (const v of votes) {
-              if (v.vote === 'Abstain') continue;
-              const cur = proposalVoteCounts.get(v.proposalKey) ?? { yes: 0, no: 0 };
-              if (v.vote === 'Yes') cur.yes++;
-              else cur.no++;
-              proposalVoteCounts.set(v.proposalKey, cur);
-            }
-          }
-          for (const [key, counts] of proposalVoteCounts) {
-            if (counts.yes === counts.no)
-              spoMajorityByProposal.set(key, null); // tied
-            else spoMajorityByProposal.set(key, counts.yes > counts.no ? 'Yes' : 'No');
-          }
-        }
-
-        // Compute V3.3 Deliberation Quality scores (with vote-change bonus)
-        const deliberationVotes = new Map<
-          string,
-          Array<{
-            proposalKey: string;
-            vote: 'Yes' | 'No' | 'Abstain';
-            blockTime: number;
-            proposalBlockTime: number;
-            proposalType: string;
-            importanceWeight: number;
-            hasRationale: boolean;
-            spoMajorityVote?: 'Yes' | 'No' | null;
-            hasVoteChanged?: boolean;
-          }>
-        >();
-        for (const [poolId, votes] of poolVotes) {
-          deliberationVotes.set(
-            poolId,
-            votes.map((v) => ({
-              proposalKey: v.proposalKey,
-              vote: v.vote,
-              blockTime: v.blockTime,
-              proposalBlockTime: v.proposalBlockTime,
-              proposalType: v.proposalType,
-              importanceWeight: v.importanceWeight,
-              hasRationale: v.hasRationale,
-              spoMajorityVote: spoMajorityByProposal.get(v.proposalKey) ?? null,
-              hasVoteChanged: voteChanges.has(`${poolId}::${v.proposalKey}`),
-            })),
-          );
-        }
-        // Filter proposal types to SPO-eligible only for deliberation entropy + confidence
-        const spoEligibleProposalTypes = new Set(
-          [...allProposalTypes].filter((t) => SPO_ELIGIBLE_TYPES.has(t)),
-        );
-
-        const deliberationScores = computeSpoDeliberationQuality(
-          deliberationVotes,
-          spoEligibleProposalTypes,
-          nowSeconds,
-        );
-
-        // Compute confidence per pool (type coverage against SPO-eligible types only)
-        const confidences = new Map<string, number>();
-        for (const [poolId, votes] of poolVotes) {
-          const epochs = new Set(votes.map((v) => v.epoch));
-          const sortedEpochs = [...epochs].sort((a, b) => a - b);
-          const epochSpan =
-            sortedEpochs.length > 1 ? sortedEpochs[sortedEpochs.length - 1] - sortedEpochs[0] : 0;
-          const types = new Set(votes.map((v) => v.proposalType));
-          const spoEligibleVotedTypes = new Set(
-            [...types].filter((t) => SPO_ELIGIBLE_TYPES.has(t)),
-          );
-          const typeCoverage =
-            spoEligibleProposalTypes.size > 0
-              ? spoEligibleVotedTypes.size / spoEligibleProposalTypes.size
-              : 0;
-          confidences.set(poolId, computeConfidence(votes.length, epochSpan, typeCoverage));
-        }
-
-        // Compute proposal-level margin multipliers
-        const proposalMarginMultipliers = computeProposalMarginMultipliers(allVotes);
-
-        // Build SPO profile data for Governance Identity pillar
-        const spoProfiles = new Map<string, SpoProfileData>();
-        const poolMetaMap = new Map<string, PoolRow>();
-
-        for (const p of (poolRows || []) as PoolRow[]) {
-          poolMetaMap.set(p.pool_id, p);
-        }
-
-        for (const poolId of poolVotes.keys()) {
-          const meta = poolMetaMap.get(poolId);
-          spoProfiles.set(poolId, {
-            poolId,
-            ticker: meta?.ticker ?? null,
-            poolName: meta?.pool_name ?? null,
-            governanceStatement: meta?.governance_statement ?? null,
-            poolDescription: null,
-            homepageUrl: meta?.homepage_url ?? null,
-            socialLinks: Array.isArray(meta?.social_links) ? meta!.social_links : [],
-            metadataHashVerified: meta?.metadata_hash_verified ?? false,
-            delegatorCount: meta?.delegator_count ?? 0,
-            voteCount: poolVotes.get(poolId)?.length ?? 0,
-          });
-        }
-
-        const identityScores = identityEnabled
-          ? computeSpoGovernanceIdentity(spoProfiles)
-          : new Map<string, number>();
-
-        // Load score history for momentum (30-day window for V3)
         const { data: historyRows } = await supabase
           .from('spo_score_snapshots')
           .select('pool_id, governance_score, snapshot_at')
           .gte('snapshot_at', new Date(Date.now() - 30 * 86400000).toISOString());
-
-        const scoreHistory = new Map<string, { date: string; score: number }[]>();
-        for (const h of historyRows || []) {
-          if (!h.governance_score || !h.snapshot_at) continue;
-          const arr = scoreHistory.get(h.pool_id) ?? [];
-          arr.push({ date: h.snapshot_at.slice(0, 10), score: h.governance_score });
-          scoreHistory.set(h.pool_id, arr);
-        }
-
-        // Run sybil detection BEFORE score computation so penalty applies to confidence
-        const sybilFlags = detectSybilPairs(poolVoteMap);
-
-        // Load existing unresolved sybil flags from DB for penalty computation
         const { data: existingSybilFlags } = await supabase
           .from('spo_sybil_flags')
           .select('pool_a, pool_b, agreement_rate, resolved')
           .eq('resolved', false);
 
-        // Merge current detection with existing flags for penalty computation
-        const allSybilFlags: SybilConfidenceFlag[] = [
-          ...(existingSybilFlags || []).map((f) => ({
-            pool_a: f.pool_a as string,
-            pool_b: f.pool_b as string,
-            agreement_rate: f.agreement_rate as number,
-            resolved: f.resolved as boolean,
-          })),
-          // Add newly detected flags (not yet in DB)
-          ...sybilFlags.map((f) => ({
-            pool_a: f.poolA,
-            pool_b: f.poolB,
-            agreement_rate: f.agreementRate,
-            resolved: false,
-          })),
-        ];
-
-        // Apply sybil confidence penalties
-        for (const [poolId, baseConf] of confidences) {
-          const penalty = computeSybilConfidencePenalty(poolId, allSybilFlags);
-          if (penalty > 0) {
-            confidences.set(poolId, applySybilPenalty(baseConf, penalty));
+        const normalizedExistingSybilFlags = (existingSybilFlags || []).flatMap((flag) => {
+          if (
+            typeof flag.pool_a !== 'string' ||
+            typeof flag.pool_b !== 'string' ||
+            typeof flag.agreement_rate !== 'number'
+          ) {
+            return [];
           }
-        }
 
-        // Compute V3 scores with all 10 arguments (confidence now includes sybil penalty)
-        const finalScores = computeSpoScores(
-          allVotes,
-          totalWeightedPool,
+          return [
+            {
+              pool_a: flag.pool_a,
+              pool_b: flag.pool_b,
+              agreement_rate: flag.agreement_rate,
+              resolved: flag.resolved ?? false,
+            },
+          ];
+        });
+
+        const artifacts = buildSpoScoreSyncArtifacts({
+          voteRows: (voteRows || []) as SpoVoteRow[],
+          proposalRows: (proposalRows || []) as SpoProposalRow[],
+          classificationRows: (classificationRows || []) as ClassificationRow[],
+          poolRows: (poolRows || []) as PoolRow[],
+          historyRows: (historyRows || []) as SpoScoreHistoryRow[],
+          existingSybilFlags: normalizedExistingSybilFlags,
           currentEpoch,
-          spoEligibleProposalTypes,
-          identityScores,
-          deliberationScores,
-          confidences,
-          scoreHistory,
-          proposalMarginMultipliers,
-          activeEpochs,
-        );
+          identityEnabled,
+        });
 
-        // Persist sybil flags
-        if (sybilFlags.length > 0) {
-          logger.warn('[sync-spo-scores] Sybil flags detected', { count: sybilFlags.length });
-          const sybilInserts = sybilFlags.map((f) => ({
-            pool_a: f.poolA,
-            pool_b: f.poolB,
-            agreement_rate: f.agreementRate,
-            shared_votes: f.sharedVotes,
-            detected_at: new Date().toISOString(),
-            epoch_no: currentEpoch,
-          }));
+        if (artifacts.sybilFlagInserts.length > 0) {
+          logger.warn('[sync-spo-scores] Sybil flags detected', {
+            count: artifacts.sybilFlagInserts.length,
+          });
           await batchUpsert(
             supabase,
             'spo_sybil_flags',
-            sybilInserts as unknown as Record<string, unknown>[],
+            artifacts.sybilFlagInserts as unknown as Record<string, unknown>[],
             'pool_a,pool_b,epoch_no',
             'spo_sybil_flags',
           );
         }
 
-        // Alignment computation
-        const classificationMap = new Map<string, Record<string, number>>();
-        for (const c of (classificationRows || []) as ClassificationRow[]) {
-          const key = `${c.proposal_tx_hash}-${c.proposal_index}`;
-          classificationMap.set(key, {
-            treasury_conservative: c.dim_treasury_conservative ?? 0,
-            treasury_growth: c.dim_treasury_growth ?? 0,
-            decentralization: c.dim_decentralization ?? 0,
-            security: c.dim_security ?? 0,
-            innovation: c.dim_innovation ?? 0,
-            transparency: c.dim_transparency ?? 0,
-          });
-        }
-
-        const alignmentDims = [
-          'treasury_conservative',
-          'treasury_growth',
-          'decentralization',
-          'security',
-          'innovation',
-          'transparency',
-        ] as const;
-
-        const poolAlignments = new Map<string, Record<string, number>>();
-
-        for (const [poolId, votes] of poolVotes) {
-          const dimSums: Record<string, number> = {};
-          const dimWeights: Record<string, number> = {};
-          for (const d of alignmentDims) {
-            dimSums[d] = 0;
-            dimWeights[d] = 0;
-          }
-
-          for (const v of votes) {
-            const cls = classificationMap.get(v.proposalKey);
-            if (!cls) continue;
-            const voteWeight = v.vote === 'Yes' ? 1 : v.vote === 'No' ? -1 : 0;
-            if (voteWeight === 0) continue;
-
-            for (const d of alignmentDims) {
-              dimSums[d] += voteWeight * (cls[d] ?? 0);
-              dimWeights[d] += Math.abs(voteWeight);
-            }
-          }
-
-          const alignments: Record<string, number> = {};
-          for (const d of alignmentDims) {
-            const raw = dimWeights[d] > 0 ? dimSums[d] / dimWeights[d] : 0;
-            alignments[d] = Math.round(((raw + 1) / 2) * 100);
-          }
-          poolAlignments.set(poolId, alignments);
-        }
-
-        // Upsert pools with V3 pillar breakdown
-        const poolUpdates = [...finalScores.entries()].map(([poolId, s]) => {
-          const align = poolAlignments.get(poolId) ?? {};
-          const voteCount = poolVotes.get(poolId)?.length ?? 0;
-          return {
-            pool_id: poolId,
-            governance_score: s.composite,
-            participation_raw: Math.round(s.participationRaw),
-            participation_pct: Math.round(s.participationCalibrated),
-            deliberation_raw: Math.round(s.deliberationRaw),
-            deliberation_pct: Math.round(s.deliberationCalibrated),
-            // V2 compat columns
-            consistency_raw: Math.round(s.consistencyRaw),
-            consistency_pct: Math.round(s.consistencyCalibrated),
-            reliability_raw: Math.round(s.reliabilityRaw),
-            reliability_pct: Math.round(s.reliabilityCalibrated),
-            governance_identity_raw: Math.round(s.governanceIdentityRaw),
-            governance_identity_pct: Math.round(s.governanceIdentityCalibrated),
-            score_momentum: s.momentum,
-            confidence: s.confidence,
-            vote_count: voteCount,
-            alignment_treasury_conservative: align.treasury_conservative ?? null,
-            alignment_treasury_growth: align.treasury_growth ?? null,
-            alignment_decentralization: align.decentralization ?? null,
-            alignment_security: align.security ?? null,
-            alignment_innovation: align.innovation ?? null,
-            alignment_transparency: align.transparency ?? null,
-            score_version: CURRENT_SPO_SCORE_VERSION,
-            updated_at: new Date().toISOString(),
-          };
-        });
-
-        if (poolUpdates.length > 0) {
+        if (artifacts.poolUpdates.length > 0) {
           await batchUpsert(
             supabase,
             'pools',
-            poolUpdates as unknown as Record<string, unknown>[],
+            artifacts.poolUpdates as unknown as Record<string, unknown>[],
             'pool_id',
             'pools',
           );
         }
 
-        // Full pillar breakdown snapshots with V3 fields
-        const scoreSnapshots = [...finalScores.entries()].map(([poolId, s]) => ({
-          pool_id: poolId,
-          epoch_no: currentEpoch,
-          governance_score: s.composite,
-          participation_rate: Math.round(s.participationRaw),
-          participation_pct: Math.round(s.participationCalibrated),
-          deliberation_raw: Math.round(s.deliberationRaw),
-          deliberation_pct: Math.round(s.deliberationCalibrated),
-          consistency_raw: Math.round(s.consistencyRaw),
-          consistency_pct: Math.round(s.consistencyCalibrated),
-          reliability_raw: Math.round(s.reliabilityRaw),
-          reliability_pct: Math.round(s.reliabilityCalibrated),
-          governance_identity_raw: Math.round(s.governanceIdentityRaw),
-          governance_identity_pct: Math.round(s.governanceIdentityCalibrated),
-          score_momentum: s.momentum,
-          confidence: s.confidence,
-          rationale_rate: null,
-          vote_count: poolVotes.get(poolId)?.length ?? 0,
-          score_version: CURRENT_SPO_SCORE_VERSION,
-        }));
-
-        if (scoreSnapshots.length > 0) {
+        if (artifacts.scoreSnapshots.length > 0) {
           await batchUpsert(
             supabase,
             'spo_score_snapshots',
-            scoreSnapshots as unknown as Record<string, unknown>[],
+            artifacts.scoreSnapshots as unknown as Record<string, unknown>[],
             'pool_id,epoch_no',
             'spo_score_snapshots',
           );
         }
 
-        const alignmentSnapshots = [...poolAlignments.entries()].map(([poolId, align]) => ({
-          pool_id: poolId,
-          epoch_no: currentEpoch,
-          alignment_treasury_conservative: align.treasury_conservative ?? null,
-          alignment_treasury_growth: align.treasury_growth ?? null,
-          alignment_decentralization: align.decentralization ?? null,
-          alignment_security: align.security ?? null,
-          alignment_innovation: align.innovation ?? null,
-          alignment_transparency: align.transparency ?? null,
-        }));
-
-        if (alignmentSnapshots.length > 0) {
+        if (artifacts.alignmentSnapshots.length > 0) {
           await batchUpsert(
             supabase,
             'spo_alignment_snapshots',
-            alignmentSnapshots as unknown as Record<string, unknown>[],
+            artifacts.alignmentSnapshots as unknown as Record<string, unknown>[],
             'pool_id,epoch_no',
             'spo_alignment_snapshots',
           );
         }
 
-        // Completeness log
-        await supabase.from('snapshot_completeness_log').upsert(
-          {
-            snapshot_type: 'spo_scores',
-            epoch_no: currentEpoch,
-            snapshot_date: new Date().toISOString().slice(0, 10),
-            record_count: finalScores.size,
-            expected_count: poolVotes.size,
-            coverage_pct:
-              poolVotes.size > 0 ? Math.round((finalScores.size / poolVotes.size) * 100) : 100,
-            metadata: {
-              identityEnabled,
-              votesProcessed: voteRows.length,
-              poolsWithIdentity: identityScores.size,
-              sybilFlagsDetected: sybilFlags.length,
-              v3: true,
-            },
-          },
-          { onConflict: 'snapshot_type,epoch_no' },
-        );
+        await supabase
+          .from('snapshot_completeness_log')
+          .upsert(artifacts.completenessLog, { onConflict: 'snapshot_type,epoch_no' });
 
-        const summary = {
-          success: true,
-          poolsScored: finalScores.size,
-          votesProcessed: voteRows.length,
-          identityEnabled,
-          poolsWithIdentity: identityScores.size,
-          sybilFlags: sybilFlags.length,
-        };
-        await syncLog.finalize(true, null, summary);
-        await emitPostHog(true, 'spo_scores', syncLog.elapsed, summary);
-        return summary;
+        await syncLog.finalize(true, null, artifacts.summary);
+        await emitPostHog(true, 'spo_scores', syncLog.elapsed, artifacts.summary);
+        return artifacts.summary;
       } catch (err) {
         const msg = errMsg(err);
         await syncLog.finalize(false, msg, {});

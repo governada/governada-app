@@ -1,4 +1,5 @@
 import { GOVERNANCE_ACTION_DEPOSIT_LOVELACE } from '@/lib/governance/constants';
+import { fetchLatestProposalVotingSummary } from '@/lib/governance/proposalVotingSummary';
 import { getVotingBodies } from '@/lib/governance/votingBodies';
 import { getGovernanceThresholdForProposal } from '@/lib/governanceThresholds';
 import { blockTimeToEpoch } from '@/lib/koios';
@@ -95,14 +96,7 @@ export async function buildProposalMonitorData({
     throw new ProposalMonitorError(500, 'Unsupported proposal threshold configuration');
   }
 
-  const { data: summaryRows } = await supabase
-    .from('proposal_voting_summary')
-    .select('*')
-    .eq('proposal_tx_hash', txHash)
-    .eq('proposal_index', proposalIndex)
-    .order('epoch_no', { ascending: false })
-    .limit(1);
-  const summary = summaryRows?.[0] ?? null;
+  const summary = await fetchLatestProposalVotingSummary(supabase, { txHash, proposalIndex });
 
   const voting: ProposalMonitorData['voting'] = {
     drep: {

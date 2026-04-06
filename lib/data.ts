@@ -14,8 +14,13 @@ import {
   buildTriBodyVotes,
   summarizeDRepVotes,
   type ProposalWithVoteSummary,
-  type TriBodyVotes,
 } from './governance/proposalSummary';
+import {
+  fetchLatestProposalVotingSummary,
+  fetchProposalVotingSummaries,
+  getProposalVotingSummaryKey,
+  indexProposalVotingSummaryTriBodies,
+} from './governance/proposalVotingSummary';
 export {
   getProposalsByIds,
   getRationalesByVoteTxHashes,
@@ -474,23 +479,16 @@ export async function getAllProposalsWithVoteSummary(): Promise<ProposalWithVote
     }
 
     // Fetch tri-body vote summaries + voter DRep IDs (just the IDs, not full vote rows)
-    const [votingSummaryResult, voterIdsResult] = await Promise.all([
-      supabase
-        .from('proposal_voting_summary')
-        .select(
-          'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
-        ),
+    const [votingSummaryRows, voterIdsResult] = await Promise.all([
+      fetchProposalVotingSummaries(
+        supabase,
+        proposals.map((proposal) => proposal.tx_hash),
+        'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
+      ),
       supabase.from('drep_votes').select('proposal_tx_hash, proposal_index, drep_id'),
     ]);
 
-    // Build tri-body map + DRep vote counts from proposal_voting_summary
-    const triBodyMap = new Map<string, TriBodyVotes>();
-    if (votingSummaryResult.data) {
-      for (const s of votingSummaryResult.data) {
-        const key = `${s.proposal_tx_hash}-${s.proposal_index}`;
-        triBodyMap.set(key, buildTriBodyVotes(s));
-      }
-    }
+    const triBodyMap = indexProposalVotingSummaryTriBodies(votingSummaryRows);
 
     // Build voter DRep ID sets per proposal
     const voterMap = new Map<string, Set<string>>();
@@ -507,7 +505,7 @@ export async function getAllProposalsWithVoteSummary(): Promise<ProposalWithVote
     }
 
     return proposals.map((p) => {
-      const key = `${p.tx_hash}-${p.proposal_index}`;
+      const key = getProposalVotingSummaryKey(p.tx_hash, p.proposal_index);
       const triBody = triBodyMap.get(key);
       const voters = voterMap.get(key);
       return buildProposalVoteSummary({
@@ -566,14 +564,11 @@ export async function getProposalByKey(
         .select('vote, drep_id')
         .eq('proposal_tx_hash', txHash)
         .eq('proposal_index', proposalIndex),
-      supabase
-        .from('proposal_voting_summary')
-        .select(
-          'drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
-        )
-        .eq('proposal_tx_hash', txHash)
-        .eq('proposal_index', proposalIndex)
-        .single(),
+      fetchLatestProposalVotingSummary(
+        supabase,
+        { txHash, proposalIndex },
+        'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
+      ),
     ]);
 
     const { data: row, error } = proposalResult;
@@ -581,7 +576,7 @@ export async function getProposalByKey(
 
     const voteSummary = summarizeDRepVotes(votesResult.data);
 
-    const s = summaryResult.data;
+    const s = summaryResult;
     const triBody = s ? buildTriBodyVotes(s) : undefined;
 
     return buildProposalVoteSummary({
@@ -1227,14 +1222,13 @@ export async function getOpenProposalsForDRep(drepId: string): Promise<OpenPropo
 
     // Fetch DRep's votes + vote summaries in parallel (both depend only on proposals result)
     const openTxHashes = proposals.map((p) => p.tx_hash);
-    const [drepVotesResult, summaryResult] = await Promise.all([
+    const [drepVotesResult, summaryRows] = await Promise.all([
       supabase.from('drep_votes').select('proposal_tx_hash, proposal_index').eq('drep_id', drepId),
-      supabase
-        .from('proposal_voting_summary')
-        .select(
-          'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast',
-        )
-        .in('proposal_tx_hash', openTxHashes),
+      fetchProposalVotingSummaries(
+        supabase,
+        openTxHashes,
+        'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
+      ),
     ]);
 
     const votedKeys = new Set<string>();
@@ -1245,9 +1239,9 @@ export async function getOpenProposalsForDRep(drepId: string): Promise<OpenPropo
     }
 
     const countMap = new Map<string, { yes: number; no: number; abstain: number }>();
-    if (summaryResult.data) {
-      for (const s of summaryResult.data) {
-        const key = `${s.proposal_tx_hash}-${s.proposal_index}`;
+    for (const s of summaryRows) {
+      if (s.proposal_tx_hash && openTxHashes.includes(s.proposal_tx_hash)) {
+        const key = getProposalVotingSummaryKey(s.proposal_tx_hash, s.proposal_index);
         countMap.set(key, {
           yes: s.drep_yes_votes_cast || 0,
           no: s.drep_no_votes_cast || 0,
@@ -1260,7 +1254,7 @@ export async function getOpenProposalsForDRep(drepId: string): Promise<OpenPropo
     return proposals
       .filter((p) => !votedKeys.has(`${p.tx_hash}-${p.proposal_index}`))
       .map((p) => {
-        const key = `${p.tx_hash}-${p.proposal_index}`;
+        const key = getProposalVotingSummaryKey(p.tx_hash, p.proposal_index);
         const counts = countMap.get(key) || { yes: 0, no: 0, abstain: 0 };
         return {
           txHash: p.tx_hash,

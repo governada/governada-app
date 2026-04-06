@@ -1,5 +1,10 @@
 import { blockTimeToEpoch } from '@/lib/koios';
 import { logger } from '@/lib/logger';
+import {
+  fetchProposalVotingSummaries,
+  getProposalVotingSummaryKey,
+  indexProposalVotingSummaryTriBodies,
+} from '@/lib/governance/proposalVotingSummary';
 import { createClient } from '@/lib/supabase';
 import type {
   CitizenSentiment,
@@ -94,7 +99,7 @@ export async function buildReviewQueue({
           .select('proposal_tx_hash, proposal_index, vote')
           .eq('pool_id', voterId)
           .in('proposal_tx_hash', txHashes),
-    supabase.from('proposal_voting_summary').select('*').in('proposal_tx_hash', txHashes),
+    fetchProposalVotingSummaries(supabase, txHashes),
     supabase
       .from('citizen_sentiment')
       .select('proposal_tx_hash, proposal_index, sentiment')
@@ -106,26 +111,10 @@ export async function buildReviewQueue({
     voterVoteMap.set(`${vote.proposal_tx_hash}-${vote.proposal_index}`, vote.vote);
   }
 
-  const summaryMap = new Map<string, InterBodyVotes>();
-  for (const summary of votingSummaryResult.data ?? []) {
-    summaryMap.set(`${summary.proposal_tx_hash}-${summary.proposal_index}`, {
-      drep: {
-        yes: summary.drep_yes_votes_cast ?? 0,
-        no: summary.drep_no_votes_cast ?? 0,
-        abstain: summary.drep_abstain_votes_cast ?? 0,
-      },
-      spo: {
-        yes: summary.pool_yes_votes_cast ?? 0,
-        no: summary.pool_no_votes_cast ?? 0,
-        abstain: summary.pool_abstain_votes_cast ?? 0,
-      },
-      cc: {
-        yes: summary.committee_yes_votes_cast ?? 0,
-        no: summary.committee_no_votes_cast ?? 0,
-        abstain: summary.committee_abstain_votes_cast ?? 0,
-      },
-    });
-  }
+  const summaryMap = indexProposalVotingSummaryTriBodies(votingSummaryResult) as Map<
+    string,
+    InterBodyVotes
+  >;
 
   const sentimentMap = new Map<string, CitizenSentiment>();
   for (const sentiment of sentimentResult.data ?? []) {
@@ -140,7 +129,7 @@ export async function buildReviewQueue({
   }
 
   const items: ReviewQueueItem[] = openProposals.map((proposal) => {
-    const key = `${proposal.tx_hash}-${proposal.proposal_index}`;
+    const key = getProposalVotingSummaryKey(proposal.tx_hash, proposal.proposal_index);
     const expiryEpoch = proposal.expiration_epoch ?? 0;
     const epochsRemaining = expiryEpoch > 0 ? Math.max(0, expiryEpoch - currentEpoch) : null;
     const defaultTally = { yes: 0, no: 0, abstain: 0 };

@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSystemsDrillCadenceTarget,
   buildSystemsIncidentPayload,
+  buildSystemsIncidentRetroTarget,
   buildSystemsIncidentSummary,
   parseSystemsIncidentHistory,
   SYSTEMS_INCIDENT_LOG_ACTION,
 } from '@/lib/admin/systemsIncidents';
+import { toSystemsCommitment } from '@/lib/admin/systemsReview';
 
 describe('systems incident helpers', () => {
   it('warns when no incident or drill history exists', () => {
@@ -187,6 +189,89 @@ describe('systems incident helpers', () => {
         summary,
         history,
         now: new Date('2026-04-05T12:00:00.000Z'),
+      }),
+    ).toBeNull();
+  });
+
+  it('turns a follow-up-pending incident into a weekly hardening target', () => {
+    const history = parseSystemsIncidentHistory([
+      {
+        action: SYSTEMS_INCIDENT_LOG_ACTION,
+        target: 'incident:2026-04-04:koios-outage',
+        created_at: '2026-04-04T12:15:00.000Z',
+        payload: {
+          incidentDate: '2026-04-04',
+          entryType: 'incident',
+          severity: 'p1',
+          status: 'follow_up_pending',
+          title: 'Koios outage',
+          detectedBy: 'Alert',
+          systemsAffected: ['pipeline', 'freshness'],
+          userImpact: 'Public governance reads would drift stale if the dependency stayed down.',
+          rootCause: 'The dependency health check showed the upstream endpoint was unavailable.',
+          mitigation: 'Switched the team into stabilization mode and monitored the fallback path.',
+          permanentFix: 'Add a dependency drill and stronger stale-data operator prompts.',
+          followUpOwner: 'Founder + agents',
+          timeToAcknowledgeMinutes: 8,
+          timeToMitigateMinutes: 22,
+          timeToResolveMinutes: null,
+        },
+      },
+    ]);
+
+    const target = buildSystemsIncidentRetroTarget({
+      history,
+      openCommitments: [],
+    });
+
+    expect(target?.sourceKey).toBe('systems:incident-retro:incident:2026-04-04:koios-outage');
+    expect(target?.severity).toBe('critical');
+    expect(target?.commitmentTitle).toMatch(/close the incident follow-up from koios outage/i);
+    expect(target?.linkedSloIds).toEqual(expect.arrayContaining(['freshness']));
+  });
+
+  it('suppresses the retro nudge when the matching commitment already exists', () => {
+    const history = parseSystemsIncidentHistory([
+      {
+        action: SYSTEMS_INCIDENT_LOG_ACTION,
+        target: 'drill:2026-04-04:deploy-rollback',
+        created_at: '2026-04-04T12:15:00.000Z',
+        payload: {
+          incidentDate: '2026-04-04',
+          entryType: 'drill',
+          severity: 'drill',
+          status: 'follow_up_pending',
+          title: 'Deploy rollback drill',
+          detectedBy: 'Manual review',
+          systemsAffected: ['deploy', 'readiness'],
+          userImpact: 'Rehearsed a failed deploy and rollback decision path.',
+          rootCause: 'The drill exposed a gap in rollback communication.',
+          mitigation: 'Walked through rollback, readiness verification, and founder comms.',
+          permanentFix: 'Close the communication gap with a clearer operator runbook.',
+          followUpOwner: 'Founder + agents',
+          timeToAcknowledgeMinutes: 4,
+          timeToMitigateMinutes: 14,
+          timeToResolveMinutes: 20,
+        },
+      },
+    ]);
+
+    expect(
+      buildSystemsIncidentRetroTarget({
+        history,
+        openCommitments: [
+          toSystemsCommitment({
+            id: '2be66a2b-0f24-4f03-9b2b-7c67d3646c31',
+            review_id: '9d4fb0f3-9c82-4e7a-8ab5-9ef8bafcaa4d',
+            title: 'Close the drill follow-up from Deploy rollback drill',
+            summary: 'Operationalize the drill lesson.',
+            owner: 'Founder + agents',
+            status: 'planned',
+            due_date: '2026-04-11',
+            linked_slo_ids: ['availability'],
+            created_at: '2026-04-05T00:00:00.000Z',
+          }),
+        ],
       }),
     ).toBeNull();
   });

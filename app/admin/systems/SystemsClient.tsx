@@ -2952,8 +2952,8 @@ export function SystemsClient() {
                 <p className="text-sm font-medium">No open automation follow-ups right now.</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   Keep the sweep cadence alive so this stays meaningful. The moment a review goes
-                  stale, a commitment slips, or a critical automation-ready action appears, it
-                  should show up here as durable operating work.
+                  stale, a commitment slips, an incident retro needs a real owner, or a critical
+                  automation-ready action appears, it should show up here as durable operating work.
                 </p>
               </CardContent>
             </Card>
@@ -2986,9 +2986,9 @@ export function SystemsClient() {
             <h3 className="text-base font-semibold">Next automations</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            The daily sweep, weekly draft, critical follow-up escalation, commitment shepherd, and
-            drill cadence nudger are live now. These are the next routines that can compound on top
-            of the same feed and audit trail.
+            The daily sweep, weekly draft, critical follow-up escalation, commitment shepherd, drill
+            cadence nudger, and incident retro follow-up are live now. These are the next routines
+            that can compound on top of the same feed and audit trail.
           </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {data.automationCandidates.map((candidate) => (

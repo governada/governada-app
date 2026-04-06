@@ -3,7 +3,8 @@
 > **Purpose:** Durable record of production incidents, near misses, mitigations, and lessons learned.
 > **Rule:** If a production issue changes user trust, launch confidence, or founder load, log it.
 > **Working surface:** `/admin/systems#incident-log` is now the live incident and drill trail. This doc keeps the template and longer-form write-up structure when a fuller narrative is worth preserving in-repo.
-> **Automation:** `/admin/systems#automation` is the centralized history view for sweep runs, escalations, commitment shepherd records, and review-draft runs. The daily systems sweep still opens a drill-cadence follow-up when no recent failure drill is logged, with the next suggested scenario pulled from the launch plan.
+> **Automation:** `/admin/systems#automation` is the centralized history view for sweep runs, escalations, commitment shepherd records, retro follow-up generation, and review-draft runs. The daily systems sweep now turns `follow_up_pending` incidents and drills into suggested weekly hardening commitments, and it still opens a drill-cadence follow-up when no recent failure drill is logged.
+> **Review loop:** The cockpit is the place to monitor whether the automation ran, what it opened, and whether the resulting follow-ups were acknowledged or resolved. Use the suggested draft and commitment trails there before adding extra narrative here.
 
 ---
 

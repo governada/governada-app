@@ -196,6 +196,41 @@ describe('systems review draft helpers', () => {
     expect(draft.commitmentDueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  it('reuses incident retro follow-up evidence for the weekly commitment draft', () => {
+    const data = buildDashboardFixture();
+    data.latestCommitmentShepherd = null;
+    data.automationFollowups = [
+      {
+        sourceKey: 'systems:incident-retro:incident:2026-04-04:koios-outage',
+        triggerType: 'incident_retro_followup',
+        severity: 'critical',
+        status: 'open',
+        title: "Turn Koios outage into this week's hardening commitment",
+        summary: 'The permanent fix still needs to become named weekly operating work.',
+        recommendedAction: 'Apply the suggested weekly commitment in the founder review.',
+        actionHref: '/admin/systems#weekly-review',
+        evidence: {
+          incidentTitle: 'Koios outage',
+          followUpOwner: 'Platform owner',
+          commitmentTitle: 'Close the incident follow-up from Koios outage',
+          commitmentSummary:
+            'Systems affected: pipeline, freshness. Permanent fix to operationalize: Add stronger stale-data operator prompts.',
+          linkedSloIds: ['freshness', 'availability'],
+        },
+        updatedAt: '2026-04-02T11:55:00.000Z',
+      },
+    ];
+
+    const draft = buildSystemsReviewDraft(data, 'cron');
+
+    expect(draft.focusArea).toMatch(/koios outage/i);
+    expect(draft.hardeningCommitmentTitle).toBe('Close the incident follow-up from Koios outage');
+    expect(draft.hardeningCommitmentSummary).toMatch(/permanent fix to operationalize/i);
+    expect(draft.commitmentOwner).toBe('Platform owner');
+    expect(draft.linkedSloIds).toEqual(['freshness', 'availability']);
+    expect(draft.changeNotes).toMatch(/incident retro follow-up/i);
+  });
+
   it('reads the latest valid draft from audit rows', () => {
     const state = parseLatestSystemsReviewDraft([
       {

@@ -18,7 +18,10 @@ import type {
   SystemsReviewDiscipline,
   SystemsStatus,
 } from '@/lib/admin/systems';
-import { buildSystemsDrillCadenceTarget } from '@/lib/admin/systemsIncidents';
+import {
+  buildSystemsDrillCadenceTarget,
+  buildSystemsIncidentRetroTarget,
+} from '@/lib/admin/systemsIncidents';
 
 export const SYSTEMS_AUTOMATION_FOLLOWUP_ACTION = 'systems_automation_followup_sync';
 export const SYSTEMS_AUTOMATION_SWEEP_ACTION = 'systems_automation_sweep';
@@ -97,6 +100,7 @@ const followupStatusSchema = z.enum(['open', 'acknowledged', 'resolved']);
 const triggerTypeSchema = z.enum([
   'review_discipline',
   'drill_cadence',
+  'incident_retro_followup',
   'overdue_commitment',
   'systems_action',
 ]);
@@ -201,6 +205,8 @@ function triggerTypeLabel(triggerType: SystemsAutomationTriggerType) {
       return 'Review discipline';
     case 'drill_cadence':
       return 'Drill cadence';
+    case 'incident_retro_followup':
+      return 'Incident retro';
     case 'overdue_commitment':
       return 'Commitment health';
     default:
@@ -802,6 +808,33 @@ export function buildSystemsAutomationSpecs(input: {
         suggestedScenario: drillCadenceTarget.suggestedScenario,
         suggestedTitle: drillCadenceTarget.suggestedTitle,
         suggestedSystems: drillCadenceTarget.suggestedSystems,
+      },
+    });
+  }
+
+  const incidentRetroTarget = buildSystemsIncidentRetroTarget({
+    history: input.incidentHistory,
+    openCommitments: input.openCommitments,
+  });
+
+  if (incidentRetroTarget) {
+    specs.push({
+      sourceKey: incidentRetroTarget.sourceKey,
+      triggerType: 'incident_retro_followup',
+      severity: incidentRetroTarget.severity,
+      title: incidentRetroTarget.title,
+      summary: incidentRetroTarget.summary,
+      recommendedAction: incidentRetroTarget.recommendedAction,
+      actionHref: incidentRetroTarget.actionHref,
+      evidence: {
+        entryId: incidentRetroTarget.entryId,
+        entryType: incidentRetroTarget.entryType,
+        incidentDate: incidentRetroTarget.incidentDate,
+        incidentTitle: incidentRetroTarget.incidentTitle,
+        followUpOwner: incidentRetroTarget.followUpOwner,
+        commitmentTitle: incidentRetroTarget.commitmentTitle,
+        commitmentSummary: incidentRetroTarget.commitmentSummary,
+        linkedSloIds: incidentRetroTarget.linkedSloIds,
       },
     });
   }

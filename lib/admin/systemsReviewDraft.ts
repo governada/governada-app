@@ -65,10 +65,42 @@ function nextFridayInputValue(date: Date) {
   return todayInputValue(next);
 }
 
-function buildLinkedSloIds(data: SystemsDashboardData) {
+function buildLinkedSloIds(data: SystemsDashboardData, preferredIds?: string[]) {
+  if (preferredIds && preferredIds.length > 0) return preferredIds.slice(0, 3);
   const nonGood = data.slos.filter((slo) => slo.status !== 'good').map((slo) => slo.id);
   if (nonGood.length > 0) return nonGood.slice(0, 3);
   return data.slos.slice(0, 1).map((slo) => slo.id);
+}
+
+function extractIncidentRetroEvidence(
+  followup: SystemsDashboardData['automationFollowups'][number] | null,
+) {
+  if (!followup || followup.triggerType !== 'incident_retro_followup' || !followup.evidence) {
+    return null;
+  }
+
+  const linkedSloIds = Array.isArray(followup.evidence.linkedSloIds)
+    ? followup.evidence.linkedSloIds.filter(
+        (value): value is string => typeof value === 'string' && value.length > 0,
+      )
+    : [];
+
+  if (
+    typeof followup.evidence.commitmentTitle !== 'string' ||
+    typeof followup.evidence.commitmentSummary !== 'string' ||
+    typeof followup.evidence.followUpOwner !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    commitmentTitle: followup.evidence.commitmentTitle,
+    commitmentSummary: followup.evidence.commitmentSummary,
+    followUpOwner: followup.evidence.followUpOwner,
+    incidentTitle:
+      typeof followup.evidence.incidentTitle === 'string' ? followup.evidence.incidentTitle : null,
+    linkedSloIds,
+  };
 }
 
 export function buildSystemsReviewDraft(
@@ -77,8 +109,13 @@ export function buildSystemsReviewDraft(
 ): SystemsReviewDraft {
   const generatedAt = new Date().toISOString();
   const reviewDate = todayInputValue(new Date(generatedAt));
-  const linkedSloIds = buildLinkedSloIds(data);
   const primaryAction = data.actions[0] ?? null;
+  const incidentRetroFollowup =
+    data.automationFollowups.find(
+      (followup) => followup.triggerType === 'incident_retro_followup',
+    ) ?? null;
+  const incidentRetroEvidence = extractIncidentRetroEvidence(incidentRetroFollowup);
+  const linkedSloIds = buildLinkedSloIds(data, incidentRetroEvidence?.linkedSloIds);
   const primaryFollowup = data.automationFollowups[0] ?? null;
   const commitmentShepherd =
     data.latestCommitmentShepherd?.status === 'focus' ? data.latestCommitmentShepherd : null;
@@ -90,6 +127,7 @@ export function buildSystemsReviewDraft(
 
   const focusArea = clampText(
     commitmentShepherd?.title ??
+      incidentRetroFollowup?.title ??
       primaryFollowup?.title ??
       primaryAction?.title ??
       scorecardSync?.headline ??
@@ -111,6 +149,7 @@ export function buildSystemsReviewDraft(
 
   const hardeningCommitmentTitle = clampText(
     commitmentShepherd?.commitmentTitle ??
+      incidentRetroEvidence?.commitmentTitle ??
       primaryFollowup?.title ??
       primaryAction?.title ??
       `Close the ${linkedSloIds[0] ?? 'top'} launch gap`,
@@ -120,6 +159,7 @@ export function buildSystemsReviewDraft(
 
   const hardeningCommitmentSummary = clampText(
     commitmentShepherd?.recommendedAction ??
+      incidentRetroEvidence?.commitmentSummary ??
       primaryFollowup?.recommendedAction ??
       primaryAction?.summary ??
       data.reviewLoop.narrative ??
@@ -137,6 +177,9 @@ export function buildSystemsReviewDraft(
       : null,
     scorecardSync ? `Scorecard sync: ${scorecardSync.summary}` : null,
     incidentSummary ? `Incident response: ${incidentSummary.summary}` : null,
+    incidentRetroEvidence
+      ? `Incident retro follow-up: ${incidentRetroEvidence.incidentTitle ?? incidentRetroFollowup?.title}. Carry the permanent fix into the weekly commitment loop.`
+      : null,
     primaryFollowup
       ? `Automation follow-up: ${primaryFollowup.title}. ${primaryFollowup.recommendedAction}`
       : `Automation posture: ${data.automationSummary.summary}`,
@@ -160,7 +203,7 @@ export function buildSystemsReviewDraft(
     ),
     hardeningCommitmentTitle,
     hardeningCommitmentSummary,
-    commitmentOwner: 'Founder + agents',
+    commitmentOwner: incidentRetroEvidence?.followUpOwner ?? 'Founder + agents',
     commitmentDueDate: nextFridayInputValue(new Date(generatedAt)),
     linkedSloIds,
   };

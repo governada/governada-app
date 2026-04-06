@@ -71,6 +71,7 @@ Use this order every week:
 The review is intentionally shaped so it can be automated later from `/api/admin/systems` and `/api/admin/systems/reviews`:
 
 - centralize the founder review of sweep history, escalations, and follow-up state in `/admin/systems#automation`
+- turn `follow_up_pending` incidents and drills into suggested weekly hardening commitments
 - summarize current SLO posture
 - highlight red/yellow shifts from the previous review
 - project the durable review history into a live scorecard sync signal with streak, drift, and recurring hotspot SLOs
@@ -79,4 +80,5 @@ The review is intentionally shaped so it can be automated later from `/api/admin
 - open a founder-ready drill brief when `/admin/systems#incident-log` shows that the monthly failure drill cadence is missing or stale
 - open an inbox item for founder review
 - apply the commitment shepherd brief into the weekly review form
+- apply the incident-retro brief into the weekly review form when an incident or drill needs a named hardening commitment
 - escalate unresolved critical follow-ups into the founder operator channel with next-action links

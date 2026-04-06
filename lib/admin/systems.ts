@@ -8,6 +8,7 @@ export type SystemsAutomationFollowupStatus = 'open' | 'acknowledged' | 'resolve
 export type SystemsAutomationTriggerType =
   | 'review_discipline'
   | 'drill_cadence'
+  | 'incident_retro_followup'
   | 'overdue_commitment'
   | 'systems_action';
 export type SystemsScorecardTrend = 'improving' | 'steady' | 'worsening' | 'new';
@@ -526,16 +527,6 @@ export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
     trigger: 'Risky route or caching changes land without a fresh baseline.',
     action: 'Run the minimum k6 baseline and attach the result to the systems review.',
     whyItMatters: 'This lets performance discipline become an agentic maintenance loop.',
-  },
-  {
-    id: 'incident-retro-followup',
-    title: 'Incident retro follow-up',
-    trigger:
-      'A real incident or drill is logged with a permanent fix but no named operating commitment yet.',
-    action:
-      'Turn the logged lesson into a suggested weekly hardening commitment so the incident trail changes the next week of work automatically.',
-    whyItMatters:
-      'This closes the loop between learning from failures and actually hardening the system in the next founder review.',
   },
   {
     id: 'trust-surface-audit',

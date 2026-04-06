@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type {
+  SystemsCommitmentCard,
   SystemsIncidentRecord,
   SystemsIncidentSeverity,
   SystemsIncidentStatus,
@@ -38,6 +39,23 @@ export type SystemsDrillCadenceTarget = {
   suggestedScenario: DrillScenarioId;
   suggestedTitle: string;
   suggestedSystems: string[];
+};
+
+export type SystemsIncidentRetroTarget = {
+  sourceKey: string;
+  title: string;
+  summary: string;
+  recommendedAction: string;
+  actionHref: string;
+  severity: 'warning' | 'critical';
+  entryId: string;
+  entryType: SystemsIncidentType;
+  incidentDate: string;
+  incidentTitle: string;
+  followUpOwner: string;
+  commitmentTitle: string;
+  commitmentSummary: string;
+  linkedSloIds: string[];
 };
 
 const DRILL_SCENARIOS: DrillScenario[] = [
@@ -124,6 +142,13 @@ type IncidentAuditRow = {
 
 function truncate(value: string, max = 180) {
   return value.length <= max ? value : `${value.slice(0, max - 3).trimEnd()}...`;
+}
+
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 function sortIncidentHistory(entries: SystemsIncidentRecord[]) {
@@ -224,6 +249,83 @@ function severityRank(severity: SystemsIncidentSeverity) {
   }
 }
 
+function buildRetroCommitmentTitle(entry: SystemsIncidentRecord) {
+  return truncate(
+    `${entry.entryType === 'drill' ? 'Close the drill follow-up from' : 'Close the incident follow-up from'} ${entry.title}`,
+    140,
+  );
+}
+
+function buildRetroCommitmentSummary(entry: SystemsIncidentRecord) {
+  const systemsLabel =
+    entry.systemsAffected.length > 0
+      ? `Systems affected: ${entry.systemsAffected.join(', ')}. `
+      : '';
+  return truncate(`${systemsLabel}Permanent fix to operationalize: ${entry.permanentFix}`, 1000);
+}
+
+function buildIncidentRetroLinkedSloIds(entry: SystemsIncidentRecord) {
+  const haystack = normalizeText(
+    [entry.title, entry.userImpact, entry.rootCause, entry.mitigation, entry.permanentFix]
+      .concat(entry.systemsAffected)
+      .join(' '),
+  );
+  const matches: string[] = [];
+
+  const rules: Array<{ sloId: string; keywords: string[] }> = [
+    {
+      sloId: 'availability',
+      keywords: [
+        'availability',
+        'readiness',
+        'outage',
+        'deploy',
+        'rollback',
+        'redis',
+        'koios',
+        'supabase',
+        'dependency',
+        'downtime',
+      ],
+    },
+    {
+      sloId: 'freshness',
+      keywords: ['freshness', 'stale', 'sync', 'pipeline', 'reconciliation', 'drift'],
+    },
+    {
+      sloId: 'correctness',
+      keywords: ['correctness', 'integrity', 'mismatch', 'hash', 'vote power', 'coverage'],
+    },
+    {
+      sloId: 'performance',
+      keywords: ['performance', 'latency', 'slow', 'timeout', 'response time', 'cache'],
+    },
+    {
+      sloId: 'journeys',
+      keywords: ['journey', 'auth', 'workspace', 'proposal', 'drep', 'match', 'shell', 'ui', 'ux'],
+    },
+  ];
+
+  for (const rule of rules) {
+    if (rule.keywords.some((keyword) => haystack.includes(keyword))) {
+      matches.push(rule.sloId);
+    }
+  }
+
+  if (matches.length > 0) return matches.slice(0, 3);
+  return entry.entryType === 'incident' ? ['availability'] : ['journeys'];
+}
+
+function existingCommitmentMatchesRetro(
+  openCommitments: SystemsCommitmentCard[],
+  commitmentTitle: string,
+) {
+  const normalizedCommitmentTitle = normalizeText(commitmentTitle);
+  return openCommitments.some(
+    (commitment) => normalizeText(commitment.title) === normalizedCommitmentTitle,
+  );
+}
+
 function classifyDrillScenario(entry: SystemsIncidentRecord): DrillScenarioId | null {
   if (entry.entryType !== 'drill') return null;
 
@@ -311,6 +413,60 @@ export function buildSystemsDrillCadenceTarget(input: {
     suggestedScenario: nextScenario.id,
     suggestedTitle: nextScenario.title,
     suggestedSystems: nextScenario.systems,
+  };
+}
+
+export function buildSystemsIncidentRetroTarget(input: {
+  history: SystemsIncidentRecord[];
+  openCommitments: SystemsCommitmentCard[];
+}): SystemsIncidentRetroTarget | null {
+  const candidate = input.history
+    .filter((entry) => entry.status === 'follow_up_pending')
+    .map((entry) => ({
+      entry,
+      commitmentTitle: buildRetroCommitmentTitle(entry),
+    }))
+    .filter(
+      ({ commitmentTitle }) =>
+        !existingCommitmentMatchesRetro(input.openCommitments, commitmentTitle),
+    )
+    .sort((left, right) => {
+      const severityDelta = severityRank(right.entry.severity) - severityRank(left.entry.severity);
+      if (severityDelta !== 0) return severityDelta;
+      if (left.entry.entryType !== right.entry.entryType) {
+        return left.entry.entryType === 'incident' ? -1 : 1;
+      }
+      if (left.entry.incidentDate !== right.entry.incidentDate) {
+        return right.entry.incidentDate.localeCompare(left.entry.incidentDate);
+      }
+      return right.entry.loggedAt.localeCompare(left.entry.loggedAt);
+    })[0];
+
+  if (!candidate) return null;
+
+  const { entry, commitmentTitle } = candidate;
+  const linkedSloIds = buildIncidentRetroLinkedSloIds(entry);
+  const commitmentSummary = buildRetroCommitmentSummary(entry);
+  const severity = severityRank(entry.severity) >= 3 ? 'critical' : 'warning';
+
+  return {
+    sourceKey: `systems:incident-retro:${entry.id}`,
+    title: `Turn ${entry.title} into this week's hardening commitment`,
+    summary:
+      entry.entryType === 'drill'
+        ? `The drill is logged as follow-up pending, so the lesson still needs to become named operating work. Permanent fix: ${truncate(entry.permanentFix, 240)}`
+        : `This incident is logged as follow-up pending, so the permanent fix is still not anchored in the weekly operating loop. Permanent fix: ${truncate(entry.permanentFix, 240)}`,
+    recommendedAction: `Apply the suggested weekly commitment "${commitmentTitle}" under ${entry.followUpOwner}, use the permanent fix as the acceptance bar, and keep the incident loop open until that commitment is real.`,
+    actionHref: '/admin/systems#weekly-review',
+    severity,
+    entryId: entry.id,
+    entryType: entry.entryType,
+    incidentDate: entry.incidentDate,
+    incidentTitle: entry.title,
+    followUpOwner: entry.followUpOwner,
+    commitmentTitle,
+    commitmentSummary,
+    linkedSloIds,
   };
 }
 

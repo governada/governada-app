@@ -68,8 +68,13 @@ This keeps proposal, representative, committee, and intelligence read paths coup
 - Partially reduced in this worktree.
 - Extracted the shared proposal-enrichment leaf into `lib/governance/proposalEnrichment.ts`, moving `getProposalsByIds()`, `getRationalesByVoteTxHashes()`, and `getVotesByDRepId()` plus their shared types behind a dedicated governance read module.
 - Extracted `getVotingPowerSummary()` into `lib/governance/votingPowerSummary.ts` as a second proposal-domain read leaf with direct unit coverage.
+- Added `lib/governance/proposalSummary.ts` as the shared proposal-summary contract for tri-body vote grouping, DRep vote tallying, lifecycle-derived status, and row-to-summary translation.
+- `getAllProposalsWithVoteSummary()` and `getProposalByKey()` now delegate that summary shaping through the shared module instead of maintaining separate list/detail mapping logic inside `lib/data.ts`.
+- `app/api/v1/proposals/route.ts` now consumes the shared `status` field from the data-layer contract instead of re-deriving lifecycle state at the HTTP edge.
+- Intelligence discovery and proposal-list tools now consume `triBody`, `status`, and `proposalIndex` from the shared contract instead of relying on stale flattened vote fields or implicit `index` aliases.
 - Kept `lib/data.ts` as a compatibility boundary by re-exporting those extracted read leaves instead of forcing broad caller churn in the same checkpoints.
-- Added focused unit coverage for both extracted modules, including compound-key proposal filtering, rationale mapping, DRep-vote ordering, and threshold-aware voting-power resolution.
+- Added focused unit coverage for the extracted modules, including compound-key proposal filtering, rationale mapping, DRep-vote ordering, threshold-aware voting-power resolution, proposal-summary shaping, and controversy/active-proposal intelligence consumers.
+- Remaining gap: the heavier proposal-summary query orchestration still lives inside `lib/data.ts`, and `lib/workspace/proposalMonitor.ts` still assembles `proposal_voting_summary` rows separately for its own monitor contract.
 
 ### 2. `ReviewWorkspace.tsx` was an oversized client orchestrator
 
@@ -208,7 +213,7 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 ## Next Actions
 
 1. Continue the proposal/governance context boundary by evaluating whether personal-context or feedback/annotation assembly is stable enough to share; cache ownership is intentionally staying consumer-owned for now.
-2. Continue extracting domain read services out of `lib/data.ts`, with the heavier proposal-summary pipeline now the clearest remaining proposal-domain candidate.
+2. Continue extracting domain read services out of `lib/data.ts`, with the remaining proposal-summary query orchestration now the clearest proposal-domain candidate after the shared summary contract moved out.
 3. Continue thinning background jobs by extracting the remaining AI-generation and scoring service boundaries from `precompute-proposal-intelligence.ts` and `sync-spo-scores.ts`, especially the core scoring/persistence bundle and relay geocoding path.
 4. Revisit the review workspace only if DD06 exposes operator-journey regressions that the current controller, decision-flow, and decision-panel seams do not isolate cleanly.
 
@@ -232,8 +237,10 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 - Added `components/workspace/review/ReviewWorkspaceDecisionPanels.tsx` so shared desktop/mobile decision-panel composition has one presenter boundary instead of duplicated prop wiring in the studio shell.
 - Added `lib/governance/proposalEnrichment.ts` so the shared proposal/rationale/DRep-vote enrichment helpers no longer live inside the `lib/data.ts` god-module.
 - Added `lib/governance/votingPowerSummary.ts` so proposal voting-power/threshold reads no longer live inside `lib/data.ts`.
+- Added `lib/governance/proposalSummary.ts` so proposal lifecycle status, tri-body vote grouping, and list/detail summary shaping now live behind one shared governance contract instead of separate inline mappers.
 - Added `lib/intelligence/proposalIntelligenceCache.ts` so proposal intelligence target discovery, content hashing, passage-prediction refresh, and cache upserts are shared outside the Inngest job bodies.
 - Added `lib/scoring/spoPoolInfo.ts` so SPO metadata/stake refresh logic shares one Koios batching and normalization boundary outside the scoring job.
+- Fixed intelligence proposal-consumer drift by aligning controversy and active-proposal tools to the shared `triBody`, `status`, and `proposalIndex` contract instead of stale legacy vote-field aliases.
 - Fixed intelligence-comment drift by aligning the top-level `lib/intelligence/context.ts` description with its actual route-local personalization behavior.
 
 **Verification**
@@ -244,6 +251,8 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 - Passed `npm run test:unit -- __tests__/lib/treasuryContext.test.ts`.
 - Passed `npm run test:unit -- __tests__/lib/proposalEnrichment.test.ts`.
 - Passed `npm run test:unit -- __tests__/lib/votingPowerSummary.test.ts`.
+- Passed `npm run test:unit -- __tests__/lib/proposalSummary.test.ts __tests__/intelligence/advisor-discovery-tools.test.ts __tests__/lib/data.test.ts`.
+- Passed `npm run test:unit -- __tests__/intelligence/tool-executors.test.ts`.
 - Passed `npm run test:unit -- __tests__/lib/proposalIntelligenceCache.test.ts`.
 - Passed `npm run test:unit -- __tests__/lib/spoPoolInfo.test.ts`.
 - Passed `npm run test:component -- __tests__/hooks/useReviewDecisionFlow.test.tsx`.
@@ -253,9 +262,10 @@ Long-lived jobs should be thin orchestrators over explicit services. When the jo
 - Passed `npm run lint -- components/workspace/review/ReviewWorkspaceStudio.tsx components/workspace/review/ReviewWorkspaceDecisionPanels.tsx hooks/useReviewDecisionFlow.ts`.
 - Passed `npm run lint -- lib/data.ts lib/governance/proposalEnrichment.ts`.
 - Passed `npm run lint -- lib/data.ts lib/governance/votingPowerSummary.ts inngest/functions/sync-spo-scores.ts lib/scoring/spoPoolInfo.ts`.
+- Passed `npm run lint -- lib/governance/proposalSummary.ts lib/data.ts app/api/v1/proposals/route.ts lib/intelligence/advisor-discovery-tools.ts lib/intelligence/advisor-tools.ts inngest/functions/sync-spo-scores.ts`.
 - Passed `npm run lint -- inngest/functions/precompute-proposal-intelligence.ts inngest/functions/update-passage-predictions.ts lib/intelligence/proposalIntelligenceCache.ts`.
 - Passed `npm run type-check`.
 
 ## Next Agent Starts Here
 
-Start with `inngest/functions/sync-spo-scores.ts`, `lib/scoring/spoPoolInfo.ts`, `lib/intelligence/proposalIntelligenceCache.ts`, `inngest/functions/precompute-proposal-intelligence.ts`, `lib/governance/proposalEnrichment.ts`, `lib/governance/votingPowerSummary.ts`, `lib/data.ts`, `lib/governance/treasuryContext.ts`, `lib/intelligence/context.ts`, and `lib/workspace/agent/context.ts`. DD03 now has two extracted `lib/data.ts` proposal leaves and two job/service seams; the next move should be either the heavier proposal-summary read pipeline or the remaining score-computation / relay-geocoding boundary inside `sync-spo-scores.ts`.
+Start with `lib/data.ts`, `lib/governance/proposalSummary.ts`, `lib/workspace/proposalMonitor.ts`, `inngest/functions/sync-spo-scores.ts`, `lib/scoring/spoPoolInfo.ts`, `lib/intelligence/proposalIntelligenceCache.ts`, `inngest/functions/precompute-proposal-intelligence.ts`, `lib/governance/treasuryContext.ts`, `lib/intelligence/context.ts`, and `lib/workspace/agent/context.ts`. DD03 now has three extracted proposal-domain leaves from `lib/data.ts` plus two job/service seams; the next move should be either the remaining proposal-summary query orchestration in `lib/data.ts` / `proposalMonitor.ts` or the score-computation / relay-geocoding boundary inside `sync-spo-scores.ts`.

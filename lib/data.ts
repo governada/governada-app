@@ -9,12 +9,24 @@ import { isWellDocumented } from '@/utils/documentation';
 import { logger } from '@/lib/logger';
 import { getCurrentEpoch } from '@/lib/constants';
 import { SYNC_FRESHNESS_POLICY } from './syncPolicy';
+import {
+  buildProposalVoteSummary,
+  buildTriBodyVotes,
+  summarizeDRepVotes,
+  type ProposalWithVoteSummary,
+  type TriBodyVotes,
+} from './governance/proposalSummary';
 export {
   getProposalsByIds,
   getRationalesByVoteTxHashes,
   getVotesByDRepId,
 } from './governance/proposalEnrichment';
 export type { CachedProposal, DRepVoteRow, RationaleRecord } from './governance/proposalEnrichment';
+export type {
+  ProposalStatus,
+  ProposalWithVoteSummary,
+  TriBodyVotes,
+} from './governance/proposalSummary';
 export { getVotingPowerSummary } from './governance/votingPowerSummary';
 export type { VotingPowerSummary } from './governance/votingPowerSummary';
 import type { SizeTier } from '@/utils/scoring';
@@ -435,68 +447,6 @@ export async function getDRepById(drepId: string): Promise<EnrichedDRep | null> 
 // PROPOSALS SECTION DATA
 // ============================================================================
 
-export interface TriBodyVotes {
-  drep: { yes: number; no: number; abstain: number };
-  spo: { yes: number; no: number; abstain: number };
-  cc: { yes: number; no: number; abstain: number };
-}
-
-function buildTriBodyVotes(s: {
-  drep_yes_votes_cast: number | null;
-  drep_no_votes_cast: number | null;
-  drep_abstain_votes_cast: number | null;
-  pool_yes_votes_cast: number | null;
-  pool_no_votes_cast: number | null;
-  pool_abstain_votes_cast: number | null;
-  committee_yes_votes_cast: number | null;
-  committee_no_votes_cast: number | null;
-  committee_abstain_votes_cast: number | null;
-}): TriBodyVotes {
-  return {
-    drep: {
-      yes: s.drep_yes_votes_cast || 0,
-      no: s.drep_no_votes_cast || 0,
-      abstain: s.drep_abstain_votes_cast || 0,
-    },
-    spo: {
-      yes: s.pool_yes_votes_cast || 0,
-      no: s.pool_no_votes_cast || 0,
-      abstain: s.pool_abstain_votes_cast || 0,
-    },
-    cc: {
-      yes: s.committee_yes_votes_cast || 0,
-      no: s.committee_no_votes_cast || 0,
-      abstain: s.committee_abstain_votes_cast || 0,
-    },
-  };
-}
-
-export interface ProposalWithVoteSummary {
-  txHash: string;
-  proposalIndex: number;
-  title: string | null;
-  abstract: string | null;
-  proposalType: string;
-  withdrawalAmount: number | null;
-  treasuryTier: string | null;
-  relevantPrefs: string[];
-  proposedEpoch: number | null;
-  blockTime: number | null;
-  aiSummary: string | null;
-  yesCount: number;
-  noCount: number;
-  abstainCount: number;
-  totalVotes: number;
-  voterDrepIds: string[];
-  ratifiedEpoch: number | null;
-  enactedEpoch: number | null;
-  droppedEpoch: number | null;
-  expiredEpoch: number | null;
-  expirationEpoch: number | null;
-  triBody?: TriBodyVotes;
-  paramChanges: Record<string, unknown> | null;
-}
-
 /**
  * Get all proposals with vote summary counts.
  * Fetches proposals from Supabase and aggregates votes.
@@ -559,33 +509,13 @@ export async function getAllProposalsWithVoteSummary(): Promise<ProposalWithVote
     return proposals.map((p) => {
       const key = `${p.tx_hash}-${p.proposal_index}`;
       const triBody = triBodyMap.get(key);
-      const drepCounts = triBody?.drep ?? { yes: 0, no: 0, abstain: 0 };
       const voters = voterMap.get(key);
-      return {
-        txHash: p.tx_hash,
-        proposalIndex: p.proposal_index,
-        title: p.title,
-        abstract: p.abstract,
-        proposalType: p.proposal_type,
-        withdrawalAmount: p.withdrawal_amount != null ? Number(p.withdrawal_amount) : null,
-        treasuryTier: p.treasury_tier,
-        relevantPrefs: p.relevant_prefs || [],
-        proposedEpoch: p.proposed_epoch,
-        blockTime: p.block_time,
-        aiSummary: p.ai_summary || null,
-        yesCount: drepCounts.yes,
-        noCount: drepCounts.no,
-        abstainCount: drepCounts.abstain,
-        totalVotes: drepCounts.yes + drepCounts.no + drepCounts.abstain,
-        voterDrepIds: voters ? [...voters] : [],
-        ratifiedEpoch: p.ratified_epoch ?? null,
-        enactedEpoch: p.enacted_epoch ?? null,
-        droppedEpoch: p.dropped_epoch ?? null,
-        expiredEpoch: p.expired_epoch ?? null,
-        expirationEpoch: p.expiration_epoch ?? null,
+      return buildProposalVoteSummary({
+        proposal: p,
+        drepCounts: triBody?.drep,
+        voterDrepIds: voters ?? [],
         triBody,
-        paramChanges: (p.param_changes as Record<string, unknown>) ?? null,
-      };
+      });
     });
   } catch (err) {
     logger.error('[Data] getAllProposalsWithVoteSummary error', { error: err });
@@ -649,48 +579,17 @@ export async function getProposalByKey(
     const { data: row, error } = proposalResult;
     if (error || !row) return null;
 
-    const votes = votesResult.data;
-    let yes = 0,
-      no = 0,
-      abstain = 0;
-    const drepIds = new Set<string>();
-    if (votes) {
-      for (const v of votes) {
-        if (v.vote === 'Yes') yes++;
-        else if (v.vote === 'No') no++;
-        else abstain++;
-        if (v.drep_id) drepIds.add(v.drep_id);
-      }
-    }
+    const voteSummary = summarizeDRepVotes(votesResult.data);
 
     const s = summaryResult.data;
-    const triBody: TriBodyVotes | undefined = s ? buildTriBodyVotes(s) : undefined;
+    const triBody = s ? buildTriBodyVotes(s) : undefined;
 
-    return {
-      txHash: row.tx_hash,
-      proposalIndex: row.proposal_index,
-      title: row.title,
-      abstract: row.abstract,
-      proposalType: row.proposal_type,
-      withdrawalAmount: row.withdrawal_amount != null ? Number(row.withdrawal_amount) : null,
-      treasuryTier: row.treasury_tier,
-      relevantPrefs: row.relevant_prefs || [],
-      proposedEpoch: row.proposed_epoch,
-      blockTime: row.block_time,
-      aiSummary: row.ai_summary || null,
-      yesCount: yes,
-      noCount: no,
-      abstainCount: abstain,
-      totalVotes: yes + no + abstain,
-      voterDrepIds: [...drepIds],
-      ratifiedEpoch: row.ratified_epoch ?? null,
-      enactedEpoch: row.enacted_epoch ?? null,
-      droppedEpoch: row.dropped_epoch ?? null,
-      expiredEpoch: row.expired_epoch ?? null,
-      expirationEpoch: row.expiration_epoch ?? null,
+    return buildProposalVoteSummary({
+      proposal: row,
+      drepCounts: voteSummary.drepCounts,
+      voterDrepIds: voteSummary.voterDrepIds,
       triBody,
-      paramChanges: (row.param_changes as Record<string, unknown>) ?? null,
-    };
+    });
   } catch (err) {
     logger.error('[Data] getProposalByKey error', { error: err });
     return null;

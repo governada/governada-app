@@ -935,3 +935,57 @@ The workspace review routes were doing too much work at the HTTP edge. They owne
 - `inngest/functions/sync-spo-scores.ts`
 - `lib/scoring/spoPoolInfo.ts`
 - `__tests__/lib/spoPoolInfo.test.ts`
+
+## Chunk 20: Extract Proposal Summary Contract From `lib/data.ts`
+
+**Priority:** P1
+**Effort:** M
+**Audit dimension(s):** Architecture and Code Health, API and Integration Readiness, Intelligence and Agent Readiness
+**Expected score impact:** Runtime architecture: keep proposal status and tri-body semantics owned by one shared contract
+**Depends on:** Chunk 18
+**PR group:** J
+**Implementation status:** Completed in this worktree
+
+### Context
+
+`lib/data.ts` still owned both list and detail proposal-summary shaping, while API and intelligence consumers were already drifting around that contract. The immediate runtime risk was not the SQL itself; it was the fact that status, tri-body vote grouping, and proposal indices were being re-derived differently across consumers.
+
+### Scope
+
+- Move tri-body grouping, DRep vote tallying, lifecycle-derived status, and row-to-summary mapping into a shared proposal-domain helper.
+- Update `getAllProposalsWithVoteSummary()` and `getProposalByKey()` to consume that helper.
+- Align the first downstream API and intelligence consumers to the shared contract instead of stale flattened vote aliases.
+- Add focused tests for the new helper and the first repaired consumer.
+
+### Progress So Far
+
+- Added `lib/governance/proposalSummary.ts` as the shared proposal-summary contract.
+- `lib/data.ts` now delegates both list and detail summary shaping through that module instead of keeping separate inline mappers.
+- `app/api/v1/proposals/route.ts` now relies on the shared data-layer `status` field rather than re-deriving lifecycle status at the HTTP edge.
+- `lib/intelligence/advisor-discovery-tools.ts` now computes controversy from `triBody`, uses the shared `status` field for active-proposal discovery, and preserves `proposalIndex` instead of silently falling back to `0`.
+- `lib/intelligence/advisor-tools.ts` now preserves `proposalIndex` when building proposal pulse commands and list output.
+- Added focused regression coverage in `__tests__/lib/proposalSummary.test.ts` and `__tests__/intelligence/advisor-discovery-tools.test.ts`.
+- Verified with `npm run test:unit -- __tests__/lib/proposalSummary.test.ts __tests__/intelligence/advisor-discovery-tools.test.ts __tests__/lib/data.test.ts`.
+- Verified with `npm run lint -- lib/governance/proposalSummary.ts lib/data.ts app/api/v1/proposals/route.ts lib/intelligence/advisor-discovery-tools.ts lib/intelligence/advisor-tools.ts inngest/functions/sync-spo-scores.ts`.
+- Verified with `npm run type-check`.
+
+### Follow-up Work
+
+- If DD03 continues in the proposal read plane, move the remaining `proposal_voting_summary` and voter-ID query orchestration out of `lib/data.ts` and decide whether `lib/workspace/proposalMonitor.ts` should consume the same shared summary primitives.
+- Audit the remaining proposal-list intelligence consumers for any other hidden `index`/`status` alias assumptions that are not yet covered by direct types.
+
+### Verification
+
+- Proposal list/detail reads now share one status and vote-summary mapper.
+- The v1 proposals API no longer re-derives proposal status at the route edge.
+- The repaired intelligence consumers use the current shared contract instead of stale legacy field names.
+
+### Files to Read First
+
+- `lib/governance/proposalSummary.ts`
+- `lib/data.ts`
+- `app/api/v1/proposals/route.ts`
+- `lib/intelligence/advisor-discovery-tools.ts`
+- `lib/intelligence/advisor-tools.ts`
+- `__tests__/lib/proposalSummary.test.ts`
+- `__tests__/intelligence/advisor-discovery-tools.test.ts`

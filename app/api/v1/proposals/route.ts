@@ -7,19 +7,6 @@ import type { ApiContext } from '@/lib/api/handler';
 const VALID_STATUSES = ['active', 'ratified', 'enacted', 'expired', 'dropped', 'all'] as const;
 const VALID_SORTS = ['newest', 'most_votes', 'most_contested'] as const;
 
-function getProposalStatus(p: {
-  enactedEpoch?: number | null;
-  ratifiedEpoch?: number | null;
-  expiredEpoch?: number | null;
-  droppedEpoch?: number | null;
-}): string {
-  if (p.enactedEpoch) return 'enacted';
-  if (p.ratifiedEpoch) return 'ratified';
-  if (p.expiredEpoch) return 'expired';
-  if (p.droppedEpoch) return 'dropped';
-  return 'active';
-}
-
 async function handler(request: NextRequest, ctx: ApiContext) {
   const url = request.nextUrl;
   const status = url.searchParams.get('status') || 'all';
@@ -54,7 +41,7 @@ async function handler(request: NextRequest, ctx: ApiContext) {
 
   const proposals = await getAllProposalsWithVoteSummary();
 
-  let filtered = proposals.map((p) => ({ ...p, status: getProposalStatus(p) }));
+  let filtered = proposals;
 
   if (status !== 'all') {
     filtered = filtered.filter((p) => p.status === status);

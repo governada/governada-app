@@ -117,6 +117,16 @@ function buildDashboardFixture(): SystemsDashboardData {
       drillCount: 0,
       recentEntries: [],
     },
+    performanceBaselineSummary: {
+      status: 'warning',
+      headline: 'Performance baseline is stale',
+      currentValue: '24 days since the last baseline',
+      target: 'A fresh baseline every 14 days and after risky route or caching changes',
+      summary:
+        'The latest minimum-load baseline is stale, so performance changes can land without a fresh load signal.',
+      lastRecordedAt: '2026-03-09T12:00:00.000Z',
+      daysSinceBaseline: 24,
+    },
     automationSummary: {
       status: 'warning',
       headline: 'Automation is active, but it still needs founder follow-through',
@@ -169,11 +179,35 @@ function buildDashboardFixture(): SystemsDashboardData {
       actionHref: '/admin/systems#commitment-4375fe7d-f712-48d5-ac2a-c17b62d8d7ce',
       createdAt: '2026-04-02T11:55:00.000Z',
     },
+    latestPerformanceBaseline: {
+      actorType: 'manual',
+      loggedAt: '2026-03-09T12:00:00.000Z',
+      baselineDate: '2026-03-09',
+      environment: 'production',
+      scenarioLabel: 'Minimum public read baseline',
+      concurrencyProfile: '1 -> 10 -> 50 -> 100 VUs over 5 minutes',
+      overallStatus: 'warning',
+      summary: 'The public read path is drifting above the ideal load target.',
+      bottleneck: 'The DRep listing payload remains the slowest public path.',
+      mitigationOwner: 'Founder + agents',
+      nextStep: 'Trim the payload and rerun the baseline.',
+      artifactUrl: null,
+      notes: null,
+      apiHealthP95Ms: 110,
+      apiDrepsP95Ms: 680,
+      apiV1DrepsP95Ms: 430,
+      governanceHealthP95Ms: 360,
+      errorRatePct: 0.8,
+      maxObservedP95Ms: 680,
+      daysSinceBaseline: 24,
+      isStale: true,
+    },
     suggestedReviewDraft: null,
     automationOpenCommitments: [],
     openCommitments: [],
     reviewHistory: [],
     incidentHistory: [],
+    performanceBaselineHistory: [],
     journeys: [],
     automationCandidates: [],
     quickLinks: [],
@@ -229,6 +263,40 @@ describe('systems review draft helpers', () => {
     expect(draft.commitmentOwner).toBe('Platform owner');
     expect(draft.linkedSloIds).toEqual(['freshness', 'availability']);
     expect(draft.changeNotes).toMatch(/incident retro follow-up/i);
+  });
+
+  it('reuses performance baseline follow-up evidence for the weekly commitment draft', () => {
+    const data = buildDashboardFixture();
+    data.latestCommitmentShepherd = null;
+    data.automationFollowups = [
+      {
+        sourceKey: 'systems:performance-baseline',
+        triggerType: 'performance_baseline',
+        severity: 'warning',
+        status: 'open',
+        title: 'Close the performance bottleneck from the latest baseline',
+        summary: 'The DRep listing payload is still widening p95 under load.',
+        recommendedAction:
+          'Founder + agents owns the next move: Trim the payload and rerun the baseline.',
+        actionHref: '/admin/systems#performance-baseline',
+        evidence: {
+          reason: 'bottleneck',
+          latestBaselineDate: '2026-03-09',
+          bottleneck: 'The DRep listing payload remains the slowest public path.',
+          mitigationOwner: 'Platform owner',
+        },
+        updatedAt: '2026-04-02T11:55:00.000Z',
+      },
+    ];
+
+    const draft = buildSystemsReviewDraft(data, 'cron');
+
+    expect(draft.focusArea).toMatch(/performance bottleneck/i);
+    expect(draft.hardeningCommitmentTitle).toMatch(/performance bottleneck/i);
+    expect(draft.hardeningCommitmentSummary).toMatch(/rerun the baseline/i);
+    expect(draft.commitmentOwner).toBe('Platform owner');
+    expect(draft.changeNotes).toMatch(/Latest performance baseline/i);
+    expect(draft.changeNotes).toMatch(/Performance baseline follow-up/i);
   });
 
   it('reads the latest valid draft from audit rows', () => {

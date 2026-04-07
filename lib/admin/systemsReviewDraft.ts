@@ -103,6 +103,28 @@ function extractIncidentRetroEvidence(
   };
 }
 
+function extractPerformanceBaselineEvidence(
+  followup: SystemsDashboardData['automationFollowups'][number] | null,
+) {
+  if (!followup || followup.triggerType !== 'performance_baseline' || !followup.evidence) {
+    return null;
+  }
+
+  return {
+    latestBaselineDate:
+      typeof followup.evidence.latestBaselineDate === 'string'
+        ? followup.evidence.latestBaselineDate
+        : null,
+    bottleneck:
+      typeof followup.evidence.bottleneck === 'string' ? followup.evidence.bottleneck : null,
+    mitigationOwner:
+      typeof followup.evidence.mitigationOwner === 'string'
+        ? followup.evidence.mitigationOwner
+        : null,
+    reason: typeof followup.evidence.reason === 'string' ? followup.evidence.reason : null,
+  };
+}
+
 export function buildSystemsReviewDraft(
   data: SystemsDashboardData,
   actorType: 'manual' | 'cron',
@@ -115,6 +137,12 @@ export function buildSystemsReviewDraft(
       (followup) => followup.triggerType === 'incident_retro_followup',
     ) ?? null;
   const incidentRetroEvidence = extractIncidentRetroEvidence(incidentRetroFollowup);
+  const performanceBaselineFollowup =
+    data.automationFollowups.find((followup) => followup.triggerType === 'performance_baseline') ??
+    null;
+  const performanceBaselineEvidence = extractPerformanceBaselineEvidence(
+    performanceBaselineFollowup,
+  );
   const linkedSloIds = buildLinkedSloIds(data, incidentRetroEvidence?.linkedSloIds);
   const primaryFollowup = data.automationFollowups[0] ?? null;
   const commitmentShepherd =
@@ -128,6 +156,7 @@ export function buildSystemsReviewDraft(
   const focusArea = clampText(
     commitmentShepherd?.title ??
       incidentRetroFollowup?.title ??
+      performanceBaselineFollowup?.title ??
       primaryFollowup?.title ??
       primaryAction?.title ??
       scorecardSync?.headline ??
@@ -139,6 +168,7 @@ export function buildSystemsReviewDraft(
   const topRisk = clampText(
     primaryBlocker ??
       commitmentShepherd?.summary ??
+      performanceBaselineFollowup?.summary ??
       primaryFollowup?.summary ??
       scorecardSync?.summary ??
       primaryWatchout ??
@@ -150,6 +180,7 @@ export function buildSystemsReviewDraft(
   const hardeningCommitmentTitle = clampText(
     commitmentShepherd?.commitmentTitle ??
       incidentRetroEvidence?.commitmentTitle ??
+      performanceBaselineFollowup?.title ??
       primaryFollowup?.title ??
       primaryAction?.title ??
       `Close the ${linkedSloIds[0] ?? 'top'} launch gap`,
@@ -160,6 +191,7 @@ export function buildSystemsReviewDraft(
   const hardeningCommitmentSummary = clampText(
     commitmentShepherd?.recommendedAction ??
       incidentRetroEvidence?.commitmentSummary ??
+      performanceBaselineFollowup?.recommendedAction ??
       primaryFollowup?.recommendedAction ??
       primaryAction?.summary ??
       data.reviewLoop.narrative ??
@@ -177,6 +209,15 @@ export function buildSystemsReviewDraft(
       : null,
     scorecardSync ? `Scorecard sync: ${scorecardSync.summary}` : null,
     incidentSummary ? `Incident response: ${incidentSummary.summary}` : null,
+    data.latestPerformanceBaseline
+      ? `Latest performance baseline: ${data.latestPerformanceBaseline.baselineDate} on ${data.latestPerformanceBaseline.environment}. ${data.latestPerformanceBaseline.summary}`
+      : 'Latest performance baseline: no durable baseline has been logged yet.',
+    performanceBaselineFollowup
+      ? `Performance baseline follow-up: ${performanceBaselineFollowup.title}. ${performanceBaselineFollowup.recommendedAction}`
+      : null,
+    performanceBaselineEvidence?.bottleneck
+      ? `Performance bottleneck: ${performanceBaselineEvidence.bottleneck} under ${performanceBaselineEvidence.mitigationOwner ?? 'Founder + agents'}.`
+      : null,
     incidentRetroEvidence
       ? `Incident retro follow-up: ${incidentRetroEvidence.incidentTitle ?? incidentRetroFollowup?.title}. Carry the permanent fix into the weekly commitment loop.`
       : null,
@@ -203,7 +244,11 @@ export function buildSystemsReviewDraft(
     ),
     hardeningCommitmentTitle,
     hardeningCommitmentSummary,
-    commitmentOwner: incidentRetroEvidence?.followUpOwner ?? 'Founder + agents',
+    commitmentOwner:
+      incidentRetroEvidence?.followUpOwner ??
+      performanceBaselineEvidence?.mitigationOwner ??
+      data.latestPerformanceBaseline?.mitigationOwner ??
+      'Founder + agents',
     commitmentDueDate: nextFridayInputValue(new Date(generatedAt)),
     linkedSloIds,
   };

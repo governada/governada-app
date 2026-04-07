@@ -15,6 +15,7 @@ import type {
   SystemsCommitmentCard,
   SystemsIncidentRecord,
   SystemsIncidentSummary,
+  SystemsPerformanceBaselineRecord,
   SystemsReviewDiscipline,
   SystemsStatus,
 } from '@/lib/admin/systems';
@@ -22,6 +23,10 @@ import {
   buildSystemsDrillCadenceTarget,
   buildSystemsIncidentRetroTarget,
 } from '@/lib/admin/systemsIncidents';
+import {
+  buildSystemsPerformanceBaselineFollowupTarget,
+  SYSTEMS_PERFORMANCE_BASELINE_ACTION,
+} from '@/lib/admin/systemsPerformance';
 
 export const SYSTEMS_AUTOMATION_FOLLOWUP_ACTION = 'systems_automation_followup_sync';
 export const SYSTEMS_AUTOMATION_SWEEP_ACTION = 'systems_automation_sweep';
@@ -32,6 +37,7 @@ export const SYSTEMS_AUTOMATION_AUDIT_ACTIONS = [
   SYSTEMS_AUTOMATION_SWEEP_ACTION,
   SYSTEMS_OPERATOR_ESCALATION_ACTION,
   SYSTEMS_COMMITMENT_SHEPHERD_ACTION,
+  SYSTEMS_PERFORMANCE_BASELINE_ACTION,
 ] as const;
 export const SYSTEMS_OPERATOR_ESCALATION_REMINDER_HOURS = 24;
 
@@ -99,6 +105,7 @@ function reasonLabel(reason: SystemsOperatorEscalationTarget['reason']) {
 const followupStatusSchema = z.enum(['open', 'acknowledged', 'resolved']);
 const triggerTypeSchema = z.enum([
   'review_discipline',
+  'performance_baseline',
   'drill_cadence',
   'incident_retro_followup',
   'overdue_commitment',
@@ -203,6 +210,8 @@ function triggerTypeLabel(triggerType: SystemsAutomationTriggerType) {
   switch (triggerType) {
     case 'review_discipline':
       return 'Review discipline';
+    case 'performance_baseline':
+      return 'Performance baseline';
     case 'drill_cadence':
       return 'Drill cadence';
     case 'incident_retro_followup':
@@ -759,6 +768,8 @@ export function formatSystemsOperatorEscalationDigest(
 
 export function buildSystemsAutomationSpecs(input: {
   reviewDiscipline: SystemsReviewDiscipline;
+  performanceStatus: SystemsStatus;
+  latestPerformanceBaseline: SystemsPerformanceBaselineRecord | null;
   incidentSummary: SystemsIncidentSummary;
   incidentHistory: SystemsIncidentRecord[];
   openCommitments: SystemsCommitmentCard[];
@@ -784,6 +795,24 @@ export function buildSystemsAutomationSpecs(input: {
         overdueCommitments: input.reviewDiscipline.overdueCommitments,
         openCommitments: input.reviewDiscipline.openCommitments,
       },
+    });
+  }
+
+  const performanceBaselineTarget = buildSystemsPerformanceBaselineFollowupTarget({
+    latestBaseline: input.latestPerformanceBaseline,
+    performanceStatus: input.performanceStatus,
+  });
+
+  if (performanceBaselineTarget) {
+    specs.push({
+      sourceKey: performanceBaselineTarget.sourceKey,
+      triggerType: 'performance_baseline',
+      severity: performanceBaselineTarget.severity,
+      title: performanceBaselineTarget.title,
+      summary: performanceBaselineTarget.summary,
+      recommendedAction: performanceBaselineTarget.recommendedAction,
+      actionHref: performanceBaselineTarget.actionHref,
+      evidence: performanceBaselineTarget.evidence,
     });
   }
 
@@ -861,8 +890,7 @@ export function buildSystemsAutomationSpecs(input: {
   }
 
   for (const action of input.actions) {
-    const shouldAutomate =
-      action.automationReady && (action.priority === 'P0' || action.id === 'record-baseline');
+    const shouldAutomate = action.automationReady && action.priority === 'P0';
     if (!shouldAutomate) continue;
 
     specs.push({

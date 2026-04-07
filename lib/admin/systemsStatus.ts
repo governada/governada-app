@@ -115,7 +115,7 @@ export function buildPromiseCards(
       target: 'p95 key APIs < 500ms, LCP under launch bar',
       summary: input.performance.summary,
       actionLabel: 'Run baseline',
-      actionHref: '/admin/systems#automation',
+      actionHref: '/admin/systems#performance-baseline',
     },
     {
       id: 'change-safety',
@@ -223,7 +223,7 @@ export function buildSloCards(
       alertThreshold: 'p95 > 500ms, rising 5xx rate, or no baseline discipline',
       summary: input.performance.summary,
       actionLabel: 'Run baseline',
-      actionHref: '/admin/systems#automation',
+      actionHref: '/admin/systems#performance-baseline',
     },
     {
       id: 'journeys',
@@ -334,11 +334,11 @@ export function buildRecommendedActions(promises: SystemsPromiseCard[]): Systems
   if (performance && performance.status !== 'good') {
     actions.push({
       id: 'record-baseline',
-      title: 'Run and record the first performance baseline',
+      title: 'Refresh the performance baseline',
       priority: performance.status === 'critical' ? 'P0' : 'P1',
       timeframe: 'this-week',
       summary: performance.summary,
-      href: '/admin/systems#automation',
+      href: '/admin/systems#performance-baseline',
       automationReady: true,
     });
   }

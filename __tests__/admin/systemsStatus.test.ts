@@ -153,16 +153,16 @@ describe('systems helpers', () => {
     const reviewLoop = buildWeeklyReviewLoop(slos, [
       {
         id: 'record-baseline',
-        title: 'Run and record the first performance baseline',
+        title: 'Refresh the performance baseline',
         priority: 'P1',
         timeframe: 'this-week',
         summary: 'Performance needs a real baseline.',
-        href: '/admin/systems#automation',
+        href: '/admin/systems#performance-baseline',
         automationReady: true,
       },
     ]);
 
-    expect(reviewLoop.currentFocus).toMatch(/Run and record the first performance baseline/i);
+    expect(reviewLoop.currentFocus).toMatch(/Refresh the performance baseline/i);
     expect(reviewLoop.steps).toHaveLength(4);
     expect(reviewLoop.steps.every((step) => step.automationReady)).toBe(true);
   });

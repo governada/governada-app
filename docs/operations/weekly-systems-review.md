@@ -38,6 +38,7 @@
 
 - Log the weekly review directly in `/admin/systems` so the cockpit keeps durable operating history and open commitments
 - Check `/admin/systems#automation` for the latest sweep history, escalations, and follow-up state before you change the written scorecard
+- Check `/admin/systems#performance-baseline` to confirm whether the latest durable load signal is current, stale, or still outside the launch bar
 - Update `docs/operations/systems-scorecard.md`
 - Log any real incident, drill, or meaningful regression in `/admin/systems#incident-log`; use `docs/operations/incident-log.md` when the fuller narrative is worth preserving in-repo
 - If methodology or scoring changed, update `docs/operations/methodology-changelog.md`
@@ -48,7 +49,7 @@
 
 - Pick the single systems-hardening move that most reduces launch risk this week
 - Prefer control loops over vague cleanup
-- Examples: add one pre-merge gate, record one baseline, automate one reconciliation, run one drill
+- Examples: add one pre-merge gate, close one named performance bottleneck, automate one reconciliation, run one drill
 
 **Required output:** one named hardening commitment for the week
 
@@ -75,10 +76,12 @@ The review is intentionally shaped so it can be automated later from `/api/admin
 - summarize current SLO posture
 - highlight red/yellow shifts from the previous review
 - project the durable review history into a live scorecard sync signal with streak, drift, and recurring hotspot SLOs
+- project the latest performance baseline history into a live freshness-and-bottleneck signal
 - propose one hardening commitment
 - pick the one blocked or overdue commitment that most needs an unblock-or-replace decision
 - open a founder-ready drill brief when `/admin/systems#incident-log` shows that the monthly failure drill cadence is missing or stale
 - open an inbox item for founder review
 - apply the commitment shepherd brief into the weekly review form
 - apply the incident-retro brief into the weekly review form when an incident or drill needs a named hardening commitment
+- apply the performance baseline follow-up into the weekly review form when the latest load signal is missing, stale, or still non-good
 - escalate unresolved critical follow-ups into the founder operator channel with next-action links

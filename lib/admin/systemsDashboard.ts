@@ -7,6 +7,7 @@ import {
   SYSTEMS_QUICK_LINKS,
   type SystemsDashboardData,
   type SystemsStatus,
+  worstStatus,
 } from '@/lib/admin/systems';
 import {
   buildOverallNarrative,
@@ -40,6 +41,12 @@ import {
   parseLatestSystemsReviewDraft,
   SYSTEMS_REVIEW_DRAFT_ACTION,
 } from '@/lib/admin/systemsReviewDraft';
+import {
+  buildSystemsPerformanceBaselineHistory,
+  buildSystemsPerformanceBaselineSummary,
+  parseSystemsPerformanceBaselineHistory,
+  SYSTEMS_PERFORMANCE_BASELINE_ACTION,
+} from '@/lib/admin/systemsPerformance';
 
 type DependencyProbe = {
   status: 'healthy' | 'unhealthy' | 'unavailable';
@@ -145,6 +152,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationAuditResult,
     reviewDraftAuditResult,
     incidentAuditResult,
+    performanceBaselineAuditResult,
   ] = await Promise.all([
     probeSupabase(),
     probeKoios(),
@@ -205,6 +213,12 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
       .eq('action', SYSTEMS_INCIDENT_LOG_ACTION)
       .order('created_at', { ascending: false })
       .limit(24),
+    supabase
+      .from('admin_audit_log')
+      .select('action, target, payload, created_at')
+      .eq('action', SYSTEMS_PERFORMANCE_BASELINE_ACTION)
+      .order('created_at', { ascending: false })
+      .limit(12),
   ]);
 
   const dependencyStatus: SystemsStatus =
@@ -310,24 +324,25 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
   const apiErrorRate = apiLogs.length > 0 ? (apiErrorCount / apiLogs.length) * 100 : null;
 
   let performanceStatus: SystemsStatus = 'bootstrap';
+  let livePerformanceStatus: SystemsStatus = 'bootstrap';
   if (apiP95 !== null) {
-    if ((apiErrorRate ?? 0) > 5 || apiP95 > 1000) performanceStatus = 'critical';
-    else if ((apiErrorRate ?? 0) > 1 || apiP95 > 500) performanceStatus = 'warning';
-    else performanceStatus = 'good';
+    if ((apiErrorRate ?? 0) > 5 || apiP95 > 1000) livePerformanceStatus = 'critical';
+    else if ((apiErrorRate ?? 0) > 1 || apiP95 > 500) livePerformanceStatus = 'warning';
+    else livePerformanceStatus = 'good';
   }
 
-  const performanceValue =
+  const livePerformanceValue =
     apiP95 === null
       ? 'No live API sample yet'
       : `p95 ${formatLatency(apiP95)} / ${(apiErrorRate ?? 0).toFixed(1)}% 5xx`;
-  const performanceSummary =
-    performanceStatus === 'good'
+  const livePerformanceSummary =
+    livePerformanceStatus === 'good'
       ? 'Recent API samples are within the launch bar.'
-      : performanceStatus === 'warning'
+      : livePerformanceStatus === 'warning'
         ? 'Performance is serviceable, but recent latency or 5xx rates are above the ideal launch bar.'
-        : performanceStatus === 'critical'
+        : livePerformanceStatus === 'critical'
           ? 'Recent API behavior is too slow or error-prone for launch confidence.'
-          : 'This page can show live API performance, but you still need the first explicit baseline run for disciplined tracking.';
+          : 'This page can show live API performance, but it still needs a durable baseline run for disciplined tracking.';
 
   const syncLogs = syncLogResult.data || [];
   const syncFailureCount = syncLogs.filter((entry) => !entry.success).length;
@@ -363,14 +378,39 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     automationAuditResult.data || [],
   );
   const suggestedReviewDraft = parseLatestSystemsReviewDraft(reviewDraftAuditResult.data || []);
+  const performanceBaselineHistory = parseSystemsPerformanceBaselineHistory(
+    performanceBaselineAuditResult.data || [],
+  );
+  const latestPerformanceBaseline = performanceBaselineHistory[0] ?? null;
+  const performanceBaselineSummary =
+    buildSystemsPerformanceBaselineSummary(latestPerformanceBaseline);
   const automationHistory = [
     ...buildSystemsAutomationHistory(automationAuditResult.data || []),
     ...buildSystemsReviewDraftHistory(reviewDraftAuditResult.data || []),
+    ...buildSystemsPerformanceBaselineHistory(performanceBaselineAuditResult.data || []),
   ]
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
     .slice(0, 14);
   const incidentHistory = parseSystemsIncidentHistory(incidentAuditResult.data || []);
   const incidentSummary = buildSystemsIncidentSummary({ history: incidentHistory });
+
+  if (!latestPerformanceBaseline) {
+    performanceStatus = livePerformanceStatus === 'critical' ? 'critical' : 'warning';
+  } else {
+    const signals = [livePerformanceStatus, performanceBaselineSummary.status].filter(
+      (status): status is SystemsStatus => status !== 'bootstrap',
+    );
+    performanceStatus = signals.length > 0 ? worstStatus(signals) : 'bootstrap';
+  }
+
+  const performanceValue = latestPerformanceBaseline
+    ? `${livePerformanceValue} / baseline ${latestPerformanceBaseline.baselineDate}`
+    : `${livePerformanceValue} / no baseline`;
+  const performanceSummary = !latestPerformanceBaseline
+    ? `${livePerformanceSummary} The cockpit still needs the first durable baseline run with named bottleneck ownership.`
+    : performanceBaselineSummary.status === 'good'
+      ? `${livePerformanceSummary} ${performanceBaselineSummary.summary}`
+      : `${performanceBaselineSummary.summary} ${livePerformanceSummary}`;
 
   const promiseInput: PromiseInput = {
     availability: {
@@ -496,17 +536,20 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     reviewDiscipline,
     scorecardSync,
     incidentSummary,
+    performanceBaselineSummary,
     automationSummary,
     automationFollowups: automationState.openFollowups,
     automationHistory,
     latestAutomationRun: automationState.latestRun,
     latestOperatorEscalation,
     latestCommitmentShepherd,
+    latestPerformanceBaseline,
     suggestedReviewDraft,
     automationOpenCommitments,
     openCommitments,
     reviewHistory,
     incidentHistory,
+    performanceBaselineHistory,
     journeys: CRITICAL_JOURNEYS,
     automationCandidates: AUTOMATION_CANDIDATES,
     quickLinks: SYSTEMS_QUICK_LINKS,

@@ -59,6 +59,8 @@ describe('systems automation route', () => {
 
   it('uses the full automation commitment scope for shepherding instead of the UI slice', async () => {
     mockBuildSystemsDashboardData.mockResolvedValue({
+      overall: { status: 'good' },
+      slos: [{ id: 'performance', status: 'good' }],
       reviewDiscipline: {
         status: 'good',
         headline: 'Weekly review rhythm is on track',
@@ -82,6 +84,7 @@ describe('systems automation route', () => {
         recentEntries: [],
       },
       incidentHistory: [],
+      latestPerformanceBaseline: null,
       automationOpenCommitments: [
         {
           id: '11111111-1111-4111-8111-111111111111',
@@ -137,6 +140,8 @@ describe('systems automation route', () => {
 
   it('opens a drill cadence follow-up when no drill is logged yet', async () => {
     mockBuildSystemsDashboardData.mockResolvedValue({
+      overall: { status: 'warning' },
+      slos: [{ id: 'performance', status: 'warning' }],
       reviewDiscipline: {
         status: 'good',
         headline: 'Weekly review rhythm is on track',
@@ -161,6 +166,7 @@ describe('systems automation route', () => {
         recentEntries: [],
       },
       incidentHistory: [],
+      latestPerformanceBaseline: null,
       automationOpenCommitments: [],
       openCommitments: [],
       actions: [],
@@ -183,6 +189,94 @@ describe('systems automation route', () => {
             sourceKey: 'systems:drill-cadence',
             triggerType: 'drill_cadence',
             actionHref: '/admin/systems#incident-log',
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it('opens a performance baseline follow-up when the latest baseline is stale', async () => {
+    mockBuildSystemsDashboardData.mockResolvedValue({
+      overall: { status: 'warning' },
+      slos: [{ id: 'performance', status: 'warning' }],
+      reviewDiscipline: {
+        status: 'good',
+        headline: 'Weekly review rhythm is on track',
+        currentValue: 'Reviewed today',
+        target: 'A founder review recorded every 7 days',
+        summary: 'The weekly loop is healthy.',
+        lastReviewedAt: '2026-04-04T00:00:00.000Z',
+        openCommitments: 0,
+        overdueCommitments: 0,
+      },
+      incidentSummary: {
+        status: 'good',
+        headline: 'Incident and drill trail is current',
+        currentValue: '0 open incidents / last drill 3d ago',
+        target: 'Monthly drills with no unresolved high-severity incidents',
+        summary: 'Recent incidents are resolved, and the drill cadence is fresh enough.',
+        lastDrillAt: '2026-04-01',
+        lastIncidentAt: null,
+        openIncidentCount: 0,
+        drillCount: 1,
+        recentEntries: [],
+      },
+      incidentHistory: [],
+      latestPerformanceBaseline: {
+        actorType: 'manual',
+        loggedAt: '2026-03-09T12:00:00.000Z',
+        baselineDate: '2026-03-09',
+        environment: 'production',
+        scenarioLabel: 'Minimum public read baseline',
+        concurrencyProfile: '1 -> 10 -> 50 -> 100 VUs over 5 minutes',
+        overallStatus: 'warning',
+        summary: 'Public read path is drifting above the ideal load target.',
+        bottleneck: 'The DRep listing payload remains the slowest public path.',
+        mitigationOwner: 'Founder + agents',
+        nextStep: 'Trim the payload and rerun the baseline.',
+        artifactUrl: null,
+        notes: null,
+        apiHealthP95Ms: 110,
+        apiDrepsP95Ms: 680,
+        apiV1DrepsP95Ms: 430,
+        governanceHealthP95Ms: 360,
+        errorRatePct: 0.8,
+        maxObservedP95Ms: 680,
+        daysSinceBaseline: 24,
+        isStale: true,
+      },
+      automationOpenCommitments: [],
+      openCommitments: [],
+      actions: [
+        {
+          id: 'record-baseline',
+          title: 'Refresh the performance baseline',
+          priority: 'P1',
+          timeframe: 'this-week',
+          summary: 'The latest minimum-load baseline is stale.',
+          href: '/admin/systems#performance-baseline',
+          automationReady: true,
+        },
+      ],
+    });
+
+    const response = await runSystemsAutomationSweep(
+      createRequest('/api/admin/systems/automation', {
+        headers: { authorization: `Bearer ${CRON_SECRET}` },
+      }),
+      { requestId: 'req-3' },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'systems_automation_followup_sync',
+          target: 'systems:performance-baseline',
+          payload: expect.objectContaining({
+            sourceKey: 'systems:performance-baseline',
+            triggerType: 'performance_baseline',
+            actionHref: '/admin/systems#performance-baseline',
           }),
         }),
       ]),

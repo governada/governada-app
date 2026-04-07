@@ -5,8 +5,10 @@ export type JourneyCoverage = 'automated' | 'partial' | 'manual';
 export type SystemsCommitmentStatus = 'planned' | 'in_progress' | 'blocked' | 'done';
 export type SystemsAutomationSeverity = 'warning' | 'critical';
 export type SystemsAutomationFollowupStatus = 'open' | 'acknowledged' | 'resolved';
+export type SystemsPerformanceBaselineEnvironment = 'production' | 'preview' | 'local';
 export type SystemsAutomationTriggerType =
   | 'review_discipline'
+  | 'performance_baseline'
   | 'drill_cadence'
   | 'incident_retro_followup'
   | 'overdue_commitment'
@@ -171,7 +173,8 @@ export type SystemsAutomationActivityType =
   | 'followup'
   | 'review_draft'
   | 'operator_escalation'
-  | 'commitment_shepherd';
+  | 'commitment_shepherd'
+  | 'performance_baseline';
 
 export type SystemsAutomationActivityTone = 'good' | 'warning' | 'critical' | 'neutral';
 
@@ -244,6 +247,40 @@ export interface SystemsReviewDraft {
   commitmentOwner: string;
   commitmentDueDate?: string | null;
   linkedSloIds: string[];
+}
+
+export interface SystemsPerformanceBaselineRecord {
+  actorType: 'manual' | 'cron';
+  loggedAt: string;
+  baselineDate: string;
+  environment: SystemsPerformanceBaselineEnvironment;
+  scenarioLabel: string;
+  concurrencyProfile: string;
+  overallStatus: Exclude<SystemsStatus, 'bootstrap'>;
+  summary: string;
+  bottleneck: string;
+  mitigationOwner: string;
+  nextStep: string;
+  artifactUrl?: string | null;
+  notes?: string | null;
+  apiHealthP95Ms: number;
+  apiDrepsP95Ms: number;
+  apiV1DrepsP95Ms: number;
+  governanceHealthP95Ms: number;
+  errorRatePct: number;
+  maxObservedP95Ms: number;
+  daysSinceBaseline: number;
+  isStale: boolean;
+}
+
+export interface SystemsPerformanceBaselineSummary {
+  status: SystemsStatus;
+  headline: string;
+  currentValue: string;
+  target: string;
+  summary: string;
+  lastRecordedAt?: string | null;
+  daysSinceBaseline?: number | null;
 }
 
 export interface SystemsScorecardReviewRecord {
@@ -335,17 +372,20 @@ export interface SystemsDashboardData {
   reviewDiscipline: SystemsReviewDiscipline;
   scorecardSync: SystemsScorecardSync;
   incidentSummary: SystemsIncidentSummary;
+  performanceBaselineSummary: SystemsPerformanceBaselineSummary;
   automationSummary: SystemsAutomationSummary;
   automationFollowups: SystemsAutomationFollowup[];
   automationHistory: SystemsAutomationActivityRecord[];
   latestAutomationRun?: SystemsAutomationRunRecord | null;
   latestOperatorEscalation?: SystemsOperatorEscalationRecord | null;
   latestCommitmentShepherd?: SystemsCommitmentShepherdRecord | null;
+  latestPerformanceBaseline?: SystemsPerformanceBaselineRecord | null;
   suggestedReviewDraft?: SystemsReviewDraft | null;
   automationOpenCommitments: SystemsCommitmentCard[];
   openCommitments: SystemsCommitmentCard[];
   reviewHistory: SystemsReviewRecord[];
   incidentHistory: SystemsIncidentRecord[];
+  performanceBaselineHistory: SystemsPerformanceBaselineRecord[];
   journeys: SystemsJourney[];
   automationCandidates: AutomationCandidate[];
   quickLinks: QuickLink[];
@@ -521,13 +561,6 @@ export const CRITICAL_JOURNEYS: SystemsJourney[] = [
 ];
 
 export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
-  {
-    id: 'performance-baseline',
-    title: 'Performance baseline rerun',
-    trigger: 'Risky route or caching changes land without a fresh baseline.',
-    action: 'Run the minimum k6 baseline and attach the result to the systems review.',
-    whyItMatters: 'This lets performance discipline become an agentic maintenance loop.',
-  },
   {
     id: 'trust-surface-audit',
     title: 'Degraded-state UX review',

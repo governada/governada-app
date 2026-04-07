@@ -37,6 +37,7 @@ import type {
   SystemsIncidentStatus,
   SystemsIncidentType,
   SystemsJourney,
+  SystemsPerformanceBaselineEnvironment,
   SystemsPromiseCard,
   SystemsReviewDiscipline,
   SystemsReviewDraft,
@@ -110,6 +111,24 @@ type IncidentFormState = {
   timeToResolveMinutes: string;
 };
 
+type PerformanceBaselineFormState = {
+  baselineDate: string;
+  environment: SystemsPerformanceBaselineEnvironment;
+  scenarioLabel: string;
+  concurrencyProfile: string;
+  summary: string;
+  bottleneck: string;
+  mitigationOwner: string;
+  nextStep: string;
+  artifactUrl: string;
+  apiHealthP95Ms: string;
+  apiDrepsP95Ms: string;
+  apiV1DrepsP95Ms: string;
+  governanceHealthP95Ms: string;
+  errorRatePct: string;
+  notes: string;
+};
+
 async function createSystemsReview(payload: ReviewFormState) {
   const token = getStoredSession();
   if (!token) throw new Error('Missing session');
@@ -176,6 +195,55 @@ async function createSystemsIncident(payload: IncidentFormState) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || 'Failed to log systems incident');
+  }
+
+  return res.json();
+}
+
+async function createSystemsPerformanceBaseline(payload: PerformanceBaselineFormState) {
+  const token = getStoredSession();
+  if (!token) throw new Error('Missing session');
+
+  const parseMetric = (value: string) => {
+    if (!value.trim()) return null;
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? Math.round(parsed) : null;
+  };
+  const parsePercent = (value: string) => {
+    if (!value.trim()) return null;
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const res = await fetch('/api/admin/systems/performance-baseline', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      baselineDate: payload.baselineDate,
+      environment: payload.environment,
+      scenarioLabel: payload.scenarioLabel,
+      concurrencyProfile: payload.concurrencyProfile,
+      summary: payload.summary,
+      bottleneck: payload.bottleneck,
+      mitigationOwner: payload.mitigationOwner,
+      nextStep: payload.nextStep,
+      artifactUrl: payload.artifactUrl.trim() || null,
+      apiHealthP95Ms: parseMetric(payload.apiHealthP95Ms),
+      apiDrepsP95Ms: parseMetric(payload.apiDrepsP95Ms),
+      apiV1DrepsP95Ms: parseMetric(payload.apiV1DrepsP95Ms),
+      governanceHealthP95Ms: parseMetric(payload.governanceHealthP95Ms),
+      errorRatePct: parsePercent(payload.errorRatePct),
+      notes: payload.notes.trim() || null,
+      actorType: 'manual',
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to log systems performance baseline');
   }
 
   return res.json();
@@ -345,6 +413,45 @@ function buildInitialIncidentForm(): IncidentFormState {
     timeToAcknowledgeMinutes: '',
     timeToMitigateMinutes: '',
     timeToResolveMinutes: '',
+  };
+}
+
+function buildInitialPerformanceBaselineForm(
+  data?: SystemsDashboardData | null,
+): PerformanceBaselineFormState {
+  const latest = data?.latestPerformanceBaseline ?? null;
+
+  return {
+    baselineDate: todayInputValue(),
+    environment: latest?.environment ?? 'production',
+    scenarioLabel: latest?.scenarioLabel ?? 'Minimum public read baseline',
+    concurrencyProfile: latest?.concurrencyProfile ?? '1->10->50->100 VUs over 5 minutes',
+    summary: latest?.summary ?? '',
+    bottleneck: latest?.bottleneck ?? '',
+    mitigationOwner: latest?.mitigationOwner ?? 'Founder + agents',
+    nextStep: latest?.nextStep ?? '',
+    artifactUrl: latest?.artifactUrl ?? '',
+    apiHealthP95Ms:
+      latest?.apiHealthP95Ms === null || latest?.apiHealthP95Ms === undefined
+        ? ''
+        : String(latest.apiHealthP95Ms),
+    apiDrepsP95Ms:
+      latest?.apiDrepsP95Ms === null || latest?.apiDrepsP95Ms === undefined
+        ? ''
+        : String(latest.apiDrepsP95Ms),
+    apiV1DrepsP95Ms:
+      latest?.apiV1DrepsP95Ms === null || latest?.apiV1DrepsP95Ms === undefined
+        ? ''
+        : String(latest.apiV1DrepsP95Ms),
+    governanceHealthP95Ms:
+      latest?.governanceHealthP95Ms === null || latest?.governanceHealthP95Ms === undefined
+        ? ''
+        : String(latest.governanceHealthP95Ms),
+    errorRatePct:
+      latest?.errorRatePct === null || latest?.errorRatePct === undefined
+        ? ''
+        : String(latest.errorRatePct),
+    notes: latest?.notes ?? '',
   };
 }
 
@@ -519,10 +626,29 @@ function automationActivityTypeLabel(type: SystemsAutomationActivityRecord['type
       return 'Escalation';
     case 'commitment_shepherd':
       return 'Shepherd';
+    case 'performance_baseline':
+      return 'Baseline';
     case 'followup':
       return 'Follow-up';
     default:
       return 'Sweep';
+  }
+}
+
+function automationTriggerLabel(triggerType: SystemsAutomationFollowup['triggerType']) {
+  switch (triggerType) {
+    case 'review_discipline':
+      return 'Review discipline';
+    case 'performance_baseline':
+      return 'Performance baseline';
+    case 'drill_cadence':
+      return 'Drill cadence';
+    case 'incident_retro_followup':
+      return 'Incident retro';
+    case 'overdue_commitment':
+      return 'Commitment health';
+    default:
+      return 'Systems action';
   }
 }
 
@@ -545,11 +671,29 @@ function automationActivityIcon(type: SystemsAutomationActivityRecord['type']) {
       return AlertTriangle;
     case 'commitment_shepherd':
       return Target;
+    case 'performance_baseline':
+      return Gauge;
     case 'followup':
       return ListChecks;
     default:
       return Bot;
   }
+}
+
+function performanceBaselineEnvironmentLabel(environment: SystemsPerformanceBaselineEnvironment) {
+  switch (environment) {
+    case 'production':
+      return 'Production';
+    case 'preview':
+      return 'Preview';
+    default:
+      return 'Local';
+  }
+}
+
+function formatPerformanceMetric(value?: number | null) {
+  if (value === null || value === undefined) return 'Not recorded';
+  return `${Math.round(value)}ms`;
 }
 
 function commitmentShepherdStatusLabel(
@@ -1510,6 +1654,211 @@ function IncidentHistoryCard({ entry }: { entry: SystemsIncidentRecord }) {
   );
 }
 
+function PerformanceBaselineSummaryCard({ data }: { data: SystemsDashboardData }) {
+  const classes = statusClasses(data.performanceBaselineSummary.status);
+  const latest = data.latestPerformanceBaseline;
+
+  return (
+    <Card className={cn('border-l-2', classes.border)}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <Badge variant="outline" className={classes.badge}>
+              {statusLabel(data.performanceBaselineSummary.status)}
+            </Badge>
+            <h3 className="text-sm font-semibold">{data.performanceBaselineSummary.headline}</h3>
+          </div>
+          <Gauge className={cn('h-4 w-4 shrink-0 mt-1', classes.text)} />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Current state</p>
+          <p className="text-2xl font-bold leading-none">
+            {data.performanceBaselineSummary.currentValue}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Target: {data.performanceBaselineSummary.target}
+          </p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">{data.performanceBaselineSummary.summary}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Latest baseline
+            </p>
+            <p className="text-sm mt-1">
+              {latest
+                ? `${latest.baselineDate} (${performanceBaselineEnvironmentLabel(latest.environment)})`
+                : 'Not recorded'}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Bottleneck owner
+            </p>
+            <p className="text-sm mt-1">{latest?.mitigationOwner ?? 'Not assigned yet'}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Worst recorded p95
+            </p>
+            <p className="text-sm mt-1">
+              {latest
+                ? ([
+                    latest.apiDrepsP95Ms,
+                    latest.apiV1DrepsP95Ms,
+                    latest.governanceHealthP95Ms,
+                    latest.apiHealthP95Ms,
+                  ]
+                    .filter((value): value is number => typeof value === 'number')
+                    .sort((left, right) => right - left)
+                    .map((value) => `${Math.round(value)}ms`)[0] ?? 'Not recorded')
+                : 'Not recorded'}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Error rate</p>
+            <p className="text-sm mt-1">
+              {latest?.errorRatePct === null || latest?.errorRatePct === undefined
+                ? 'Not recorded'
+                : `${latest.errorRatePct.toFixed(1)}%`}
+            </p>
+          </div>
+        </div>
+
+        {latest ? (
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-3 space-y-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Latest bottleneck
+            </p>
+            <p className="text-sm">{latest.bottleneck}</p>
+            <p className="text-sm text-muted-foreground">{latest.nextStep}</p>
+            {latest.artifactUrl ? (
+              <Button asChild size="sm" variant="outline" className="w-full justify-between">
+                <Link href={latest.artifactUrl} target="_blank" rel="noreferrer">
+                  Open artifact
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PerformanceBaselineHistoryCard({
+  history,
+}: {
+  history: SystemsDashboardData['performanceBaselineHistory'];
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <History className="h-4 w-4 text-chart-1" />
+          Performance baseline trail
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Keep the latest load-test evidence, bottleneck owner, and next step here so performance
+          discipline survives beyond one-off test runs.
+        </p>
+
+        {history.length === 0 ? (
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-4">
+            <p className="text-sm font-medium">No performance baseline is logged yet.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Record the first durable baseline so the sweep can track freshness and follow-through.
+            </p>
+          </div>
+        ) : (
+          history.map((entry) => (
+            <div
+              key={`${entry.loggedAt}:${entry.baselineDate}:${entry.environment}`}
+              className="rounded-md border border-border/60 bg-card/40 px-3 py-3 space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className={statusClasses(entry.overallStatus).badge}>
+                      {statusLabel(entry.overallStatus)}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {performanceBaselineEnvironmentLabel(entry.environment)}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold">{entry.baselineDate}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {entry.scenarioLabel} • {entry.concurrencyProfile}
+                    </p>
+                  </div>
+                </div>
+
+                {entry.artifactUrl ? (
+                  <Button asChild size="sm" variant="ghost" className="shrink-0">
+                    <Link href={entry.artifactUrl} target="_blank" rel="noreferrer">
+                      Artifact
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
+
+              <p className="text-sm text-muted-foreground">{entry.summary}</p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+                <div className="rounded-md border border-border/60 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    `/api/health`
+                  </p>
+                  <p className="text-sm mt-1">{formatPerformanceMetric(entry.apiHealthP95Ms)}</p>
+                </div>
+                <div className="rounded-md border border-border/60 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    `/api/dreps`
+                  </p>
+                  <p className="text-sm mt-1">{formatPerformanceMetric(entry.apiDrepsP95Ms)}</p>
+                </div>
+                <div className="rounded-md border border-border/60 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    `/api/v1/dreps`
+                  </p>
+                  <p className="text-sm mt-1">{formatPerformanceMetric(entry.apiV1DrepsP95Ms)}</p>
+                </div>
+                <div className="rounded-md border border-border/60 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Error rate
+                  </p>
+                  <p className="text-sm mt-1">
+                    {entry.errorRatePct === null || entry.errorRatePct === undefined
+                      ? 'Not recorded'
+                      : `${entry.errorRatePct.toFixed(1)}%`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-border/60 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Bottleneck and next step
+                </p>
+                <p className="text-sm mt-1">{entry.bottleneck}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Owner: {entry.mitigationOwner}. {entry.nextStep}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function AutomationInboxSummaryCard({
   data,
   onRunSweep,
@@ -1627,7 +1976,7 @@ function AutomationFollowupCard({
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Trigger</p>
-            <p className="text-sm mt-1">{followup.triggerType.replace(/_/g, ' ')}</p>
+            <p className="text-sm mt-1">{automationTriggerLabel(followup.triggerType)}</p>
           </div>
           <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -1692,6 +2041,13 @@ function AutomationCadenceCard({ data }: { data: SystemsDashboardData }) {
         : 'No shepherd record yet.',
     },
     {
+      label: 'Performance baseline discipline',
+      schedule: 'Every 14 days or after risky route changes',
+      latest: data.latestPerformanceBaseline
+        ? `${new Date(data.latestPerformanceBaseline.loggedAt).toLocaleString()} (${data.latestPerformanceBaseline.baselineDate}, ${data.latestPerformanceBaseline.overallStatus})`
+        : 'No durable baseline recorded yet.',
+    },
+    {
       label: 'Founder escalation',
       schedule: 'Only when critical follow-ups stay open',
       latest: data.latestOperatorEscalation
@@ -1749,8 +2105,9 @@ function AutomationHistoryCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Every sweep, follow-up sync, review draft, escalation, and commitment shepherd record
-          lands here so you can see what ran, what it created, and what later got resolved.
+          Every sweep, follow-up sync, review draft, performance baseline, escalation, and
+          commitment shepherd record lands here so you can see what ran, what it created, and what
+          later got resolved.
         </p>
 
         {history.length === 0 ? (
@@ -1864,6 +2221,8 @@ export function SystemsClient() {
   });
   const [reviewForm, setReviewForm] = useState<ReviewFormState | null>(null);
   const [incidentForm, setIncidentForm] = useState<IncidentFormState | null>(null);
+  const [performanceBaselineForm, setPerformanceBaselineForm] =
+    useState<PerformanceBaselineFormState | null>(null);
   const [pendingCommitmentId, setPendingCommitmentId] = useState<string | null>(null);
   const [pendingFollowupId, setPendingFollowupId] = useState<string | null>(null);
 
@@ -1877,6 +2236,12 @@ export function SystemsClient() {
       setIncidentForm(buildInitialIncidentForm());
     }
   }, [incidentForm]);
+
+  useEffect(() => {
+    if (!performanceBaselineForm) {
+      setPerformanceBaselineForm(buildInitialPerformanceBaselineForm(data));
+    }
+  }, [data, performanceBaselineForm]);
 
   const createReviewMutation = useMutation({
     mutationFn: createSystemsReview,
@@ -1915,6 +2280,23 @@ export function SystemsClient() {
     },
     onError: (mutationError: Error) => {
       toast.error(mutationError.message || 'Failed to log systems incident');
+    },
+  });
+
+  const createPerformanceBaselineMutation = useMutation({
+    mutationFn: createSystemsPerformanceBaseline,
+    onSuccess: (result: {
+      baselineDate: string;
+      overallStatus: Exclude<SystemsStatus, 'bootstrap'>;
+    }) => {
+      toast.success(
+        `Performance baseline logged for ${result.baselineDate} (${statusLabel(result.overallStatus)})`,
+      );
+      queryClient.invalidateQueries({ queryKey: ['admin', 'systems'] });
+      setPerformanceBaselineForm(buildInitialPerformanceBaselineForm(null));
+    },
+    onError: (mutationError: Error) => {
+      toast.error(mutationError.message || 'Failed to log performance baseline');
     },
   });
 
@@ -2017,6 +2399,10 @@ export function SystemsClient() {
     return null;
   }
 
+  if (!performanceBaselineForm) {
+    return null;
+  }
+
   const overallClasses = statusClasses(data.overall.status);
   const criticalJourneys = data.journeys.filter((journey) => journey.gateLevel !== 'L2');
   const automatedJourneys = criticalJourneys.filter((journey) => journey.coverage === 'automated');
@@ -2071,6 +2457,16 @@ export function SystemsClient() {
     event.preventDefault();
     if (!incidentForm) return;
     await createIncidentMutation.mutateAsync(incidentForm);
+  }
+
+  function updatePerformanceBaselineForm(patch: Partial<PerformanceBaselineFormState>) {
+    setPerformanceBaselineForm((current) => (current ? { ...current, ...patch } : current));
+  }
+
+  async function handleSubmitPerformanceBaseline(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!performanceBaselineForm) return;
+    await createPerformanceBaselineMutation.mutateAsync(performanceBaselineForm);
   }
 
   function applySuggestedDraft() {
@@ -2796,6 +3192,267 @@ export function SystemsClient() {
         </div>
       </section>
 
+      <section id="performance-baseline" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Gauge className="h-4 w-4 text-chart-1" />
+          <h2 className="text-lg font-semibold">Performance baseline</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Record the durable load-test baseline here so performance discipline lives in the same
+          operating loop as the weekly review, incident trail, and automation inbox.
+        </p>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-6">
+          <div className="space-y-4">
+            <PerformanceBaselineSummaryCard data={data} />
+            <PerformanceBaselineHistoryCard history={data.performanceBaselineHistory} />
+          </div>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Log performance baseline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-4" onSubmit={handleSubmitPerformanceBaseline}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="baseline-date">Baseline date</Label>
+                    <Input
+                      id="baseline-date"
+                      type="date"
+                      value={performanceBaselineForm.baselineDate}
+                      onChange={(event) =>
+                        updatePerformanceBaselineForm({ baselineDate: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baseline-environment">Environment</Label>
+                    <Select
+                      value={performanceBaselineForm.environment}
+                      onValueChange={(value) =>
+                        updatePerformanceBaselineForm({
+                          environment: value as SystemsPerformanceBaselineEnvironment,
+                        })
+                      }
+                    >
+                      <SelectTrigger id="baseline-environment">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="production">Production</SelectItem>
+                        <SelectItem value="preview">Preview</SelectItem>
+                        <SelectItem value="local">Local</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="baseline-scenario">Scenario</Label>
+                    <Input
+                      id="baseline-scenario"
+                      value={performanceBaselineForm.scenarioLabel}
+                      required
+                      onChange={(event) =>
+                        updatePerformanceBaselineForm({ scenarioLabel: event.target.value })
+                      }
+                      placeholder="Minimum public read baseline"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baseline-concurrency">Concurrency profile</Label>
+                    <Input
+                      id="baseline-concurrency"
+                      value={performanceBaselineForm.concurrencyProfile}
+                      required
+                      onChange={(event) =>
+                        updatePerformanceBaselineForm({
+                          concurrencyProfile: event.target.value,
+                        })
+                      }
+                      placeholder="1 -> 10 -> 50 -> 100 VUs over 5 minutes"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="baseline-owner">Mitigation owner</Label>
+                  <Input
+                    id="baseline-owner"
+                    value={performanceBaselineForm.mitigationOwner}
+                    required
+                    onChange={(event) =>
+                      updatePerformanceBaselineForm({ mitigationOwner: event.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="baseline-summary">Baseline summary</Label>
+                  <Textarea
+                    id="baseline-summary"
+                    value={performanceBaselineForm.summary}
+                    required
+                    onChange={(event) =>
+                      updatePerformanceBaselineForm({ summary: event.target.value })
+                    }
+                    placeholder="Summarize the outcome, the routes tested, and whether the result stayed inside the launch bar."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="baseline-bottleneck">Primary bottleneck</Label>
+                  <Textarea
+                    id="baseline-bottleneck"
+                    value={performanceBaselineForm.bottleneck}
+                    required
+                    onChange={(event) =>
+                      updatePerformanceBaselineForm({ bottleneck: event.target.value })
+                    }
+                    placeholder="Name the slow route, query pattern, or cache miss that most needs attention."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="baseline-next-step">Next step</Label>
+                  <Textarea
+                    id="baseline-next-step"
+                    value={performanceBaselineForm.nextStep}
+                    required
+                    onChange={(event) =>
+                      updatePerformanceBaselineForm({ nextStep: event.target.value })
+                    }
+                    placeholder="Describe the concrete mitigation, rerun condition, or owner follow-through."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="baseline-api-health">`/api/health` p95 (ms)</Label>
+                    <Input
+                      id="baseline-api-health"
+                      type="number"
+                      min="0"
+                      step="1"
+                      required
+                      value={performanceBaselineForm.apiHealthP95Ms}
+                      onChange={(event) =>
+                        updatePerformanceBaselineForm({ apiHealthP95Ms: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baseline-api-dreps">`/api/dreps` p95 (ms)</Label>
+                    <Input
+                      id="baseline-api-dreps"
+                      type="number"
+                      min="0"
+                      step="1"
+                      required
+                      value={performanceBaselineForm.apiDrepsP95Ms}
+                      onChange={(event) =>
+                        updatePerformanceBaselineForm({ apiDrepsP95Ms: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baseline-api-v1-dreps">`/api/v1/dreps` p95 (ms)</Label>
+                    <Input
+                      id="baseline-api-v1-dreps"
+                      type="number"
+                      min="0"
+                      step="1"
+                      required
+                      value={performanceBaselineForm.apiV1DrepsP95Ms}
+                      onChange={(event) =>
+                        updatePerformanceBaselineForm({ apiV1DrepsP95Ms: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baseline-governance-health">
+                      `/api/v1/governance/health` p95 (ms)
+                    </Label>
+                    <Input
+                      id="baseline-governance-health"
+                      type="number"
+                      min="0"
+                      step="1"
+                      required
+                      value={performanceBaselineForm.governanceHealthP95Ms}
+                      onChange={(event) =>
+                        updatePerformanceBaselineForm({
+                          governanceHealthP95Ms: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baseline-error-rate">Error rate (%)</Label>
+                    <Input
+                      id="baseline-error-rate"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      required
+                      value={performanceBaselineForm.errorRatePct}
+                      onChange={(event) =>
+                        updatePerformanceBaselineForm({ errorRatePct: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baseline-artifact">Artifact URL</Label>
+                    <Input
+                      id="baseline-artifact"
+                      value={performanceBaselineForm.artifactUrl}
+                      onChange={(event) =>
+                        updatePerformanceBaselineForm({ artifactUrl: event.target.value })
+                      }
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="baseline-notes">Notes</Label>
+                  <Textarea
+                    id="baseline-notes"
+                    value={performanceBaselineForm.notes}
+                    onChange={(event) =>
+                      updatePerformanceBaselineForm({ notes: event.target.value })
+                    }
+                    placeholder="Optional notes about k6 artifacts, route selection, caveats, or comparison to the last run."
+                    rows={4}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={createPerformanceBaselineMutation.isPending}
+                  className="w-full"
+                >
+                  {createPerformanceBaselineMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Logging baseline...
+                    </>
+                  ) : (
+                    'Log performance baseline'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 xl:grid-cols-[1.45fr_0.85fr] gap-6">
         <section className="space-y-3">
           <div className="flex items-center gap-2">
@@ -2987,8 +3644,9 @@ export function SystemsClient() {
           </div>
           <p className="text-sm text-muted-foreground">
             The daily sweep, weekly draft, critical follow-up escalation, commitment shepherd, drill
-            cadence nudger, and incident retro follow-up are live now. These are the next routines
-            that can compound on top of the same feed and audit trail.
+            cadence nudger, incident retro follow-up, and performance baseline discipline are live
+            now. These are the next routines that can compound on top of the same feed and audit
+            trail.
           </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {data.automationCandidates.map((candidate) => (

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { Geist, Space_Grotesk, Fraunces } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -14,6 +14,7 @@ import { GovernadaShell } from '@/components/governada/GovernadaShell';
 import { GovernanceFontProvider } from '@/components/GovernanceFontProvider';
 import { LocaleProvider } from '@/components/providers/LocaleProvider';
 import { ModeProvider } from '@/components/providers/ModeProvider';
+import { LOCALE_COOKIE, RTL_LOCALES, resolvePreferredLocale } from '@/lib/i18n/config';
 
 // Nonce-based CSP requires dynamic rendering so Next can attach a request-scoped
 // nonce to its inline/bootstrap scripts in production mode.
@@ -79,10 +80,23 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const nonce = (await headers()).get('x-nonce') ?? undefined;
+  const headerStore = await headers();
+  const cookieStore = await cookies();
+  const nonce = headerStore.get('x-nonce') ?? undefined;
+  const locale = resolvePreferredLocale({
+    cookieLocale: cookieStore.get(LOCALE_COOKIE)?.value,
+    acceptLanguage: headerStore.get('accept-language'),
+  });
+  const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
 
   return (
-    <html lang="en" className="dark" style={{ colorScheme: 'dark' }} suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={dir}
+      className="dark"
+      style={{ colorScheme: 'dark' }}
+      suppressHydrationWarning
+    >
       <body
         className={`${geistSans.variable} ${spaceGrotesk.variable} ${fraunces.variable} antialiased`}
         suppressHydrationWarning
@@ -94,7 +108,7 @@ export default async function RootLayout({
           disableTransitionOnChange
           nonce={nonce}
         >
-          <LocaleProvider>
+          <LocaleProvider initialLocale={locale}>
             <Providers>
               <NavDirectionProvider>
                 <BrandedLoader />

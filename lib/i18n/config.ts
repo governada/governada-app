@@ -81,3 +81,16 @@ export function parseAcceptLanguage(header: string): SupportedLocale {
 
   return DEFAULT_LOCALE;
 }
+
+export function resolvePreferredLocale(params: {
+  cookieLocale?: string | null;
+  acceptLanguage?: string | null;
+}): SupportedLocale {
+  const { cookieLocale, acceptLanguage } = params;
+
+  if (cookieLocale && isValidLocale(cookieLocale)) {
+    return cookieLocale;
+  }
+
+  return parseAcceptLanguage(acceptLanguage ?? '');
+}

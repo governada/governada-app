@@ -7,6 +7,8 @@ import { useWallet } from '@/utils/wallet';
 import { useTreasuryPending } from '@/hooks/queries';
 import { useDRepTreasuryRecord } from '@/hooks/useDRepTreasuryRecord';
 import { DepthGate } from '@/components/providers/DepthGate';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import { formatLocaleNumber } from '@/lib/i18n/format';
 
 /** Approximate circulating ADA supply (~37B). Updated periodically by sync. */
 const CIRCULATING_SUPPLY_ADA = 37_000_000_000;
@@ -24,6 +26,7 @@ export function TreasuryPersonalImpact({
   nclAda,
   nclUtilizationPct,
 }: TreasuryPersonalImpactProps) {
+  const { locale } = useLocale();
   const { segment, drepId } = useSegment();
   const { delegatedDrepId, balanceAda: walletBalanceAda } = useWallet();
 
@@ -70,10 +73,7 @@ export function TreasuryPersonalImpact({
             <span>
               Your proportional share of the treasury:{' '}
               <span className="font-semibold text-foreground">
-                ₳
-                {new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(
-                  proportionalShare,
-                )}
+                ₳{formatLocaleNumber(proportionalShare, locale, { maximumFractionDigits: 0 })}
               </span>
             </span>
           </div>

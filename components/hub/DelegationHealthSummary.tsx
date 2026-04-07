@@ -24,13 +24,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import { formatLocaleDate } from '@/lib/i18n/format';
 
 /** Convert epoch number to a human-readable date range */
-function epochDateRange(epoch: number): string {
+function epochDateRange(epoch: number, locale: string): string {
   const startUnix = epochToTimestamp(epoch);
   const end = new Date((startUnix + EPOCH_LENGTH_SECONDS) * 1000);
-  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return fmt(end);
+  return formatLocaleDate(end, locale, { month: 'short', day: 'numeric' });
 }
 
 type HealthStatus = 'green' | 'yellow' | 'red';
@@ -49,6 +50,7 @@ type HealthStatus = 'green' | 'yellow' | 'red';
 export function DelegationHealthSummary() {
   // Capture timestamp once on mount to avoid impure Date.now() during render
   const [mountTime] = useState(() => Math.floor(Date.now() / 1000));
+  const { locale } = useLocale();
   const { stakeAddress, delegatedDrep, delegatedPool } = useSegment();
   const { data: holderRaw, isLoading: holderLoading } = useGovernanceHolder(stakeAddress);
   const { data: poolRaw, isLoading: poolLoading } = useSPOSummary(delegatedPool);
@@ -252,7 +254,7 @@ export function DelegationHealthSummary() {
           <div className="flex items-center gap-1.5 text-muted-foreground/70">
             <Clock className="h-3 w-3" />
             <span>
-              Next check: {epochDateRange(currentEpoch + 1)} ({daysUntilNext}d)
+              Next check: {epochDateRange(currentEpoch + 1, locale)} ({daysUntilNext}d)
             </span>
           </div>
         </div>

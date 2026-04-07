@@ -4,6 +4,8 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { AlertCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import { formatLocaleTime } from '@/lib/i18n/format';
 
 interface AsyncContentProps<T> {
   query: UseQueryResult<T>;
@@ -19,6 +21,7 @@ export function AsyncContent<T>({
   children,
 }: AsyncContentProps<T>) {
   const { data, isLoading, isError, refetch, dataUpdatedAt } = query;
+  const { locale } = useLocale();
 
   if (isLoading) return <>{skeleton}</>;
 
@@ -29,7 +32,7 @@ export function AsyncContent<T>({
         <p className="text-sm font-medium text-foreground">{errorMessage}</p>
         {dataUpdatedAt > 0 && (
           <p className="text-xs text-muted-foreground">
-            Last updated {new Date(dataUpdatedAt).toLocaleTimeString()}
+            Last updated {formatLocaleTime(dataUpdatedAt, locale)}
           </p>
         )}
         <Button variant="outline" size="sm" onClick={() => refetch()}>

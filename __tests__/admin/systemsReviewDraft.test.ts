@@ -139,6 +139,22 @@ function buildDashboardFixture(): SystemsDashboardData {
       reviewRequired: true,
       linkedSloIds: ['freshness', 'correctness'],
     },
+    launchControlRoom: {
+      decision: 'risky',
+      headline: 'Launch is possible, but still risky',
+      summary: 'Two watch items still need explicit owner discipline before launch.',
+      currentCall:
+        'Treat launch as conditional. Keep the call open only if each watch item has an owner, a mitigation, and a fresh verification pass.',
+      blockerCount: 0,
+      watchCount: 2,
+      checklist: [],
+      blockers: [],
+      watchItems: [
+        'Performance discipline: The latest baseline is stale.',
+        'Scorecard evidence freshness: The durable review needs to catch up to the live posture.',
+      ],
+      launchWeekCadence: [],
+    },
     automationSummary: {
       status: 'warning',
       headline: 'Automation is active, but it still needs founder follow-through',

@@ -37,6 +37,7 @@ import type {
   SystemsIncidentStatus,
   SystemsIncidentType,
   SystemsJourney,
+  SystemsLaunchDecision,
   SystemsPerformanceBaselineEnvironment,
   SystemsPromiseCard,
   SystemsReviewDiscipline,
@@ -792,6 +793,28 @@ function formatPerformanceMetric(value?: number | null) {
 
 function trustSurfaceSloLabel(sloId: string) {
   return TRUST_SURFACE_SLO_OPTIONS.find((option) => option.id === sloId)?.label ?? sloId;
+}
+
+function launchDecisionLabel(decision: SystemsLaunchDecision) {
+  switch (decision) {
+    case 'ready':
+      return 'Launch-ready';
+    case 'blocked':
+      return 'Launch-blocked';
+    default:
+      return 'Launch-risky';
+  }
+}
+
+function launchDecisionClasses(decision: SystemsLaunchDecision) {
+  switch (decision) {
+    case 'ready':
+      return statusClasses('good');
+    case 'blocked':
+      return statusClasses('critical');
+    default:
+      return statusClasses('warning');
+  }
 }
 
 function commitmentShepherdStatusLabel(
@@ -2134,6 +2157,152 @@ function TrustSurfaceReviewHistoryCard({
   );
 }
 
+function LaunchControlRoomCard({ data }: { data: SystemsDashboardData }) {
+  const room = data.launchControlRoom;
+  const classes = launchDecisionClasses(room.decision);
+
+  return (
+    <Card className={cn('border-l-2', classes.border)}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <Badge variant="outline" className={classes.badge}>
+              {launchDecisionLabel(room.decision)}
+            </Badge>
+            <h3 className="text-sm font-semibold">{room.headline}</h3>
+          </div>
+          <Target className={cn('h-4 w-4 shrink-0 mt-1', classes.text)} />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Decision</p>
+            <p className="text-sm mt-1">{launchDecisionLabel(room.decision)}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Blockers</p>
+            <p className="text-sm mt-1">{room.blockerCount}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Watch items</p>
+            <p className="text-sm mt-1">{room.watchCount}</p>
+          </div>
+        </div>
+
+        <p className="text-sm text-muted-foreground">{room.summary}</p>
+        <div className="rounded-md border border-border/60 bg-card/40 px-3 py-3">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Current call</p>
+          <p className="text-sm mt-2">{room.currentCall}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LaunchChecklistCard({
+  title,
+  items,
+  empty,
+}: {
+  title: string;
+  items: string[];
+  empty: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{empty}</p>
+        ) : (
+          items.map((item) => (
+            <div
+              key={item}
+              className="rounded-md border border-border/60 bg-card/40 px-3 py-3 text-sm"
+            >
+              {item}
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LaunchChecklistTable({ data }: { data: SystemsDashboardData }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm">Go / no-go checklist</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {data.launchControlRoom.checklist.map((item) => {
+          const classes = launchDecisionClasses(item.decision);
+
+          return (
+            <div
+              key={item.id}
+              className={cn(
+                'rounded-md border border-l-2 bg-card/40 px-3 py-3 space-y-2',
+                classes.border,
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">{item.title}</p>
+                  <p className="text-sm text-muted-foreground">{item.summary}</p>
+                </div>
+                <Badge variant="outline" className={classes.badge}>
+                  {launchDecisionLabel(item.decision)}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">Threshold: {item.threshold}</p>
+              <p className="text-xs text-muted-foreground">Evidence: {item.evidence}</p>
+              {item.href ? (
+                <Button asChild size="sm" variant="outline" className="w-full justify-between">
+                  <Link href={item.href}>
+                    Open evidence
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LaunchWeekCadenceCard({ data }: { data: SystemsDashboardData }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm">Launch-week cadence</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {data.launchControlRoom.launchWeekCadence.map((item) => (
+          <div
+            key={item.day}
+            className="rounded-md border border-border/60 bg-card/40 px-3 py-3 space-y-1"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold">{item.day}</p>
+              <Badge variant="outline" className="text-xs">
+                {item.trigger}
+              </Badge>
+            </div>
+            <p className="text-sm">{item.focus}</p>
+            <p className="text-xs text-muted-foreground">Output: {item.output}</p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 function AutomationInboxSummaryCard({
   data,
   onRunSweep,
@@ -2892,6 +3061,39 @@ export function SystemsClient() {
           </div>
         </CardContent>
       </Card>
+
+      <section id="launch-control-room" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-chart-1" />
+          <h2 className="text-lg font-semibold">Launch control room</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          This is the explicit go / no-go layer for the founder. It turns the live scorecard,
+          journeys, operator loop, and trust-surface evidence into one launch call instead of a
+          gut-feel read across multiple tools.
+        </p>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-6">
+          <div className="space-y-4">
+            <LaunchControlRoomCard data={data} />
+            <LaunchChecklistCard
+              title="Launch blockers"
+              items={data.launchControlRoom.blockers}
+              empty="No hard launch blocker is active right now."
+            />
+            <LaunchChecklistCard
+              title="Watch items"
+              items={data.launchControlRoom.watchItems}
+              empty="No launch watch item is currently open."
+            />
+          </div>
+
+          <div className="space-y-4">
+            <LaunchChecklistTable data={data} />
+            <LaunchWeekCadenceCard data={data} />
+          </div>
+        </div>
+      </section>
 
       <section id="operating-rhythm" className="space-y-3">
         <div className="flex items-center gap-2">
@@ -4178,19 +4380,32 @@ export function SystemsClient() {
         <div className="space-y-3 pt-2">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-chart-1" />
-            <h3 className="text-base font-semibold">Next automations</h3>
+            <h3 className="text-base font-semibold">Roadmap follow-through</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            The daily sweep, weekly draft, critical follow-up escalation, commitment shepherd, drill
-            cadence nudger, incident retro follow-up, performance baseline discipline, and
-            trust-surface review loop are live now. These are the next routines that can compound on
-            top of the same feed and audit trail.
+            The systems-excellence roadmap is now materially present on one page: scorecard, weekly
+            review loop, automation history, drills, performance baseline discipline, trust-surface
+            review, and the launch control room. The next work is operating this surface honestly
+            during launch-like conditions, not inventing a new dashboard.
           </p>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {data.automationCandidates.map((candidate) => (
-              <AutomationCard key={candidate.id} candidate={candidate} />
-            ))}
-          </div>
+          {data.automationCandidates.length === 0 ? (
+            <Card>
+              <CardContent className="pt-5 pb-5">
+                <p className="text-sm font-medium">No additional roadmap phase is queued here.</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Keep the launch control room current, run the weekly review, log drills and trust
+                  reviews, and let new work prove itself against the live checklist before the plan
+                  expands again.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {data.automationCandidates.map((candidate) => (
+                <AutomationCard key={candidate.id} candidate={candidate} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </div>

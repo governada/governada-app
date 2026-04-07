@@ -25,6 +25,10 @@
 2. Yellow SLOs are allowed only if the weekly review names one concrete hardening commitment.
 3. A green dashboard without a fresh weekly review is not a trusted operating state.
 4. If the SLI is weak or missing, the right response is to strengthen measurement, not to assume success.
+5. `/admin/systems#launch-control-room` is the explicit launch call:
+   `launch-ready` means no checklist item is blocked,
+   `launch-risky` means no blocker is red but watch items still need owner discipline,
+   and `launch-blocked` means the product should not be treated as launch-safe yet.
 
 ---
 

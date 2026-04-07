@@ -194,7 +194,7 @@ Gap 4 (network edges)                       [independent, after Gap 3 for overla
 
 ## Full Build Plan Reference
 
-The original 13-phase plan: `C:\Users\dalto\.claude-personal\plans\cozy-noodling-neumann.md`
+The original 13-phase plan lived in a private local file. The path is omitted from the repo copy.
 
 ## Adversarial Review Protocol
 

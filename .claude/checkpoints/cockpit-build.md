@@ -4,7 +4,7 @@
 
 ## PR: #618
 
-## Plan Location: `C:\Users\dalto\.claude-personal\plans\cozy-noodling-neumann.md`
+## Plan Location: Original private plan file (path omitted from the repo copy)
 
 ## Branch: `claude/hungry-kowalevski` (worktree at `.claude/worktrees/hungry-kowalevski`)
 

@@ -43,7 +43,7 @@ function Show-LoginHelp([string]$GhConfigDir) {
   Write-Output 'Run this once in PowerShell:'
   Write-Output "  `$env:GH_CONFIG_DIR = '$GhConfigDir'"
   Write-Output '  gh auth logout --hostname github.com'
-  Write-Output '  gh auth login --hostname github.com --git-protocol ssh --web'
+  Write-Output '  gh auth login --hostname github.com --git-protocol https --web'
   Write-Output ''
   Write-Output 'Then re-run: npm run auth:repair'
 }
@@ -53,7 +53,7 @@ function Test-EmbeddedCredentialRemote([string]$RemoteUrl) {
 }
 
 $expectedUser = 'governada'
-$canonicalRemote = 'git@github-governada:governada/governada-app.git'
+$canonicalRemote = 'https://github.com/governada/governada-app.git'
 $ghConfigDir = Set-RepoGhContext
 
 Write-Output 'Repairing GitHub auth for this repo...'
@@ -85,7 +85,7 @@ if ($login -ne $expectedUser) {
   Write-Output "Expected '$expectedUser'. Re-authenticate this profile instead of switching a global gh account:"
   Write-Output "  `$env:GH_CONFIG_DIR = '$GhConfigDir'"
   Write-Output '  gh auth logout --hostname github.com'
-  Write-Output '  gh auth login --hostname github.com --git-protocol ssh --web'
+  Write-Output '  gh auth login --hostname github.com --git-protocol https --web'
   exit 1
 }
 

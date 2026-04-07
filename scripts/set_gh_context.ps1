@@ -6,8 +6,43 @@ function Set-RepoGhContext {
   $env:GH_REPO = 'governada/governada-app'
   Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
   Remove-Item Env:GITHUB_TOKEN -ErrorAction SilentlyContinue
+  Clear-DisabledLocalProxyEnv
 
   return $ghConfigDir
+}
+
+function Test-DisabledLocalProxyValue {
+  param(
+    [string]$Value
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Value)) {
+    return $false
+  }
+
+  $normalized = $Value.Trim().TrimEnd('/')
+  return $normalized -in @(
+    'http://127.0.0.1:9',
+    'https://127.0.0.1:9',
+    'http://localhost:9',
+    'https://localhost:9'
+  )
+}
+
+function Clear-DisabledLocalProxyEnv {
+  foreach ($name in @(
+    'ALL_PROXY',
+    'HTTP_PROXY',
+    'HTTPS_PROXY',
+    'GIT_HTTP_PROXY',
+    'GIT_HTTPS_PROXY'
+  )) {
+    $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+    if (Test-DisabledLocalProxyValue -Value $value) {
+      Remove-Item "Env:$name" -ErrorAction SilentlyContinue
+      [Environment]::SetEnvironmentVariable($name, $null, 'Process')
+    }
+  }
 }
 
 function Join-NativeArguments {

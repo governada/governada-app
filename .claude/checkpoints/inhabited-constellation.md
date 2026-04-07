@@ -2,7 +2,7 @@
 
 ## Plan File
 
-`C:\Users\dalto\.claude-personal\plans\valiant-brewing-zephyr.md`
+Original private plan file (path omitted from the repo copy).
 
 ## Status
 

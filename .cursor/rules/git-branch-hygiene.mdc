@@ -8,9 +8,8 @@ alwaysApply: true
 ## Directory Layout
 
 ```
-C:\Users\dalto\governada\
-  governada-app/                         ← main (production, merges, hotfixes)
-    .claude\worktrees\<feature>/         ← one per active feature branch
+<shared-repo-root>/
+  .claude/worktrees/<feature>/  <- one per active feature branch
 ```
 
 Each worktree has its own `node_modules`, `.env.local`, and `.next`. The git history is shared.
@@ -27,7 +26,7 @@ Pre-flight checklist (all steps mandatory, in order):
    powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>
       cd .claude\worktrees\<name>; npm install
    ```
-3. **Continue working in the same Cursor window.** Use `working_directory` on Shell calls to target the new worktree path (`c:\Users\dalto\governada\governada-app\.claude\worktrees\<name>`). Do NOT open a new Cursor window.
+3. **Continue working in the same Cursor window.** Use `working_directory` on Shell calls to target the new worktree path (`<shared-repo-root>/.claude/worktrees/<name>`). Do NOT open a new Cursor window.
 
 The plan file is already in the worktree because it was committed to main before the worktree was created.
 

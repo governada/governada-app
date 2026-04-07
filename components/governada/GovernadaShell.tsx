@@ -27,6 +27,8 @@ import { useWhisper } from '@/hooks/useWhisper';
 import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
 import { useSenecaProactiveWhispers } from '@/hooks/useSenecaProactiveWhispers';
 import { useEpochContext } from '@/hooks/useEpochContext';
+import { DiscoveryHub } from '@/components/discovery/DiscoveryHub';
+import { SpotlightProvider } from '@/components/discovery/SpotlightProvider';
 import { LegalLinks } from './LegalLinks';
 
 const SenecaOrb = dynamic(
@@ -50,19 +52,9 @@ const ConstellationScene = dynamic(
   { ssr: false },
 );
 
-const SpotlightProvider = dynamic(
-  () =>
-    import('@/components/discovery/SpotlightProvider').then((m) => ({
-      default: m.SpotlightProvider,
-    })),
-  { ssr: false },
-);
-
 // DiscoveryHub is a regular import (not lazy) because it wraps the header
 // and provides context for the Compass icon. It's lightweight — just state +
 // context provider. The heavy CompassPanel is inside a Sheet (renders on open).
-import { DiscoveryHub } from '@/components/discovery/DiscoveryHub';
-
 const EngagementNudge = dynamic(
   () =>
     import('@/components/discovery/EngagementNudge').then((m) => ({ default: m.EngagementNudge })),

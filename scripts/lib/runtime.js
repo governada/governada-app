@@ -5,7 +5,6 @@ const { spawnSync } = require('node:child_process');
 const { getContext } = require('../set-gh-context.js');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
-
 function resolveCommand(command) {
   if (process.platform !== 'win32') {
     return command;
@@ -76,11 +75,47 @@ function parseEnvFile(contents) {
   return parsed;
 }
 
+function withoutDisabledLocalProxyEnv(env) {
+  const disabledLocalProxyValues = new Set([
+    'http://127.0.0.1:9',
+    'https://127.0.0.1:9',
+    'http://localhost:9',
+    'https://localhost:9',
+  ]);
+  const proxyKeys = new Set([
+    'ALL_PROXY',
+    'HTTP_PROXY',
+    'HTTPS_PROXY',
+    'GIT_HTTP_PROXY',
+    'GIT_HTTPS_PROXY',
+  ]);
+  const cleaned = {};
+
+  for (const [key, value] of Object.entries(env)) {
+    if (
+      proxyKeys.has(key.toUpperCase()) &&
+      typeof value === 'string' &&
+      disabledLocalProxyValues.has(value.trim().replace(/\/+$/u, ''))
+    ) {
+      continue;
+    }
+
+    cleaned[key] = value;
+  }
+
+  return cleaned;
+}
+
 function runCommand(command, args, options = {}) {
-  const env = {
+  let env = {
     ...process.env,
     ...(options.env || {}),
   };
+
+  if (options.stripDisabledLocalProxyEnv) {
+    env = withoutDisabledLocalProxyEnv(env);
+  }
+
   const shell = usesShell(command);
   const result = spawnSync(shell ? command : resolveCommand(command), args, {
     cwd: options.cwd || process.cwd(),
@@ -98,7 +133,10 @@ function runCommand(command, args, options = {}) {
 }
 
 function runGh(args) {
-  return runCommand('gh', args, { env: getContext() });
+  return runCommand('gh', args, {
+    env: getContext(),
+    stripDisabledLocalProxyEnv: true,
+  });
 }
 
 function runGhJson(args) {

@@ -41,7 +41,7 @@ Several items from our 6-phase plan are **already partially or fully built**. Th
 ## Plan Location
 
 Full plan with all 6 phases, design philosophy, end-to-end lifecycle, and three-layer architecture:
-`C:\Users\dalto\.claude-personal\plans\imperative-pondering-glade.md`
+Original private plan file (path omitted from the repo copy).
 
 ---
 
@@ -182,7 +182,7 @@ If your context window is filling up:
 3. Update THIS checkpoint: what you completed, what's in progress, new type signatures, gotchas
 4. Commit checkpoint to main:
    ```bash
-   cd C:\Users\dalto\governada\governada-app
+   cd <shared-repo-root>
    git pull origin main
    git add .claude/checkpoints/build-step-studio-excellence.md
    git commit -m "checkpoint: studio excellence phase N progress"
@@ -277,7 +277,7 @@ The checkpoint is on main. From your worktree:
 
 ## THEN: Read the full 6-phase plan
 
-  cat "C:\Users\dalto\.claude-personal\plans\imperative-pondering-glade.md"
+Read the original private plan file if it is still available locally. The exact path is intentionally omitted from the repo copy.
 
 Phase 6 starts at line ~328 ("Phase 6: Polish, Mobile, and Role Adaptation").
 

@@ -28,11 +28,8 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 4. Make the smallest change that solves the actual problem.
 5. Run `npm run agent:validate` and the relevant local verification for the scope.
 6. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, and `Impact` sections.
-7. Use `npm run git:stage -- ...`, `npm run git:commit -- --message "..."`, and `npm run git:push` instead of raw `git add`, `git commit`, or `git push`.
-8. If a draft PR is ready to ship, promote it with `npm run pr:ready -- <PR#>`.
-9. Before merging, run `npm run pre-merge-check -- <PR#>`.
-10. Merge with `npm run pr:merge -- <PR#>`.
-11. After merge, verify deploy health and smoke tests with `npm run deploy:verify`, `npm run health:ready`, and `npm run health:status`.
+7. Before merging, run `npm run pre-merge-check -- <PR#>`.
+8. After merge, verify deploy health and smoke tests with `npm run deploy:verify`.
 
 ## Autonomy Boundary
 
@@ -47,19 +44,25 @@ Routine reads, edits, local verification, git hygiene, and PR preparation should
 
 Keep Codex Desktop in `workspace-write`. The goal is not removing the sandbox; it is removing prompts for routine shipping.
 
-- Preferred writable root: the repo root, `C:\Users\dalto\governada\governada-app\`, so `.claude/worktrees/` and git worktree metadata stay inside the writable area.
-- Open Codex on the shared repo root only. Do not open separate Codex projects rooted at `.claude/worktrees/<name>` or `C:\Users\dalto\.codex\worktrees\...` for this repo.
-- Prefer stable `npm run ...` wrappers for diagnostics, CI, deploy, GitHub operations, mutating local git actions, and production health reads. For mutating Git/worktree setup on Windows Codex Desktop, prefer approved wrapper entrypoints such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`, `npm run git:stage`, `npm run git:commit`, `npm run git:push`, `npm run health:ready`, `npm run health:status`, and `npm run health:reconciliation`.
+- Preferred writable root: the shared repo root that also contains `.claude/worktrees/`, so worktree metadata stays inside the writable area.
+- Open Codex on the shared repo root only. Do not open separate Codex projects rooted at `.claude/worktrees/<name>` or other external worktree directories for this repo.
+- Prefer stable `npm run ...` wrappers for diagnostics, CI, deploy, and GitHub operations. For mutating Git/worktree setup on Windows Codex Desktop, prefer direct approved entrypoints such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`, `git fetch origin main`, and `git worktree add`.
 - For repo orientation, prefer `npm run session:doctor` over one-off `git branch`, `git worktree`, or `git stash` reads when it gives enough context.
-- Use `npm run pr:ready -- <PR#>` and `npm run pr:merge -- <PR#>` instead of raw `gh pr ready` or inline `gh api .../merge` commands.
-- Use `npm run git:stage -- ...`, `npm run git:commit -- --message "..."`, and `npm run git:push` instead of raw `git add`, `git commit`, and `git push`.
-- Use `npm run health:ready`, `npm run health:status`, `npm run health:api`, and `npm run health:reconciliation` instead of ad hoc `Invoke-RestMethod` or `Invoke-WebRequest`.
-- After pulling wrapper changes on a new machine or after repo hardening updates, run `npm run codex:sync-windows-rules` once to seed the exact persistent Codex approvals for these wrapper commands.
-- Persist approvals for safe recurring prefixes such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1`, `npm run worktree:new`, `npm run worktree:sync`, `npm run session:doctor`, `npm run gh:auth-status`, `npm run auth:repair`, `npm run git:stage`, `npm run git:commit`, `npm run git:push`, `npm run pr:ready`, `npm run pr:merge`, `npm run ci:watch`, `npm run ci:failed`, `npm run pre-merge-check`, `npm run deploy:verify`, `npm run health:ready`, `npm run health:status`, `npm run health:api`, `npm run health:reconciliation`, `npm run inngest:register`, `git fetch origin main`, `git worktree add`, and `gh api repos/governada/governada-app/pulls`.
+- Persist approvals for safe recurring prefixes such as `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1`, `npm run worktree:new`, `npm run worktree:sync`, `npm run session:doctor`, `npm run gh:auth-status`, `npm run auth:repair`, `npm run ci:watch`, `npm run ci:failed`, `npm run pre-merge-check`, `npm run deploy:verify`, `npm run inngest:register`, `git add`, `git commit -m`, `git push`, `git fetch origin main`, `git worktree add`, and `gh api repos/governada/governada-app/pulls`.
 - Do not persist approvals for broad shells or interpreters such as bare `powershell`, `cmd`, `node`, `python`, `git`, or `gh`.
-- On Windows Codex Desktop, if a mutating Git/worktree command or an `npm` wrapper that shells out to Git fails in `workspace-write` with `EPERM`, access denied, or a likely sandbox error, rerun it immediately with `sandbox_permissions=require_escalated` using an already-approved wrapper prefix. Do not stop to ask first unless the wrapper prefix itself is missing.
-- Repo-local GH context is provided by `npm run gh:auth-status` and the scripts in `scripts/lib/runtime.js`; do not rely on `gh` inferring the repo from the SSH remote alias.
-- The governada repo uses its own `GH_CONFIG_DIR` profile. `npm run gh:auth-status` and `npm run auth:repair` only affect that repo-scoped profile; they do not switch `gh` for unrelated repos or Claude Code projects.
+- On Windows Codex Desktop, if a mutating Git/worktree command or an `npm` wrapper that shells out to Git fails in `workspace-write` with `EPERM`, access denied, or a likely sandbox error, rerun it immediately with `sandbox_permissions=require_escalated` using an already-approved prefix. Do not stop to ask first unless the prefix itself is missing.
+- Repo-local GH context is provided by `npm run gh:auth-status` and the scripts in `scripts/lib/runtime.js`; do not rely on `gh` inferring the repo from a remote alias or unrelated global state.
+- This repo may use its own `GH_CONFIG_DIR` profile. `npm run gh:auth-status` and `npm run auth:repair` should only affect the repo-scoped profile selected by repo scripts, not unrelated repos or other local projects.
+
+## Credential And Tool Discovery
+
+Always resolve credentials and tool wrappers from the repo before falling back to higher-level defaults.
+
+- Search order: current checkout -> shared checkout fallback -> repo-scoped user paths named by repo files -> global/home-directory config.
+- In worktrees, ignored local files may be absent even when they exist in the shared checkout. If `.mcp.json` or `.claude/settings.local.json` is missing in `.claude/worktrees/<name>`, check the shared checkout next before assuming the repo is unconfigured.
+- Treat these files as authoritative when present: `.mcp.json`, `.claude/settings.local.json`, `.env.local`, `package.json`, `scripts/lib/runtime.js`, `scripts/set_gh_context.ps1`, `scripts/set-gh-context.js`, `scripts/gh-auth-status.ps1`, and `scripts/repair-gh-auth.ps1`.
+- Repo-scoped user paths referenced by those files are part of the repo bootstrap, not global fallbacks. That includes `GH_CONFIG_DIR` and any wrapper commands referenced by `.mcp.json`.
+- Before generic troubleshooting, run `npm run session:doctor`, then `npm run gh:auth-status`, then inspect `.mcp.json` and the referenced wrapper commands.
 
 ## Setup Files
 

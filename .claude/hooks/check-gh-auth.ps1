@@ -7,8 +7,12 @@ $expectedUser = 'governada'
 $ghConfigDir = $env:GH_CONFIG_DIR
 
 if (-not (Test-GhAuthStatus)) {
-  Write-Host "WARNING: gh is not authenticated for the governada profile." 
-  Write-Host "Set up C:\Users\dalto\.config\gh-governada before running GitHub workflows."
+  Write-Host "WARNING: gh is not authenticated for the repo-scoped profile."
+  if ($ghConfigDir) {
+    Write-Host "Run 'npm run auth:repair' to initialize the profile at $ghConfigDir before running GitHub workflows."
+  } else {
+    Write-Host "Run 'npm run auth:repair' before running GitHub workflows."
+  }
   exit 0
 }
 

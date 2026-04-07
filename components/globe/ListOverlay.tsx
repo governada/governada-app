@@ -37,17 +37,23 @@ interface ListOverlayProps {
   onNodeHover: (nodeId: string | null) => void;
 }
 
+const EMPTY_DREPS: EnrichedDRep[] = [];
+const EMPTY_PROPOSALS: BrowseProposal[] = [];
+const EMPTY_CC_MEMBERS: CommitteeMemberQuickView[] = [];
+const EMPTY_POOLS: GovernadaSPOData[] = [];
+
 // ---------------------------------------------------------------------------
 // Fetcher for pools (no dedicated hook in queries.ts)
 // ---------------------------------------------------------------------------
 
-function usePools() {
+function usePools(enabled = true) {
   return useQuery<GovernadaSPOData[]>({
     queryKey: ['governada-pools'],
     queryFn: () =>
       fetch('/api/governance/pools')
         .then((r) => (r.ok ? r.json() : { pools: [] }))
         .then((d) => d.pools ?? []),
+    enabled,
     staleTime: 120_000,
   });
 }
@@ -69,10 +75,10 @@ export function ListOverlay({
   const router = useRouter();
 
   // Fetch all entity types (hooks return untyped data — cast here)
-  const { data: rawDreps } = useDReps();
-  const { data: rawProposals } = useProposals(200);
-  const { data: rawCC } = useCommitteeMembers();
-  const { data: rawPools } = usePools();
+  const { data: rawDreps } = useDReps(undefined, isOpen);
+  const { data: rawProposals } = useProposals(200, isOpen);
+  const { data: rawCC } = useCommitteeMembers(isOpen);
+  const { data: rawPools } = usePools(isOpen);
 
   const drepData = rawDreps as { allDReps?: EnrichedDRep[] } | undefined;
   const proposalData = rawProposals as
@@ -80,11 +86,11 @@ export function ListOverlay({
     | undefined;
   const ccData = rawCC as { members?: CommitteeMemberQuickView[] } | undefined;
 
-  const dreps: EnrichedDRep[] = drepData?.allDReps ?? [];
-  const proposals: BrowseProposal[] = proposalData?.proposals ?? [];
+  const dreps: EnrichedDRep[] = drepData?.allDReps ?? EMPTY_DREPS;
+  const proposals: BrowseProposal[] = proposalData?.proposals ?? EMPTY_PROPOSALS;
   const currentEpoch: number | null = proposalData?.currentEpoch ?? null;
-  const ccMembers: CommitteeMemberQuickView[] = ccData?.members ?? [];
-  const spoList: GovernadaSPOData[] = rawPools ?? [];
+  const ccMembers: CommitteeMemberQuickView[] = ccData?.members ?? EMPTY_CC_MEMBERS;
+  const spoList: GovernadaSPOData[] = rawPools ?? EMPTY_POOLS;
 
   // Counts for filter chips
   const counts = useMemo(

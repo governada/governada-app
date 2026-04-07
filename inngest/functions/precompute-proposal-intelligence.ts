@@ -20,38 +20,12 @@ import { getFeatureFlag } from '@/lib/featureFlags';
 import { runConstitutionalCheck } from '@/lib/ai/shared/constitutionalAnalysis';
 import { runResearchPrecedent } from '@/lib/ai/shared/researchPrecedent';
 import {
-  computePassagePrediction,
-  buildPredictionInput,
-  fetchPredictionData,
-} from '@/lib/passagePrediction';
+  findProposalsNeedingIntelligencePrecompute,
+  refreshPassagePredictionCache,
+  type ProposalIntelligenceTarget,
+  upsertProposalIntelligenceSection,
+} from '@/lib/intelligence/proposalIntelligenceCache';
 import { MODELS } from '@/lib/ai';
-import { createHash } from 'crypto';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface OpenProposal {
-  tx_hash: string;
-  proposal_index: number;
-  title: string;
-  abstract: string | null;
-  proposal_type: string;
-  motivation: string | null;
-  rationale: string | null;
-  withdrawal_amount: number | null;
-  meta_json: Record<string, unknown> | null;
-}
-
-// ---------------------------------------------------------------------------
-// Hash helper — determines staleness
-// ---------------------------------------------------------------------------
-
-function hashProposalContent(p: OpenProposal): string {
-  const input = `${p.title}|${p.abstract ?? ''}|${p.motivation ?? ''}|${p.rationale ?? ''}|${p.proposal_type}`;
-  return createHash('sha256').update(input).digest('hex').slice(0, 16);
-}
-
 // ---------------------------------------------------------------------------
 // Inngest Function
 // ---------------------------------------------------------------------------
@@ -91,69 +65,9 @@ export const precomputeProposalIntelligence = inngest.createFunction(
     const syncStartedAt = new Date().toISOString();
 
     // Step 1: Find proposals needing pre-computation
-    const proposals = await step.run('find-proposals-needing-precompute', async () => {
-      // Get all open proposals
-      const { data: openProposals } = await supabase
-        .from('proposals')
-        .select(
-          'tx_hash, proposal_index, title, abstract, proposal_type, withdrawal_amount, meta_json',
-        )
-        .is('ratified_epoch', null)
-        .is('enacted_epoch', null)
-        .is('dropped_epoch', null)
-        .is('expired_epoch', null)
-        .not('title', 'is', null);
-
-      if (!openProposals || openProposals.length === 0) return [];
-
-      // Extract motivation/rationale from meta_json
-      const enriched: OpenProposal[] = openProposals.map((p) => {
-        let motivation: string | null = null;
-        let rationale: string | null = null;
-        const meta = p.meta_json as Record<string, unknown> | null;
-        if (meta) {
-          const body = (meta.body ?? meta) as Record<string, unknown>;
-          motivation = (body.motivation as string) ?? null;
-          rationale = (body.rationale as string) ?? null;
-        }
-        return { ...p, motivation, rationale };
-      });
-
-      // Get existing cache entries
-      const txHashes = enriched.map((p) => p.tx_hash);
-      const { data: cached } = await supabase
-        .from('proposal_intelligence_cache')
-        .select('proposal_tx_hash, proposal_index, section_type, content_hash')
-        .in('proposal_tx_hash', txHashes);
-
-      // Build a cache map for quick lookup
-      const cacheMap = new Map<string, string>();
-      for (const c of cached ?? []) {
-        const key = `${c.proposal_tx_hash}-${c.proposal_index}-${c.section_type}`;
-        cacheMap.set(key, c.content_hash ?? '');
-      }
-
-      // Filter to proposals that need work (missing or stale cache)
-      const needsWork: OpenProposal[] = [];
-      for (const p of enriched) {
-        const hash = hashProposalContent(p);
-        const constKey = `${p.tx_hash}-${p.proposal_index}-constitutional`;
-        const questKey = `${p.tx_hash}-${p.proposal_index}-key_questions`;
-        const predKey = `${p.tx_hash}-${p.proposal_index}-passage_prediction`;
-
-        // Needs work if any section is missing or stale
-        const constStale = cacheMap.get(constKey) !== hash;
-        const questStale = cacheMap.get(questKey) !== hash;
-        const predMissing = !cacheMap.has(predKey);
-
-        if (constStale || questStale || predMissing) {
-          needsWork.push(p);
-        }
-      }
-
-      // Limit to 20 per run to control AI costs
-      return needsWork.slice(0, 20);
-    });
+    const proposals = await step.run('find-proposals-needing-precompute', async () =>
+      findProposalsNeedingIntelligencePrecompute(supabase, 20),
+    );
 
     if (proposals.length === 0) {
       return { status: 'no_work', proposalsChecked: 0 };
@@ -183,19 +97,15 @@ export const precomputeProposalIntelligence = inngest.createFunction(
               });
               const generationTimeMs = Date.now() - startMs;
 
-              await supabase.from('proposal_intelligence_cache').upsert(
-                {
-                  proposal_tx_hash: p.tx_hash,
-                  proposal_index: p.proposal_index,
-                  section_type: 'constitutional',
-                  content: result as unknown as Record<string, unknown>,
-                  content_hash: hashProposalContent(p),
-                  model_used: MODELS.FAST,
-                  generation_time_ms: generationTimeMs,
-                  updated_at: new Date().toISOString(),
-                },
-                { onConflict: 'proposal_tx_hash,proposal_index,section_type' },
-              );
+              await upsertProposalIntelligenceSection(supabase, {
+                proposalTxHash: p.tx_hash,
+                proposalIndex: p.proposal_index,
+                sectionType: 'constitutional',
+                content: result as unknown as Record<string, unknown>,
+                contentHash: p.contentHash,
+                modelUsed: MODELS.FAST,
+                generationTimeMs,
+              });
               count++;
             } catch (err) {
               logger.error('[precompute-intel] Constitutional check failed for proposal', {
@@ -229,19 +139,15 @@ export const precomputeProposalIntelligence = inngest.createFunction(
             });
             const generationTimeMs = Date.now() - startMs;
 
-            await supabase.from('proposal_intelligence_cache').upsert(
-              {
-                proposal_tx_hash: p.tx_hash,
-                proposal_index: p.proposal_index,
-                section_type: 'key_questions',
-                content: result as unknown as Record<string, unknown>,
-                content_hash: hashProposalContent(p),
-                model_used: MODELS.FAST,
-                generation_time_ms: generationTimeMs,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'proposal_tx_hash,proposal_index,section_type' },
-            );
+            await upsertProposalIntelligenceSection(supabase, {
+              proposalTxHash: p.tx_hash,
+              proposalIndex: p.proposal_index,
+              sectionType: 'key_questions',
+              content: result as unknown as Record<string, unknown>,
+              contentHash: p.contentHash,
+              modelUsed: MODELS.FAST,
+              generationTimeMs,
+            });
             count++;
           } catch (err) {
             logger.error('[precompute-intel] Key questions failed for proposal', {
@@ -255,48 +161,25 @@ export const precomputeProposalIntelligence = inngest.createFunction(
       keyQuestionsCount += batchResult;
     }
 
-    // Step 4: Compute passage predictions (deterministic, fast)
-    // Uses shared batch-fetch helpers from lib/passagePrediction.ts
     const passagePredictionCount = await step.run('compute-passage-predictions', async () => {
-      const { voteMap, constMap, sentimentMap } = await fetchPredictionData(supabase, proposals);
-
-      let count = 0;
-      const upsertRows: Array<Record<string, unknown>> = [];
-
-      for (const p of proposals) {
-        try {
-          const { input: predInput, voteHash } = buildPredictionInput(
-            p,
-            voteMap,
-            constMap,
-            sentimentMap,
-          );
-          const prediction = computePassagePrediction(predInput);
-
-          upsertRows.push({
-            proposal_tx_hash: p.tx_hash,
-            proposal_index: p.proposal_index,
-            section_type: 'passage_prediction',
-            content: prediction as unknown as Record<string, unknown>,
-            content_hash: voteHash,
-            updated_at: new Date().toISOString(),
-          });
-          count++;
-        } catch (err) {
-          logger.error('[precompute-intel] Passage prediction failed', {
-            txHash: p.tx_hash,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
-      }
-
-      if (upsertRows.length > 0) {
-        await supabase
-          .from('proposal_intelligence_cache')
-          .upsert(upsertRows, { onConflict: 'proposal_tx_hash,proposal_index,section_type' });
-      }
-
-      return count;
+      return refreshPassagePredictionCache(
+        supabase,
+        proposals.map((proposal: ProposalIntelligenceTarget) => ({
+          tx_hash: proposal.tx_hash,
+          proposal_index: proposal.proposal_index,
+          proposal_type: proposal.proposal_type,
+          withdrawal_amount: proposal.withdrawal_amount,
+          param_changes: proposal.param_changes,
+        })),
+        {
+          onError: (proposal, error) => {
+            logger.error('[precompute-intel] Passage prediction failed', {
+              txHash: proposal.tx_hash,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          },
+        },
+      );
     });
 
     // Step 5: Log sync

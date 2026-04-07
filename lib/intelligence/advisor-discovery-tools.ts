@@ -13,6 +13,12 @@ import { logger } from '@/lib/logger';
 import type { GlobeCommand } from '@/lib/globe/types';
 import type { ToolResult } from './advisor-tools';
 
+function getProposalIndex(proposal: any): number {
+  return (
+    proposal.proposalIndex ?? proposal.proposal_index ?? proposal.index ?? proposal.certIndex ?? 0
+  );
+}
+
 // ---------------------------------------------------------------------------
 // highlight_cluster — Show a governance faction on the globe
 // ---------------------------------------------------------------------------
@@ -202,10 +208,10 @@ export async function executeShowControversy(): Promise<Omit<ToolResult, 'displa
   // Filter to active/voted proposals with tri-body data
   const withVotes = proposals.filter(
     (p: any) =>
-      p.drepYesCount != null &&
-      p.spoYesCount != null &&
-      (p.drepYesCount + p.drepNoCount + p.drepAbstainCount > 0 ||
-        p.spoYesCount + p.spoNoCount + p.spoAbstainCount > 0),
+      p.triBody?.drep != null &&
+      p.triBody?.spo != null &&
+      (p.triBody.drep.yes + p.triBody.drep.no + p.triBody.drep.abstain > 0 ||
+        p.triBody.spo.yes + p.triBody.spo.no + p.triBody.spo.abstain > 0),
   );
 
   if (withVotes.length === 0) {
@@ -214,10 +220,10 @@ export async function executeShowControversy(): Promise<Omit<ToolResult, 'displa
 
   // Compute tri-body divergence: how much DRep and SPO voting patterns disagree
   const scored = withVotes.map((p: any) => {
-    const drepTotal = (p.drepYesCount ?? 0) + (p.drepNoCount ?? 0) + (p.drepAbstainCount ?? 0);
-    const spoTotal = (p.spoYesCount ?? 0) + (p.spoNoCount ?? 0) + (p.spoAbstainCount ?? 0);
-    const drepYesRate = drepTotal > 0 ? (p.drepYesCount ?? 0) / drepTotal : 0.5;
-    const spoYesRate = spoTotal > 0 ? (p.spoYesCount ?? 0) / spoTotal : 0.5;
+    const drepTotal = p.triBody.drep.yes + p.triBody.drep.no + p.triBody.drep.abstain;
+    const spoTotal = p.triBody.spo.yes + p.triBody.spo.no + p.triBody.spo.abstain;
+    const drepYesRate = drepTotal > 0 ? p.triBody.drep.yes / drepTotal : 0.5;
+    const spoYesRate = spoTotal > 0 ? p.triBody.spo.yes / spoTotal : 0.5;
     const divergence = Math.abs(drepYesRate - spoYesRate);
     return { ...p, divergence, drepYesRate, spoYesRate };
   });
@@ -227,13 +233,14 @@ export async function executeShowControversy(): Promise<Omit<ToolResult, 'displa
 
   const lines = top.map((p: any, i: number) => {
     const hash = p.txHash || p.tx_hash || '';
+    const proposalIndex = getProposalIndex(p);
     const drepPct = Math.round(p.drepYesRate * 100);
     const spoPct = Math.round(p.spoYesRate * 100);
-    return `${i + 1}. "${truncate(String(p.title), 50)}" — DReps ${drepPct}% yes, SPOs ${spoPct}% yes | ${hash.slice(0, 12)}#${p.index ?? 0}`;
+    return `${i + 1}. "${truncate(String(p.title), 50)}" — DReps ${drepPct}% yes, SPOs ${spoPct}% yes | ${hash.slice(0, 12)}#${proposalIndex}`;
   });
 
   const topHash = top[0]?.txHash || top[0]?.tx_hash;
-  const topIndex = top[0]?.index ?? 0;
+  const topIndex = top[0] ? getProposalIndex(top[0]) : 0;
   const globeCommands: GlobeCommand[] = topHash
     ? [{ type: 'showControversy', proposalId: `${topHash}_${topIndex}` }]
     : [];
@@ -298,9 +305,7 @@ export async function executeShowActiveEntities(
   if (entityType === 'proposal') {
     const { getAllProposalsWithVoteSummary } = await import('@/lib/data');
     const proposals: any[] = await getAllProposalsWithVoteSummary();
-    const active = proposals
-      .filter((p: any) => p.status === 'active' || p.status === 'voting')
-      .slice(0, 5);
+    const active = proposals.filter((p: any) => p.status === 'active').slice(0, 5);
 
     if (active.length === 0) {
       return { result: 'No active proposals at the moment.', globeCommands: [] };
@@ -308,10 +313,11 @@ export async function executeShowActiveEntities(
 
     const lines = active.map((p: any, i: number) => {
       const hash = p.txHash || p.tx_hash || '';
-      return `${i + 1}. "${truncate(String(p.title), 50)}" (${p.status}) — ${hash.slice(0, 12)}#${p.index ?? 0}`;
+      const proposalIndex = getProposalIndex(p);
+      return `${i + 1}. "${truncate(String(p.title), 50)}" (${p.status}) — ${hash.slice(0, 12)}#${proposalIndex}`;
     });
 
-    const entityIds = active.map((p: any) => `${p.txHash || p.tx_hash}_${p.index ?? 0}`);
+    const entityIds = active.map((p: any) => `${p.txHash || p.tx_hash}_${getProposalIndex(p)}`);
 
     return {
       result: `**Active proposals:**\n${lines.join('\n')}`,

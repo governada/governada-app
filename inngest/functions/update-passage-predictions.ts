@@ -14,10 +14,9 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { getFeatureFlag } from '@/lib/featureFlags';
 import {
-  computePassagePrediction,
-  buildPredictionInput,
-  fetchPredictionData,
-} from '@/lib/passagePrediction';
+  listOpenProposalIntelligenceTargets,
+  refreshPassagePredictionCache,
+} from '@/lib/intelligence/proposalIntelligenceCache';
 
 export const updatePassagePredictions = inngest.createFunction(
   {
@@ -55,59 +54,20 @@ export const updatePassagePredictions = inngest.createFunction(
     const syncStartedAt = new Date().toISOString();
 
     const result = await step.run('recompute-predictions', async () => {
-      // Get all open proposals
-      const { data: proposals } = await supabase
-        .from('proposals')
-        .select('tx_hash, proposal_index, proposal_type, withdrawal_amount')
-        .is('ratified_epoch', null)
-        .is('enacted_epoch', null)
-        .is('dropped_epoch', null)
-        .is('expired_epoch', null)
-        .not('title', 'is', null);
-
-      if (!proposals || proposals.length === 0) {
+      const proposals = await listOpenProposalIntelligenceTargets(supabase);
+      if (proposals.length === 0) {
         return { updated: 0 };
       }
 
-      // Batch-fetch all supporting data
-      const { voteMap, constMap, sentimentMap } = await fetchPredictionData(supabase, proposals);
-
-      let updated = 0;
-      const upsertRows: Array<Record<string, unknown>> = [];
-
-      for (const p of proposals) {
-        try {
-          const { input: predInput, voteHash } = buildPredictionInput(
-            p,
-            voteMap,
-            constMap,
-            sentimentMap,
-          );
-          const prediction = computePassagePrediction(predInput);
-
-          upsertRows.push({
-            proposal_tx_hash: p.tx_hash,
-            proposal_index: p.proposal_index,
-            section_type: 'passage_prediction',
-            content: prediction as unknown as Record<string, unknown>,
-            content_hash: voteHash,
-            updated_at: new Date().toISOString(),
-          });
-          updated++;
-        } catch (err) {
+      const updated = await refreshPassagePredictionCache(supabase, proposals, {
+        nowIso: new Date().toISOString(),
+        onError: (proposal, error) => {
           logger.error('[passage-predictions] Failed for proposal', {
-            txHash: p.tx_hash,
-            error: err instanceof Error ? err.message : String(err),
+            txHash: proposal.tx_hash,
+            error: error instanceof Error ? error.message : String(error),
           });
-        }
-      }
-
-      // Batch upsert all predictions
-      if (upsertRows.length > 0) {
-        await supabase
-          .from('proposal_intelligence_cache')
-          .upsert(upsertRows, { onConflict: 'proposal_tx_hash,proposal_index,section_type' });
-      }
+        },
+      });
 
       return { updated };
     });

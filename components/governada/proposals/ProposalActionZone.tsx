@@ -1,13 +1,16 @@
 'use client';
 
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { VoteRationaleFlow } from '@/components/governada/proposals/VoteRationaleFlow';
 import { CitizenPulseReadOnly } from '@/components/governada/proposals/CitizenPulseReadOnly';
 import { CitizenEngagementSection } from '@/components/governada/proposals/CitizenEngagementSection';
 import { ProposalDepthGate } from '@/components/governada/proposals/ProposalDepthGate';
-import { canBodyVote } from '@/lib/governance/votingBodies';
+import { ProposalBridge } from '@/components/governada/proposals/ProposalBridge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  CITIZEN_PROPOSAL_ACTION_ID,
+  getProposalGovernanceActionState,
+} from '@/lib/navigation/proposalAction';
 
 interface ProposalActionZoneProps {
   txHash: string;
@@ -16,6 +19,7 @@ interface ProposalActionZoneProps {
   isOpen: boolean;
   proposalAbstract?: string | null;
   proposalType?: string | null;
+  paramChanges?: Record<string, unknown> | null;
   aiSummary?: string | null;
 }
 
@@ -31,9 +35,10 @@ export function ProposalActionZone({
   proposalIndex,
   title,
   isOpen,
-  proposalAbstract,
+  proposalAbstract: _proposalAbstract,
   proposalType,
-  aiSummary,
+  paramChanges,
+  aiSummary: _aiSummary,
 }: ProposalActionZoneProps) {
   const { segment, isLoading } = useSegment();
 
@@ -53,28 +58,19 @@ export function ProposalActionZone({
     );
   }
 
-  const isGovernanceActor = segment === 'drep' || segment === 'spo' || segment === 'cc';
+  const actionState = getProposalGovernanceActionState(segment, isOpen, proposalType, paramChanges);
 
-  // For governance actors: check if their body can vote on this proposal type
-  const effectiveType = proposalType ?? 'InfoAction';
-  const voterBody = segment === 'spo' ? 'spo' : segment === 'cc' ? 'cc' : 'drep';
-  const canVote = isGovernanceActor && canBodyVote(voterBody, effectiveType);
-
-  if (isGovernanceActor) {
+  if (actionState.isGovernanceActor) {
     return (
       <section className="space-y-4">
-        {/* Vote flow: only if this body can vote on this proposal type */}
-        {canVote && (
-          <VoteRationaleFlow
-            txHash={txHash}
-            proposalIndex={proposalIndex}
-            title={title}
-            isOpen={isOpen}
-            proposalAbstract={proposalAbstract}
-            proposalType={proposalType}
-            aiSummary={aiSummary}
-          />
-        )}
+        <ProposalBridge
+          txHash={txHash}
+          proposalIndex={proposalIndex}
+          title={title}
+          isOpen={isOpen}
+          proposalType={proposalType}
+          paramChanges={paramChanges}
+        />
 
         {/* Read-only citizen pulse (what citizens think) */}
         <CitizenPulseReadOnly txHash={txHash} proposalIndex={proposalIndex} />
@@ -98,7 +94,7 @@ export function ProposalActionZone({
 
   // Connected citizen — full engagement section
   return (
-    <section>
+    <section id={CITIZEN_PROPOSAL_ACTION_ID}>
       <CitizenEngagementSection
         txHash={txHash}
         proposalIndex={proposalIndex}

@@ -6,49 +6,73 @@
  * duplicating the lists in route handlers or components.
  */
 
+import { isSecurityRelevantParameterUpdate } from '@/lib/governanceThresholds';
+
 export type GovernanceBody = 'drep' | 'spo' | 'cc';
 
-/** Proposal types where ONLY DReps vote (SPOs and CC are excluded) */
-export const DREP_ONLY_TYPES = ['TreasuryWithdrawals', 'InfoAction'];
+const ALL_BODIES: GovernanceBody[] = ['drep', 'spo', 'cc'];
+const DREP_AND_CC: GovernanceBody[] = ['drep', 'cc'];
+const DREP_AND_SPO: GovernanceBody[] = ['drep', 'spo'];
 
-/** Proposal types that accept SPO votes */
-export const SPO_VOTABLE_TYPES = [
-  'ParameterChange',
-  'HardForkInitiation',
-  'NoConfidence',
-  'NewCommittee',
-  'NewConstitutionalCommittee',
-  'NewConstitution',
-  'UpdateConstitution',
-];
-
-/** Proposal types that accept CC votes */
-export const CC_VOTABLE_TYPES = [
-  'ParameterChange',
-  'HardForkInitiation',
-  'NewCommittee',
-  'NewConstitutionalCommittee',
-  'NewConstitution',
-  'UpdateConstitution',
-];
+function getProposalTypeLabel(proposalType: string): string {
+  switch (proposalType) {
+    case 'TreasuryWithdrawals':
+      return 'Treasury Withdrawals';
+    case 'HardForkInitiation':
+      return 'Hard Fork Initiation';
+    case 'NoConfidence':
+      return 'No Confidence actions';
+    case 'NewCommittee':
+    case 'NewConstitutionalCommittee':
+      return 'Update Committee actions';
+    case 'NewConstitution':
+    case 'UpdateConstitution':
+      return 'Constitution updates';
+    case 'ParameterChange':
+      return 'Parameter Updates';
+    case 'InfoAction':
+      return 'Info actions';
+    default:
+      return proposalType;
+  }
+}
 
 /**
  * Return the governance bodies eligible to vote on a given proposal type.
  * DReps always vote. SPOs and CC are conditionally included.
  */
-export function getVotingBodies(proposalType: string): GovernanceBody[] {
-  const bodies: GovernanceBody[] = ['drep'];
-  if (SPO_VOTABLE_TYPES.includes(proposalType)) bodies.push('spo');
-  if (CC_VOTABLE_TYPES.includes(proposalType)) bodies.push('cc');
-  return bodies;
+export function getVotingBodies(
+  proposalType: string,
+  paramChanges?: Record<string, unknown> | null,
+): GovernanceBody[] {
+  switch (proposalType) {
+    case 'TreasuryWithdrawals':
+      return DREP_AND_CC;
+    case 'ParameterChange':
+      return isSecurityRelevantParameterUpdate(paramChanges) ? ALL_BODIES : DREP_AND_CC;
+    case 'HardForkInitiation':
+      return ALL_BODIES;
+    case 'NoConfidence':
+    case 'NewCommittee':
+    case 'NewConstitutionalCommittee':
+      return DREP_AND_SPO;
+    case 'NewConstitution':
+    case 'UpdateConstitution':
+      return DREP_AND_CC;
+    case 'InfoAction':
+      return ALL_BODIES;
+    default:
+      return ['drep'];
+  }
 }
 
 /** Check if a specific body can vote on this proposal type */
-export function canBodyVote(body: GovernanceBody, proposalType: string): boolean {
-  if (body === 'drep') return true;
-  if (body === 'spo') return SPO_VOTABLE_TYPES.includes(proposalType);
-  if (body === 'cc') return CC_VOTABLE_TYPES.includes(proposalType);
-  return false;
+export function canBodyVote(
+  body: GovernanceBody,
+  proposalType: string,
+  paramChanges?: Record<string, unknown> | null,
+): boolean {
+  return getVotingBodies(proposalType, paramChanges).includes(body);
 }
 
 /**
@@ -56,10 +80,33 @@ export function canBodyVote(body: GovernanceBody, proposalType: string): boolean
  * are not eligible to vote on a given proposal type.
  * Returns null when all bodies are eligible.
  */
-export function getIneligibilityNote(proposalType: string): string | null {
-  if (DREP_ONLY_TYPES.includes(proposalType)) {
-    const label = proposalType === 'TreasuryWithdrawals' ? 'Treasury Withdrawals' : 'Info Actions';
-    return `SPOs and CC members are not eligible to vote on ${label}.`;
+export function getIneligibilityNote(
+  proposalType: string,
+  paramChanges?: Record<string, unknown> | null,
+): string | null {
+  if (proposalType === 'ParameterChange' && !isSecurityRelevantParameterUpdate(paramChanges)) {
+    return 'SPOs only vote on security-relevant parameter updates.';
   }
-  return null;
+
+  const eligibleBodies = new Set(getVotingBodies(proposalType, paramChanges));
+  const excludedBodies = ALL_BODIES.filter((body) => !eligibleBodies.has(body));
+
+  if (excludedBodies.length === 0) {
+    return null;
+  }
+
+  const label = getProposalTypeLabel(proposalType);
+  if (excludedBodies.length === 2) {
+    return `Only DReps are eligible to vote on ${label}.`;
+  }
+
+  if (excludedBodies[0] === 'spo') {
+    return `SPOs are not eligible to vote on ${label}.`;
+  }
+
+  if (excludedBodies[0] === 'cc') {
+    return `CC members are not eligible to vote on ${label}.`;
+  }
+
+  return `${excludedBodies[0]} voters are not eligible to vote on ${label}.`;
 }

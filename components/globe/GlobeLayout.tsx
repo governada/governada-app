@@ -39,12 +39,10 @@ import {
 } from '@/lib/homepage/parseEntityParam';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { posthog } from '@/lib/posthog';
-import { PanelOverlay } from './PanelOverlay';
 import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
 import { ClusterLabels3D } from './ClusterLabels3D';
 import { ClusterNebulae } from './ClusterNebula';
-import { ConstellationLines } from './GlobeEdges';
 import { setClusterCache } from '@/lib/globe/behaviors/clusterBehavior';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { STORAGE_KEYS, readStoredValue } from '@/lib/persistence';
@@ -56,6 +54,11 @@ const WorkspaceCards = dynamic(
 
 const GlobeTooltip = dynamic(
   () => import('@/components/governada/GlobeTooltip').then((m) => ({ default: m.GlobeTooltip })),
+  { ssr: false },
+);
+
+const PanelOverlay = dynamic(
+  () => import('./PanelOverlay').then((m) => ({ default: m.PanelOverlay })),
   { ssr: false },
 );
 
@@ -312,6 +315,7 @@ export function GlobeLayout({
   const handlePanelClose = useCallback(() => {
     globeRef.current?.resetCamera();
   }, []);
+  const showRoutePanel = pathname.startsWith('/g/');
 
   // Reset initial focus on path changes
   useEffect(() => {
@@ -559,11 +563,13 @@ export function GlobeLayout({
       {workspaceCardsVisible && <WorkspaceCards onClose={() => setWorkspaceCardsVisible(false)} />}
 
       {/* Panel overlay — z-30: entity detail panels over the globe */}
-      <PanelOverlay
-        onClose={handlePanelClose}
-        collapsed={seneca.isOpen}
-        onExpand={() => seneca.close()}
-      />
+      {showRoutePanel && (
+        <PanelOverlay
+          onClose={handlePanelClose}
+          collapsed={seneca.isOpen}
+          onExpand={() => seneca.close()}
+        />
+      )}
 
       {/* Cursor-following tooltip */}
       <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} showMatchCta={!isAuthenticated} />

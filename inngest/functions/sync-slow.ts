@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { executeSlowSync } from '@/lib/sync/slow';
 import { pingHeartbeat, errMsg, capMsg, alertCritical } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
+import { withCronMonitor } from '@/lib/sentry-cron';
 
 export const syncSlow = inngest.createFunction(
   {
@@ -29,9 +30,10 @@ export const syncSlow = inngest.createFunction(
     },
     triggers: [{ cron: '0 4 * * *' }, { event: 'drepscore/sync.slow' }],
   },
-  async ({ step }) => {
-    const result = await step.run('execute-slow-sync', () => executeSlowSync());
-    await step.run('heartbeat', () => pingHeartbeat('HEARTBEAT_URL_DAILY'));
-    return result;
-  },
+  async ({ step }) =>
+    withCronMonitor('sync-slow', '0 4 * * *', async () => {
+      const result = await step.run('execute-slow-sync', () => executeSlowSync());
+      await step.run('heartbeat', () => pingHeartbeat('HEARTBEAT_URL_DAILY'));
+      return result;
+    }),
 );

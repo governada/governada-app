@@ -7,7 +7,6 @@
 import {
   fetchAllDReps,
   fetchDRepsWithDetails,
-  fetchDRepVotes,
   checkKoiosHealth,
   parseMetadataFields,
 } from '@/utils/koios';
@@ -20,8 +19,6 @@ import {
   calculateReliability,
   calculateEffectiveParticipation,
   calculateProfileCompleteness,
-  calculateWeightedRationaleRate,
-  hasQualityRationale,
   applyRationaleCurve,
   lovelaceToAda,
   getSizeTier,
@@ -30,6 +27,8 @@ import {
 import { isWellDocumented } from '@/utils/documentation';
 import { DRep } from '@/types/drep';
 import { getActiveProposalEpochs, getActualProposalCount } from '@/lib/data';
+import { getSupabaseAdmin } from '@/lib/supabase';
+import { calculateWeightedRationaleProvisionRate, loadCachedDRepVotes } from '@/lib/drep-votes';
 
 // ---------------------------------------------------------------------------
 // Weighting Philosophy (V3 — Rationale-Forward)
@@ -137,7 +136,7 @@ export function blockTimeToEpoch(blockTime: number): number {
  * Compute vote counts per epoch from vote array
  * Groups votes by epoch_no (or derives from block_time if missing) and returns array of counts + first epoch
  */
-function computeEpochVoteCounts(votes: Awaited<ReturnType<typeof fetchDRepVotes>>): {
+function computeEpochVoteCounts(votes: DRepVotesResponse): {
   counts: number[];
   firstEpoch: number | undefined;
 } {
@@ -168,68 +167,24 @@ function computeEpochVoteCounts(votes: Awaited<ReturnType<typeof fetchDRepVotes>
   return { counts, firstEpoch: minEpoch };
 }
 
-/** Max concurrent vote fetches to avoid overwhelming the API */
-const VOTE_CONCURRENCY = 5;
-
-/**
- * Fetch votes for multiple DReps with limited concurrency
- */
-async function fetchVotesBatched(
-  drepIds: string[],
-): Promise<Record<string, Awaited<ReturnType<typeof fetchDRepVotes>>>> {
-  const votesMap: Record<string, Awaited<ReturnType<typeof fetchDRepVotes>>> = {};
-  let failedCount = 0;
-  for (let i = 0; i < drepIds.length; i += VOTE_CONCURRENCY) {
-    const chunk = drepIds.slice(i, i + VOTE_CONCURRENCY);
-    const results = await Promise.all(
-      chunk.map(async (id) => {
-        try {
-          const votes = await fetchDRepVotes(id);
-          return { id, votes, ok: true };
-        } catch (error) {
-          logger.error('[DRepScore] Failed to fetch votes', { drepId: id, error });
-          return { id, votes: [], ok: false };
-        }
-      }),
-    );
-    for (const { id, votes, ok } of results) {
-      votesMap[id] = votes;
-      if (!ok) failedCount++;
-    }
-  }
-
-  // Alert if >10% of vote fetches failed — likely a Koios issue, not individual DRep problems
-  if (drepIds.length >= 10 && failedCount / drepIds.length > 0.1) {
-    logger.warn('[DRepScore] High vote fetch failure rate', {
-      failed: failedCount,
-      total: drepIds.length,
-      rate: `${Math.round((failedCount / drepIds.length) * 100)}%`,
-    });
-  }
-
-  return votesMap;
-}
-
 /**
  * Fetch enriched DReps with drepScore, sorted by score DESC then voting_power DESC.
  * Loads ALL registered DReps in batches (no limit).
  * @param wellDocumentedOnly - If true, filter to well-documented DReps only (default view)
  * @param options.proposalContextMap - When provided, enables proposal-type-weighted rationale scoring
- * @param options.prefetchedVotes - Pre-fetched votes map (from fetchAllVotesBulk). Skips per-DRep vote fetching.
  */
 export async function getEnrichedDReps(
   wellDocumentedOnly: boolean = true,
   options?: {
     includeRawVotes?: boolean;
     proposalContextMap?: Map<string, ProposalContext>;
-    prefetchedVotes?: Record<string, DRepVotesResponse>;
   },
 ): Promise<{
   dreps: EnrichedDRep[];
   allDReps: EnrichedDRep[];
   error: boolean;
   totalAvailable: number;
-  rawVotesMap?: Record<string, Awaited<ReturnType<typeof fetchDRepVotes>>>;
+  rawVotesMap?: Record<string, DRepVotesResponse>;
 }> {
   const isDev = process.env.NODE_ENV === 'development';
 
@@ -289,8 +244,10 @@ export async function getEnrichedDReps(
       });
     }
 
+    const supabase = getSupabaseAdmin();
+    const { latestVotesByDRep } = await loadCachedDRepVotes(supabase);
     const allBaseDreps: DRep[] = [];
-    const allRawVotes: Record<string, Awaited<ReturnType<typeof fetchDRepVotes>>> = {};
+    const allRawVotes: Record<string, DRepVotesResponse> = {};
 
     for (let offset = 0; offset < allDrepIds.length; offset += BATCH_SIZE) {
       const batchIds = allDrepIds.slice(offset, offset + BATCH_SIZE);
@@ -312,11 +269,9 @@ export async function getEnrichedDReps(
         return bPower - aPower;
       });
 
-      const votesMap = options?.prefetchedVotes
-        ? Object.fromEntries(
-            sortedInfo.map((i) => [i.drep_id, options.prefetchedVotes![i.drep_id] || []]),
-          )
-        : await fetchVotesBatched(sortedInfo.map((i) => i.drep_id));
+      const votesMap = Object.fromEntries(
+        sortedInfo.map((infoRow) => [infoRow.drep_id, latestVotesByDRep[infoRow.drep_id] || []]),
+      );
 
       if (options?.includeRawVotes) {
         Object.assign(allRawVotes, votesMap);
@@ -326,18 +281,7 @@ export async function getEnrichedDReps(
 
       const batchDreps: DRep[] = sortedInfo.map((drepInfo) => {
         const drepMetadata = metadata.find((m) => m.drep_id === drepInfo.drep_id);
-        const rawVotes = votesMap[drepInfo.drep_id] || [];
-
-        // Deduplicate: keep only the latest vote per proposal (by block_time)
-        const latestByProposal = new Map<string, (typeof rawVotes)[number]>();
-        for (const v of rawVotes) {
-          const key = `${v.proposal_tx_hash}-${v.proposal_index}`;
-          const existing = latestByProposal.get(key);
-          if (!existing || v.block_time > existing.block_time) {
-            latestByProposal.set(key, v);
-          }
-        }
-        const votes = [...latestByProposal.values()];
+        const votes = votesMap[drepInfo.drep_id] || [];
 
         const yesVotes = votes.filter((v) => v.vote === 'Yes').length;
         const noVotes = votes.filter((v) => v.vote === 'No').length;
@@ -348,14 +292,14 @@ export async function getEnrichedDReps(
 
         const participationRate = calculateParticipationRate(votes.length, actualProposalCount);
 
-        // V2: Proposal-type-weighted rationale with quality threshold
+        // Legacy rationale_rate now follows the cached rationale-presence contract.
         let rationaleRate: number;
         if (proposalCtx && proposalCtx.size > 0) {
-          rationaleRate = calculateWeightedRationaleRate(votes, proposalCtx);
+          rationaleRate = calculateWeightedRationaleProvisionRate(votes, proposalCtx);
         } else {
-          // Fallback: simple rate with quality check
-          const qualityCount = votes.filter((v) => hasQualityRationale(v)).length;
-          rationaleRate = votes.length > 0 ? Math.round((qualityCount / votes.length) * 100) : 0;
+          const votesWithRationale = votes.filter((vote) => vote.has_rationale).length;
+          rationaleRate =
+            votes.length > 0 ? Math.round((votesWithRationale / votes.length) * 100) : 0;
         }
 
         const deliberationModifier = calculateDeliberationModifier(yesVotes, noVotes, abstainVotes);

@@ -1,24 +1,16 @@
 import { NextRequest } from 'next/server';
 import { withApiHandler } from '@/lib/api/handler';
 import { apiSuccess, apiError } from '@/lib/api/response';
-import { getAllProposalsWithVoteSummary } from '@/lib/data';
+import {
+  fetchProposalListPage,
+  type ProposalListSort,
+  type ProposalListStatus,
+} from '@/lib/governance/proposalList';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import type { ApiContext } from '@/lib/api/handler';
 
 const VALID_STATUSES = ['active', 'ratified', 'enacted', 'expired', 'dropped', 'all'] as const;
 const VALID_SORTS = ['newest', 'most_votes', 'most_contested'] as const;
-
-function getProposalStatus(p: {
-  enactedEpoch?: number | null;
-  ratifiedEpoch?: number | null;
-  expiredEpoch?: number | null;
-  droppedEpoch?: number | null;
-}): string {
-  if (p.enactedEpoch) return 'enacted';
-  if (p.ratifiedEpoch) return 'ratified';
-  if (p.expiredEpoch) return 'expired';
-  if (p.droppedEpoch) return 'dropped';
-  return 'active';
-}
 
 async function handler(request: NextRequest, ctx: ApiContext) {
   const url = request.nextUrl;
@@ -52,31 +44,14 @@ async function handler(request: NextRequest, ctx: ApiContext) {
     );
   }
 
-  const proposals = await getAllProposalsWithVoteSummary();
-
-  let filtered = proposals.map((p) => ({ ...p, status: getProposalStatus(p) }));
-
-  if (status !== 'all') {
-    filtered = filtered.filter((p) => p.status === status);
-  }
-
-  if (type) {
-    filtered = filtered.filter((p) => p.proposalType === type);
-  }
-
-  if (sort === 'most_votes') {
-    filtered.sort((a, b) => b.totalVotes - a.totalVotes);
-  } else if (sort === 'most_contested') {
-    filtered.sort((a, b) => {
-      const contestA = a.totalVotes > 0 ? Math.min(a.yesCount, a.noCount) / a.totalVotes : 0;
-      const contestB = b.totalVotes > 0 ? Math.min(b.yesCount, b.noCount) / b.totalVotes : 0;
-      return contestB - contestA;
-    });
-  }
-  // 'newest' is default sort from the data layer (block_time DESC)
-
-  const total = filtered.length;
-  const page = filtered.slice(offset, offset + limit);
+  const supabase = getSupabaseAdmin();
+  const { proposals: page, total } = await fetchProposalListPage(supabase, {
+    status: status as ProposalListStatus,
+    type,
+    sort: sort as ProposalListSort,
+    limit,
+    offset,
+  });
 
   const data = page.map((p) => ({
     tx_hash: p.txHash,

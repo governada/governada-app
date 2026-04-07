@@ -14,8 +14,9 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
-import { SyncLogger, batchUpsert, errMsg } from '@/lib/sync-utils';
+import { SyncLogger, batchUpsert, errMsg, fetchAll } from '@/lib/sync-utils';
 import { blockTimeToEpoch } from '@/lib/koios';
+import { getSyncCursorTimestamp, setSyncCursorTimestamp } from '@/lib/sync/cursors';
 import {
   fetchDRepDelegatorsFull,
   fetchDRepUpdates,
@@ -26,6 +27,10 @@ import {
 import { createHash } from 'crypto';
 
 const DELEGATOR_CONCURRENCY = 5;
+const DREP_METADATA_ARCHIVE_CURSOR = 'metadata_archive:drep';
+const PROPOSAL_METADATA_ARCHIVE_CURSOR = 'metadata_archive:proposal';
+const RATIONALE_METADATA_ARCHIVE_CURSOR = 'metadata_archive:rationale';
+const DREP_METADATA_FETCH_BATCH_SIZE = 50;
 
 // ---------------------------------------------------------------------------
 // 1. DRep Delegator Snapshots
@@ -582,6 +587,286 @@ function detectCipStandard(
   return 'unknown';
 }
 
+function maxTimestamp(current: string | null, candidate: string | null | undefined): string | null {
+  if (!candidate) return current;
+  if (!current) return candidate;
+  return current > candidate ? current : candidate;
+}
+
+async function commitMetadataArchiveCursor(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  syncType: string,
+  startCursor: string | null,
+  maxSeenTimestamp: string | null,
+  completedAt: string,
+  hadErrors: boolean,
+): Promise<void> {
+  if (hadErrors) return;
+
+  const nextCursor = maxSeenTimestamp ?? (startCursor === null ? completedAt : null);
+  if (!nextCursor) return;
+
+  await setSyncCursorTimestamp(supabase, syncType, nextCursor);
+}
+
+async function syncMetadataArchiveIncremental(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  syncLog: SyncLogger,
+): Promise<{
+  drepMetadataArchived: number;
+  proposalMetadataArchived: number;
+  rationaleMetadataArchived: number;
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  let drepMetadataArchived = 0;
+  let proposalMetadataArchived = 0;
+  let rationaleMetadataArchived = 0;
+
+  try {
+    const completedAt = new Date().toISOString();
+
+    const drepCursor = await getSyncCursorTimestamp(supabase, DREP_METADATA_ARCHIVE_CURSOR);
+    const drepCandidates = await fetchAll(() => {
+      let query = supabase
+        .from('dreps')
+        .select('id, anchor_url, anchor_hash, profile_last_changed_at')
+        .not('anchor_url', 'is', null)
+        .order('profile_last_changed_at', { ascending: true });
+
+      if (drepCursor !== null) {
+        query = query
+          .not('profile_last_changed_at', 'is', null)
+          .gt('profile_last_changed_at', drepCursor);
+      }
+
+      return query;
+    });
+
+    let maxDrepCursor: string | null = null;
+    if (drepCandidates.length > 0) {
+      const { fetchDRepMetadata } = await import('@/utils/koios');
+
+      for (let i = 0; i < drepCandidates.length; i += DREP_METADATA_FETCH_BATCH_SIZE) {
+        const batch = drepCandidates.slice(i, i + DREP_METADATA_FETCH_BATCH_SIZE);
+        const drepIds = batch.map((drep) => drep.id as string);
+
+        try {
+          const metadataResponse = await fetchDRepMetadata(drepIds);
+          const rows = metadataResponse
+            .filter((meta) => meta.meta_json)
+            .map((meta) => {
+              const jsonStr = JSON.stringify(meta.meta_json);
+              return {
+                entity_type: 'drep' as const,
+                entity_id: meta.drep_id,
+                meta_url: meta.meta_url,
+                meta_hash: meta.meta_hash,
+                meta_json: meta.meta_json,
+                cip_standard: detectCipStandard(meta.meta_json as Record<string, unknown>),
+                fetch_status: (meta.is_valid === false ? 'hash_mismatch' : 'success') as
+                  | 'success'
+                  | 'hash_mismatch',
+                content_hash: hashContent(jsonStr),
+              };
+            });
+
+          if (rows.length > 0) {
+            const result = await batchUpsert(
+              supabase,
+              'metadata_archive',
+              rows,
+              'entity_type,entity_id,content_hash',
+              'metadata-archive-drep',
+            );
+            drepMetadataArchived += result.success;
+            if (result.errors > 0) {
+              errors.push(`DRep metadata upsert errors: ${result.errors}`);
+            }
+          }
+        } catch (err) {
+          errors.push(
+            `DRep metadata fetch batch ${Math.floor(i / DREP_METADATA_FETCH_BATCH_SIZE)}: ${errMsg(err)}`,
+          );
+        }
+
+        for (const candidate of batch) {
+          maxDrepCursor = maxTimestamp(
+            maxDrepCursor,
+            (candidate.profile_last_changed_at as string | null) ?? null,
+          );
+        }
+      }
+    }
+
+    await commitMetadataArchiveCursor(
+      supabase,
+      DREP_METADATA_ARCHIVE_CURSOR,
+      drepCursor,
+      maxDrepCursor,
+      completedAt,
+      errors.some((error) => error.startsWith('DRep metadata')),
+    );
+
+    const proposalCursor = await getSyncCursorTimestamp(supabase, PROPOSAL_METADATA_ARCHIVE_CURSOR);
+    const proposalsWithMeta = await fetchAll(() => {
+      let query = supabase
+        .from('proposals')
+        .select('tx_hash, proposal_index, meta_url, meta_hash, meta_json, updated_at')
+        .not('meta_json', 'is', null)
+        .order('updated_at', { ascending: true });
+
+      if (proposalCursor !== null) {
+        query = query.not('updated_at', 'is', null).gt('updated_at', proposalCursor);
+      }
+
+      return query;
+    });
+
+    let maxProposalCursor: string | null = null;
+    if (proposalsWithMeta.length > 0) {
+      const rows = proposalsWithMeta
+        .filter((proposal) => proposal.meta_json)
+        .map((proposal) => {
+          const jsonStr = JSON.stringify(proposal.meta_json);
+          return {
+            entity_type: 'proposal' as const,
+            entity_id: `${proposal.tx_hash}#${proposal.proposal_index}`,
+            meta_url: proposal.meta_url,
+            meta_hash: proposal.meta_hash,
+            meta_json: proposal.meta_json,
+            cip_standard: 'CIP-108' as const,
+            fetch_status: 'success' as const,
+            content_hash: hashContent(jsonStr),
+          };
+        });
+
+      if (rows.length > 0) {
+        const result = await batchUpsert(
+          supabase,
+          'metadata_archive',
+          rows,
+          'entity_type,entity_id,content_hash',
+          'metadata-archive-proposal',
+        );
+        proposalMetadataArchived += result.success;
+        if (result.errors > 0) {
+          errors.push(`Proposal metadata upsert errors: ${result.errors}`);
+        }
+      }
+
+      for (const proposal of proposalsWithMeta) {
+        maxProposalCursor = maxTimestamp(
+          maxProposalCursor,
+          (proposal.updated_at as string | null) ?? null,
+        );
+      }
+    }
+
+    await commitMetadataArchiveCursor(
+      supabase,
+      PROPOSAL_METADATA_ARCHIVE_CURSOR,
+      proposalCursor,
+      maxProposalCursor,
+      completedAt,
+      errors.some((error) => error.startsWith('Proposal metadata')),
+    );
+
+    const rationaleCursor = await getSyncCursorTimestamp(
+      supabase,
+      RATIONALE_METADATA_ARCHIVE_CURSOR,
+    );
+    const votesWithRationales = await fetchAll(() => {
+      let query = supabase
+        .from('vote_rationales')
+        .select('vote_tx_hash, meta_url, rationale_text, fetched_at')
+        .not('rationale_text', 'is', null)
+        .neq('rationale_text', '')
+        .order('fetched_at', { ascending: true });
+
+      if (rationaleCursor !== null) {
+        query = query.not('fetched_at', 'is', null).gt('fetched_at', rationaleCursor);
+      }
+
+      return query;
+    });
+
+    let maxRationaleCursor: string | null = null;
+    if (votesWithRationales.length > 0) {
+      const txHashes = votesWithRationales.map((vote) => vote.vote_tx_hash as string);
+      const metaHashByVote = new Map<string, string | null>();
+      for (let i = 0; i < txHashes.length; i += 1000) {
+        const { data: voteHashes } = await supabase
+          .from('drep_votes')
+          .select('vote_tx_hash, meta_hash')
+          .in('vote_tx_hash', txHashes.slice(i, i + 1000));
+        for (const vote of voteHashes || []) {
+          metaHashByVote.set(vote.vote_tx_hash, vote.meta_hash);
+        }
+      }
+
+      const rows = votesWithRationales.map((vote) => {
+        const metaJson = { rationale: vote.rationale_text };
+        return {
+          entity_type: 'vote_rationale' as const,
+          entity_id: vote.vote_tx_hash,
+          meta_url: vote.meta_url,
+          meta_hash: metaHashByVote.get(vote.vote_tx_hash as string) ?? null,
+          meta_json: metaJson,
+          cip_standard: 'CIP-100' as const,
+          fetch_status: 'success' as const,
+          content_hash: hashContent(JSON.stringify(metaJson)),
+        };
+      });
+
+      if (rows.length > 0) {
+        const result = await batchUpsert(
+          supabase,
+          'metadata_archive',
+          rows,
+          'entity_type,entity_id,content_hash',
+          'metadata-archive-rationale',
+        );
+        rationaleMetadataArchived += result.success;
+        if (result.errors > 0) {
+          errors.push(`Rationale metadata upsert errors: ${result.errors}`);
+        }
+      }
+
+      for (const vote of votesWithRationales) {
+        maxRationaleCursor = maxTimestamp(
+          maxRationaleCursor,
+          (vote.fetched_at as string | null) ?? null,
+        );
+      }
+    }
+
+    await commitMetadataArchiveCursor(
+      supabase,
+      RATIONALE_METADATA_ARCHIVE_CURSOR,
+      rationaleCursor,
+      maxRationaleCursor,
+      completedAt,
+      errors.some((error) => error.startsWith('Rationale metadata')),
+    );
+
+    const metrics = {
+      drepMetadataArchived,
+      proposalMetadataArchived,
+      rationaleMetadataArchived,
+    };
+    await syncLog.finalize(errors.length === 0, errors.length ? errors.join('; ') : null, metrics);
+    return { ...metrics, errors };
+  } catch (err) {
+    await syncLog.finalize(false, errMsg(err), {
+      drepMetadataArchived,
+      proposalMetadataArchived,
+      rationaleMetadataArchived,
+    });
+    throw err;
+  }
+}
+
 export async function syncMetadataArchive(): Promise<{
   drepMetadataArchived: number;
   proposalMetadataArchived: number;
@@ -591,12 +876,8 @@ export async function syncMetadataArchive(): Promise<{
   const supabase = getSupabaseAdmin();
   const syncLog = new SyncLogger(supabase, 'metadata_archive');
   await syncLog.start();
-
-  const errors: string[] = [];
-  let drepMetadataArchived = 0;
-  let proposalMetadataArchived = 0;
-  let rationaleMetadataArchived = 0;
-
+  return syncMetadataArchiveIncremental(supabase, syncLog);
+  /*
   try {
     // Archive DRep metadata (CIP-119) — fetch fresh from Koios to get raw JSON
     // The dreps table stores parsed fields; we archive the full raw metadata blob.
@@ -695,27 +976,39 @@ export async function syncMetadataArchive(): Promise<{
       }
     }
 
-    // Archive vote rationale metadata (CIP-100) — from drep_votes.meta_json
-    const { data: votesWithMeta } = await supabase
-      .from('drep_votes')
-      .select('vote_tx_hash, meta_url, meta_hash, meta_json')
-      .not('meta_json', 'is', null);
+    // Archive vote rationale content from the normalized rationale cache.
+    // The drep_votes contract no longer persists raw meta_json.
+    const { data: votesWithRationales } = await supabase
+      .from('vote_rationales')
+      .select('vote_tx_hash, meta_url, rationale_text')
+      .not('rationale_text', 'is', null)
+      .neq('rationale_text', '');
 
-    if (votesWithMeta?.length) {
+    if (votesWithRationales?.length) {
+      const txHashes = votesWithRationales.map((vote) => vote.vote_tx_hash);
+      const metaHashByVote = new Map<string, string | null>();
+      for (let i = 0; i < txHashes.length; i += 1000) {
+        const { data: voteHashes } = await supabase
+          .from('drep_votes')
+          .select('vote_tx_hash, meta_hash')
+          .in('vote_tx_hash', txHashes.slice(i, i + 1000));
+        for (const vote of voteHashes || []) {
+          metaHashByVote.set(vote.vote_tx_hash, vote.meta_hash);
+        }
+      }
       const rows = [];
-      for (const v of votesWithMeta) {
-        if (!v.meta_json) continue;
-
-        const jsonStr = JSON.stringify(v.meta_json);
+      for (const vote of votesWithRationales) {
+        const metaJson = { rationale: vote.rationale_text };
+        const jsonStr = JSON.stringify(metaJson);
         const contentHash = hashContent(jsonStr);
 
         rows.push({
           entity_type: 'vote_rationale' as const,
-          entity_id: v.vote_tx_hash,
-          meta_url: v.meta_url,
-          meta_hash: v.meta_hash,
-          meta_json: v.meta_json,
-          cip_standard: detectCipStandard(v.meta_json as Record<string, unknown>),
+          entity_id: vote.vote_tx_hash,
+          meta_url: vote.meta_url,
+          meta_hash: metaHashByVote.get(vote.vote_tx_hash) ?? null,
+          meta_json: metaJson,
+          cip_standard: 'CIP-100' as const,
           fetch_status: 'success' as const,
           content_hash: contentHash,
         });
@@ -751,4 +1044,5 @@ export async function syncMetadataArchive(): Promise<{
     });
     throw err;
   }
+  */
 }

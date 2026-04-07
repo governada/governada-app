@@ -44,6 +44,7 @@ interface LivingBriefProps {
   proposalIndex: number;
   // First Look context
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
   yesCount: number;
   noCount: number;
   abstainCount: number;
@@ -166,13 +167,16 @@ function BriefSkeleton() {
 // Voting requirements helper
 // ---------------------------------------------------------------------------
 
-function getVotingRequirementsSummary(proposalType: string): string {
-  const bodies = getVotingBodies(proposalType);
+function getVotingRequirementsSummary(
+  proposalType: string,
+  paramChanges?: Record<string, unknown> | null,
+): string {
+  const bodies = getVotingBodies(proposalType, paramChanges);
   const hasSpo = bodies.includes('spo');
   const hasCc = bodies.includes('cc');
 
   if (proposalType === 'InfoAction') {
-    return 'This is an advisory action — DReps vote but there is no binding threshold. The result signals community sentiment.';
+    return 'This is an advisory action. DReps, SPOs, and the Constitutional Committee can all signal on it, but it does not enact changes on-chain.';
   }
 
   const parts: string[] = ['Requires DRep approval'];
@@ -202,6 +206,7 @@ export function LivingBrief({
   txHash,
   proposalIndex,
   proposalType,
+  paramChanges,
   yesCount,
   noCount,
   abstainCount,
@@ -300,6 +305,7 @@ export function LivingBrief({
       <FirstLook
         aiSummary={aiSummary}
         proposalType={proposalType}
+        paramChanges={paramChanges}
         yesCount={yesCount}
         noCount={noCount}
         abstainCount={abstainCount}
@@ -401,6 +407,7 @@ export function LivingBrief({
 function FirstLook({
   aiSummary,
   proposalType,
+  paramChanges,
   yesCount,
   noCount,
   abstainCount,
@@ -411,6 +418,7 @@ function FirstLook({
 }: {
   aiSummary: string | null;
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
   yesCount: number;
   noCount: number;
   abstainCount: number;
@@ -421,7 +429,7 @@ function FirstLook({
 }) {
   const totalVotes = yesCount + noCount + abstainCount;
   const articles = getRelevantArticles(proposalType);
-  const votingRequirements = getVotingRequirementsSummary(proposalType);
+  const votingRequirements = getVotingRequirementsSummary(proposalType, paramChanges);
   const rationalesWithText = rationales.filter((r) => r.rationaleAiSummary || r.rationaleText);
 
   // Build the early signal message

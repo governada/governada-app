@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getRuntimeRelease } from '@/lib/runtimeMetadata';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,5 +11,5 @@ export const dynamic = 'force-dynamic';
  * checked by /api/health/deep for monitoring, not deploy gating.
  */
 export function GET() {
-  return NextResponse.json({ status: 'ok' }, { status: 200 });
+  return NextResponse.json({ status: 'ok', release: getRuntimeRelease() }, { status: 200 });
 }

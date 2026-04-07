@@ -100,7 +100,7 @@ export interface SerializedDRep {
 /** Result of phase 2: fetch + enrich DReps */
 export interface FetchDRepsResult {
   dreps: SerializedDRep[];
-  rawVotesMap: Record<string, DRepVote[]> | null;
+  latestVotesMap: Record<string, DRepVote[]> | null;
   handlesResolved: number;
   delegatorCounts: Record<string, number>;
   errors: string[];
@@ -114,11 +114,9 @@ export interface UpsertDRepsResult {
   durationMs: number;
 }
 
-/** Result of phase 4: alignment + snapshots + score history */
+/** Result of phase 4: alignment-only post-sync work. */
 export interface PostSyncResult {
   alignmentComputed: boolean;
-  delegationSnapshotsInserted: number;
-  scoreHistoryInserted: number;
   errors: string[];
   durationMs: number;
 }
@@ -278,7 +276,7 @@ export async function phaseFetchDReps(
   }
 
   const allDReps = result.allDReps;
-  const rawVotesMap = (result.rawVotesMap as Record<string, DRepVote[]>) || null;
+  const latestVotesMap = (result.rawVotesMap as Record<string, DRepVote[]>) || null;
   log.info('[dreps] Enriched DReps', { count: allDReps.length });
 
   // ADA Handle resolution (non-fatal)
@@ -352,7 +350,7 @@ export async function phaseFetchDReps(
 
   return {
     dreps: serializedDreps,
-    rawVotesMap,
+    latestVotesMap,
     handlesResolved,
     delegatorCounts,
     errors,
@@ -474,28 +472,25 @@ export async function phaseUpsertDReps(
 }
 
 /**
- * Phase 4: Alignment scores, delegation snapshots, and score history.
- * All three run in parallel within this phase. Each sub-task is non-fatal.
+ * Phase 4: Alignment scores.
+ * Current-epoch delegation snapshots and score history are scoring-owned.
  */
 export async function phasePostSync(
   dreps: SerializedDRep[],
-  rawVotesMap: Record<string, DRepVote[]> | null,
+  latestVotesMap: Record<string, DRepVote[]> | null,
   classifiedProposals: ClassifiedProposal[],
-  delegatorCounts: Record<string, number>,
 ): Promise<PostSyncResult> {
   const start = Date.now();
   const supabase = getSupabaseAdmin();
   const errors: string[] = [];
   let alignmentComputed = false;
-  let delegationSnapshotsInserted = 0;
-  let scoreHistoryInserted = 0;
 
   const parallelResults = await Promise.allSettled([
     // Alignment scores
     (async () => {
-      if (!rawVotesMap || classifiedProposals.length === 0) return;
+      if (!latestVotesMap || classifiedProposals.length === 0) return;
       const updates = dreps.map((drep) => {
-        const votes = rawVotesMap[drep.drepId] || [];
+        const votes = latestVotesMap[drep.drepId] || [];
         // computeAllCategoryScores expects the enriched DRep format
         const drepObj = {
           drepId: drep.drepId,
@@ -554,68 +549,6 @@ export async function phasePostSync(
       alignmentComputed = true;
       log.info('[dreps] Alignment scores computed', { count: r.success });
     })(),
-
-    // Delegation snapshots
-    (async () => {
-      try {
-        const { data: statsRow } = await supabase
-          .from('governance_stats')
-          .select('current_epoch')
-          .eq('id', 1)
-          .single();
-        const epoch = statsRow?.current_epoch ?? 0;
-        if (epoch === 0) return;
-
-        const snapshots = dreps.map((drep) => ({
-          epoch,
-          drep_id: drep.drepId,
-          delegator_count: delegatorCounts[drep.drepId] ?? 0,
-          total_power_lovelace: Math.round(Number(drep.votingPowerLovelace || '0')).toString(),
-          snapshot_at: new Date().toISOString(),
-        }));
-
-        let inserted = 0;
-        for (let i = 0; i < snapshots.length; i += 100) {
-          const batch = snapshots.slice(i, i + 100);
-          const { error } = await supabase
-            .from('delegation_snapshots')
-            .upsert(batch as unknown as Record<string, unknown>[], {
-              onConflict: 'epoch,drep_id',
-            });
-          if (!error) inserted += batch.length;
-        }
-        delegationSnapshotsInserted = inserted;
-        if (inserted > 0) {
-          log.info('[dreps] Delegation snapshots', { inserted, epoch });
-        }
-      } catch (err) {
-        log.warn('[dreps] Delegation snapshot failed (non-fatal)', { error: errMsg(err) });
-      }
-    })(),
-
-    // Score history snapshot
-    (async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const historyRows = dreps.map((drep) => ({
-        drep_id: drep.drepId,
-        score: drep.drepScore,
-        effective_participation: drep.effectiveParticipation,
-        rationale_rate: drep.rationaleRate,
-        reliability_score: drep.reliabilityScore,
-        profile_completeness: drep.profileCompleteness,
-        snapshot_date: today,
-      }));
-      const r = await batchUpsert(
-        supabase,
-        'drep_score_history',
-        historyRows as unknown as Record<string, unknown>[],
-        'drep_id,snapshot_date',
-        'Score history',
-      );
-      scoreHistoryInserted = r.success;
-      if (r.success > 0)
-        log.info('[dreps] Score history snapshots', { count: r.success, date: today });
-    })(),
   ]);
 
   for (const r of parallelResults) {
@@ -628,8 +561,6 @@ export async function phasePostSync(
 
   return {
     alignmentComputed,
-    delegationSnapshotsInserted,
-    scoreHistoryInserted,
     errors,
     durationMs: Date.now() - start,
   };
@@ -734,12 +665,11 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
     const upsertResult = await phaseUpsertDReps(drepData.dreps, drepData.delegatorCounts);
     phaseTiming.step4_upsert_ms = upsertResult.durationMs;
 
-    // Phase 4: Post-sync (alignment, snapshots, score history)
+    // Phase 4: Post-sync (alignment)
     const postSyncResult = await phasePostSync(
       drepData.dreps,
-      drepData.rawVotesMap,
+      drepData.latestVotesMap,
       proposalResult.classifiedProposals,
-      drepData.delegatorCounts,
     );
     allErrors.push(...postSyncResult.errors);
     phaseTiming.step56_parallel_ms = postSyncResult.durationMs;

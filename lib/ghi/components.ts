@@ -248,10 +248,10 @@ export async function computeDeliberationQuality({
     // Fallback: binary rationale rate
     const { data: allVotes } = await supabase
       .from('drep_votes')
-      .select('meta_url')
+      .select('has_rationale, meta_url')
       .gte('epoch_no', recentEpochMin);
     if (allVotes?.length) {
-      const withRationale = allVotes.filter((v) => v.meta_url).length;
+      const withRationale = allVotes.filter((vote) => vote.has_rationale ?? !!vote.meta_url).length;
       rationaleScore = Math.round((withRationale / allVotes.length) * 100);
     }
   }

@@ -50,6 +50,7 @@ export const KoiosVoteListSchema = z
     vote: z.enum(['Yes', 'No', 'Abstain']),
     meta_url: z.string().nullable(),
     meta_hash: z.string().nullable(),
+    has_rationale: z.boolean(),
   })
   .passthrough();
 

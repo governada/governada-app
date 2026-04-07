@@ -776,14 +776,20 @@ async function executeListProposals(
   const results = filtered.slice(0, limit);
   const lines = results.map((p: any, i: number) => {
     const hash = p.txHash || p.tx_hash || '';
-    return `${i + 1}. [${p.type || p.proposalType}] "${String(p.title).slice(0, 60)}" (${p.status}) — ${hash.slice(0, 12)}#${p.index ?? 0}`;
+    const proposalIndex = p.proposalIndex ?? p.proposal_index ?? p.index ?? p.certIndex ?? 0;
+    return `${i + 1}. [${p.type || p.proposalType}] "${String(p.title).slice(0, 60)}" (${p.status}) — ${hash.slice(0, 12)}#${proposalIndex}`;
   });
 
   const firstHash = results[0]?.txHash || results[0]?.tx_hash;
   return {
     result: `${results.length} proposals${input.status ? ` (${input.status})` : ''}:\n${lines.join('\n')}`,
     globeCommands: firstHash
-      ? [{ type: 'pulse', nodeId: `proposal_${firstHash}_${results[0]?.index ?? 0}` }]
+      ? [
+          {
+            type: 'pulse',
+            nodeId: `proposal_${firstHash}_${results[0]?.proposalIndex ?? results[0]?.proposal_index ?? results[0]?.index ?? 0}`,
+          },
+        ]
       : [],
   };
 }

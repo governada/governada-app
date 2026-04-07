@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import { formatLocaleDate, formatLocaleNumber, formatLocaleTime } from '@/lib/i18n/format';
 import {
   RefreshCw,
   CheckCircle2,
@@ -105,8 +107,8 @@ interface IntegrityData {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(n: number | string): string {
-  return Number(n).toLocaleString();
+function fmt(n: number | string, locale?: string): string {
+  return formatLocaleNumber(Number(n), locale);
 }
 
 function pct1(n: number): string {
@@ -244,10 +246,12 @@ function DeltaBadge({
   delta,
   invertColor,
   unit = '',
+  locale,
 }: {
   delta: number;
   invertColor?: boolean;
   unit?: string;
+  locale?: string;
 }) {
   if (delta === 0) {
     return (
@@ -265,7 +269,7 @@ function DeltaBadge({
       ? Math.abs(delta).toFixed(2)
       : Math.abs(delta) < 10
         ? Math.abs(delta).toFixed(1)
-        : Math.round(Math.abs(delta)).toLocaleString();
+        : formatLocaleNumber(Math.round(Math.abs(delta)), locale);
   return (
     <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${colorCls}`}>
       <DeltaIcon className="h-2.5 w-2.5" />
@@ -284,6 +288,7 @@ function MetricCard({
   status,
   tooltip,
   delta,
+  locale,
 }: {
   title: string;
   value: string | number;
@@ -292,6 +297,7 @@ function MetricCard({
   status?: 'good' | 'warning' | 'critical';
   tooltip?: string;
   delta?: { value: number; invertColor?: boolean; unit?: string; label?: string };
+  locale?: string;
 }) {
   const statusColors = {
     good: 'text-green-500',
@@ -318,6 +324,7 @@ function MetricCard({
                         delta={delta.value}
                         invertColor={delta.invertColor}
                         unit={delta.unit}
+                        locale={locale}
                       />
                     </span>
                   </TooltipTrigger>
@@ -338,7 +345,7 @@ function MetricCard({
   );
 }
 
-function SyncRow({ entry }: { entry: IntegrityData['sync_history'][0] }) {
+function SyncRow({ entry, locale }: { entry: IntegrityData['sync_history'][0]; locale?: string }) {
   return (
     <tr className="border-b border-border/50 text-xs">
       <td className="py-1.5 pr-3">
@@ -355,7 +362,10 @@ function SyncRow({ entry }: { entry: IntegrityData['sync_history'][0] }) {
             <span className="cursor-default">{relativeTime(entry.started_at)}</span>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
-            {new Date(entry.started_at).toLocaleString()}
+            {formatLocaleDate(entry.started_at, locale, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
           </TooltipContent>
         </Tooltip>
       </td>
@@ -381,6 +391,7 @@ function SyncRow({ entry }: { entry: IntegrityData['sync_history'][0] }) {
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddress: string }) {
+  const { locale } = useLocale();
   const [data, setData] = useState<IntegrityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -504,11 +515,14 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="cursor-default ml-1 underline decoration-dotted">
-                    ({new Date(data.timestamp).toLocaleTimeString()})
+                    ({formatLocaleTime(data.timestamp, locale)})
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
-                  {new Date(data.timestamp).toLocaleString()}
+                  {formatLocaleDate(data.timestamp, locale, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
                 </TooltipContent>
               </Tooltip>
             </p>
@@ -530,10 +544,11 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
             <MetricCard
               title="Vote Power"
               value={pct1(vpPct)}
-              subtitle={`${fmt(vpc.with_power)} / ${fmt(vpc.total_votes)}`}
+              subtitle={`${fmt(vpc.with_power, locale)} / ${fmt(vpc.total_votes, locale)}`}
               icon={Zap}
               status={coverageStatus(vpPct)}
               tooltip="Percentage of votes with voting power attributed from Koios power history."
+              locale={locale}
               delta={
                 cmp?.vote_power_coverage
                   ? { value: cmp.vote_power_coverage.delta, unit: 'pp' }
@@ -543,10 +558,11 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
             <MetricCard
               title="Canonical Summaries"
               value={pct1(canonicalPct)}
-              subtitle={`${fmt(cs.with_canonical_summary)} / ${fmt(cs.total_proposals)}`}
+              subtitle={`${fmt(cs.with_canonical_summary, locale)} / ${fmt(cs.total_proposals, locale)}`}
               icon={CheckCircle2}
               status={coverageStatus(canonicalPct)}
               tooltip="Percentage of proposals with official vote tally from Koios /proposal_voting_summary."
+              locale={locale}
               delta={
                 cmp?.canonical_summary
                   ? { value: cmp.canonical_summary.delta, unit: 'pp' }
@@ -556,19 +572,21 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
             <MetricCard
               title="AI Proposals"
               value={pct1(proposalAiPct)}
-              subtitle={`${fmt(ai.proposals_with_summary)} / ${fmt(ai.proposals_with_abstract)}`}
+              subtitle={`${fmt(ai.proposals_with_summary, locale)} / ${fmt(ai.proposals_with_abstract, locale)}`}
               icon={TrendingUp}
               status={coverageStatus(proposalAiPct)}
               tooltip="Percentage of proposals (with abstracts) that have an AI-generated summary."
+              locale={locale}
               delta={cmp?.ai_proposal ? { value: cmp.ai_proposal.delta, unit: 'pp' } : undefined}
             />
             <MetricCard
               title="AI Rationales"
               value={pct1(rationaleAiPct)}
-              subtitle={`${fmt(ai.rationales_with_summary)} / ${fmt(ai.rationales_with_text)}`}
+              subtitle={`${fmt(ai.rationales_with_summary, locale)} / ${fmt(ai.rationales_with_text, locale)}`}
               icon={TrendingUp}
               status={coverageStatus(rationaleAiPct)}
               tooltip="Percentage of rationales (with text) that have an AI-generated summary."
+              locale={locale}
               delta={cmp?.ai_rationale ? { value: cmp.ai_rationale.delta, unit: 'pp' } : undefined}
             />
           </div>
@@ -609,21 +627,21 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
                   <span>
-                    Exact: <strong>{fmt(vpc.exact_count)}</strong>
+                    Exact: <strong>{fmt(vpc.exact_count, locale)}</strong>
                   </span>
                   <InfoTip text="Power matched to the exact epoch the vote was cast in." />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                   <span>
-                    Nearest: <strong>{fmt(vpc.nearest_count)}</strong>
+                    Nearest: <strong>{fmt(vpc.nearest_count, locale)}</strong>
                   </span>
                   <InfoTip text="Power from the closest available epoch (within 1-2 epochs)." />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
                   <span>
-                    NULL: <strong>{fmt(vpc.null_power)}</strong>
+                    NULL: <strong>{fmt(vpc.null_power, locale)}</strong>
                   </span>
                   <InfoTip text="No power data available from Koios for this vote's epoch range." />
                 </div>
@@ -672,18 +690,20 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <MetricCard
               title="Verified"
-              value={fmt(hv.rationale_verified)}
+              value={fmt(hv.rationale_verified, locale)}
               icon={CheckCircle2}
               status="good"
               tooltip="Rationales where fetched content hash matches the on-chain hash."
+              locale={locale}
             />
             <MetricCard
               title="Mismatch"
-              value={fmt(hv.rationale_mismatch)}
+              value={fmt(hv.rationale_mismatch, locale)}
               subtitle={`${hv.mismatch_rate_pct}% rate`}
               icon={AlertTriangle}
               status={hv.rationale_mismatch > 0 ? 'warning' : 'good'}
               tooltip="Rationales where content was modified after the on-chain hash was recorded."
+              locale={locale}
               delta={
                 cmp?.hash_mismatch_rate
                   ? { value: cmp.hash_mismatch_rate.delta, unit: 'pp', invertColor: true }
@@ -692,16 +712,18 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
             />
             <MetricCard
               title="Pending"
-              value={fmt(hv.rationale_pending)}
+              value={fmt(hv.rationale_pending, locale)}
               icon={Clock}
               tooltip="Rationales that haven't been hash-checked yet."
+              locale={locale}
             />
             <MetricCard
               title="Unreachable"
-              value={fmt(hv.rationale_unreachable)}
+              value={fmt(hv.rationale_unreachable, locale)}
               icon={XCircle}
               status={hv.rationale_unreachable > 100 ? 'warning' : undefined}
               tooltip="URLs that returned errors (404, timeout, CORS) when attempting verification."
+              locale={locale}
             />
           </div>
           <GuidancePanel>
@@ -765,7 +787,12 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="text-xs">
-                          {s.last_run ? new Date(s.last_run).toLocaleString() : 'Never run'}
+                          {s.last_run
+                            ? formatLocaleDate(s.last_run, locale, {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })
+                            : 'Never run'}
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -777,7 +804,7 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
                       )}
                       <span className="font-mono">{formatDuration(s.last_duration_ms)}</span>
                       <span className="text-muted-foreground">
-                        {fmt(s.success_count)} ok / {fmt(s.failure_count)} fail
+                        {fmt(s.success_count, locale)} ok / {fmt(s.failure_count, locale)} fail
                       </span>
                     </div>
                     {s.last_error && (
@@ -823,7 +850,7 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
                   </thead>
                   <tbody>
                     {data.sync_history.slice(0, 10).map((entry) => (
-                      <SyncRow key={entry.id} entry={entry} />
+                      <SyncRow key={entry.id} entry={entry} locale={locale} />
                     ))}
                   </tbody>
                 </table>
@@ -842,43 +869,49 @@ export function IntegrityDashboard({ adminAddress: _adminAddress }: { adminAddre
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             <MetricCard
               title="DReps"
-              value={fmt(stats.total_dreps)}
+              value={fmt(stats.total_dreps, locale)}
               icon={Database}
               tooltip="Total DRep records in the database."
+              locale={locale}
               delta={cmp?.total_dreps ? { value: cmp.total_dreps.delta } : undefined}
             />
             <MetricCard
               title="Votes"
-              value={fmt(stats.total_votes)}
+              value={fmt(stats.total_votes, locale)}
               icon={Activity}
               tooltip="Total individual vote records across all DReps and proposals."
+              locale={locale}
               delta={cmp?.total_votes ? { value: cmp.total_votes.delta } : undefined}
             />
             <MetricCard
               title="Proposals"
-              value={fmt(stats.total_proposals)}
+              value={fmt(stats.total_proposals, locale)}
               icon={TrendingUp}
               tooltip="Total governance proposals tracked."
+              locale={locale}
               delta={cmp?.total_proposals ? { value: cmp.total_proposals.delta } : undefined}
             />
             <MetricCard
               title="Rationales"
-              value={fmt(stats.total_rationales)}
+              value={fmt(stats.total_rationales, locale)}
               icon={Shield}
               tooltip="Total vote rationale documents fetched from DRep metadata URLs."
+              locale={locale}
               delta={cmp?.total_rationales ? { value: cmp.total_rationales.delta } : undefined}
             />
             <MetricCard
               title="Snapshots"
-              value={fmt(stats.total_power_snapshots)}
+              value={fmt(stats.total_power_snapshots, locale)}
               icon={Clock}
               tooltip="Total epoch-level voting power snapshots stored for DReps."
+              locale={locale}
             />
             <MetricCard
               title="DReps w/ Snaps"
-              value={fmt(stats.dreps_with_snapshots)}
+              value={fmt(stats.dreps_with_snapshots, locale)}
               icon={Zap}
               tooltip="Number of unique DReps that have at least one power snapshot."
+              locale={locale}
             />
           </div>
         </div>

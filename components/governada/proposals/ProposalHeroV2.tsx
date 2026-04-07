@@ -29,6 +29,7 @@ interface ProposalHeroV2Props {
   proposalIndex: number;
   title: string;
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
   status: string;
   withdrawalAmount: number | null;
   treasuryBalanceAda: number | null;
@@ -55,6 +56,7 @@ export function ProposalHeroV2({
   proposalIndex,
   title,
   proposalType,
+  paramChanges,
   status,
   withdrawalAmount,
   treasuryBalanceAda,
@@ -186,6 +188,7 @@ export function ProposalHeroV2({
             status={status}
             triBody={triBody}
             proposalType={proposalType}
+            paramChanges={paramChanges}
             accentColor={theme.accent}
           />
           {!isOpen && (
@@ -210,6 +213,7 @@ export function ProposalHeroV2({
           txHash={txHash}
           proposalIndex={proposalIndex}
           proposalType={proposalType}
+          paramChanges={paramChanges}
           yesCount={yesCount}
           noCount={noCount}
           abstainCount={abstainCount}

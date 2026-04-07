@@ -13,6 +13,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TemporalEvent } from '@/lib/constellation/fetchTemporalData';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import { formatLocaleDate } from '@/lib/i18n/format';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,6 +57,7 @@ export function TemporalScrubber({
   const animRef = useRef<number | null>(null);
   const startTimeRef = useRef(0);
   const startProgressRef = useRef(0);
+  const { locale } = useLocale();
 
   // Build cumulative vote map up to current progress
   const buildVoteMap = useCallback(
@@ -129,10 +132,9 @@ export function TemporalScrubber({
   const formatDate = useCallback(
     (p: number) => {
       const ts = epochStart + p * (epochEnd - epochStart);
-      const date = new Date(ts * 1000);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return formatLocaleDate(ts * 1000, locale, { month: 'short', day: 'numeric' });
     },
-    [epochStart, epochEnd],
+    [epochStart, epochEnd, locale],
   );
 
   // Count events up to current progress

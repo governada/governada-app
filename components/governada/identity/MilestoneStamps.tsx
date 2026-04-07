@@ -19,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { CITIZEN_MILESTONES } from '@/lib/citizenMilestones';
 import { ShareActions } from '@/components/ShareActions';
+import { CIVIC_IDENTITY_SHARE_URL } from '@/lib/navigation/civicIdentity';
 
 /* ── Icon map ──────────────────────────────────────────────────── */
 
@@ -70,7 +71,7 @@ function StampDetailCard({
     day: 'numeric',
   });
 
-  const shareUrl = 'https://governada.io/my-gov/identity';
+  const shareUrl = CIVIC_IDENTITY_SHARE_URL;
   const shareText = def?.shareText ?? `I earned the "${milestone.label}" milestone! @GovernadaIO`;
   const imageUrl = stakeAddress ? `/api/og/civic-identity/${encodeURIComponent(stakeAddress)}` : '';
 

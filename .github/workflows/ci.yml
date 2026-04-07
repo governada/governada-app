@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths-ignore:
@@ -78,15 +79,26 @@ jobs:
             const fs = require('fs');
             const report = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
             const targets = {
-              'utils/scoring.ts': 80,
-              'lib/alignment.ts': 80,
-              'lib/koios.ts': 11,
+              'utils/scoring.ts': 95,
+              'lib/alignment.ts': 85,
+              'lib/koios.ts': 75,
+              'lib/api/handler.ts': 75,
+              'lib/api/withRouteHandler.ts': 90,
+              'lib/syncPolicy.ts': 80,
+              'lib/navigation/civicIdentity.ts': 90,
+              'lib/navigation/proposalAction.ts': 85,
+              'lib/navigation/returnTo.ts': 90,
+              'lib/navigation/workspaceEntry.ts': 80,
             };
             const norm = (p) => p.replace(/\\\\/g, '/');
             let failed = false;
             for (const [file, minPct] of Object.entries(targets)) {
               const entry = Object.entries(report).find(([k]) => norm(k).endsWith(file));
-              if (!entry) { console.log('SKIP: ' + file + ' (not in report)'); continue; }
+              if (!entry) {
+                console.error('FAIL: ' + file + ' missing from coverage report');
+                failed = true;
+                continue;
+              }
               const pct = entry[1].lines.pct;
               const ok = pct >= minPct;
               console.log((ok ? 'PASS' : 'FAIL') + ': ' + file + ' lines=' + pct + '% (min=' + minPct + '%)');
@@ -136,7 +148,7 @@ jobs:
           fi
           echo "Bundle size OK: ${TOTAL_JS:-0} bytes (budget: ${BUDGET})"
       - name: Upload build artifact
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.event_name == 'pull_request' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
         uses: actions/upload-artifact@v7
         with:
           include-hidden-files: true
@@ -152,6 +164,60 @@ jobs:
             .next/required-server-files.json
             public
           retention-days: 1
+
+  browser-smoke:
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+      NEXT_PUBLIC_KOIOS_BASE_URL: https://api.koios.rest/api/v1
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      SUPABASE_SECRET_KEY: placeholder-secret-key-for-ci
+      SESSION_SECRET: ci-placeholder-session-secret-at-least-32-chars
+      CRON_SECRET: ci-placeholder-cron-secret
+      UPSTASH_REDIS_REST_URL: https://placeholder-redis.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: placeholder-redis-token
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: actions/cache/restore@v5
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium webkit
+      - name: Install Playwright system deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium webkit
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: nextjs-build
+      - name: Start server and run browser smoke
+        run: |
+          PORT=3000 node .next/standalone/server.js &
+          npx wait-on http://localhost:3000 --timeout 30000
+          npm run test:e2e -- e2e/smoke.spec.ts e2e/critical-journeys.spec.ts --project=chromium --project=mobile
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-browser-smoke-${{ github.sha }}
+          path: playwright-report/
+          retention-days: 7
 
   sentry-release:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -174,7 +240,7 @@ jobs:
 
   notify:
     if: failure()
-    needs: [checks, test, build]
+    needs: [checks, test, build, browser-smoke]
     runs-on: ubuntu-latest
     steps:
       - name: Discord notification

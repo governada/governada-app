@@ -705,13 +705,18 @@ export async function fetchGovernanceThresholds(): Promise<Record<string, number
  */
 const VOTE_LIST_PAGE_SIZE = 1000;
 
-export async function fetchAllVotesBulk(): Promise<Record<string, DRepVote[]>> {
+export async function fetchAllVotesBulk(options?: {
+  sinceBlockTime?: number | null;
+}): Promise<Record<string, DRepVote[]>> {
   const allVotes: Record<string, DRepVote[]> = {};
   let offset = 0;
   let page = 0;
+  const sinceBlockTime =
+    typeof options?.sinceBlockTime === 'number' ? options.sinceBlockTime : null;
 
   while (true) {
-    const url = `/vote_list?voter_role=eq.DRep&limit=${VOTE_LIST_PAGE_SIZE}&offset=${offset}`;
+    const blockTimeFilter = sinceBlockTime !== null ? `&block_time=gte.${sinceBlockTime}` : '';
+    const url = `/vote_list?voter_role=eq.DRep${blockTimeFilter}&order=block_time.asc&limit=${VOTE_LIST_PAGE_SIZE}&offset=${offset}`;
     const data = await koiosFetch<
       Array<{
         vote_tx_hash: string;
@@ -748,7 +753,7 @@ export async function fetchAllVotesBulk(): Promise<Record<string, DRepVote[]>> {
     }
 
     console.log(
-      `[Koios] vote_list page ${page}: ${pageData.length} votes (total DReps so far: ${Object.keys(allVotes).length})`,
+      `[Koios] vote_list page ${page}: ${pageData.length} votes (total DReps so far: ${Object.keys(allVotes).length}, since=${sinceBlockTime ?? 'bootstrap'})`,
     );
 
     if (pageData.length < VOTE_LIST_PAGE_SIZE) break;

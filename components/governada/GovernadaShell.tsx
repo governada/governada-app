@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Suspense, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -26,6 +27,7 @@ import { useWhisper } from '@/hooks/useWhisper';
 import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
 import { useSenecaProactiveWhispers } from '@/hooks/useSenecaProactiveWhispers';
 import { useEpochContext } from '@/hooks/useEpochContext';
+import { LegalLinks } from './LegalLinks';
 
 const SenecaOrb = dynamic(
   () =>
@@ -247,7 +249,7 @@ function SenecaOrbAndThread({
 
 /** Derive a page context key from the pathname for Seneca's contextual awareness. */
 function derivePageContext(pathname: string): string | undefined {
-  if (pathname === '/') return 'governance';
+  if (pathname === '/' || pathname === '/match') return 'governance';
   if (pathname.startsWith('/proposal/')) return 'proposals';
   if (pathname.startsWith('/drep/')) return 'dreps';
   if (pathname.startsWith('/pool/') || pathname.startsWith('/spo/')) return 'spos';
@@ -264,7 +266,7 @@ function derivePageContext(pathname: string): string | undefined {
 export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const isHomepage = pathname === '/';
+  const isHomepage = pathname === '/' || pathname === '/match';
   const isStudioMode =
     pathname === '/workspace/review' ||
     /^\/workspace\/(author|editor|amendment)\/[^/]+/.test(pathname);
@@ -327,6 +329,16 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
                   'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.',
                 )}
               </p>
+              <div className="mt-3 space-y-2">
+                <LegalLinks />
+                <p className="text-[11px] text-muted-foreground/60">
+                  Analytics may be enabled in production deployments. See{' '}
+                  <Link href="/privacy" className="underline decoration-dotted underline-offset-2">
+                    Privacy
+                  </Link>{' '}
+                  for the current telemetry baseline.
+                </p>
+              </div>
             </footer>
           )}
           {!isStudioMode && <GovernadaBottomNav />}

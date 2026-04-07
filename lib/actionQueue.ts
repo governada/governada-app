@@ -12,6 +12,7 @@
  */
 
 import { getOpenProposalsForDRep, getDRepById } from '@/lib/data';
+import { canBodyVote } from '@/lib/governance/votingBodies';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import type { UserSegment } from '@/components/providers/SegmentProvider';
@@ -48,17 +49,6 @@ function sortByPriority(items: ActionItem[]): ActionItem[] {
 }
 
 const currentEpoch = () => blockTimeToEpoch(Math.floor(Date.now() / 1000));
-
-/** Proposal types that accept SPO votes */
-const SPO_VOTABLE_TYPES = [
-  'ParameterChange',
-  'HardForkInitiation',
-  'NoConfidence',
-  'NewCommittee',
-  'NewConstitutionalCommittee',
-  'NewConstitution',
-  'UpdateConstitution',
-];
 
 /** Critical proposal types that warrant high-priority alerts */
 const CRITICAL_TYPES = [
@@ -189,8 +179,7 @@ async function addSPOActions(items: ActionItem[], poolId: string): Promise<void>
     supabase.from('spo_votes').select('proposal_tx_hash').eq('pool_id', poolId),
     supabase
       .from('proposals')
-      .select('tx_hash, proposal_index, title, proposal_type, expiration_epoch')
-      .in('proposal_type', SPO_VOTABLE_TYPES)
+      .select('tx_hash, proposal_index, title, proposal_type, expiration_epoch, param_changes')
       .is('ratified_epoch', null)
       .is('enacted_epoch', null)
       .is('dropped_epoch', null)
@@ -199,7 +188,14 @@ async function addSPOActions(items: ActionItem[], poolId: string): Promise<void>
   ]);
 
   const votedTxHashes = new Set((poolVotes ?? []).map((v) => v.proposal_tx_hash));
-  const pending = (openProposals ?? []).filter((p) => !votedTxHashes.has(p.tx_hash));
+  const pending = (openProposals ?? []).filter(
+    (p) =>
+      canBodyVote(
+        'spo',
+        p.proposal_type,
+        (p.param_changes as Record<string, unknown> | null) ?? null,
+      ) && !votedTxHashes.has(p.tx_hash),
+  );
   const urgent = pending.filter((p) => p.expiration_epoch && p.expiration_epoch - epoch <= 2);
 
   if (urgent.length > 0) {
@@ -360,15 +356,24 @@ async function addCitizenActions(items: ActionItem[], context?: ActionQueueConte
 async function addCCActions(items: ActionItem[]): Promise<void> {
   // Check for open proposals awaiting CC votes
   const supabase = getSupabaseAdmin();
-  const { count: openCount } = await supabase
+  const { data: openProposals } = await supabase
     .from('proposals')
-    .select('tx_hash', { count: 'exact', head: true })
+    .select('proposal_type, param_changes')
     .is('ratified_epoch', null)
     .is('enacted_epoch', null)
     .is('dropped_epoch', null)
     .is('expired_epoch', null);
 
-  if (openCount && openCount > 0) {
+  const openCount =
+    openProposals?.filter((proposal) =>
+      canBodyVote(
+        'cc',
+        proposal.proposal_type,
+        (proposal.param_changes as Record<string, unknown> | null) ?? null,
+      ),
+    ).length ?? 0;
+
+  if (openCount > 0) {
     items.push({
       id: 'cc-open-proposals',
       type: 'pending_vote',

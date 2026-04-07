@@ -16,6 +16,8 @@ import { useDRepRationales } from '@/hooks/queries';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import { formatLocaleDate } from '@/lib/i18n/format';
 
 interface RationaleRecord {
   proposalTxHash: string;
@@ -87,6 +89,7 @@ const voteColorMap: Record<string, string> = {
 
 function RationalesList({ rationales }: { rationales: RationaleRecord[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { locale } = useLocale();
 
   if (rationales.length === 0) {
     return (
@@ -115,13 +118,13 @@ function RationalesList({ rationales }: { rationales: RationaleRecord[] }) {
         const displayText = r.aiSummary || r.rationaleText;
         const hasLongText = r.rationaleText.length > 200;
         const formattedDate = r.blockTime
-          ? new Date(r.blockTime * 1000).toLocaleDateString('en-US', {
+          ? formatLocaleDate(r.blockTime * 1000, locale, {
               month: 'short',
               day: 'numeric',
               year: 'numeric',
             })
           : r.date
-            ? new Date(r.date).toLocaleDateString('en-US', {
+            ? formatLocaleDate(r.date, locale, {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',

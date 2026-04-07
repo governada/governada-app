@@ -11,8 +11,12 @@
 
 import type { FeedbackTheme } from '../feedback/types';
 import type { ChangeJustification } from '../revision/types';
+import {
+  fetchGovernanceProposalSnapshot,
+  fetchGovernanceProposalVotingSnapshot,
+} from '@/lib/governance/proposalContext';
+import { fetchGovernanceTreasuryContext } from '@/lib/governance/treasuryContext';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { getProposalByKey } from '@/lib/data';
 import { assemblePersonalContext } from '@/lib/ai/context';
 import { fetchSimilarProposals } from '@/lib/ai/skills/research-precedent';
 import { logger } from '@/lib/logger';
@@ -243,7 +247,9 @@ export async function assembleGovernanceContext(
   const [proposalData, versionsData, feedbackData, annotationsData, personalData, precedentData] =
     await Promise.allSettled([
       // 1. Proposal data
-      isDraft ? fetchDraftProposal(supabase, proposalId) : fetchOnChainProposal(proposalId),
+      isDraft
+        ? fetchDraftProposal(supabase, proposalId)
+        : fetchOnChainProposal(supabase, proposalId),
 
       // 2. Versions (only for drafts)
       isDraft ? fetchDraftVersions(supabase, proposalId) : Promise.resolve([]),
@@ -292,9 +298,7 @@ export async function assembleGovernanceContext(
 
   // Treasury state (for treasury withdrawals)
   const treasury =
-    proposalBundle.proposalType === 'TreasuryWithdrawals'
-      ? await fetchTreasuryState(supabase)
-      : undefined;
+    proposalBundle.proposalType === 'TreasuryWithdrawals' ? await fetchTreasuryState() : undefined;
 
   // Personal context bundle
   const personal = personalCtx
@@ -380,16 +384,12 @@ async function fetchDraftProposal(
 }
 
 async function fetchOnChainProposal(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
   txHashOrId: string,
 ): Promise<GovernanceContextBundle['proposal']> {
-  // Try to parse txHash#index format
-  const parts = txHashOrId.split('#');
-  const txHash = parts[0];
-  const index = parts.length > 1 ? parseInt(parts[1], 10) : 0;
-
-  const proposal = await getProposalByKey(txHash, index);
+  const proposal = await fetchGovernanceProposalSnapshot(supabase, txHashOrId);
   if (!proposal) {
-    logger.warn('[Agent Context] On-chain proposal not found', { txHash, index });
+    logger.warn('[Agent Context] On-chain proposal not found', { proposalId: txHashOrId });
     return {
       id: txHashOrId,
       title: '',
@@ -402,32 +402,14 @@ async function fetchOnChainProposal(
     };
   }
 
-  // Fetch CIP-108 metadata for motivation/rationale
-  const supabase = getSupabaseAdmin();
-  const { data: metaRow } = await supabase
-    .from('proposals')
-    .select('meta_json')
-    .eq('tx_hash', txHash)
-    .eq('proposal_index', index)
-    .maybeSingle();
-
-  const metaJson = metaRow?.meta_json as Record<string, any> | null;
-  const body = metaJson?.body as Record<string, any> | undefined;
-
   return {
     id: txHashOrId,
-    title: proposal.title ?? '',
-    abstract: proposal.abstract ?? '',
-    motivation: body?.motivation ?? '',
-    rationale: body?.rationale ?? '',
-    proposalType: proposal.proposalType ?? 'InfoAction',
-    status: proposal.ratifiedEpoch
-      ? 'ratified'
-      : proposal.expiredEpoch
-        ? 'expired'
-        : proposal.droppedEpoch
-          ? 'dropped'
-          : 'active',
+    title: proposal.title,
+    abstract: proposal.abstract,
+    motivation: proposal.motivation,
+    rationale: proposal.rationale,
+    proposalType: proposal.proposalType,
+    status: proposal.status,
     metadata: {
       withdrawalAmount: proposal.withdrawalAmount,
       treasuryTier: proposal.treasuryTier,
@@ -524,58 +506,14 @@ async function fetchVotingData(
 
   if (isDraft) return emptyVoting;
 
-  const parts = proposalId.split('#');
-  const txHash = parts[0];
-  const index = parts.length > 1 ? parseInt(parts[1], 10) : 0;
-
   try {
-    const { data } = await supabase
-      .from('proposal_voting_summary')
-      .select('*')
-      .eq('proposal_tx_hash', txHash)
-      .eq('proposal_index', index)
-      .maybeSingle();
-
-    if (!data) return emptyVoting;
-
-    // Fetch epoch info for deadline
-    const { data: proposalRow } = await supabase
-      .from('proposals')
-      .select('expiration_epoch')
-      .eq('tx_hash', txHash)
-      .eq('proposal_index', index)
-      .maybeSingle();
-
-    const { data: epochData } = await supabase
-      .from('epoch_params')
-      .select('epoch_no')
-      .order('epoch_no', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const currentEpoch = epochData?.epoch_no ?? 0;
-    const expirationEpoch = proposalRow?.expiration_epoch;
-    const epochsRemaining =
-      expirationEpoch && currentEpoch ? expirationEpoch - currentEpoch : undefined;
+    const voting = await fetchGovernanceProposalVotingSnapshot(supabase, proposalId);
 
     return {
-      drep: {
-        yes: data.drep_yes_votes_cast ?? 0,
-        no: data.drep_no_votes_cast ?? 0,
-        abstain: data.drep_abstain_votes_cast ?? 0,
-      },
-      spo: {
-        yes: data.pool_yes_votes_cast ?? 0,
-        no: data.pool_no_votes_cast ?? 0,
-        abstain: data.pool_abstain_votes_cast ?? 0,
-      },
-      cc: {
-        yes: data.committee_yes_votes_cast ?? 0,
-        no: data.committee_no_votes_cast ?? 0,
-        abstain: data.committee_abstain_votes_cast ?? 0,
-      },
-      epochsRemaining:
-        epochsRemaining != null && epochsRemaining >= 0 ? epochsRemaining : undefined,
+      drep: voting.drep,
+      spo: voting.spo,
+      cc: voting.cc,
+      epochsRemaining: voting.epochsRemaining,
     };
   } catch (err) {
     logger.warn('[Agent Context] Failed to fetch voting data', { error: err });
@@ -583,35 +521,17 @@ async function fetchVotingData(
   }
 }
 
-async function fetchTreasuryState(
-  supabase: ReturnType<typeof getSupabaseAdmin>,
-): Promise<GovernanceContextBundle['treasury']> {
+async function fetchTreasuryState(): Promise<GovernanceContextBundle['treasury']> {
   try {
-    // Get latest epoch params for treasury balance
-    const { data: epochData } = await supabase
-      .from('epoch_params')
-      .select('treasury')
-      .order('epoch_no', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // Count recent treasury withdrawals
-    const { data: recentWithdrawals } = await supabase
-      .from('proposals')
-      .select('withdrawal_amount')
-      .eq('proposal_type', 'TreasuryWithdrawals')
-      .not('ratified_epoch', 'is', null);
-
-    const balance = epochData?.treasury ? Number(epochData.treasury) / 1_000_000 : 0;
-    const totalWithdrawn = (recentWithdrawals ?? []).reduce(
-      (sum: number, p: any) => sum + (Number(p.withdrawal_amount) || 0),
-      0,
-    );
+    const treasury = await fetchGovernanceTreasuryContext();
+    if (!treasury) {
+      return { balance: 0, recentWithdrawals: 0, tier: 'unknown' };
+    }
 
     return {
-      balance,
-      recentWithdrawals: totalWithdrawn,
-      tier: balance > 10_000_000_000 ? 'large' : balance > 1_000_000_000 ? 'medium' : 'small',
+      balance: treasury.treasuryData.balanceAda,
+      recentWithdrawals: treasury.recentRatifiedWithdrawalsAda,
+      tier: treasury.tier,
     };
   } catch {
     return { balance: 0, recentWithdrawals: 0, tier: 'unknown' };
@@ -629,16 +549,10 @@ async function fetchPrecedent(
     let title = '';
 
     if (txHash) {
-      const parts = txHash.split('#');
-      const { data } = await supabase
-        .from('proposals')
-        .select('proposal_type, title')
-        .eq('tx_hash', parts[0])
-        .eq('proposal_index', parts.length > 1 ? parseInt(parts[1], 10) : 0)
-        .maybeSingle();
-      if (data) {
-        proposalType = data.proposal_type ?? 'InfoAction';
-        title = data.title ?? '';
+      const proposal = await fetchGovernanceProposalSnapshot(supabase, txHash);
+      if (proposal) {
+        proposalType = proposal.proposalType ?? 'InfoAction';
+        title = proposal.title ?? '';
       }
     } else {
       const { data } = await supabase

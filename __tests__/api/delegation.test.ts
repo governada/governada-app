@@ -5,6 +5,20 @@ const mockSelect = vi.fn();
 const mockUpdate = vi.fn();
 
 const mockValidateSession = vi.fn();
+const mockGetRedis = vi.fn();
+const mockLimit = vi.fn();
+
+vi.mock('@upstash/ratelimit', () => {
+  const Ratelimit = vi.fn().mockImplementation(() => ({
+    limit: (...args: unknown[]) => mockLimit(...args),
+  }));
+
+  Object.assign(Ratelimit, {
+    slidingWindow: vi.fn().mockReturnValue('window'),
+  });
+
+  return { Ratelimit };
+});
 
 vi.mock('@/lib/supabaseAuth', () => ({
   validateSessionToken: (...args: unknown[]) => mockValidateSession(...args),
@@ -39,11 +53,8 @@ vi.mock('@/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-// Prevent rate limiter from hitting real Upstash Redis
 vi.mock('@/lib/redis', () => ({
-  getRedis: () => {
-    throw new Error('Redis not available in tests');
-  },
+  getRedis: () => mockGetRedis(),
 }));
 
 import { GET, POST } from '@/app/api/drep-claim/route';
@@ -79,6 +90,8 @@ describe('GET /api/drep-claim', () => {
 describe('POST /api/drep-claim', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetRedis.mockReturnValue({});
+    mockLimit.mockResolvedValue({ success: true, remaining: 4 });
   });
 
   it('returns 400 when fields are missing', async () => {

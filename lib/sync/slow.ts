@@ -13,10 +13,14 @@ import { fetchDRepVotingPowerHistory, fetchDRepInfo } from '@/utils/koios';
 import { getProposalPriority } from '@/utils/proposalPriority';
 import { broadcastDiscord, broadcastEvent } from '@/lib/notifications';
 import { precomputeSimilarityCache } from '@/lib/proposalSimilarity';
+import {
+  fetchRationaleTextFromUrl,
+  getNextRationaleRetryAt,
+  RATIONALE_FETCH_MAX_ATTEMPTS,
+  RATIONALE_FETCH_STATUS,
+} from '@/lib/vote-rationales';
 import * as Sentry from '@sentry/nextjs';
 
-const RATIONALE_FETCH_TIMEOUT_MS = 5000;
-const RATIONALE_MAX_CONTENT_SIZE = 50_000;
 const RATIONALE_CONCURRENCY = 8;
 const RATIONALE_MAX_PER_SYNC = 200;
 
@@ -35,129 +39,114 @@ function stripUrls(text: string): string {
     .trim();
 }
 
-function extractJsonLdString(val: unknown): string | null {
-  if (typeof val === 'string') return val.trim() || null;
-  if (val && typeof val === 'object' && '@value' in (val as Record<string, unknown>)) {
-    const v = (val as Record<string, unknown>)['@value'];
-    if (typeof v === 'string') return v.trim() || null;
-  }
-  if (Array.isArray(val) && val.length > 0) return extractJsonLdString(val[0]);
-  return null;
-}
-
-async function fetchRationaleFromUrl(url: string): Promise<string | null> {
-  try {
-    let fetchUrl = url;
-    if (url.startsWith('ipfs://')) fetchUrl = `https://ipfs.io/ipfs/${url.slice(7)}`;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), RATIONALE_FETCH_TIMEOUT_MS);
-    const response = await fetch(fetchUrl, {
-      signal: controller.signal,
-      headers: { Accept: 'application/json, text/plain, */*' },
-    });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) return null;
-    const contentLength = response.headers.get('content-length');
-    if (contentLength && parseInt(contentLength) > RATIONALE_MAX_CONTENT_SIZE) return null;
-
-    const text = await response.text();
-    if (text.length > RATIONALE_MAX_CONTENT_SIZE) return null;
-
-    try {
-      const json = JSON.parse(text);
-      if (json.body && typeof json.body === 'object') {
-        for (const key of ['comment', 'rationale', 'motivation']) {
-          const extracted = extractJsonLdString(json.body[key]);
-          if (extracted) return extracted;
-        }
-      }
-      for (const key of ['rationale', 'motivation', 'justification', 'reason', 'comment']) {
-        const extracted = extractJsonLdString(json[key]);
-        if (extracted) return extracted;
-      }
-      if (typeof json === 'string' && json.trim()) return json.trim();
-    } catch {
-      if (text.trim() && !text.includes('<!DOCTYPE') && !text.includes('<html')) {
-        return text.trim();
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 type SupabaseClient = ReturnType<typeof getSupabaseAdmin>;
 
 // ── Operation 1: Rationale pipeline ──────────────────────────────────────────
 
-async function runRationalePipeline(supabase: SupabaseClient) {
-  const { data: votesWithMeta } = await supabase
-    .from('drep_votes')
-    .select('vote_tx_hash, drep_id, proposal_tx_hash, proposal_index, meta_url, meta_hash')
-    .not('meta_url', 'is', null);
-
-  if (!votesWithMeta?.length) return { fetched: 0, cached: 0, inline: 0 };
-
-  const txHashes = votesWithMeta.map((v: Record<string, string>) => v.vote_tx_hash);
-  const { data: existingRows } = await supabase
+export async function runRationalePipeline(supabase: SupabaseClient) {
+  const dueAt = new Date().toISOString();
+  const { data: queuedRows } = await supabase
     .from('vote_rationales')
-    .select('vote_tx_hash')
-    .in('vote_tx_hash', txHashes.slice(0, 1000))
-    .not('rationale_text', 'is', null);
+    .select(
+      'vote_tx_hash, drep_id, proposal_tx_hash, proposal_index, meta_url, fetch_status, fetch_attempts',
+    )
+    .in('fetch_status', [RATIONALE_FETCH_STATUS.pending, RATIONALE_FETCH_STATUS.retry])
+    .not('meta_url', 'is', null)
+    .neq('meta_url', '')
+    .lte('next_fetch_at', dueAt)
+    .order('next_fetch_at', { ascending: true })
+    .limit(RATIONALE_MAX_PER_SYNC);
 
-  const alreadyCached = new Set(
-    (existingRows || []).map((r: { vote_tx_hash: string }) => r.vote_tx_hash),
-  );
-  const uncached = votesWithMeta
-    .filter((v: { vote_tx_hash: string }) => !alreadyCached.has(v.vote_tx_hash))
-    .slice(0, RATIONALE_MAX_PER_SYNC);
+  if (!queuedRows?.length) {
+    return { fetched: 0, retried: 0, failed: 0, queued: 0 };
+  }
 
-  if (uncached.length === 0) return { fetched: 0, cached: alreadyCached.size, inline: 0 };
+  log.info('[SlowSync] Processing queued rationale fetches', { count: queuedRows.length });
 
-  log.info('[SlowSync] Fetching rationales for uncached votes', { count: uncached.length });
+  let fetched = 0;
+  let retried = 0;
+  let failed = 0;
+  const rationaleUpdates: Record<string, unknown>[] = [];
 
-  const rationaleRows: Record<string, unknown>[] = [];
-  for (let i = 0; i < uncached.length; i += RATIONALE_CONCURRENCY) {
-    const chunk = uncached.slice(i, i + RATIONALE_CONCURRENCY);
+  for (let i = 0; i < queuedRows.length; i += RATIONALE_CONCURRENCY) {
+    const chunk = queuedRows.slice(i, i + RATIONALE_CONCURRENCY);
     const results = await Promise.all(
       chunk.map(
-        async (v: {
+        async (row: {
           vote_tx_hash: string;
           drep_id: string;
           proposal_tx_hash: string;
           proposal_index: number;
           meta_url: string;
+          fetch_attempts: number | null;
         }) => {
-          const text = await fetchRationaleFromUrl(v.meta_url);
+          const attemptedAt = new Date();
+          const fetchOutcome = await fetchRationaleTextFromUrl(row.meta_url);
+          const attemptCount = (row.fetch_attempts ?? 0) + 1;
+
+          if (fetchOutcome.ok) {
+            fetched++;
+            return {
+              vote_tx_hash: row.vote_tx_hash,
+              drep_id: row.drep_id,
+              proposal_tx_hash: row.proposal_tx_hash,
+              proposal_index: row.proposal_index,
+              meta_url: row.meta_url,
+              rationale_text: fetchOutcome.rationaleText,
+              fetched_at: attemptedAt.toISOString(),
+              fetch_status: RATIONALE_FETCH_STATUS.fetched,
+              fetch_attempts: attemptCount,
+              fetch_last_attempted_at: attemptedAt.toISOString(),
+              fetch_last_error: null,
+              next_fetch_at: null,
+            };
+          }
+
+          const isTerminal =
+            !fetchOutcome.retryable || attemptCount >= RATIONALE_FETCH_MAX_ATTEMPTS;
+          if (isTerminal) {
+            failed++;
+          } else {
+            retried++;
+          }
+
           return {
-            vote_tx_hash: v.vote_tx_hash,
-            drep_id: v.drep_id,
-            proposal_tx_hash: v.proposal_tx_hash,
-            proposal_index: v.proposal_index,
-            meta_url: v.meta_url,
-            rationale_text: text,
+            vote_tx_hash: row.vote_tx_hash,
+            drep_id: row.drep_id,
+            proposal_tx_hash: row.proposal_tx_hash,
+            proposal_index: row.proposal_index,
+            meta_url: row.meta_url,
+            rationale_text: null,
+            fetched_at: null,
+            fetch_status: isTerminal ? RATIONALE_FETCH_STATUS.failed : RATIONALE_FETCH_STATUS.retry,
+            fetch_attempts: attemptCount,
+            fetch_last_attempted_at: attemptedAt.toISOString(),
+            fetch_last_error: fetchOutcome.reason,
+            next_fetch_at: isTerminal ? null : getNextRationaleRetryAt(attemptCount, attemptedAt),
           };
         },
       ),
     );
-    rationaleRows.push(...results);
+    rationaleUpdates.push(...results);
   }
 
-  const successRows = rationaleRows.filter((r) => r.rationale_text !== null);
-  if (successRows.length > 0) {
-    await batchUpsert(supabase, 'vote_rationales', successRows, 'vote_tx_hash', 'Rationale URL');
+  if (rationaleUpdates.length > 0) {
+    await batchUpsert(
+      supabase,
+      'vote_rationales',
+      rationaleUpdates,
+      'vote_tx_hash',
+      'Rationale queue',
+    );
   }
 
-  await supabase.from('vote_rationales').delete().is('rationale_text', null);
-
-  log.info('[SlowSync] Rationales processed', {
-    fetched: successRows.length,
-    cached: alreadyCached.size,
+  log.info('[SlowSync] Rationale queue processed', {
+    queued: queuedRows.length,
+    fetched,
+    retried,
+    failed,
   });
-  return { fetched: successRows.length, cached: alreadyCached.size, inline: 0 };
+  return { fetched, retried, failed, queued: queuedRows.length };
 }
 
 // ── Operation 2: AI summaries ────────────────────────────────────────────────
@@ -475,6 +464,7 @@ async function runRationaleHashVerification(supabase: SupabaseClient) {
     .from('vote_rationales')
     .select('vote_tx_hash, meta_url')
     .is('hash_verified', null)
+    .in('fetch_status', [RATIONALE_FETCH_STATUS.inline, RATIONALE_FETCH_STATUS.fetched])
     .not('meta_url', 'is', null)
     .limit(50);
 
@@ -493,10 +483,15 @@ async function runRationaleHashVerification(supabase: SupabaseClient) {
   let verified = 0;
   let failed = 0;
 
-  const hashUpdates: { vote_tx_hash: string; hash_verified: boolean }[] = [];
+  const hashUpdates: Array<{
+    vote_tx_hash: string;
+    hash_verified?: boolean;
+    hash_check_attempted_at: string;
+  }> = [];
   for (const row of unchecked) {
     const expectedHash = hashMap.get(row.vote_tx_hash);
     if (!expectedHash) continue;
+    const attemptedAt = new Date().toISOString();
     try {
       let fetchUrl = row.meta_url;
       if (fetchUrl.startsWith('ipfs://')) fetchUrl = `https://ipfs.io/ipfs/${fetchUrl.slice(7)}`;
@@ -504,15 +499,22 @@ async function runRationaleHashVerification(supabase: SupabaseClient) {
       const timeout = setTimeout(() => controller.abort(), 5000);
       const res = await fetch(fetchUrl, { signal: controller.signal });
       clearTimeout(timeout);
-      if (!res.ok) continue;
+      if (!res.ok) {
+        hashUpdates.push({ vote_tx_hash: row.vote_tx_hash, hash_check_attempted_at: attemptedAt });
+        continue;
+      }
       const rawBytes = new Uint8Array(await res.arrayBuffer());
       const computedHash = blake2bHex(rawBytes, undefined, 32);
       const matches = computedHash === expectedHash;
-      hashUpdates.push({ vote_tx_hash: row.vote_tx_hash, hash_verified: matches });
+      hashUpdates.push({
+        vote_tx_hash: row.vote_tx_hash,
+        hash_verified: matches,
+        hash_check_attempted_at: attemptedAt,
+      });
       if (matches) verified++;
       else failed++;
     } catch {
-      /* skip */
+      hashUpdates.push({ vote_tx_hash: row.vote_tx_hash, hash_check_attempted_at: attemptedAt });
     }
   }
   if (hashUpdates.length > 0) {
@@ -719,7 +721,9 @@ export async function executeSlowSync(): Promise<Record<string, unknown>> {
     const success = coreErrors.length === 0;
     const metrics = {
       rationales_fetched: settled.rationales?.fetched ?? 0,
-      rationales_cached: settled.rationales?.cached ?? 0,
+      rationale_queue_due: settled.rationales?.queued ?? 0,
+      rationales_retried: settled.rationales?.retried ?? 0,
+      rationales_failed_terminal: settled.rationales?.failed ?? 0,
       ai_proposal_summaries: settled.ai?.proposals ?? 0,
       ai_rationale_summaries: settled.ai?.rationales ?? 0,
       social_links_checked: settled.social?.checked ?? 0,

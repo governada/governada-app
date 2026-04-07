@@ -8,13 +8,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { FirstVisitBanner } from '@/components/ui/FirstVisitBanner';
+import { CIVIC_IDENTITY_PATH } from '@/lib/navigation/civicIdentity';
 import { CitizenCommandCenter } from './mygov/CitizenCommandCenter';
 import { DRepCommandCenter } from './mygov/DRepCommandCenter';
 import { SPOCommandCenter } from './mygov/SPOCommandCenter';
 
 const MY_GOV_SUBNAV = [
   { href: '/my-gov', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/my-gov/identity', label: 'Identity', icon: Shield, exact: false },
+  { href: CIVIC_IDENTITY_PATH, label: 'Identity', icon: Shield, exact: false },
   { href: '/my-gov/profile', label: 'Profile', icon: User, exact: false },
 ] as const;
 

@@ -365,6 +365,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         proposalIndex={proposalIndex}
         thresholdPct={voteProjection?.thresholdPct ?? null}
         currentYesPct={voteProjection?.currentYesPct ?? null}
+        paramChanges={proposal.paramChanges}
       />
 
       {/* Proposer track record — contextual trust signal */}
@@ -388,6 +389,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
           title={title}
           isOpen={isOpen}
           proposalType={proposal.proposalType}
+          paramChanges={proposal.paramChanges}
         />
       )}
 
@@ -402,6 +404,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
           txHash={txHash}
           proposalIndex={proposalIndex}
           proposalType={proposal.proposalType}
+          paramChanges={proposal.paramChanges}
           yesCount={proposal.yesCount}
           noCount={proposal.noCount}
           abstainCount={proposal.abstainCount}
@@ -422,6 +425,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
           votes={votes}
           status={status}
           proposalType={proposal.proposalType}
+          paramChanges={proposal.paramChanges}
           abstract={proposal.abstract}
           proposedEpoch={proposal.proposedEpoch}
           expirationEpoch={proposal.expirationEpoch}
@@ -467,6 +471,8 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         isOpen={isOpen}
         verdictLabel={verdictLabel}
         verdictColor={verdictColor}
+        proposalType={proposal.proposalType}
+        paramChanges={proposal.paramChanges}
       />
     </div>
   ) : (
@@ -506,6 +512,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         proposalIndex={proposalIndex}
         title={title}
         proposalType={proposal.proposalType}
+        paramChanges={proposal.paramChanges}
         status={status}
         withdrawalAmount={proposal.withdrawalAmount}
         treasuryBalanceAda={treasury?.balanceAda ?? null}
@@ -549,6 +556,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
             title={title}
             isOpen={isOpen}
             proposalType={proposal.proposalType}
+            paramChanges={proposal.paramChanges}
           />
         ) : (
           <ProposalActionZone
@@ -558,6 +566,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
             isOpen={isOpen}
             proposalAbstract={proposal.abstract}
             proposalType={proposal.proposalType}
+            paramChanges={proposal.paramChanges}
             aiSummary={proposal.aiSummary}
           />
         )}
@@ -644,6 +653,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
               proposalIndex={proposalIndex}
               status={status}
               proposalType={proposal.proposalType}
+              paramChanges={proposal.paramChanges}
             />
           </ProposalDepthSection>
 

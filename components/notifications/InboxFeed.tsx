@@ -24,6 +24,8 @@ import {
   useMarkAllRead,
   type Notification,
 } from '@/hooks/useNotifications';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import { formatLocaleDate } from '@/lib/i18n/format';
 
 // ── Type to icon/color mapping ──────────────────────────────────────────────
 
@@ -126,7 +128,7 @@ const DEFAULT_META = {
 
 // ── Time formatting ─────────────────────────────────────────────────────────
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, locale: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (seconds < 60) return 'just now';
   const minutes = Math.floor(seconds / 60);
@@ -135,10 +137,10 @@ function timeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return formatLocaleDate(dateStr, locale, { month: 'short', day: 'numeric' });
 }
 
-function dateGroupLabel(dateStr: string): string {
+function dateGroupLabel(dateStr: string, locale: string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
@@ -147,11 +149,12 @@ function dateGroupLabel(dateStr: string): string {
   if (daysDiff === 1) return 'Yesterday';
   if (daysDiff < 7) return 'This week';
   if (daysDiff < 30) return 'This month';
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return formatLocaleDate(date, locale, { month: 'long', year: 'numeric' });
 }
 
 function groupNotificationsByDate(
   notifications: Notification[] | undefined,
+  locale: string,
 ): Array<{ label: string; notifications: Notification[] }> {
   if (!notifications) return [];
 
@@ -160,7 +163,7 @@ function groupNotificationsByDate(
   let currentNotifications: Notification[] = [];
 
   for (const n of notifications) {
-    const label = dateGroupLabel(n.created_at);
+    const label = dateGroupLabel(n.created_at, locale);
     if (label !== currentLabel) {
       if (currentNotifications.length > 0) {
         groups.push({ label: currentLabel, notifications: currentNotifications });
@@ -184,9 +187,11 @@ function groupNotificationsByDate(
 function NotificationCard({
   notification,
   onMarkRead,
+  locale,
 }: {
   notification: Notification;
   onMarkRead: (id: string) => void;
+  locale: string;
 }) {
   const meta = TYPE_META[notification.type] ?? DEFAULT_META;
   const Icon = meta.icon;
@@ -210,7 +215,7 @@ function NotificationCard({
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notification.body}</p>
         )}
         <p className="text-[10px] text-muted-foreground/60 mt-1">
-          {timeAgo(notification.created_at)}
+          {timeAgo(notification.created_at, locale)}
         </p>
       </div>
       {notification.action_url && (
@@ -267,6 +272,7 @@ interface InboxFeedProps {
 }
 
 export function InboxFeed({ isAuthenticated }: InboxFeedProps) {
+  const { locale } = useLocale();
   const { data, isLoading } = useNotifications(isAuthenticated);
   const markReadMutation = useMarkRead();
   const markAllReadMutation = useMarkAllRead();
@@ -284,7 +290,7 @@ export function InboxFeed({ isAuthenticated }: InboxFeedProps) {
 
   // Group notifications by date
   const notifications = data?.notifications;
-  const grouped = groupNotificationsByDate(notifications);
+  const grouped = groupNotificationsByDate(notifications, locale);
 
   const unreadCount = data?.unreadCount ?? 0;
 
@@ -340,7 +346,12 @@ export function InboxFeed({ isAuthenticated }: InboxFeedProps) {
           </p>
           <div className="space-y-2">
             {group.notifications.map((n) => (
-              <NotificationCard key={n.id} notification={n} onMarkRead={handleMarkRead} />
+              <NotificationCard
+                key={n.id}
+                notification={n}
+                onMarkRead={handleMarkRead}
+                locale={locale}
+              />
             ))}
           </div>
         </div>

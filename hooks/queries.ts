@@ -78,10 +78,11 @@ export interface CommitteeResponse {
   briefing: CCBriefing | null;
 }
 
-export function useCommitteeMembers() {
+export function useCommitteeMembers(enabled = true) {
   return useQuery<CommitteeResponse>({
     queryKey: ['cc-members'],
     queryFn: () => fetchJson('/api/governance/committee'),
+    enabled,
     staleTime: 120_000,
   });
 }
@@ -213,18 +214,20 @@ export function useDRepTrajectory(drepId: string | null | undefined) {
   });
 }
 
-export function useDReps(limit?: number) {
+export function useDReps(limit?: number, enabled = true) {
   return useQuery({
     queryKey: ['dreps', limit],
     queryFn: () => fetchJson(limit ? `/api/dreps?limit=${limit}` : '/api/dreps'),
+    enabled,
     staleTime: 10 * 60_000,
   });
 }
 
-export function useProposals(limit?: number) {
+export function useProposals(limit?: number, enabled = true) {
   return useQuery({
     queryKey: ['proposals', limit],
     queryFn: () => fetchJson(limit ? `/api/proposals?limit=${limit}` : '/api/proposals'),
+    enabled,
     staleTime: 10 * 60_000,
   });
 }

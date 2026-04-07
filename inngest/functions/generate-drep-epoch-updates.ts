@@ -17,6 +17,7 @@ interface DRepVoteRow {
   proposal_index: number;
   vote: string;
   meta_url: string | null;
+  has_rationale: boolean | null;
 }
 
 interface ProposalRow {
@@ -88,7 +89,7 @@ export const generateDrepEpochUpdates = inngest.createFunction(
       // Get all votes for this epoch
       const { data: votes } = await supabase
         .from('drep_votes')
-        .select('drep_id, proposal_tx_hash, proposal_index, vote, meta_url')
+        .select('drep_id, proposal_tx_hash, proposal_index, vote, meta_url, has_rationale')
         .eq('epoch_no', epoch);
 
       if (!votes || votes.length === 0)
@@ -167,7 +168,7 @@ export const generateDrepEpochUpdates = inngest.createFunction(
                 title: proposal?.title || `Proposal ${v.proposal_tx_hash.slice(0, 8)}...`,
                 type: proposal?.proposal_type || 'Unknown',
                 vote: v.vote,
-                hasRationale: !!v.meta_url,
+                hasRationale: v.has_rationale ?? !!v.meta_url,
               };
             });
 
@@ -179,7 +180,9 @@ export const generateDrepEpochUpdates = inngest.createFunction(
 
             if (!updateText) return null;
 
-            const rationaleCount = drepVotes.filter((v) => v.meta_url).length;
+            const rationaleCount = drepVotes.filter(
+              (vote) => vote.has_rationale ?? !!vote.meta_url,
+            ).length;
             const proposalsVoted = voteDetails.map((v) => ({
               title: v.title,
               type: v.type,

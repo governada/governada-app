@@ -22,6 +22,7 @@ vi.mock('@/lib/api/rateLimit', () => ({
 
 vi.mock('@/lib/api/keys', () => ({
   validateApiKey: vi.fn().mockResolvedValue({ valid: false }),
+  resolveApiKeyFromRequest: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock('@/lib/api/logging', () => ({

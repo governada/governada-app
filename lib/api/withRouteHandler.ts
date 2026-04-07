@@ -41,23 +41,6 @@ function getClientIp(request: NextRequest): string {
   return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 }
 
-// Simple in-process sliding window rate limiter.
-// Uses Upstash when available, falls back to in-memory.
-const MEMORY_STORE_MAX = 10_000;
-const MEMORY_STORE_EVICT = 1_000;
-const memoryStore = new Map<string, { count: number; resetAt: number }>();
-
-/** Evict the oldest entries when the map exceeds the size cap. */
-function evictOldest() {
-  if (memoryStore.size <= MEMORY_STORE_MAX) return;
-  let evicted = 0;
-  for (const key of memoryStore.keys()) {
-    if (evicted >= MEMORY_STORE_EVICT) break;
-    memoryStore.delete(key);
-    evicted++;
-  }
-}
-
 async function checkLimit(
   identifier: string,
   config: RateLimitConfig,
@@ -73,26 +56,13 @@ async function checkLimit(
     });
     const result = await limiter.limit(identifier);
     return { allowed: result.success, remaining: result.remaining };
-  } catch {
-    // Fall through to in-memory if Redis has a runtime error
-  }
-
-  const now = Date.now();
-  const windowMs = config.window * 1000;
-  const entry = memoryStore.get(identifier);
-
-  if (!entry || now > entry.resetAt) {
-    memoryStore.set(identifier, { count: 1, resetAt: now + windowMs });
-    evictOldest();
-    return { allowed: true, remaining: config.max - 1 };
-  }
-
-  if (entry.count >= config.max) {
+  } catch (error) {
+    logger.error('Internal route rate limit check failed — failing closed', {
+      context: 'api/withRouteHandler',
+      error,
+    });
     return { allowed: false, remaining: 0 };
   }
-
-  entry.count++;
-  return { allowed: true, remaining: config.max - entry.count };
 }
 
 export function withRouteHandler(handler: HandlerFn, options: RouteOptions = {}) {

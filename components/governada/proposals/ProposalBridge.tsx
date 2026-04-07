@@ -3,12 +3,18 @@
 import Link from 'next/link';
 import { Vote, CheckCircle2, Wallet } from 'lucide-react';
 import { useSegment } from '@/components/providers/SegmentProvider';
-import { canBodyVote } from '@/lib/governance/votingBodies';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CitizenSentimentReaction } from './CitizenSentimentReaction';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  CITIZEN_PROPOSAL_ACTION_ID,
+  getProposalConnectHref,
+  getProposalGovernanceActionMessage,
+  getProposalGovernanceActionState,
+  getProposalWorkspaceReviewHref,
+} from '@/lib/navigation/proposalAction';
 
 interface ProposalBridgeProps {
   txHash: string;
@@ -16,6 +22,7 @@ interface ProposalBridgeProps {
   title: string;
   isOpen: boolean;
   proposalType?: string | null;
+  paramChanges?: Record<string, unknown> | null;
   existingVote?: string | null;
 }
 
@@ -32,6 +39,7 @@ export function ProposalBridge({
   title: _title,
   isOpen,
   proposalType,
+  paramChanges,
   existingVote,
 }: ProposalBridgeProps) {
   const { segment, isLoading } = useSegment();
@@ -40,14 +48,11 @@ export function ProposalBridge({
     return <Skeleton className="h-14 w-full rounded-xl" />;
   }
 
-  const isGovernanceActor = segment === 'drep' || segment === 'spo' || segment === 'cc';
-  const effectiveType = proposalType ?? 'InfoAction';
-  const voterBody = segment === 'spo' ? 'spo' : segment === 'cc' ? 'cc' : 'drep';
-  const canVote = isGovernanceActor && canBodyVote(voterBody, effectiveType);
+  const actionState = getProposalGovernanceActionState(segment, isOpen, proposalType, paramChanges);
 
   // Governance actors: show review & vote button
-  if (isGovernanceActor) {
-    const workspaceUrl = `/workspace/review?proposal=${encodeURIComponent(txHash)}:${proposalIndex}`;
+  if (actionState.isGovernanceActor) {
+    const workspaceUrl = getProposalWorkspaceReviewHref(txHash, proposalIndex);
 
     return (
       <div
@@ -79,7 +84,7 @@ export function ProposalBridge({
               <Link href={workspaceUrl}>Change vote</Link>
             </Button>
           </>
-        ) : canVote && isOpen ? (
+        ) : actionState.canVote ? (
           <>
             <Vote className="h-4 w-4 text-primary shrink-0" />
             <div className="flex-1 min-w-0">
@@ -95,9 +100,7 @@ export function ProposalBridge({
         ) : (
           <div className="flex-1 min-w-0">
             <p className="text-xs text-muted-foreground">
-              {!isOpen
-                ? 'This proposal is no longer open for voting.'
-                : 'Your governance body cannot vote on this proposal type.'}
+              {getProposalGovernanceActionMessage(actionState)}
             </p>
           </div>
         )}
@@ -108,7 +111,10 @@ export function ProposalBridge({
   // Citizen: inline sentiment
   if (segment === 'citizen') {
     return (
-      <div className="rounded-xl border bg-card/50 backdrop-blur-sm px-4 py-3 space-y-2">
+      <div
+        id={CITIZEN_PROPOSAL_ACTION_ID}
+        className="rounded-xl border bg-card/50 backdrop-blur-sm px-4 py-3 space-y-2"
+      >
         <p className="text-xs font-medium text-muted-foreground">How do you feel about this?</p>
         <CitizenSentimentReaction txHash={txHash} proposalIndex={proposalIndex} isOpen={isOpen} />
       </div>
@@ -121,12 +127,12 @@ export function ProposalBridge({
       <div className="flex items-center gap-2">
         <Wallet className="h-4 w-4 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          <button
+          <Link
             className="text-primary font-medium hover:underline"
-            onClick={() => window.dispatchEvent(new Event('openWalletConnect'))}
+            href={getProposalConnectHref(txHash, proposalIndex)}
           >
             Connect your wallet
-          </button>{' '}
+          </Link>{' '}
           to share your view
         </p>
       </div>

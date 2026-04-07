@@ -54,6 +54,8 @@ import { useEpochHeadline } from '@/hooks/useEpochHeadline';
 import { useDepthConfig } from '@/hooks/useDepthConfig';
 import { DepthGate } from '@/components/providers/DepthGate';
 import { BarChart3 } from 'lucide-react';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import { formatLocaleDate, formatLocaleNumber } from '@/lib/i18n/format';
 import { CommunityConsensus } from './CommunityConsensus';
 import { DelegationHealthSummary } from './DelegationHealthSummary';
 import { DepthDiscoveryFooter } from './DepthDiscoveryFooter';
@@ -67,19 +69,19 @@ type SentimentChoice = 'support' | 'oppose' | 'unsure';
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 
-function formatAda(ada: number): string {
+function formatAda(ada: number, locale?: string): string {
   if (ada >= 1_000_000_000) return `${(ada / 1_000_000_000).toFixed(1)}B`;
   if (ada >= 1_000_000) return `${(ada / 1_000_000).toFixed(1)}M`;
   if (ada >= 1_000) return `${(ada / 1_000).toFixed(0)}K`;
-  return ada.toLocaleString();
+  return formatLocaleNumber(ada, locale);
 }
 
 /** Convert epoch number to a human-readable date range like "Mar 8 – 13" */
-function epochDateRange(epoch: number): string {
+function epochDateRange(epoch: number, locale?: string): string {
   const startUnix = epochToTimestamp(epoch);
   const start = new Date(startUnix * 1000);
   const end = new Date((startUnix + EPOCH_LENGTH_SECONDS) * 1000);
-  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const fmt = (d: Date) => formatLocaleDate(d, locale, { month: 'short', day: 'numeric' });
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
@@ -157,6 +159,7 @@ function getAlignmentBadge(
 }
 
 function ConsequenceCard({ proposal }: { proposal: ConsequenceProposal }) {
+  const { locale } = useLocale();
   const outcome = proposal.outcome ? OUTCOME_CONFIG[proposal.outcome] : null;
   const OutcomeIcon = outcome?.icon ?? Clock;
   const voteInfo = proposal.drepVote ? VOTE_LABELS[proposal.drepVote] : null;
@@ -214,7 +217,7 @@ function ConsequenceCard({ proposal }: { proposal: ConsequenceProposal }) {
               <CommunitySignalInline signal={proposal.communitySignal} />
             )}
             {proposal.withdrawalAda && proposal.withdrawalAda > 0 && (
-              <span className="tabular-nums">{formatAda(proposal.withdrawalAda)} ADA</span>
+              <span className="tabular-nums">{formatAda(proposal.withdrawalAda, locale)} ADA</span>
             )}
           </div>
         </div>
@@ -919,6 +922,7 @@ function YourRepresentationSection() {
 /* ── Governance Footprint Section (engaged+) ──────────────────── */
 
 function GovernanceFootprintSection() {
+  const { locale } = useLocale();
   const { stakeAddress } = useSegment();
   const { data: consequence } = useEpochConsequence(stakeAddress);
   const { data: holderRaw } = useGovernanceHolder(stakeAddress);
@@ -944,7 +948,7 @@ function GovernanceFootprintSection() {
         <FootprintStat icon={Vote} value={proposalsInfluenced} label="Decisions Made" />
         <FootprintStat
           icon={Coins}
-          value={adaGoverned > 0 ? formatAda(adaGoverned) : '--'}
+          value={adaGoverned > 0 ? formatAda(adaGoverned, locale) : '--'}
           label="ADA Represented"
         />
         <FootprintStat
@@ -991,12 +995,13 @@ function EpochHeadline({
   drepName: string;
   hasDrep: boolean;
 }) {
+  const { locale } = useLocale();
   const [shareCopied, setShareCopied] = useState(false);
 
   const adaDecidedForHeadline = votingPowerAda ?? 0;
   const templateHeadline =
     adaDecidedForHeadline > 0
-      ? `Your representative helped decide how ${formatAda(adaDecidedForHeadline)} ADA is spent`
+      ? `Your representative helped decide how ${formatAda(adaDecidedForHeadline, locale)} ADA is spent`
       : proposalsInfluenced > 0
         ? `${proposalsInfluenced} decision${proposalsInfluenced !== 1 ? 's' : ''} made this period`
         : 'No decisions yet this period';
@@ -1006,7 +1011,7 @@ function EpochHeadline({
     const params = new URLSearchParams({
       headline: headlineText,
       decisions: String(proposalsInfluenced),
-      ada: formatAda(adaGoverned),
+      ada: formatAda(adaGoverned, locale),
       streak: String(checkinStreak || delegationStreak),
       ...(hasDrep ? { drep: drepName } : {}),
     });
@@ -1026,7 +1031,7 @@ function EpochHeadline({
   return (
     <motion.header variants={briefingItem} className="space-y-1 pb-1" data-discovery="hub-briefing">
       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {epoch > 0 ? epochDateRange(epoch) : 'This period'}
+        {epoch > 0 ? epochDateRange(epoch, locale) : 'This period'}
         <span className="ml-1.5 text-muted-foreground/50">Epoch {epoch}</span>
       </p>
       <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
@@ -1037,8 +1042,8 @@ function EpochHeadline({
       </h1>
       {votingPowerFraction != null && votingPowerFraction > 0 && (
         <p className="text-sm text-muted-foreground">
-          Your {votingPowerAda ? `${formatAda(votingPowerAda)} ADA` : 'ADA'} adds weight to your
-          representative&apos;s votes
+          Your {votingPowerAda ? `${formatAda(votingPowerAda, locale)} ADA` : 'ADA'} adds weight to
+          your representative&apos;s votes
         </p>
       )}
       {epoch > 0 && stakeAddress && (

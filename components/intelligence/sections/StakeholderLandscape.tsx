@@ -26,6 +26,7 @@ interface StakeholderLandscapeProps {
     total: number;
   } | null;
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -89,8 +90,9 @@ export function StakeholderLandscape({
   interBodyVotes,
   citizenSentiment,
   proposalType,
+  paramChanges,
 }: StakeholderLandscapeProps) {
-  const eligibleBodies = getVotingBodies(proposalType);
+  const eligibleBodies = getVotingBodies(proposalType, paramChanges);
 
   return (
     <div className="space-y-3 text-xs">

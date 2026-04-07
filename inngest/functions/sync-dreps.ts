@@ -125,9 +125,8 @@ export const syncDreps = inngest.createFunction(
 
         const postSyncResult = await phasePostSync(
           drepData.dreps,
-          drepData.rawVotesMap,
+          drepData.latestVotesMap,
           proposalResult.classifiedProposals,
-          drepData.delegatorCounts,
         );
 
         // Return only the lightweight summary — not the raw data.
@@ -137,8 +136,6 @@ export const syncDreps = inngest.createFunction(
           upsertResult,
           postSyncResult: {
             alignmentComputed: postSyncResult.alignmentComputed,
-            delegationSnapshotsInserted: postSyncResult.delegationSnapshotsInserted,
-            scoreHistoryInserted: postSyncResult.scoreHistoryInserted,
             errors: postSyncResult.errors.slice(0, MAX_ERRORS),
             durationMs: postSyncResult.durationMs,
           } satisfies PostSyncResult,

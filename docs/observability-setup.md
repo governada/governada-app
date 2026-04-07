@@ -1,6 +1,6 @@
 # Observability Setup Guide
 
-Dashboard and external service configurations for the Governada observability stack. These cannot be automated via code and must be set up manually.
+Dashboard and external service configurations for the Governada observability stack. These steps are operational setup, not code deployment, so they must be completed manually.
 
 ---
 
@@ -46,14 +46,14 @@ Navigate to the **Governada Sentry project > Alerts > Create Alert Rule**.
 
 Navigate to the **Governada Sentry project > Performance > Web Vitals**.
 
-The built-in Web Vitals view already shows LCP, FID/INP, CLS by page. To create a custom dashboard:
+The built-in Web Vitals view already shows LCP, FID/INP, and CLS by page. To create a custom dashboard:
 
 1. Go to **Dashboards > Create Dashboard**
 2. Add widgets:
-   - **LCP by Page** — `p75(measurements.lcp)` grouped by `transaction`
-   - **INP by Page** — `p75(measurements.inp)` grouped by `transaction`
-   - **CLS by Page** — `p75(measurements.cls)` grouped by `transaction`
-   - **Device Class Breakdown** — Filter by `device.class` (low/medium/high)
+   - **LCP by Page** - `p75(measurements.lcp)` grouped by `transaction`
+   - **INP by Page** - `p75(measurements.inp)` grouped by `transaction`
+   - **CLS by Page** - `p75(measurements.cls)` grouped by `transaction`
+   - **Device Class Breakdown** - Filter by `device.class` (low/medium/high)
 3. Save as **"Web Vitals by Page"**
 
 Key pages to watch: `/`, `/drep/[drepId]`, `/discover`, `/match`, `/proposals`.
@@ -125,7 +125,7 @@ Navigate to **PostHog > Dashboards > New Dashboard**.
 
 ## 5. BetterStack (External Uptime)
 
-Sign up at [betterstack.com](https://betterstack.com) (free tier: 5 monitors, 3-min intervals).
+Sign up at [betterstack.com](https://betterstack.com). The current tier-1 heartbeat set needs more than the old free-tier limit, so use a paid plan or temporarily prioritize the tier-1 jobs if monitor count is constrained.
 
 ### Monitors to Create
 
@@ -135,21 +135,39 @@ Sign up at [betterstack.com](https://betterstack.com) (free tier: 5 monitors, 3-
 
 ### Heartbeat URLs
 
-Create 3 heartbeat monitors in BetterStack:
+Create these heartbeat monitors in BetterStack:
 
-1. **Proposals Sync** — Expected every 30 minutes
-2. **Batch Sync** — Expected every 6 hours
-3. **Daily Sync** — Expected every 24 hours
+1. **Proposals Sync** - Expected every 30 minutes
+2. **Batch Sync** - Expected every 6 hours
+3. **Daily Sync** - Expected every 24 hours
+4. **Scoring Sync** - Expected every 24 hours
+5. **Alignment Sync** - Expected every 24 hours
+6. **Freshness Guard** - Expected every 30 minutes
+7. **Epoch Summary** - Expected every 24 hours
 
 Then set the following environment variables in Railway:
 
-```
+```text
 HEARTBEAT_URL_PROPOSALS=<betterstack heartbeat URL 1>
 HEARTBEAT_URL_BATCH=<betterstack heartbeat URL 2>
 HEARTBEAT_URL_DAILY=<betterstack heartbeat URL 3>
+HEARTBEAT_URL_SCORING=<betterstack heartbeat URL 4>
+HEARTBEAT_URL_ALIGNMENT=<betterstack heartbeat URL 5>
+HEARTBEAT_URL_FRESHNESS_GUARD=<betterstack heartbeat URL 6>
+HEARTBEAT_URL_EPOCH_SUMMARY=<betterstack heartbeat URL 7>
 ```
 
-The Inngest functions already call `pingHeartbeat()` with these env var keys.
+The current tier-1 scheduled jobs map to those heartbeat URLs as follows:
+
+- `sync-proposals` -> `HEARTBEAT_URL_PROPOSALS`
+- `sync-dreps`, `sync-votes`, `sync-secondary` -> `HEARTBEAT_URL_BATCH`
+- `sync-slow`, `sync-treasury-snapshot` -> `HEARTBEAT_URL_DAILY`
+- `sync-drep-scores` -> `HEARTBEAT_URL_SCORING`
+- `sync-alignment` -> `HEARTBEAT_URL_ALIGNMENT`
+- `sync-freshness-guard` -> `HEARTBEAT_URL_FRESHNESS_GUARD`
+- `generate-epoch-summary` -> `HEARTBEAT_URL_EPOCH_SUMMARY`
+
+The helper script `node scripts/uptime-check.mjs all` now knows all of these heartbeat types.
 
 ---
 
@@ -159,8 +177,8 @@ After completing all setup:
 
 - [ ] Sentry: 4 alert rules active, test by triggering a test error
 - [ ] Sentry: Web Vitals dashboard shows data for key pages
-- [ ] Sentry: Cron Monitors show check-ins for all 6 Inngest functions
+- [ ] Sentry: Cron Monitors show check-ins for the tier-1 scheduled jobs and the current monitored set
 - [ ] PostHog: Quick Match funnel shows step-by-step conversion
 - [ ] PostHog: 3 dashboards created with correct insights
 - [ ] BetterStack: Deep health monitor shows green
-- [ ] BetterStack: Heartbeat monitors show activity after next sync cycle
+- [ ] BetterStack: Tier-1 heartbeat monitors show activity after the next sync cycle

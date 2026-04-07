@@ -87,6 +87,7 @@ describe('Koios Schema Validation', () => {
       vote: 'Yes',
       meta_url: null,
       meta_hash: null,
+      has_rationale: false,
     };
 
     it('accepts valid vote', () => {

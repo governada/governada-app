@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Vote, MessageSquareHeart, Wallet, ExternalLink } from 'lucide-react';
+import { MessageSquareHeart, Vote, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
 import { cn } from '@/lib/utils';
+import {
+  CITIZEN_PROPOSAL_ACTION_ID,
+  getProposalConnectHref,
+  getProposalGovernanceActionState,
+  getProposalWorkspaceReviewHref,
+} from '@/lib/navigation/proposalAction';
 
 interface MobileStickyActionProps {
   txHash: string;
@@ -13,30 +19,43 @@ interface MobileStickyActionProps {
   isOpen: boolean;
   verdictLabel: string;
   verdictColor: string;
-}
-
-function getGovToolUrl(txHash: string, proposalIndex: number): string {
-  return `https://gov.tools/governance_actions/${txHash}#${proposalIndex}`;
+  proposalType?: string | null;
+  paramChanges?: Record<string, unknown> | null;
 }
 
 function StickyButton({
   segment,
   txHash,
   proposalIndex,
+  isOpen,
+  proposalType,
+  paramChanges,
 }: {
   segment: UserSegment;
   txHash: string;
   proposalIndex: number;
+  isOpen: boolean;
+  proposalType?: string | null;
+  paramChanges?: Record<string, unknown> | null;
 }) {
-  const govToolUrl = getGovToolUrl(txHash, proposalIndex);
+  const actionState = getProposalGovernanceActionState(segment, isOpen, proposalType, paramChanges);
+  const workspaceUrl = getProposalWorkspaceReviewHref(txHash, proposalIndex);
 
-  if (segment === 'drep' || segment === 'spo' || segment === 'cc') {
+  if (actionState.isGovernanceActor) {
+    if (!actionState.canVote) {
+      return (
+        <Button size="sm" variant="outline" className="gap-1.5 flex-1 sm:flex-none" disabled>
+          <Vote className="h-3.5 w-3.5" />
+          {actionState.reason === 'closed' ? 'Voting Closed' : 'Not Eligible'}
+        </Button>
+      );
+    }
+
     return (
       <Button asChild size="sm" className="gap-1.5 flex-1 sm:flex-none">
-        <Link href={govToolUrl} target="_blank" rel="noopener noreferrer">
+        <Link href={workspaceUrl}>
           <Vote className="h-3.5 w-3.5" />
-          Cast Vote
-          <ExternalLink className="h-3 w-3 opacity-50" />
+          Review &amp; Vote
         </Link>
       </Button>
     );
@@ -49,7 +68,7 @@ function StickyButton({
         variant="outline"
         className="gap-1.5 flex-1 sm:flex-none"
         onClick={() => {
-          const el = document.getElementById('citizen-engagement');
+          const el = document.getElementById(CITIZEN_PROPOSAL_ACTION_ID);
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }}
       >
@@ -61,7 +80,7 @@ function StickyButton({
 
   return (
     <Button size="sm" variant="outline" className="gap-1.5 flex-1 sm:flex-none" asChild>
-      <Link href="#connect-wallet">
+      <Link href={getProposalConnectHref(txHash, proposalIndex)}>
         <Wallet className="h-3.5 w-3.5" />
         Connect
       </Link>
@@ -71,7 +90,8 @@ function StickyButton({
 
 /**
  * Sticky bottom bar that appears on scroll for mobile users.
- * Shows verdict label + action button — always reachable.
+ * Shows verdict label + action button and follows the same action contract
+ * as the main proposal-detail surface.
  */
 export function MobileStickyAction({
   txHash,
@@ -79,6 +99,8 @@ export function MobileStickyAction({
   isOpen,
   verdictLabel,
   verdictColor,
+  proposalType,
+  paramChanges,
 }: MobileStickyActionProps) {
   const { segment } = useSegment();
   const [visible, setVisible] = useState(false);
@@ -87,7 +109,6 @@ export function MobileStickyAction({
     if (!isOpen) return;
 
     const onScroll = () => {
-      // Show after scrolling 400px (past the verdict strip)
       setVisible(window.scrollY > 400);
     };
 
@@ -109,7 +130,14 @@ export function MobileStickyAction({
     >
       <div className="flex items-center justify-between gap-3">
         <span className={cn('text-sm font-semibold', verdictColor)}>{verdictLabel}</span>
-        <StickyButton segment={segment} txHash={txHash} proposalIndex={proposalIndex} />
+        <StickyButton
+          segment={segment}
+          txHash={txHash}
+          proposalIndex={proposalIndex}
+          isOpen={isOpen}
+          proposalType={proposalType}
+          paramChanges={paramChanges}
+        />
       </div>
     </div>
   );

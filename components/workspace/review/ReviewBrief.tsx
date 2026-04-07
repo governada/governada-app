@@ -18,6 +18,7 @@ import { EngagementAnalytics } from './EngagementAnalytics';
 import { CommunityTemperature } from './CommunityTemperature';
 import { PublicFeedbackSummary } from './PublicFeedbackSummary';
 import { FeatureGate } from '@/components/FeatureGate';
+import { getVotingBodies } from '@/lib/governance/votingBodies';
 
 interface ReviewBriefProps {
   item: ReviewQueueItem;
@@ -48,6 +49,7 @@ export function ReviewBrief({ item, allItems = [] }: ReviewBriefProps) {
   }, [item.sealedUntil]);
 
   const typeLabel = PROPOSAL_TYPE_LABELS[item.proposalType as ProposalType] || item.proposalType;
+  const eligibleBodies = getVotingBodies(item.proposalType, item.paramChanges);
 
   return (
     <div className="space-y-4">
@@ -159,9 +161,15 @@ export function ReviewBrief({ item, allItems = [] }: ReviewBriefProps) {
                   Inter-Body Vote Tally
                 </h3>
                 <div className="space-y-2">
-                  <VoteTallyRow label="DRep" tally={item.interBodyVotes.drep} />
-                  <VoteTallyRow label="SPO" tally={item.interBodyVotes.spo} />
-                  <VoteTallyRow label="CC" tally={item.interBodyVotes.cc} />
+                  {eligibleBodies.includes('drep') && (
+                    <VoteTallyRow label="DRep" tally={item.interBodyVotes.drep} />
+                  )}
+                  {eligibleBodies.includes('spo') && (
+                    <VoteTallyRow label="SPO" tally={item.interBodyVotes.spo} />
+                  )}
+                  {eligibleBodies.includes('cc') && (
+                    <VoteTallyRow label="CC" tally={item.interBodyVotes.cc} />
+                  )}
                 </div>
               </div>
             )}

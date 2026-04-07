@@ -23,6 +23,7 @@ interface ProposalVoterTabsProps {
   proposalIndex: number;
   status?: ProposalStatus;
   proposalType?: string;
+  paramChanges?: Record<string, unknown> | null;
 }
 
 function VoteBadge({ vote }: { vote: string }) {
@@ -150,11 +151,12 @@ export function ProposalVoterTabs({
   proposalIndex,
   status,
   proposalType,
+  paramChanges,
 }: ProposalVoterTabsProps) {
   const eligibleTabs = useMemo(() => {
     if (!proposalType) return new Set<Tab>(['dreps', 'spos', 'cc']);
-    return new Set(getVotingBodies(proposalType).map((b) => BODY_TO_TAB[b]));
-  }, [proposalType]);
+    return new Set(getVotingBodies(proposalType, paramChanges).map((b) => BODY_TO_TAB[b]));
+  }, [proposalType, paramChanges]);
 
   const [tab, setTab] = useState<Tab>('dreps');
 

@@ -2562,6 +2562,7 @@ export type Database = {
           embedding_originality: number | null;
           embedding_proposal_relevance: number | null;
           epoch_no: number | null;
+          has_rationale: boolean;
           meta_hash: string | null;
           meta_url: string | null;
           power_source: string | null;
@@ -2583,6 +2584,7 @@ export type Database = {
           embedding_originality?: number | null;
           embedding_proposal_relevance?: number | null;
           epoch_no?: number | null;
+          has_rationale?: boolean;
           meta_hash?: string | null;
           meta_url?: string | null;
           power_source?: string | null;
@@ -2604,6 +2606,7 @@ export type Database = {
           embedding_originality?: number | null;
           embedding_proposal_relevance?: number | null;
           epoch_no?: number | null;
+          has_rationale?: boolean;
           meta_hash?: string | null;
           meta_url?: string | null;
           power_source?: string | null;
@@ -6014,6 +6017,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      sync_cursors: {
+        Row: {
+          cursor_block_time: number | null;
+          cursor_timestamp: string | null;
+          sync_type: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          cursor_block_time?: number | null;
+          cursor_timestamp?: string | null;
+          sync_type: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          cursor_block_time?: number | null;
+          cursor_timestamp?: string | null;
+          sync_type?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
       sync_log: {
         Row: {
           created_at: string | null;
@@ -6606,10 +6630,15 @@ export type Database = {
         Row: {
           ai_summary: string | null;
           drep_id: string;
+          fetch_attempts: number;
+          fetch_last_attempted_at: string | null;
+          fetch_last_error: string | null;
+          fetch_status: string;
           fetched_at: string | null;
           hash_check_attempted_at: string | null;
           hash_verified: boolean | null;
           meta_url: string | null;
+          next_fetch_at: string | null;
           proposal_index: number | null;
           proposal_tx_hash: string | null;
           rationale_text: string | null;
@@ -6618,10 +6647,15 @@ export type Database = {
         Insert: {
           ai_summary?: string | null;
           drep_id: string;
+          fetch_attempts?: number;
+          fetch_last_attempted_at?: string | null;
+          fetch_last_error?: string | null;
+          fetch_status?: string;
           fetched_at?: string | null;
           hash_check_attempted_at?: string | null;
           hash_verified?: boolean | null;
           meta_url?: string | null;
+          next_fetch_at?: string | null;
           proposal_index?: number | null;
           proposal_tx_hash?: string | null;
           rationale_text?: string | null;
@@ -6630,10 +6664,15 @@ export type Database = {
         Update: {
           ai_summary?: string | null;
           drep_id?: string;
+          fetch_attempts?: number;
+          fetch_last_attempted_at?: string | null;
+          fetch_last_error?: string | null;
+          fetch_status?: string;
           fetched_at?: string | null;
           hash_check_attempted_at?: string | null;
           hash_verified?: boolean | null;
           meta_url?: string | null;
+          next_fetch_at?: string | null;
           proposal_index?: number | null;
           proposal_tx_hash?: string | null;
           rationale_text?: string | null;

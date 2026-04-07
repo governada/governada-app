@@ -53,6 +53,22 @@ vi.mock('@/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock('@/lib/redis', () => ({
+  getRedis: () => ({}),
+}));
+
+vi.mock('@upstash/ratelimit', () => {
+  const Ratelimit = vi.fn().mockImplementation(() => ({
+    limit: (...args: unknown[]) => mockLimit(...args),
+  }));
+
+  Object.assign(Ratelimit, {
+    slidingWindow: vi.fn().mockReturnValue('window'),
+  });
+
+  return { Ratelimit };
+});
+
 vi.mock('@/lib/api/response', () => ({
   generateRequestId: () => 'req_test',
   normalizeEndpoint: (p: string) => p.replace(/^\/api/, ''),
@@ -76,6 +92,7 @@ import { POST } from '@/app/api/polls/vote/route';
 describe('POST /api/polls/vote', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLimit.mockResolvedValue({ success: true, remaining: 9 });
   });
 
   it('returns 401 without auth token', async () => {

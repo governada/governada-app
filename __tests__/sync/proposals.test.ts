@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createRequest, parseJson } from '../helpers';
 
 const mockFrom = vi.fn();
+const { mockSend } = vi.hoisted(() => ({ mockSend: vi.fn() }));
 
 vi.mock('@/lib/supabase', () => ({
   getSupabaseAdmin: () => ({
@@ -9,9 +10,14 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 
+vi.mock('@/lib/inngest', () => ({
+  inngest: {
+    send: mockSend,
+  },
+}));
+
 vi.mock('@/utils/koios', () => ({
   fetchProposals: vi.fn(),
-  fetchVotesForProposals: vi.fn(),
   fetchProposalVotingSummary: vi.fn(),
   resetKoiosMetrics: vi.fn(),
   getKoiosMetrics: () => ({ koios_calls: 1, koios_latency_ms: 100, koios_slowest_ms: 100 }),
@@ -72,6 +78,7 @@ describe('GET /api/sync/proposals', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('CRON_SECRET', CRON_SECRET);
+    mockSend.mockResolvedValue({ ids: ['evt_1'] });
   });
 
   it('returns 401 without auth', async () => {
@@ -92,6 +99,7 @@ describe('GET /api/sync/proposals', () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
+    expect(mockSend).not.toHaveBeenCalled();
   });
 
   it('returns 207 when Koios fails but route continues gracefully', async () => {

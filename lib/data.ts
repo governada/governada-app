@@ -1,16 +1,40 @@
 /**
- * Data Layer - Supabase Cache with Koios Fallback
+ * Data Layer - Supabase Cache
  * Fast reads from Supabase with automatic freshness checks and sync triggering
  */
 
 import { createClient } from './supabase';
-import { getEnrichedDReps, EnrichedDRep } from './koios';
+import { EnrichedDRep } from './koios';
 import { isWellDocumented } from '@/utils/documentation';
 import { logger } from '@/lib/logger';
 import { getCurrentEpoch } from '@/lib/constants';
+import { SYNC_FRESHNESS_POLICY } from './syncPolicy';
+import {
+  buildProposalVoteSummary,
+  buildTriBodyVotes,
+  summarizeDRepVotes,
+  type ProposalWithVoteSummary,
+} from './governance/proposalSummary';
+import {
+  fetchLatestProposalVotingSummary,
+  fetchProposalVotingSummaries,
+  getProposalVotingSummaryKey,
+  indexProposalVotingSummaryTriBodies,
+} from './governance/proposalVotingSummary';
+export {
+  getProposalsByIds,
+  getRationalesByVoteTxHashes,
+  getVotesByDRepId,
+} from './governance/proposalEnrichment';
+export type { CachedProposal, DRepVoteRow, RationaleRecord } from './governance/proposalEnrichment';
+export type {
+  ProposalStatus,
+  ProposalWithVoteSummary,
+  TriBodyVotes,
+} from './governance/proposalSummary';
+export { getVotingPowerSummary } from './governance/votingPowerSummary';
+export type { VotingPowerSummary } from './governance/votingPowerSummary';
 import type { SizeTier } from '@/utils/scoring';
-
-const CACHE_FRESHNESS_MINUTES = 15;
 
 interface DRepRowInfo {
   drepHash?: string;
@@ -66,6 +90,16 @@ interface SupabaseDRepRow {
   governance_identity: number | null;
   governance_identity_raw: number | null;
   score_momentum: number | null;
+}
+
+export class DRepCacheUnavailableError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'DRepCacheUnavailableError';
+    if (options && 'cause' in options) {
+      this.cause = options.cause;
+    }
+  }
 }
 
 /**
@@ -143,7 +177,7 @@ let _drepsCache: {
 /**
  * Trigger background sync without blocking.
  * In production, fires an Inngest event to retrigger the DReps sync.
- * Debounced to avoid spamming events on every stale read.
+ * Debounced to avoid spamming events when reads notice the sync is overdue.
  */
 async function triggerBackgroundSync() {
   if (Date.now() - lastSyncTrigger < SYNC_TRIGGER_COOLDOWN_MS) return;
@@ -172,8 +206,7 @@ async function triggerProposalsSync() {
 }
 
 /**
- * Get all DReps with caching and fallback
- * Returns same structure as getEnrichedDReps() for drop-in replacement
+ * Get all DReps from the Supabase read model.
  */
 export async function getAllDReps(): Promise<{
   dreps: EnrichedDRep[];
@@ -224,9 +257,9 @@ export async function getAllDReps(): Promise<{
     }
 
     if (!rows || rows.length === 0) {
-      logger.warn('[Data] No data in Supabase, falling back to Koios');
+      logger.warn('[Data] No DRep data in Supabase cache');
       logger.warn('[Data] Run: npm run sync');
-      return await getEnrichedDReps(false);
+      throw new DRepCacheUnavailableError('DRep cache is empty');
     }
 
     if (isDev) {
@@ -241,16 +274,21 @@ export async function getAllDReps(): Promise<{
     if (timestamps.length > 0) {
       const maxTimestamp = Math.max(...timestamps);
       const maxUpdatedAt = new Date(maxTimestamp);
-      const freshnessThreshold = new Date(Date.now() - CACHE_FRESHNESS_MINUTES * 60 * 1000);
-      const isStale = maxUpdatedAt < freshnessThreshold;
+      const retriggerThreshold = new Date(
+        Date.now() - SYNC_FRESHNESS_POLICY.dreps.retriggerAfterMinutes * 60 * 1000,
+      );
+      const isStale = maxUpdatedAt < retriggerThreshold;
 
       if (isStale) {
         const ageMinutes = Math.round((Date.now() - maxTimestamp) / 1000 / 60);
         if (isDev) {
-          logger.info('[Data] Cache is stale', { ageMinutes });
+          logger.info('[Data] Cache is overdue for retrigger', {
+            ageMinutes,
+            retriggerAfterMinutes: SYNC_FRESHNESS_POLICY.dreps.retriggerAfterMinutes,
+          });
         }
         // Trigger sync in background (non-blocking)
-        triggerBackgroundSync();
+        void triggerBackgroundSync();
       } else if (isDev) {
         const ageMinutes = Math.round((Date.now() - maxTimestamp) / 1000 / 60);
         logger.info('[Data] Cache is fresh', { ageMinutes });
@@ -279,16 +317,14 @@ export async function getAllDReps(): Promise<{
     _drepsCache = { data: result, timestamp: Date.now() };
     return result;
   } catch (error: unknown) {
-    logger.error('[Data] Cache read failed, falling back to Koios', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    // Fallback to direct Koios fetch
-    if (isDev) {
-      logger.info('[Data] Fetching directly from Koios (slow)...');
+    if (error instanceof DRepCacheUnavailableError) {
+      throw error;
     }
 
-    return await getEnrichedDReps(false);
+    logger.error('[Data] Cache read failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw new DRepCacheUnavailableError('DRep cache unavailable', { cause: error });
   }
 }
 
@@ -365,175 +401,6 @@ export async function getActualProposalCount(): Promise<number> {
 }
 
 /**
- * Proposal metadata from the cached proposals table
- */
-export interface CachedProposal {
-  txHash: string;
-  proposalIndex: number;
-  title: string | null;
-  abstract: string | null;
-  aiSummary: string | null;
-  proposalType: string | null;
-  withdrawalAmount: number | null;
-  treasuryTier: string | null;
-  relevantPrefs: string[];
-}
-
-/**
- * Get proposals by their IDs (tx_hash + proposal_index)
- * Used to enrich vote records with proposal metadata
- */
-export async function getProposalsByIds(
-  proposalIds: { txHash: string; index: number }[],
-): Promise<Map<string, CachedProposal>> {
-  const result = new Map<string, CachedProposal>();
-
-  if (proposalIds.length === 0) return result;
-
-  try {
-    const supabase = createClient();
-
-    // Build a filter for all the proposal IDs
-    // Note: Supabase doesn't support compound key IN queries easily,
-    // so we'll fetch all proposals and filter client-side for simplicity
-    const txHashes = [...new Set(proposalIds.map((p) => p.txHash))];
-
-    const { data: rows, error } = await supabase
-      .from('proposals')
-      .select(
-        'tx_hash, proposal_index, title, abstract, ai_summary, proposal_type, withdrawal_amount, treasury_tier, relevant_prefs',
-      )
-      .in('tx_hash', txHashes);
-
-    if (error) {
-      logger.warn('[Data] getProposalsByIds query failed', { error: error.message });
-      return result;
-    }
-
-    if (!rows || rows.length === 0) {
-      logger.warn('[Data] getProposalsByIds: no proposals found', { txHashCount: txHashes.length });
-      return result;
-    }
-
-    // Supabase doesn't support compound-key IN queries; we filter client-side after fetching by tx_hash
-    const requestedIds = new Set(proposalIds.map((p) => `${p.txHash}-${p.index}`));
-
-    for (const row of rows) {
-      const key = `${row.tx_hash}-${row.proposal_index}`;
-      if (requestedIds.has(key)) {
-        result.set(key, {
-          txHash: row.tx_hash,
-          proposalIndex: row.proposal_index,
-          title: row.title,
-          abstract: row.abstract,
-          aiSummary: row.ai_summary || null,
-          proposalType: row.proposal_type,
-          withdrawalAmount: row.withdrawal_amount != null ? Number(row.withdrawal_amount) : null,
-          treasuryTier: row.treasury_tier,
-          relevantPrefs: row.relevant_prefs || [],
-        });
-      }
-    }
-
-    return result;
-  } catch (err) {
-    logger.error('[Data] getProposalsByIds error', { error: err });
-    return result;
-  }
-}
-
-export interface RationaleRecord {
-  rationaleText: string | null;
-  rationaleAiSummary: string | null;
-  hashVerified: boolean | null;
-}
-
-/**
- * Get cached rationale text and AI summary for votes by their tx hashes
- */
-export async function getRationalesByVoteTxHashes(
-  voteTxHashes: string[],
-): Promise<Map<string, RationaleRecord>> {
-  const result = new Map<string, RationaleRecord>();
-
-  if (voteTxHashes.length === 0) return result;
-
-  try {
-    const supabase = createClient();
-
-    const { data: rows, error } = await supabase
-      .from('vote_rationales')
-      .select('vote_tx_hash, rationale_text, ai_summary, hash_verified')
-      .in('vote_tx_hash', voteTxHashes);
-
-    if (error) {
-      logger.warn('[Data] getRationalesByVoteTxHashes query failed', { error: error.message });
-      return result;
-    }
-
-    if (!rows) return result;
-
-    for (const row of rows) {
-      result.set(row.vote_tx_hash, {
-        rationaleText: row.rationale_text || null,
-        rationaleAiSummary: row.ai_summary || null,
-        hashVerified: row.hash_verified ?? null,
-      });
-    }
-
-    return result;
-  } catch (err) {
-    logger.error('[Data] getRationalesByVoteTxHashes error', { error: err });
-    return result;
-  }
-}
-
-/**
- * Row shape returned from the drep_votes table
- */
-export interface DRepVoteRow {
-  vote_tx_hash: string;
-  drep_id: string;
-  proposal_tx_hash: string;
-  proposal_index: number;
-  vote: 'Yes' | 'No' | 'Abstain';
-  epoch_no: number | null;
-  block_time: number;
-  meta_url: string | null;
-  meta_hash: string | null;
-  rationale_quality: number | null;
-  rationale_specificity: number | null;
-  rationale_reasoning_depth: number | null;
-  rationale_proposal_awareness: number | null;
-}
-
-/**
- * Get all votes for a specific DRep from Supabase
- * Ordered by block_time DESC (most recent first)
- */
-export async function getVotesByDRepId(drepId: string): Promise<DRepVoteRow[]> {
-  try {
-    const supabase = createClient();
-
-    const { data: rows, error } = await supabase
-      .from('drep_votes')
-      .select('*')
-      .eq('drep_id', drepId)
-      .order('block_time', { ascending: false });
-
-    if (error) {
-      logger.warn('[Data] getVotesByDRepId query failed', { error: error.message });
-      return [];
-    }
-
-    return (rows as DRepVoteRow[]) || [];
-  } catch (err) {
-    logger.error('[Data] getVotesByDRepId error', { error: err });
-    return [];
-  }
-}
-
-/**
  * Get a single DRep by ID
  * Returns DRep data or null if not found
  */
@@ -585,68 +452,6 @@ export async function getDRepById(drepId: string): Promise<EnrichedDRep | null> 
 // PROPOSALS SECTION DATA
 // ============================================================================
 
-export interface TriBodyVotes {
-  drep: { yes: number; no: number; abstain: number };
-  spo: { yes: number; no: number; abstain: number };
-  cc: { yes: number; no: number; abstain: number };
-}
-
-function buildTriBodyVotes(s: {
-  drep_yes_votes_cast: number | null;
-  drep_no_votes_cast: number | null;
-  drep_abstain_votes_cast: number | null;
-  pool_yes_votes_cast: number | null;
-  pool_no_votes_cast: number | null;
-  pool_abstain_votes_cast: number | null;
-  committee_yes_votes_cast: number | null;
-  committee_no_votes_cast: number | null;
-  committee_abstain_votes_cast: number | null;
-}): TriBodyVotes {
-  return {
-    drep: {
-      yes: s.drep_yes_votes_cast || 0,
-      no: s.drep_no_votes_cast || 0,
-      abstain: s.drep_abstain_votes_cast || 0,
-    },
-    spo: {
-      yes: s.pool_yes_votes_cast || 0,
-      no: s.pool_no_votes_cast || 0,
-      abstain: s.pool_abstain_votes_cast || 0,
-    },
-    cc: {
-      yes: s.committee_yes_votes_cast || 0,
-      no: s.committee_no_votes_cast || 0,
-      abstain: s.committee_abstain_votes_cast || 0,
-    },
-  };
-}
-
-export interface ProposalWithVoteSummary {
-  txHash: string;
-  proposalIndex: number;
-  title: string | null;
-  abstract: string | null;
-  proposalType: string;
-  withdrawalAmount: number | null;
-  treasuryTier: string | null;
-  relevantPrefs: string[];
-  proposedEpoch: number | null;
-  blockTime: number | null;
-  aiSummary: string | null;
-  yesCount: number;
-  noCount: number;
-  abstainCount: number;
-  totalVotes: number;
-  voterDrepIds: string[];
-  ratifiedEpoch: number | null;
-  enactedEpoch: number | null;
-  droppedEpoch: number | null;
-  expiredEpoch: number | null;
-  expirationEpoch: number | null;
-  triBody?: TriBodyVotes;
-  paramChanges: Record<string, unknown> | null;
-}
-
 /**
  * Get all proposals with vote summary counts.
  * Fetches proposals from Supabase and aggregates votes.
@@ -673,24 +478,22 @@ export async function getAllProposalsWithVoteSummary(): Promise<ProposalWithVote
       return [];
     }
 
+    const proposalTxHashes = [...new Set(proposals.map((proposal) => proposal.tx_hash))];
+
     // Fetch tri-body vote summaries + voter DRep IDs (just the IDs, not full vote rows)
-    const [votingSummaryResult, voterIdsResult] = await Promise.all([
+    const [votingSummaryRows, voterIdsResult] = await Promise.all([
+      fetchProposalVotingSummaries(
+        supabase,
+        proposalTxHashes,
+        'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
+      ),
       supabase
-        .from('proposal_voting_summary')
-        .select(
-          'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
-        ),
-      supabase.from('drep_votes').select('proposal_tx_hash, proposal_index, drep_id'),
+        .from('drep_votes')
+        .select('proposal_tx_hash, proposal_index, drep_id')
+        .in('proposal_tx_hash', proposalTxHashes),
     ]);
 
-    // Build tri-body map + DRep vote counts from proposal_voting_summary
-    const triBodyMap = new Map<string, TriBodyVotes>();
-    if (votingSummaryResult.data) {
-      for (const s of votingSummaryResult.data) {
-        const key = `${s.proposal_tx_hash}-${s.proposal_index}`;
-        triBodyMap.set(key, buildTriBodyVotes(s));
-      }
-    }
+    const triBodyMap = indexProposalVotingSummaryTriBodies(votingSummaryRows);
 
     // Build voter DRep ID sets per proposal
     const voterMap = new Map<string, Set<string>>();
@@ -707,35 +510,15 @@ export async function getAllProposalsWithVoteSummary(): Promise<ProposalWithVote
     }
 
     return proposals.map((p) => {
-      const key = `${p.tx_hash}-${p.proposal_index}`;
+      const key = getProposalVotingSummaryKey(p.tx_hash, p.proposal_index);
       const triBody = triBodyMap.get(key);
-      const drepCounts = triBody?.drep ?? { yes: 0, no: 0, abstain: 0 };
       const voters = voterMap.get(key);
-      return {
-        txHash: p.tx_hash,
-        proposalIndex: p.proposal_index,
-        title: p.title,
-        abstract: p.abstract,
-        proposalType: p.proposal_type,
-        withdrawalAmount: p.withdrawal_amount != null ? Number(p.withdrawal_amount) : null,
-        treasuryTier: p.treasury_tier,
-        relevantPrefs: p.relevant_prefs || [],
-        proposedEpoch: p.proposed_epoch,
-        blockTime: p.block_time,
-        aiSummary: p.ai_summary || null,
-        yesCount: drepCounts.yes,
-        noCount: drepCounts.no,
-        abstainCount: drepCounts.abstain,
-        totalVotes: drepCounts.yes + drepCounts.no + drepCounts.abstain,
-        voterDrepIds: voters ? [...voters] : [],
-        ratifiedEpoch: p.ratified_epoch ?? null,
-        enactedEpoch: p.enacted_epoch ?? null,
-        droppedEpoch: p.dropped_epoch ?? null,
-        expiredEpoch: p.expired_epoch ?? null,
-        expirationEpoch: p.expiration_epoch ?? null,
+      return buildProposalVoteSummary({
+        proposal: p,
+        drepCounts: triBody?.drep,
+        voterDrepIds: voters ?? [],
         triBody,
-        paramChanges: (p.param_changes as Record<string, unknown>) ?? null,
-      };
+      });
     });
   } catch (err) {
     logger.error('[Data] getAllProposalsWithVoteSummary error', { error: err });
@@ -786,61 +569,27 @@ export async function getProposalByKey(
         .select('vote, drep_id')
         .eq('proposal_tx_hash', txHash)
         .eq('proposal_index', proposalIndex),
-      supabase
-        .from('proposal_voting_summary')
-        .select(
-          'drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
-        )
-        .eq('proposal_tx_hash', txHash)
-        .eq('proposal_index', proposalIndex)
-        .single(),
+      fetchLatestProposalVotingSummary(
+        supabase,
+        { txHash, proposalIndex },
+        'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
+      ),
     ]);
 
     const { data: row, error } = proposalResult;
     if (error || !row) return null;
 
-    const votes = votesResult.data;
-    let yes = 0,
-      no = 0,
-      abstain = 0;
-    const drepIds = new Set<string>();
-    if (votes) {
-      for (const v of votes) {
-        if (v.vote === 'Yes') yes++;
-        else if (v.vote === 'No') no++;
-        else abstain++;
-        if (v.drep_id) drepIds.add(v.drep_id);
-      }
-    }
+    const voteSummary = summarizeDRepVotes(votesResult.data);
 
-    const s = summaryResult.data;
-    const triBody: TriBodyVotes | undefined = s ? buildTriBodyVotes(s) : undefined;
+    const s = summaryResult;
+    const triBody = s ? buildTriBodyVotes(s) : undefined;
 
-    return {
-      txHash: row.tx_hash,
-      proposalIndex: row.proposal_index,
-      title: row.title,
-      abstract: row.abstract,
-      proposalType: row.proposal_type,
-      withdrawalAmount: row.withdrawal_amount != null ? Number(row.withdrawal_amount) : null,
-      treasuryTier: row.treasury_tier,
-      relevantPrefs: row.relevant_prefs || [],
-      proposedEpoch: row.proposed_epoch,
-      blockTime: row.block_time,
-      aiSummary: row.ai_summary || null,
-      yesCount: yes,
-      noCount: no,
-      abstainCount: abstain,
-      totalVotes: yes + no + abstain,
-      voterDrepIds: [...drepIds],
-      ratifiedEpoch: row.ratified_epoch ?? null,
-      enactedEpoch: row.enacted_epoch ?? null,
-      droppedEpoch: row.dropped_epoch ?? null,
-      expiredEpoch: row.expired_epoch ?? null,
-      expirationEpoch: row.expiration_epoch ?? null,
+    return buildProposalVoteSummary({
+      proposal: row,
+      drepCounts: voteSummary.drepCounts,
+      voterDrepIds: voteSummary.voterDrepIds,
       triBody,
-      paramChanges: (row.param_changes as Record<string, unknown>) ?? null,
-    };
+    });
   } catch (err) {
     logger.error('[Data] getProposalByKey error', { error: err });
     return null;
@@ -1478,14 +1227,13 @@ export async function getOpenProposalsForDRep(drepId: string): Promise<OpenPropo
 
     // Fetch DRep's votes + vote summaries in parallel (both depend only on proposals result)
     const openTxHashes = proposals.map((p) => p.tx_hash);
-    const [drepVotesResult, summaryResult] = await Promise.all([
+    const [drepVotesResult, summaryRows] = await Promise.all([
       supabase.from('drep_votes').select('proposal_tx_hash, proposal_index').eq('drep_id', drepId),
-      supabase
-        .from('proposal_voting_summary')
-        .select(
-          'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast',
-        )
-        .in('proposal_tx_hash', openTxHashes),
+      fetchProposalVotingSummaries(
+        supabase,
+        openTxHashes,
+        'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
+      ),
     ]);
 
     const votedKeys = new Set<string>();
@@ -1496,9 +1244,9 @@ export async function getOpenProposalsForDRep(drepId: string): Promise<OpenPropo
     }
 
     const countMap = new Map<string, { yes: number; no: number; abstain: number }>();
-    if (summaryResult.data) {
-      for (const s of summaryResult.data) {
-        const key = `${s.proposal_tx_hash}-${s.proposal_index}`;
+    for (const s of summaryRows) {
+      if (s.proposal_tx_hash && openTxHashes.includes(s.proposal_tx_hash)) {
+        const key = getProposalVotingSummaryKey(s.proposal_tx_hash, s.proposal_index);
         countMap.set(key, {
           yes: s.drep_yes_votes_cast || 0,
           no: s.drep_no_votes_cast || 0,
@@ -1511,7 +1259,7 @@ export async function getOpenProposalsForDRep(drepId: string): Promise<OpenPropo
     return proposals
       .filter((p) => !votedKeys.has(`${p.tx_hash}-${p.proposal_index}`))
       .map((p) => {
-        const key = `${p.tx_hash}-${p.proposal_index}`;
+        const key = getProposalVotingSummaryKey(p.tx_hash, p.proposal_index);
         const counts = countMap.get(key) || { yes: 0, no: 0, abstain: 0 };
         return {
           txHash: p.tx_hash,
@@ -1980,169 +1728,6 @@ export async function getLeaderboard(
   } catch (err) {
     logger.error('[Data] getLeaderboard error', { error: err });
     return [];
-  }
-}
-
-// ============================================================================
-// VOTING POWER & THRESHOLD HELPERS
-// ============================================================================
-
-export interface VotingPowerSummary {
-  yesPower: number;
-  noPower: number;
-  abstainPower: number;
-  yesCount: number;
-  noCount: number;
-  abstainCount: number;
-  totalActivePower: number;
-  threshold: number | null;
-  thresholdLabel: string | null;
-}
-
-const PROPOSAL_TYPE_THRESHOLD_MAP: Record<string, string> = {
-  TreasuryWithdrawals: 'dvt_treasury_withdrawal',
-  ParameterChange: 'dvt_p_p_network_group',
-  HardForkInitiation: 'dvt_hard_fork_initiation',
-  NewConstitution: 'dvt_update_to_constitution',
-  UpdateConstitution: 'dvt_update_to_constitution',
-  NoConfidence: 'dvt_motion_no_confidence',
-  NewCommittee: 'dvt_committee_normal',
-  NewConstitutionalCommittee: 'dvt_committee_normal',
-};
-
-let cachedThresholds: { data: Record<string, number>; fetchedAt: number } | null = null;
-const THRESHOLD_CACHE_MS = 24 * 60 * 60 * 1000;
-
-async function getGovernanceThresholds(): Promise<Record<string, number> | null> {
-  if (cachedThresholds && Date.now() - cachedThresholds.fetchedAt < THRESHOLD_CACHE_MS) {
-    return cachedThresholds.data;
-  }
-  const { fetchGovernanceThresholds } = await import('@/utils/koios');
-  const data = await fetchGovernanceThresholds();
-  if (data) {
-    cachedThresholds = { data, fetchedAt: Date.now() };
-  }
-  return data;
-}
-
-export async function getVotingPowerSummary(
-  txHash: string,
-  proposalIndex: number,
-  proposalType: string,
-): Promise<VotingPowerSummary> {
-  try {
-    const supabase = createClient();
-
-    // Prefer canonical proposal_voting_summary (from Koios /proposal_voting_summary)
-    const { data: canonical } = await supabase
-      .from('proposal_voting_summary')
-      .select('*')
-      .eq('proposal_tx_hash', txHash)
-      .eq('proposal_index', proposalIndex)
-      .single();
-
-    const thresholdKey = PROPOSAL_TYPE_THRESHOLD_MAP[proposalType];
-    let threshold: number | null = null;
-    let thresholdLabel: string | null = null;
-
-    if (thresholdKey) {
-      const params = await getGovernanceThresholds();
-      if (params && params[thresholdKey] != null) {
-        threshold = params[thresholdKey];
-        thresholdLabel = `${Math.round(threshold * 100)}% of active DRep stake needed`;
-      }
-    }
-
-    if (canonical) {
-      const yesPower = Number(canonical.drep_yes_vote_power) || 0;
-      const noPower = Number(canonical.drep_no_vote_power) || 0;
-      const abstainPower = Number(canonical.drep_abstain_vote_power) || 0;
-      const alwaysAbstain = Number(canonical.drep_always_abstain_power) || 0;
-      const totalActivePower = yesPower + noPower + abstainPower + alwaysAbstain;
-
-      return {
-        yesPower,
-        noPower,
-        abstainPower,
-        yesCount: canonical.drep_yes_votes_cast || 0,
-        noCount: canonical.drep_no_votes_cast || 0,
-        abstainCount: canonical.drep_abstain_votes_cast || 0,
-        totalActivePower,
-        threshold,
-        thresholdLabel,
-      };
-    }
-
-    // Fallback: sum from per-vote data (less accurate, missing system auto-DReps)
-    // Run drep_votes and dreps in parallel (independent queries)
-    const [votesResult, activeDrepsResult] = await Promise.all([
-      supabase
-        .from('drep_votes')
-        .select('vote, voting_power_lovelace')
-        .eq('proposal_tx_hash', txHash)
-        .eq('proposal_index', proposalIndex)
-        .not('voting_power_lovelace', 'is', null),
-      supabase.from('dreps').select('info').eq('info->>isActive', 'true'),
-    ]);
-
-    const votes = votesResult.data;
-    const activeDreps = activeDrepsResult.data;
-
-    let yesPower = 0,
-      noPower = 0,
-      abstainPower = 0;
-    let yesCount = 0,
-      noCount = 0,
-      abstainCount = 0;
-
-    if (votes) {
-      for (const v of votes) {
-        const power = Number(v.voting_power_lovelace) || 0;
-        if (v.vote === 'Yes') {
-          yesPower += power;
-          yesCount++;
-        } else if (v.vote === 'No') {
-          noPower += power;
-          noCount++;
-        } else {
-          abstainPower += power;
-          abstainCount++;
-        }
-      }
-    }
-
-    let totalActivePower = 0;
-    if (activeDreps) {
-      for (const d of activeDreps) {
-        const info = d.info as Record<string, unknown> | null;
-        totalActivePower += parseInt(String(info?.votingPowerLovelace || '0'), 10) || 0;
-      }
-    }
-
-    return {
-      yesPower,
-      noPower,
-      abstainPower,
-      yesCount,
-      noCount,
-      abstainCount,
-      totalActivePower,
-      threshold,
-      thresholdLabel,
-    };
-  } catch (err) {
-    logger.error('[Data] getVotingPowerSummary error', { error: err, txHash, proposalIndex });
-    return {
-      yesPower: 0,
-      noPower: 0,
-      abstainPower: 0,
-      yesCount: 0,
-      noCount: 0,
-      abstainCount: 0,
-      totalActivePower: 0,
-      threshold: null,
-      thresholdLabel: null,
-    };
   }
 }
 

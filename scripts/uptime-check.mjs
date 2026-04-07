@@ -3,7 +3,16 @@ import { fetchWithTimeout, loadLocalEnv } from './lib/runtime.mjs';
 loadLocalEnv(import.meta.url, ['HEARTBEAT_URL_*']);
 
 const type = process.argv[2] ?? 'all';
-const knownTypes = ['proposals', 'batch', 'daily', 'deploy'];
+const knownTypes = [
+  'proposals',
+  'batch',
+  'daily',
+  'deploy',
+  'scoring',
+  'alignment',
+  'freshness_guard',
+  'epoch_summary',
+];
 
 async function pingHeartbeat(name) {
   const envKey = `HEARTBEAT_URL_${name}`;
@@ -37,7 +46,9 @@ if (type === 'all') {
 
 if (!knownTypes.includes(type)) {
   console.log(`Unknown type: ${type}`);
-  console.log('Usage: uptime-check.mjs [proposals|batch|daily|deploy|all]');
+  console.log(
+    'Usage: uptime-check.mjs [proposals|batch|daily|deploy|scoring|alignment|freshness_guard|epoch_summary|all]',
+  );
   process.exit(1);
 }
 

@@ -4,9 +4,8 @@ test.describe('Legacy route compatibility', () => {
   test('legacy routes resolve to current destinations', async ({ page }) => {
     const routes = [
       { from: '/discover', to: /filter=dreps/ },
-      { from: '/match', to: /\?match=true/ },
+      { from: '/match', to: /\/match$/ },
       { from: '/methodology', to: /\/help\/methodology$/ },
-      { from: '/my-gov', to: /^http:\/\/localhost:\d+\/$/ },
     ];
 
     for (const { from, to } of routes) {
@@ -18,7 +17,7 @@ test.describe('Legacy route compatibility', () => {
 });
 
 test.describe('Page loading', () => {
-  const pages = ['/', '/?filter=dreps', '/?match=true', '/pulse', '/learn', '/help/methodology'];
+  const pages = ['/', '/?filter=dreps', '/match', '/pulse', '/learn', '/help/methodology'];
 
   for (const path of pages) {
     test(`${path} loads without redirect`, async ({ page }) => {
@@ -55,7 +54,7 @@ test.describe('Console error guard', () => {
       }
     });
 
-    const routes = ['/', '/?filter=dreps', '/?match=true', '/pulse', '/learn', '/help/methodology'];
+    const routes = ['/', '/?filter=dreps', '/match', '/pulse', '/learn', '/help/methodology'];
     for (const route of routes) {
       await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 60_000 });
       await page.waitForTimeout(3000);

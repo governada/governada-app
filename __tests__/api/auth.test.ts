@@ -1,6 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createRequest, parseJson } from '../helpers';
 
+const mockGetRedis = vi.fn();
+const mockLimit = vi.fn();
+
+vi.mock('@/lib/redis', () => ({
+  getRedis: () => mockGetRedis(),
+}));
+
+vi.mock('@upstash/ratelimit', () => {
+  const Ratelimit = vi.fn().mockImplementation(() => ({
+    limit: (...args: unknown[]) => mockLimit(...args),
+  }));
+
+  Object.assign(Ratelimit, {
+    slidingWindow: vi.fn().mockReturnValue('window'),
+  });
+
+  return { Ratelimit };
+});
+
 vi.mock('@/lib/nonce', () => ({
   createNonce: vi.fn().mockResolvedValue({
     nonce: 'Sign in to Governada\nTime: Jan 1, 2025\nSession: abc123',
@@ -51,6 +70,12 @@ import { verifyNonce } from '@/lib/nonce';
 import { checkSignature } from '@meshsdk/core';
 
 describe('GET /api/auth/nonce', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetRedis.mockReturnValue({});
+    mockLimit.mockResolvedValue({ success: true, remaining: 9 });
+  });
+
   it('returns a nonce with signature and expiry', async () => {
     const req = createRequest('/api/auth/nonce');
     const res = await getNonce(req);
@@ -74,6 +99,8 @@ describe('POST /api/auth/wallet', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetRedis.mockReturnValue({});
+    mockLimit.mockResolvedValue({ success: true, remaining: 4 });
   });
 
   it('returns 400 when required fields are missing', async () => {

@@ -39,10 +39,10 @@ jobs:
           key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
       - name: Install Playwright system deps
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+        run: npx playwright install-deps chromium webkit
       - name: Download build artifact
         uses: actions/download-artifact@v8
         with:
@@ -53,7 +53,7 @@ jobs:
         run: |
           PORT=3000 node .next/standalone/server.js &
           npx wait-on http://localhost:3000 --timeout 30000
-          npx playwright test --project=chromium
+          npm run test:e2e -- --project=chromium --project=mobile
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
       - name: Upload Playwright report

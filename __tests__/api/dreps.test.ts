@@ -5,6 +5,7 @@ const mockGetAllDReps = vi.fn();
 const mockGetDRepById = vi.fn();
 
 vi.mock('@/lib/data', () => ({
+  DRepCacheUnavailableError: class DRepCacheUnavailableError extends Error {},
   getAllDReps: () => mockGetAllDReps(),
   getDRepById: (id: string) => mockGetDRepById(id),
 }));
@@ -73,7 +74,23 @@ describe('GET /api/dreps', () => {
     expect(body.exists).toBe(false);
   });
 
-  it('returns 500 on error', async () => {
+  it('returns an explicit degraded payload when the shared DRep cache is unavailable', async () => {
+    const { DRepCacheUnavailableError } = await import('@/lib/data');
+    mockGetAllDReps.mockRejectedValue(new DRepCacheUnavailableError('DRep cache unavailable'));
+
+    const req = createRequest('/api/dreps');
+    const res = await GET(req);
+    const body = (await parseJson(res)) as any;
+
+    expect(res.status).toBe(200);
+    expect(body.error).toBe(true);
+    expect(body.dreps).toEqual([]);
+    expect(body.allDReps).toEqual([]);
+    expect(body.totalAvailable).toBe(0);
+    expect(body.message).toBe('DRep cache unavailable');
+  });
+
+  it('still returns 500 on unexpected errors', async () => {
     mockGetAllDReps.mockRejectedValue(new Error('Data fetch failed'));
 
     const req = createRequest('/api/dreps');

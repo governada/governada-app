@@ -6,6 +6,7 @@ import { Calendar, Flame, Vote, Coins, Share2, User, ArrowRight } from 'lucide-r
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CIVIC_IDENTITY_PATH } from '@/lib/navigation/civicIdentity';
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -128,7 +129,7 @@ export function CivicIdentityCard({ wallet, className }: CivicIdentityCardProps)
 
             <div className="flex items-center justify-between">
               <Link
-                href="/my-gov/identity"
+                href={CIVIC_IDENTITY_PATH}
                 className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
               >
                 View full identity

@@ -8,12 +8,23 @@
  * No AI — pure computation from existing data.
  */
 
+import { getVotingBodies } from '@/lib/governance/votingBodies';
+import { getGovernanceThresholdForProposal } from '@/lib/governanceThresholds';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
+export interface PassagePredictionThresholds {
+  drep: number | null;
+  spo: number | null;
+  cc: number | null;
+}
+
 export interface PassagePredictionInput {
   proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
+  thresholds?: PassagePredictionThresholds | null;
   /** DRep vote tallies */
   drepVotes: { yes: number; no: number; abstain: number };
   /** SPO vote tallies */
@@ -53,20 +64,22 @@ export interface PassagePredictionResult {
  * Each action type requires different approval ratios from different bodies.
  * null = body does not vote on this action type.
  */
-const CIP1694_THRESHOLDS: Record<
-  string,
-  { drep: number | null; spo: number | null; cc: number | null }
-> = {
-  NoConfidence: { drep: 0.67, spo: 0.51, cc: null },
-  NewCommittee: { drep: 0.67, spo: 0.51, cc: null },
-  NewConstitution: { drep: 0.75, spo: null, cc: 0.67 },
-  HardForkInitiation: { drep: 0.6, spo: 0.51, cc: 0.67 },
-  ParameterChange: { drep: 0.67, spo: null, cc: 0.67 },
-  TreasuryWithdrawals: { drep: 0.67, spo: null, cc: 0.67 },
-  InfoAction: { drep: 1.0, spo: null, cc: null }, // Info actions don't actually pass/fail
+const DEFAULT_DREP_THRESHOLDS: Record<string, number | null> = {
+  NoConfidence: 0.67,
+  NewCommittee: 0.67,
+  NewConstitutionalCommittee: 0.67,
+  NewConstitution: 0.75,
+  UpdateConstitution: 0.75,
+  HardForkInitiation: 0.6,
+  ParameterChange: 0.67,
+  TreasuryWithdrawals: 0.67,
+  InfoAction: 1.0,
 };
 
-const DEFAULT_THRESHOLDS = { drep: 0.67, spo: 0.51, cc: 0.67 };
+const DEFAULT_THRESHOLDS: PassagePredictionThresholds = { drep: 0.67, spo: 0.51, cc: 2 / 3 };
+const STANDARD_SPO_APPROVAL_THRESHOLD = 0.51;
+const INFO_ACTION_APPROVAL_THRESHOLD = 1;
+const CC_APPROVAL_THRESHOLD = 2 / 3;
 
 // ---------------------------------------------------------------------------
 // Weights
@@ -88,7 +101,9 @@ const WEIGHTS = {
 // ---------------------------------------------------------------------------
 
 export function computePassagePrediction(input: PassagePredictionInput): PassagePredictionResult {
-  const thresholds = CIP1694_THRESHOLDS[input.proposalType] ?? DEFAULT_THRESHOLDS;
+  const thresholds =
+    input.thresholds ??
+    getFallbackPassagePredictionThresholds(input.proposalType, input.paramChanges);
   const factors: PassageFactor[] = [];
 
   // 1. DRep vote ratio
@@ -282,6 +297,7 @@ export function buildPredictionInput(
     proposal_index: number;
     proposal_type: string;
     withdrawal_amount: number | null;
+    param_changes?: Record<string, unknown> | null;
   },
   voteMap: Map<string, Record<string, unknown>>,
   constMap: Map<string, string>,
@@ -292,6 +308,7 @@ export function buildPredictionInput(
 
   const input: PassagePredictionInput = {
     proposalType: proposal.proposal_type,
+    paramChanges: proposal.param_changes ?? null,
     drepVotes: extractTally(voteSummary, 'drep'),
     spoVotes: extractTally(voteSummary, 'spo'),
     ccVotes: extractTally(voteSummary, 'cc'),
@@ -313,6 +330,53 @@ export function buildPredictionInput(
     ((voteSummary?.cc_yes as number) ?? 0);
 
   return { input, voteHash: `votes-${totalVoteCount}` };
+}
+
+function getFallbackPassagePredictionThresholds(
+  proposalType: string,
+  paramChanges?: Record<string, unknown> | null,
+): PassagePredictionThresholds {
+  const eligibleBodies = new Set(getVotingBodies(proposalType, paramChanges));
+
+  return {
+    drep: eligibleBodies.has('drep')
+      ? (DEFAULT_DREP_THRESHOLDS[proposalType] ?? DEFAULT_THRESHOLDS.drep)
+      : null,
+    spo: eligibleBodies.has('spo')
+      ? proposalType === 'InfoAction'
+        ? INFO_ACTION_APPROVAL_THRESHOLD
+        : STANDARD_SPO_APPROVAL_THRESHOLD
+      : null,
+    cc: eligibleBodies.has('cc') ? CC_APPROVAL_THRESHOLD : null,
+  };
+}
+
+export async function resolvePassagePredictionThresholds(input: {
+  proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
+}): Promise<PassagePredictionThresholds> {
+  const eligibleBodies = new Set(getVotingBodies(input.proposalType, input.paramChanges));
+  const drepThreshold =
+    eligibleBodies.has('drep') && input.proposalType !== 'InfoAction'
+      ? (
+          await getGovernanceThresholdForProposal({
+            proposalType: input.proposalType,
+            paramChanges: input.paramChanges ?? null,
+          })
+        ).threshold
+      : eligibleBodies.has('drep')
+        ? INFO_ACTION_APPROVAL_THRESHOLD
+        : null;
+
+  return {
+    drep: drepThreshold,
+    spo: eligibleBodies.has('spo')
+      ? input.proposalType === 'InfoAction'
+        ? INFO_ACTION_APPROVAL_THRESHOLD
+        : STANDARD_SPO_APPROVAL_THRESHOLD
+      : null,
+    cc: eligibleBodies.has('cc') ? CC_APPROVAL_THRESHOLD : null,
+  };
 }
 
 /**

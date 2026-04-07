@@ -4,11 +4,13 @@
  * ProposalPanel — Intelligence panel content for individual proposal pages.
  *
  * Shows constitutional concerns, sentiment, DRep position, precedent.
- * Fetches from GET /api/intelligence/context?path=/proposals/[hash]-[index]
+ * Fetches from GET /api/intelligence/context using the current proposal route.
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { usePathname } from 'next/navigation';
 import { useSegment } from '@/components/providers/SegmentProvider';
+import { parseRoutePath } from '@/lib/entity/entityId';
 import { CollapsibleSection } from './CollapsibleSection';
 import { CitedClaim } from './CitedClaim';
 import { PanelSkeleton } from './PanelSkeleton';
@@ -21,25 +23,41 @@ interface ProposalPanelProps {
   entityId?: string;
 }
 
+function toProposalRef(txHash: string, proposalIndex?: string): string {
+  return proposalIndex != null ? `${txHash}#${proposalIndex}` : txHash;
+}
+
+function toProposalHref(proposalRef: string): string {
+  const [txHash, proposalIndex = '0'] = proposalRef.split('#');
+  return `/proposal/${txHash}/${proposalIndex}`;
+}
+
 export function ProposalPanel({ entityId }: ProposalPanelProps) {
+  const pathname = usePathname();
   const { stakeAddress } = useSegment();
+  const routeEntity = parseRoutePath(pathname);
+  const proposalRef =
+    routeEntity?.type === 'proposal'
+      ? toProposalRef(routeEntity.id, routeEntity.secondaryId)
+      : entityId;
+  const proposalHref = proposalRef ? toProposalHref(proposalRef) : undefined;
 
   const { data, isLoading, error } = useQuery<ContextSynthesisResult>({
-    queryKey: ['intelligence-context', 'proposal', entityId, stakeAddress],
+    queryKey: ['intelligence-context', 'proposal', proposalRef, stakeAddress],
     queryFn: async () => {
-      const params = new URLSearchParams({ path: `/proposals/${entityId}` });
+      const params = new URLSearchParams({ path: pathname });
       if (stakeAddress) params.set('stakeAddress', stakeAddress);
-      if (entityId) params.set('entityId', entityId);
+      if (proposalRef) params.set('entityId', proposalRef);
       const res = await fetch(`/api/intelligence/context?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch proposal context');
       return res.json();
     },
-    enabled: !!entityId,
+    enabled: !!proposalRef,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
-  if (!entityId) {
+  if (!proposalRef) {
     return <div className="px-3 py-4 text-xs text-muted-foreground/60">No proposal selected.</div>;
   }
 
@@ -61,7 +79,7 @@ export function ProposalPanel({ entityId }: ProposalPanelProps) {
           <p className="text-xs text-muted-foreground/80 leading-relaxed">
             <CitedClaim
               citations={[
-                { label: 'Proposal data', href: `/proposal/${entityId}/0` },
+                { label: 'Proposal data', href: proposalHref },
                 { label: 'Vote aggregation' },
               ]}
             >

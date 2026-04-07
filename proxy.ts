@@ -20,7 +20,7 @@ import { LEGACY_SESSION_COOKIE_NAMES, SESSION_COOKIE_NAME } from '@/lib/persiste
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-API-Key',
   'Access-Control-Expose-Headers':
     'X-Request-Id, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After',
   'Access-Control-Max-Age': '86400',
@@ -142,7 +142,10 @@ export function proxy(request: NextRequest) {
       if (isPrefetch) {
         return new NextResponse(null, { status: 204 });
       }
-      return withLocale(NextResponse.redirect(new URL('/', request.url)), request);
+      const redirectUrl = new URL('/', request.url);
+      redirectUrl.searchParams.set('connect', '1');
+      redirectUrl.searchParams.set('returnTo', `${pathname}${request.nextUrl.search}`);
+      return withLocale(NextResponse.redirect(redirectUrl), request);
     }
   }
 

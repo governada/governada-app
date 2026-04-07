@@ -3,12 +3,6 @@
 import { GlobeLayout } from '@/components/globe/GlobeLayout';
 
 interface HubHomePageProps {
-  pulseData: {
-    activeProposals: number;
-    activeDReps: number;
-    totalDReps: number;
-    totalDelegators: number;
-  };
   filter?: string;
   entity?: string;
   match?: boolean;

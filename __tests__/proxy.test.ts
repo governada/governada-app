@@ -13,4 +13,24 @@ describe('proxy CORS headers', () => {
     expect(response.headers.get('Access-Control-Allow-Headers')).toContain('Authorization');
     expect(response.headers.get('Access-Control-Allow-Headers')).toContain('X-API-Key');
   });
+
+  it('preserves protected-route intent for anonymous workspace requests', () => {
+    const request = new NextRequest('http://localhost:3000/workspace/review?proposal=abc');
+
+    const response = proxy(request);
+
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/?connect=1&returnTo=%2Fworkspace%2Freview%3Fproposal%3Dabc',
+    );
+  });
+
+  it('preserves protected-route intent for anonymous identity requests', () => {
+    const request = new NextRequest('http://localhost:3000/you');
+
+    const response = proxy(request);
+
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/?connect=1&returnTo=%2Fyou',
+    );
+  });
 });

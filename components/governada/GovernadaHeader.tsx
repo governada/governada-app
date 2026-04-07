@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Search,
@@ -73,6 +73,7 @@ import {
   getPresetsBySegment,
   type SegmentPreset,
 } from '@/lib/admin/viewAsRegistry';
+import { getSafeReturnTo } from '@/lib/navigation/returnTo';
 
 const WalletConnectModal = dynamic(
   () => import('@/components/WalletConnectModal').then((mod) => mod.WalletConnectModal),
@@ -344,6 +345,7 @@ function truncateImpersonateAddress(addr: string): string {
 export function GovernadaHeader() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { t } = useTranslation();
 
   const { connected, disconnect, logout, isAuthenticated } = useWallet();
@@ -370,6 +372,7 @@ export function GovernadaHeader() {
   /** When user is in active Seneca conversation, fade nav pills to reduce distraction */
   const senecaFocused = senecaThread.isOpen && senecaThread.mode === 'conversation';
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const handledConnectPromptRef = useRef<string | null>(null);
   const [pickerPreset, setPickerPreset] = useState<SegmentPreset | null>(null);
   // For dual-role 2-step picker: stash the first pick while the second picker is open
   const [pendingDualOverride, setPendingDualOverride] = useState<{
@@ -407,6 +410,27 @@ export function GovernadaHeader() {
   const [sandboxLoading, setSandboxLoading] = useState(false);
   const [sandboxCohortName, setSandboxCohortName] = useState<string | null>(null);
   const [sandboxActionStatus, setSandboxActionStatus] = useState<string | null>(null);
+  const connectPromptRequested = searchParams.get('connect') === '1';
+  const returnTo = getSafeReturnTo(searchParams.get('returnTo'));
+  const connectPromptKey = `${pathname}?${searchParams.toString()}`;
+
+  useEffect(() => {
+    const handleOpenWalletConnect = () => setWalletModalOpen(true);
+    window.addEventListener('openWalletConnect', handleOpenWalletConnect);
+    return () => window.removeEventListener('openWalletConnect', handleOpenWalletConnect);
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated || !connectPromptRequested) return;
+    if (handledConnectPromptRef.current === connectPromptKey) return;
+    handledConnectPromptRef.current = connectPromptKey;
+    setWalletModalOpen(true);
+  }, [connectPromptKey, connectPromptRequested, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || walletModalOpen || !returnTo) return;
+    router.replace(returnTo);
+  }, [isAuthenticated, returnTo, router, walletModalOpen]);
 
   // Fetch sandbox cohort name when active
   useEffect(() => {

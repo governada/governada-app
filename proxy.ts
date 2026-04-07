@@ -142,7 +142,10 @@ export function proxy(request: NextRequest) {
       if (isPrefetch) {
         return new NextResponse(null, { status: 204 });
       }
-      return withLocale(NextResponse.redirect(new URL('/', request.url)), request);
+      const redirectUrl = new URL('/', request.url);
+      redirectUrl.searchParams.set('connect', '1');
+      redirectUrl.searchParams.set('returnTo', `${pathname}${request.nextUrl.search}`);
+      return withLocale(NextResponse.redirect(redirectUrl), request);
     }
   }
 

@@ -42,7 +42,7 @@ export function getWorldForRoute(route: PanelRoute): World {
 }
 
 function detectPanelRoute(pathname: string): PanelRoute {
-  if (pathname === '/' || pathname === '/hub') return 'hub';
+  if (pathname === '/' || pathname === '/hub' || pathname === '/match') return 'hub';
   // Entity routes
   if (/^\/proposal\/[^/]+\/\d+/.test(pathname)) return 'proposal';
   if (/^\/drep\/[^/]+/.test(pathname)) return 'drep';

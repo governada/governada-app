@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Vote, MessageSquareHeart, Wallet, ExternalLink } from 'lucide-react';
+import { Vote, MessageSquareHeart, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useSegment, type UserSegment } from '@/components/providers/SegmentProvider';
@@ -13,6 +13,12 @@ import { getProposalTheme } from './proposal-theme';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 import { computeTier } from '@/lib/scoring/tiers';
+import {
+  CITIZEN_PROPOSAL_ACTION_ID,
+  getProposalConnectHref,
+  getProposalGovernanceActionState,
+  getProposalWorkspaceReviewHref,
+} from '@/lib/navigation/proposalAction';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,6 +47,7 @@ interface ProposalVerdictStripProps {
   thresholdPct?: number | null;
   /** Current Yes% of active stake — for the threshold bar */
   currentYesPct?: number | null;
+  paramChanges?: Record<string, unknown> | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -51,10 +58,6 @@ function formatTreasuryCompact(amount: number): string {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`;
   if (amount >= 1_000) return `${(amount / 1_000).toFixed(0)}K`;
   return amount.toLocaleString();
-}
-
-function getGovToolUrl(txHash: string, proposalIndex: number): string {
-  return `https://gov.tools/governance_actions/${txHash}#${proposalIndex}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -200,47 +203,26 @@ function ActionButton({
   isOpen,
   txHash,
   proposalIndex,
+  proposalType,
+  paramChanges,
 }: {
   segment: UserSegment;
   isOpen: boolean;
   txHash: string;
   proposalIndex: number;
+  proposalType: string;
+  paramChanges?: Record<string, unknown> | null;
 }) {
   if (!isOpen) return null;
+  const actionState = getProposalGovernanceActionState(segment, isOpen, proposalType, paramChanges);
 
-  const govToolUrl = getGovToolUrl(txHash, proposalIndex);
-
-  if (segment === 'drep') {
+  if (actionState.isGovernanceActor) {
+    if (!actionState.canVote) return null;
     return (
       <Button asChild size="sm" className="gap-1.5 shrink-0">
-        <Link href={govToolUrl} target="_blank" rel="noopener noreferrer">
+        <Link href={getProposalWorkspaceReviewHref(txHash, proposalIndex)}>
           <Vote className="h-3.5 w-3.5" />
-          Cast Vote
-          <ExternalLink className="h-3 w-3 opacity-50" />
-        </Link>
-      </Button>
-    );
-  }
-
-  if (segment === 'spo') {
-    return (
-      <Button asChild size="sm" className="gap-1.5 shrink-0">
-        <Link href={govToolUrl} target="_blank" rel="noopener noreferrer">
-          <Vote className="h-3.5 w-3.5" />
-          SPO Vote
-          <ExternalLink className="h-3 w-3 opacity-50" />
-        </Link>
-      </Button>
-    );
-  }
-
-  if (segment === 'cc') {
-    return (
-      <Button asChild size="sm" className="gap-1.5 shrink-0">
-        <Link href={govToolUrl} target="_blank" rel="noopener noreferrer">
-          <Vote className="h-3.5 w-3.5" />
-          CC Vote
-          <ExternalLink className="h-3 w-3 opacity-50" />
+          Review &amp; Vote
         </Link>
       </Button>
     );
@@ -253,7 +235,7 @@ function ActionButton({
         variant="outline"
         className="gap-1.5 shrink-0"
         onClick={() => {
-          const el = document.getElementById('citizen-engagement');
+          const el = document.getElementById(CITIZEN_PROPOSAL_ACTION_ID);
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }}
       >
@@ -263,10 +245,9 @@ function ActionButton({
     );
   }
 
-  // Anonymous
   return (
     <Button size="sm" variant="outline" className="gap-1.5 shrink-0" asChild>
-      <Link href="#connect-wallet">
+      <Link href={getProposalConnectHref(txHash, proposalIndex)}>
         <Wallet className="h-3.5 w-3.5" />
         Connect
       </Link>
@@ -383,6 +364,7 @@ export function ProposalVerdictStrip({
   proposalIndex,
   thresholdPct,
   currentYesPct,
+  paramChanges,
 }: ProposalVerdictStripProps) {
   const { segment } = useSegment();
 
@@ -436,6 +418,8 @@ export function ProposalVerdictStrip({
               isOpen={isOpen}
               txHash={txHash}
               proposalIndex={proposalIndex}
+              proposalType={proposalType}
+              paramChanges={paramChanges}
             />
           </div>
 

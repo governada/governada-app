@@ -365,6 +365,7 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         proposalIndex={proposalIndex}
         thresholdPct={voteProjection?.thresholdPct ?? null}
         currentYesPct={voteProjection?.currentYesPct ?? null}
+        paramChanges={proposal.paramChanges}
       />
 
       {/* Proposer track record — contextual trust signal */}
@@ -470,6 +471,8 @@ export default async function ProposalDetailPage({ params }: PageProps) {
         isOpen={isOpen}
         verdictLabel={verdictLabel}
         verdictColor={verdictColor}
+        proposalType={proposal.proposalType}
+        paramChanges={proposal.paramChanges}
       />
     </div>
   ) : (

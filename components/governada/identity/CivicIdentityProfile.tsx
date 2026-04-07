@@ -39,6 +39,7 @@ import { computeGovernanceRings, RING_CONFIG } from '@/lib/governanceRings';
 import { getCompoundArchetype, getDominantDimension, getIdentityColor } from '@/lib/drepIdentity';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { GovernanceFootprint } from '@/lib/governanceFootprint';
+import { CIVIC_IDENTITY_SHARE_URL } from '@/lib/navigation/civicIdentity';
 
 /* ── Data hooks (TanStack Query) ───────────────────────────────── */
 
@@ -310,10 +311,8 @@ export function CivicIdentityProfile() {
           Connect your Cardano wallet to see your civic identity — delegation history, governance
           footprint, and earned milestones.
         </p>
-        <Button
-          onClick={() => window.dispatchEvent(new CustomEvent('openWalletConnect', { detail: {} }))}
-        >
-          Connect Wallet
+        <Button asChild>
+          <Link href="/?connect=1&returnTo=/you">Connect Wallet</Link>
         </Button>
       </div>
     );
@@ -324,9 +323,7 @@ export function CivicIdentityProfile() {
   const isUndelegated = !footprint?.identity.delegatedDRep;
   const isUnstaked = !footprint?.identity.delegatedPool;
 
-  const shareUrl = stakeAddress
-    ? `https://governada.io/my-gov/identity`
-    : 'https://governada.io/my-gov/identity';
+  const shareUrl = CIVIC_IDENTITY_SHARE_URL;
   const shareOgUrl = stakeAddress
     ? `/api/og/civic-identity/${encodeURIComponent(stakeAddress)}`
     : '';

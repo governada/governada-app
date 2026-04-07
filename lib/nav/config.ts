@@ -230,7 +230,7 @@ export function getYouItems(
 
 /** Help items — used in header dropdown (no longer in sidebar) */
 export const HELP_ITEMS: NavItem[] = [
-  { href: '/?match=true', label: 'Get Started', icon: Rocket },
+  { href: '/match', label: 'Get Started', icon: Rocket },
   { href: '/help', label: 'FAQ', icon: HelpCircle },
   { href: '/help/glossary', label: 'Glossary', icon: BookOpen },
   { href: '/help/methodology', label: 'Methodology', icon: BarChart3 },
@@ -428,7 +428,7 @@ export function getPillBarItems(
 // ---------------------------------------------------------------------------
 
 export function getCurrentSection(pathname: string): string | null {
-  if (pathname === '/') return 'home';
+  if (pathname === '/' || pathname === '/match') return 'home';
   if (pathname.startsWith('/workspace')) return 'workspace';
   if (pathname.startsWith('/you')) return 'you';
   if (pathname.startsWith('/help')) return 'help';

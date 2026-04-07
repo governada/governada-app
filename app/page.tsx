@@ -1,8 +1,5 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
-import Script from 'next/script';
-import { PageViewTracker } from '@/components/PageViewTracker';
-import { HubHomePage } from '@/components/hub/HubHomePage';
+import { HomePageShell } from '@/components/hub/HomePageShell';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,45 +25,14 @@ interface HomePageProps {
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const [params, headerStore] = await Promise.all([searchParams, headers()]);
-  const nonce = headerStore.get('x-nonce') ?? undefined;
-
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'WebApplication',
-    name: 'Governada',
-    url: 'https://governada.io',
-    description:
-      'Governance intelligence for Cardano. Build your governance team, track proposals, and participate in on-chain democracy.',
-    applicationCategory: 'GovernanceApplication',
-    operatingSystem: 'Web',
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Governada',
-      url: 'https://governada.io',
-    },
-  };
+  const params = await searchParams;
 
   return (
-    <>
-      <Script
-        id="json-ld-organization"
-        nonce={nonce}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <PageViewTracker event="homepage_viewed" />
-      <HubHomePage
-        filter={params.filter}
-        entity={params.entity}
-        match={params.match === 'true'}
-        sort={params.sort}
-      />
-    </>
+    <HomePageShell
+      filter={params.filter}
+      entity={params.entity}
+      match={params.match === 'true'}
+      sort={params.sort}
+    />
   );
 }

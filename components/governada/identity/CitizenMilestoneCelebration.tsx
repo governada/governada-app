@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, Trophy } from 'lucide-react';
 import { ShareActions } from '@/components/ShareActions';
 import { CITIZEN_MILESTONES } from '@/lib/citizenMilestones';
+import { CIVIC_IDENTITY_SHARE_URL } from '@/lib/navigation/civicIdentity';
 import { posthog } from '@/lib/posthog';
 import { playMilestoneChime } from '@/lib/sounds';
 import { spring } from '@/lib/animations';
@@ -82,7 +83,7 @@ export function CitizenMilestoneCelebration({
   const milestone = CITIZEN_MILESTONES.find((m) => m.key === celebrating);
   if (!milestone) return null;
 
-  const shareUrl = 'https://governada.io/my-gov/identity';
+  const shareUrl = CIVIC_IDENTITY_SHARE_URL;
   const shareText = `${milestone.shareText} @GovernadaIO`;
   const imageUrl = stakeAddress ? `/api/og/civic-identity/${encodeURIComponent(stakeAddress)}` : '';
 

@@ -393,6 +393,7 @@ By day 90, the founder needs a concrete way to decide whether launch is safe, ri
 
 - The founder can answer "Are we launch-ready?" with evidence in one session
 - The launch decision is tied to explicit thresholds
+- `/admin/systems#launch-control-room` shows the live call, blockers, watch items, and launch-week cadence on top of the existing cockpit evidence
 
 ### Files To Read First
 

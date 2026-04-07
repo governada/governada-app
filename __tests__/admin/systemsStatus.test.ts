@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CRITICAL_JOURNEYS, summarizeJourneyCoverage, worstStatus } from '@/lib/admin/systems';
+import { buildSystemsLaunchControlRoom } from '@/lib/admin/systemsLaunchControl';
 import {
   buildOverallNarrative,
   buildSloCards,
@@ -165,5 +166,137 @@ describe('systems helpers', () => {
     expect(reviewLoop.currentFocus).toMatch(/Refresh the performance baseline/i);
     expect(reviewLoop.steps).toHaveLength(4);
     expect(reviewLoop.steps.every((step) => step.automationReady)).toBe(true);
+  });
+
+  it('builds a blocked launch control room when core promises and journeys are not ready', () => {
+    const slos = buildSloCards({
+      availability: {
+        status: 'critical',
+        summary: 'Core availability is red.',
+        value: '1/3 healthy',
+      },
+      freshness: {
+        status: 'warning',
+        summary: 'Freshness is drifting.',
+        value: 'Fast 58m / Full 8h',
+      },
+      correctness: {
+        status: 'good',
+        summary: 'Correctness is clean.',
+        value: '99.2% vote power / 0.3% mismatch',
+      },
+      performance: {
+        status: 'warning',
+        summary: 'Performance is above the ideal launch bar.',
+        value: 'p95 620ms / 1.4% 5xx',
+      },
+      changeSafety: {
+        status: 'warning',
+        summary: 'Weekly operating loop is slipping.',
+        value: 'Last reviewed 10 days ago',
+      },
+      incidentResponse: {
+        status: 'warning',
+        summary: 'Drill cadence is not current.',
+        value: '0 open incidents / no drill yet',
+      },
+      userHonesty: {
+        status: 'critical',
+        summary: 'The latest trust review found a misleading degraded state.',
+        value: '2026-04-06 review / 2 surfaces',
+      },
+    });
+
+    const room = buildSystemsLaunchControlRoom({
+      slos,
+      journeys: CRITICAL_JOURNEYS.map((journey) =>
+        journey.id === 'J01' ? { ...journey, coverage: 'manual' } : journey,
+      ),
+      reviewDiscipline: {
+        status: 'warning',
+        headline: 'Weekly review rhythm is slipping',
+        currentValue: 'Last reviewed 10 days ago',
+        target: 'A founder review recorded every 7 days',
+        summary: 'Refresh the scorecard before the loop loses credibility.',
+        lastReviewedAt: '2026-04-01T12:00:00.000Z',
+        openCommitments: 2,
+        overdueCommitments: 1,
+      },
+      scorecardSync: {
+        status: 'warning',
+        headline: 'Live posture has drifted from the last review',
+        currentValue: '2 reviews / 2-week streak',
+        target: 'A fresh weekly review within 7 days that matches the live cockpit',
+        summary: 'The durable review needs to catch up to the live posture.',
+        reviewCount: 2,
+        weeklyStreak: 2,
+        liveStatus: 'critical',
+        lastReviewStatus: 'warning',
+        lastReviewedAt: '2026-04-01T12:00:00.000Z',
+        driftSloIds: ['availability'],
+        hotspotSloIds: ['availability', 'journeys'],
+        trend: 'worsening',
+        recentReviews: [],
+      },
+      incidentSummary: {
+        status: 'warning',
+        headline: 'Failure drills have not started yet',
+        currentValue: '0 open incidents / no drill yet',
+        target: 'Monthly drills with no unresolved high-severity incidents',
+        summary: 'Run the first tabletop drill.',
+        lastDrillAt: null,
+        lastIncidentAt: null,
+        openIncidentCount: 0,
+        drillCount: 0,
+        recentEntries: [],
+      },
+      performanceBaselineSummary: {
+        status: 'warning',
+        headline: 'Performance baseline is stale',
+        currentValue: '24 days since the last baseline',
+        target: 'A fresh baseline every 14 days and after risky route changes',
+        summary: 'The latest baseline is stale.',
+        lastRecordedAt: '2026-03-12T12:00:00.000Z',
+        daysSinceBaseline: 24,
+      },
+      trustSurfaceReviewSummary: {
+        status: 'critical',
+        headline: 'Latest trust-surface review found misleading degraded-state UX',
+        currentValue: '2026-04-06 review / 2 surfaces',
+        target:
+          'Review degraded-state trust surfaces within 7 days whenever availability, freshness, or correctness is not healthy',
+        summary: 'The latest review found a launch-blocking honesty gap.',
+        lastReviewedAt: '2026-04-06T12:00:00.000Z',
+        daysSinceReview: 0,
+        reviewRequired: true,
+        linkedSloIds: ['availability'],
+      },
+      automationSummary: {
+        status: 'critical',
+        headline: 'Critical follow-ups still need founder action',
+        currentValue: '2 open follow-ups',
+        target: 'A fresh sweep each day and zero unresolved critical follow-ups',
+        summary: 'The sweep surfaced unresolved critical work.',
+        lastSweepAt: '2026-04-06T12:00:00.000Z',
+      },
+      automationFollowups: [
+        {
+          sourceKey: 'systems:review-discipline',
+          triggerType: 'review_discipline',
+          severity: 'critical',
+          status: 'open',
+          title: 'Refresh the weekly systems review now',
+          summary: 'The review loop is stale.',
+          recommendedAction: 'Log a fresh review.',
+          actionHref: '/admin/systems#weekly-review',
+          updatedAt: '2026-04-06T12:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(room.decision).toBe('blocked');
+    expect(room.blockerCount).toBeGreaterThan(0);
+    expect(room.checklist.some((item) => item.decision === 'blocked')).toBe(true);
+    expect(room.headline).toMatch(/blocked/i);
   });
 });

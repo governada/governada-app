@@ -53,6 +53,7 @@ import {
   parseSystemsTrustSurfaceReviewHistory,
   SYSTEMS_TRUST_SURFACE_REVIEW_ACTION,
 } from '@/lib/admin/systemsTrustSurface';
+import { buildSystemsLaunchControlRoom } from '@/lib/admin/systemsLaunchControl';
 
 type DependencyProbe = {
   status: 'healthy' | 'unhealthy' | 'unavailable';
@@ -501,6 +502,17 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     liveStatus: overall.status,
     liveConcernSloIds: slos.filter((slo) => slo.status !== 'good').map((slo) => slo.id),
   });
+  const launchControlRoom = buildSystemsLaunchControlRoom({
+    slos,
+    journeys: CRITICAL_JOURNEYS,
+    reviewDiscipline,
+    scorecardSync,
+    incidentSummary,
+    performanceBaselineSummary,
+    trustSurfaceReviewSummary,
+    automationSummary,
+    automationFollowups: automationState.openFollowups,
+  });
 
   const wins: string[] = [];
   const watchouts: string[] = [];
@@ -570,6 +582,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     incidentSummary,
     performanceBaselineSummary,
     trustSurfaceReviewSummary,
+    launchControlRoom,
     automationSummary,
     automationFollowups: automationState.openFollowups,
     automationHistory,

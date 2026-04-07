@@ -6,6 +6,7 @@ export type SystemsCommitmentStatus = 'planned' | 'in_progress' | 'blocked' | 'd
 export type SystemsAutomationSeverity = 'warning' | 'critical';
 export type SystemsAutomationFollowupStatus = 'open' | 'acknowledged' | 'resolved';
 export type SystemsPerformanceBaselineEnvironment = 'production' | 'preview' | 'local';
+export type SystemsLaunchDecision = 'ready' | 'risky' | 'blocked';
 export type SystemsAutomationTriggerType =
   | 'review_discipline'
   | 'performance_baseline'
@@ -315,6 +316,36 @@ export interface SystemsTrustSurfaceReviewSummary {
   linkedSloIds: string[];
 }
 
+export interface SystemsLaunchChecklistItem {
+  id: string;
+  title: string;
+  decision: SystemsLaunchDecision;
+  summary: string;
+  threshold: string;
+  evidence: string;
+  href?: string;
+}
+
+export interface SystemsLaunchCadenceItem {
+  day: string;
+  focus: string;
+  output: string;
+  trigger: string;
+}
+
+export interface SystemsLaunchControlRoom {
+  decision: SystemsLaunchDecision;
+  headline: string;
+  summary: string;
+  currentCall: string;
+  blockerCount: number;
+  watchCount: number;
+  checklist: SystemsLaunchChecklistItem[];
+  blockers: string[];
+  watchItems: string[];
+  launchWeekCadence: SystemsLaunchCadenceItem[];
+}
+
 export interface SystemsScorecardReviewRecord {
   id: string;
   reviewDate: string;
@@ -406,6 +437,7 @@ export interface SystemsDashboardData {
   incidentSummary: SystemsIncidentSummary;
   performanceBaselineSummary: SystemsPerformanceBaselineSummary;
   trustSurfaceReviewSummary: SystemsTrustSurfaceReviewSummary;
+  launchControlRoom: SystemsLaunchControlRoom;
   automationSummary: SystemsAutomationSummary;
   automationFollowups: SystemsAutomationFollowup[];
   automationHistory: SystemsAutomationActivityRecord[];
@@ -595,20 +627,14 @@ export const CRITICAL_JOURNEYS: SystemsJourney[] = [
   },
 ];
 
-export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
-  {
-    id: 'launch-control-room',
-    title: 'Launch control room',
-    trigger:
-      'Scorecard, drills, journeys, and honesty reviews are all leaving behind durable evidence.',
-    action:
-      'Turn the systems cockpit into a go or no-go control room with explicit launch blockers, watch items, and launch-week operating cadence.',
-    whyItMatters:
-      'The final launch decision should come from live evidence on one page instead of founder intuition spread across multiple tools.',
-  },
-];
+export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [];
 
 export const SYSTEMS_QUICK_LINKS: QuickLink[] = [
+  {
+    label: 'Launch control room',
+    href: '/admin/systems#launch-control-room',
+    description: 'Go or no-go call, blockers, watch items, and launch-week cadence.',
+  },
   {
     label: 'Pipeline',
     href: '/admin/pipeline',

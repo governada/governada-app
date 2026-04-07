@@ -21,6 +21,7 @@
 ### 1. Refresh the live snapshot
 
 - Open `/admin/systems`
+- Read `/admin/systems#launch-control-room` first and write down the explicit launch call: `launch-ready`, `launch-risky`, or `launch-blocked`
 - Read the overall narrative, launch SLOs, and `Act now` section first
 - Confirm whether the system is green, watch, or act-now
 
@@ -40,6 +41,7 @@
 - Check `/admin/systems#automation` for the latest sweep history, escalations, and follow-up state before you change the written scorecard
 - Check `/admin/systems#performance-baseline` to confirm whether the latest durable load signal is current, stale, or still outside the launch bar
 - When availability, freshness, or correctness is not healthy, check `/admin/systems#trust-surface-review` and log what public and operator users actually saw before the degraded-state story goes stale
+- Use `/admin/systems#launch-control-room` to separate real launch blockers from watch items before you choose the weekly commitment
 - Update `docs/operations/systems-scorecard.md`
 - Log any real incident, drill, or meaningful regression in `/admin/systems#incident-log`; use `docs/operations/incident-log.md` when the fuller narrative is worth preserving in-repo
 - If methodology or scoring changed, update `docs/operations/methodology-changelog.md`

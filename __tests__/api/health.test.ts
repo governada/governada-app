@@ -156,6 +156,30 @@ describe('GET /api/health', () => {
     expect(body.syncs[0]?.level).toBe('critical');
   });
 
+  it('degrades overall status when a non-core sync fails', async () => {
+    mockState.syncRows = [
+      {
+        sync_type: 'metadata_archive',
+        last_run: new Date().toISOString(),
+        last_success: false,
+        success_count: 937,
+        failure_count: 7,
+      },
+    ];
+
+    const res = await GET(makeReq());
+    const body = (await parseJson(res)) as {
+      status: string;
+      syncs: Array<{ type: string; level: string }>;
+    };
+
+    expect(body.status).toBe('degraded');
+    expect(body.syncs[0]).toMatchObject({
+      type: 'metadata_archive',
+      level: 'critical',
+    });
+  });
+
   it('returns "degraded" when a sync is stale but not critical', async () => {
     const staleTime = new Date(Date.now() - 100 * 60 * 1000).toISOString();
     mockState.syncRows = [

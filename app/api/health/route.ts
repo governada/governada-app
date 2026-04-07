@@ -31,7 +31,8 @@ export const GET = withRouteHandler(async () => {
       : Infinity;
     const policy = getSyncPolicy(row.sync_type);
     const level = getSyncHealthLevel(row.sync_type, staleMins, row.last_success as boolean | null);
-    worstLevel = mergeSyncHealthLevel(worstLevel, level);
+    const overallLevel = policy.core ? level : level === 'critical' ? 'degraded' : level;
+    worstLevel = mergeSyncHealthLevel(worstLevel, overallLevel);
 
     return {
       type: row.sync_type,

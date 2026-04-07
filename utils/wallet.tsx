@@ -17,8 +17,17 @@ import {
   writeStoredValue,
 } from '@/lib/persistence';
 import { deriveDRepIdFromStakeAddress, checkDRepExists } from '@/utils/drepId';
-import { WalletContext, type WalletError } from '@/utils/wallet-context';
-export type { WalletContextType, WalletError, WalletErrorType } from '@/utils/wallet-context';
+import {
+  WalletContext,
+  type WalletConnectionSnapshot,
+  type WalletError,
+} from '@/utils/wallet-context';
+export type {
+  WalletConnectionSnapshot,
+  WalletContextType,
+  WalletError,
+  WalletErrorType,
+} from '@/utils/wallet-context';
 export { useWallet } from '@/utils/wallet-context';
 
 interface CIP30Api {
@@ -133,6 +142,12 @@ function getCardanoApi(name: string): { enable(): Promise<CIP30Api> } | undefine
 }
 
 const WALLET_NAME_KEY = STORAGE_KEYS.walletName.current;
+
+function getHexPayload(value: string): string {
+  return Array.from(new TextEncoder().encode(value))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [wallet, setWallet] = useState<BrowserWallet | null>(null);
@@ -272,7 +287,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const connect = async (name: string) => {
+  const connect = async (name: string): Promise<WalletConnectionSnapshot | null> => {
     setConnecting(true);
     setError(null);
 
@@ -298,8 +313,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
 
       if (addresses && addresses.length > 0) {
-        setAddress(addresses[0]);
-        if (hexAddresses.length > 0) setHexAddress(hexAddresses[0]);
+        if (hexAddresses.length === 0) {
+          throw new Error('Could not access wallet signing address');
+        }
+
+        const connection = {
+          walletName: name,
+          address: addresses[0],
+          hexAddress: hexAddresses[0],
+        } satisfies WalletConnectionSnapshot;
+
+        setAddress(connection.address);
+        setHexAddress(connection.hexAddress);
         setConnected(true);
         writeStoredValue(STORAGE_KEYS.walletName, name);
 
@@ -321,7 +346,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         try {
           const { posthog } = await import('@/lib/posthog');
           // Hash wallet address before sending to PostHog for privacy
-          const hashedId = await hashForAnalytics(addresses[0]);
+          const hashedId = await hashForAnalytics(connection.address);
           posthog.capture('wallet_connected', { wallet_type: name });
           posthog.identify(hashedId, { segment: 'holder', wallet_type: name });
           // Funnel event: wallet connected
@@ -333,7 +358,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
         // Non-blocking: resolve stake address, derive DRep ID, and look up delegation
         try {
-          const stakeAddr = resolveRewardAddress(addresses[0]);
+          const stakeAddr = resolveRewardAddress(connection.address);
           if (stakeAddr) {
             // Delegation lookup
             fetch('/api/delegation', {
@@ -358,12 +383,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         } catch {
           // Stake address resolution can fail for script addresses — ignore
         }
+
+        return connection;
       } else {
         throw new Error('No addresses found in wallet');
       }
     } catch (err) {
       setError(categorizeError(err, name));
       console.error('Wallet connection error:', err);
+      return null;
     } finally {
       setConnecting(false);
     }
@@ -384,9 +412,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('governada_connect_method');
   };
 
-  const signMessage = useCallback(
-    async (message: string): Promise<{ signature: string; key: string } | null> => {
-      if (!walletName || !hexAddress) {
+  const signMessageWithWallet = useCallback(
+    async (
+      targetWalletName: string | null,
+      targetHexAddress: string | null,
+      message: string,
+    ): Promise<{ signature: string; key: string } | null> => {
+      if (!targetWalletName || !targetHexAddress) {
         setError({
           type: 'unknown',
           message: 'Wallet not connected',
@@ -398,78 +430,88 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       try {
         // Bypass MeshJS wrapper — it incorrectly bech32-decodes the payload.
         // CIP-30 signData expects hex address + hex-encoded payload.
-        const rawApi = await getCardanoApi(walletName)?.enable();
+        const rawApi = await getCardanoApi(targetWalletName)?.enable();
         if (!rawApi) throw new Error('Could not access wallet API');
 
-        const hexPayload = Array.from(new TextEncoder().encode(message))
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join('');
-        const result = await rawApi.signData(hexAddress, hexPayload);
+        const result = await rawApi.signData(targetHexAddress, getHexPayload(message));
         return { signature: result.signature, key: result.key };
       } catch (err) {
-        setError(categorizeError(err, walletName));
+        setError(categorizeError(err, targetWalletName));
         console.error('Sign message error:', err);
         return null;
       }
     },
-    [walletName, hexAddress],
+    [],
   );
 
-  const authenticate = useCallback(async (): Promise<boolean> => {
-    if (!walletName || !address || !hexAddress) {
-      setError({
-        type: 'unknown',
-        message: 'Connect wallet first',
-        hint: 'Please connect your wallet before signing in.',
-      });
-      return false;
-    }
+  const signMessage = useCallback(
+    async (message: string): Promise<{ signature: string; key: string } | null> =>
+      signMessageWithWallet(walletName, hexAddress, message),
+    [walletName, hexAddress, signMessageWithWallet],
+  );
 
-    try {
-      const nonceController = new AbortController();
-      const nonceTimer = setTimeout(() => nonceController.abort(), 15000);
-      const nonceResponse = await fetch('/api/auth/nonce', {
-        signal: nonceController.signal,
-      });
-      clearTimeout(nonceTimer);
-      if (!nonceResponse.ok) throw new Error('Network error fetching nonce');
-      const { nonce, signature: nonceSignature } = await nonceResponse.json();
+  const authenticate = useCallback(
+    async (connection?: WalletConnectionSnapshot): Promise<boolean> => {
+      const targetWalletName = connection?.walletName ?? walletName;
+      const targetAddress = connection?.address ?? address;
+      const targetHexAddress = connection?.hexAddress ?? hexAddress;
 
-      const signResult = await signMessage(nonce);
-      if (!signResult) return false;
-
-      const authController = new AbortController();
-      const authTimer = setTimeout(() => authController.abort(), 15000);
-      const authResponse = await fetch('/api/auth/wallet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address,
-          nonce,
-          nonceSignature,
-          signature: signResult.signature,
-          key: signResult.key,
-        }),
-        signal: authController.signal,
-      });
-      clearTimeout(authTimer);
-
-      if (!authResponse.ok) {
-        const data = await authResponse.json();
-        throw new Error(data.error || 'Authentication failed');
+      if (!targetWalletName || !targetAddress || !targetHexAddress) {
+        setError({
+          type: 'unknown',
+          message: 'Connect wallet first',
+          hint: 'Please connect your wallet before signing in.',
+        });
+        return false;
       }
 
-      const { sessionToken, userId: returnedUserId } = await authResponse.json();
-      saveSession(sessionToken);
-      setUserId(returnedUserId);
-      setSessionAddress(address);
-      return true;
-    } catch (err) {
-      setError(categorizeError(err, walletName));
-      console.error('Authentication error:', err);
-      return false;
-    }
-  }, [walletName, address, hexAddress, signMessage]);
+      try {
+        const nonceController = new AbortController();
+        const nonceTimer = setTimeout(() => nonceController.abort(), 15000);
+        const nonceResponse = await fetch('/api/auth/nonce', {
+          signal: nonceController.signal,
+        });
+        clearTimeout(nonceTimer);
+        if (!nonceResponse.ok) throw new Error('Network error fetching nonce');
+        const { nonce, signature: nonceSignature } = await nonceResponse.json();
+
+        const signResult = await signMessageWithWallet(targetWalletName, targetHexAddress, nonce);
+        if (!signResult) return false;
+
+        const authController = new AbortController();
+        const authTimer = setTimeout(() => authController.abort(), 15000);
+        const authResponse = await fetch('/api/auth/wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: targetAddress,
+            nonce,
+            nonceSignature,
+            signature: signResult.signature,
+            key: signResult.key,
+          }),
+          signal: authController.signal,
+        });
+        clearTimeout(authTimer);
+
+        if (!authResponse.ok) {
+          const data = await authResponse.json();
+          throw new Error(data.error || 'Authentication failed');
+        }
+
+        const { sessionToken, userId: returnedUserId } = await authResponse.json();
+        saveSession(sessionToken);
+        setUserId(returnedUserId);
+        setSessionAddress(targetAddress);
+        return true;
+      } catch (err) {
+        setError(categorizeError(err, targetWalletName));
+        console.error('Authentication error:', err);
+        return false;
+      }
+    },
+    [walletName, address, hexAddress, signMessageWithWallet],
+  );
 
   const logout = useCallback(() => {
     clearSession();

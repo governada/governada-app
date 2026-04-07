@@ -24,6 +24,12 @@ export interface WalletError {
   hint: string;
 }
 
+export interface WalletConnectionSnapshot {
+  walletName: string;
+  address: string;
+  hexAddress: string;
+}
+
 export interface WalletContextType {
   wallet: BrowserWallet | null;
   walletName: string | null;
@@ -40,10 +46,10 @@ export interface WalletContextType {
   error: WalletError | null;
   availableWallets: string[];
   connectMethod: 'extension' | 'peer' | null;
-  connect: (walletName: string) => Promise<void>;
+  connect: (walletName: string) => Promise<WalletConnectionSnapshot | null>;
   disconnect: () => void;
   signMessage: (message: string) => Promise<{ signature: string; key: string } | null>;
-  authenticate: () => Promise<boolean>;
+  authenticate: (connection?: WalletConnectionSnapshot) => Promise<boolean>;
   logout: () => void;
   clearError: () => void;
   refreshDelegation: () => void;

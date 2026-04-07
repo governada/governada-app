@@ -84,10 +84,18 @@ export function useQuickConnect(): UseQuickConnectReturn {
 
       try {
         // Step 1: Connect to wallet extension
-        await connect(target);
+        const connection = await connect(target);
+        if (!connection) {
+          setError('Connection failed. Please try again.');
+          posthog.capture('quick_connect_failed', {
+            wallet_name: target,
+            reason: 'connect_returned_null',
+          });
+          return false;
+        }
 
-        // Step 2: Authenticate (sign nonce + create session)
-        const success = await authenticate();
+        // Step 2: Authenticate against the just-connected wallet snapshot.
+        const success = await authenticate(connection);
 
         if (success) {
           posthog.capture('quick_connect_succeeded', { wallet_name: target });

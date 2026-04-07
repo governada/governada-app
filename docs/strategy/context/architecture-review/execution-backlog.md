@@ -421,6 +421,7 @@ None - execute directly unless a consumer needs a materially different product i
 **Expected score impact:** Minor consistency gain by removing threshold-copy drift from authoring UX
 **Depends on:** Chunk 8
 **PR group:** H
+**Implementation status:** Completed in post-review follow-up worktree
 
 ### Context
 
@@ -435,6 +436,21 @@ The authoring submission simulator still hardcodes governance threshold copy in 
 
 - Authoring threshold copy matches the shared governance rule layer for each supported proposal type.
 - Parameter-change authoring copy does not imply SPO participation when only governance parameters are changed.
+
+### Progress So Far
+
+- Added `lib/governance/votingGuidance.ts` as the shared copy seam over governance-body eligibility and threshold-family messaging.
+- `components/workspace/author/submission/FinancialSimulation.tsx` now reads bodies and threshold language from that helper instead of a local hardcoded table.
+- `components/workspace/author/submission/SubmissionSuccess.tsx` now uses the same shared guidance, so post-submit expectations match the submission simulator for parameter-sensitive proposal types.
+- `components/governada/proposals/LivingBrief.tsx` now consumes the shared requirements summary instead of keeping a separate public-proposal explanation helper.
+- Added focused regression coverage in `__tests__/lib/votingGuidance.test.ts`.
+
+### Verification Notes
+
+- Verified with `npm run test:unit -- __tests__/lib/votingGuidance.test.ts __tests__/lib/votingBodies.test.ts`.
+- Verified with `npm run lint -- --no-warn-ignored lib/governance/votingGuidance.ts components/workspace/author/submission/FinancialSimulation.tsx components/workspace/author/submission/SubmissionSuccess.tsx app/workspace/author/[draftId]/submit/page.tsx components/governada/proposals/LivingBrief.tsx __tests__/lib/votingGuidance.test.ts`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
 
 ### Files to Read First
 

@@ -11,6 +11,7 @@ import { AlertTriangle, Check, ArrowRight, ArrowLeft, Loader2, Info } from 'luci
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { GovernanceActionPreflight, ProposalType } from '@/lib/workspace/types';
+import { getDraftVotingGuidance } from '@/lib/governance/votingGuidance';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -19,50 +20,11 @@ import type { GovernanceActionPreflight, ProposalType } from '@/lib/workspace/ty
 interface FinancialSimulationProps {
   preflight: GovernanceActionPreflight | null;
   proposalType: ProposalType;
+  typeSpecific?: Record<string, unknown> | null;
   isLoading: boolean;
   onContinue: () => void;
   onBack: () => void;
 }
-
-// ---------------------------------------------------------------------------
-// Voting mechanics data (constitutional/protocol-level, hardcoded per type)
-// ---------------------------------------------------------------------------
-
-interface VotingMechanics {
-  bodies: string[];
-  threshold: string;
-}
-
-const VOTING_MECHANICS: Record<ProposalType, VotingMechanics> = {
-  InfoAction: {
-    bodies: ['DRep'],
-    threshold: 'Simple majority (>50%)',
-  },
-  TreasuryWithdrawals: {
-    bodies: ['DRep', 'Constitutional Committee'],
-    threshold: '67% DRep voting power + CC majority',
-  },
-  ParameterChange: {
-    bodies: ['DRep', 'Constitutional Committee'],
-    threshold: '67% DRep voting power + CC majority',
-  },
-  HardForkInitiation: {
-    bodies: ['DRep', 'SPO', 'Constitutional Committee'],
-    threshold: '75% DRep + SPO + CC majority',
-  },
-  NoConfidence: {
-    bodies: ['DRep', 'SPO'],
-    threshold: '67% DRep + SPO voting power',
-  },
-  NewCommittee: {
-    bodies: ['DRep', 'SPO'],
-    threshold: '67% DRep + SPO voting power',
-  },
-  NewConstitution: {
-    bodies: ['DRep', 'Constitutional Committee'],
-    threshold: '75% DRep voting power + CC majority',
-  },
-};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -80,11 +42,12 @@ function formatAda(lovelaceStr: string): string {
 export function FinancialSimulation({
   preflight,
   proposalType,
+  typeSpecific,
   isLoading,
   onContinue,
   onBack,
 }: FinancialSimulationProps) {
-  const mechanics = VOTING_MECHANICS[proposalType];
+  const guidance = getDraftVotingGuidance(proposalType, typeSpecific);
 
   if (isLoading || !preflight) {
     return (
@@ -175,14 +138,14 @@ export function FinancialSimulation({
             <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
             <div>
               <span className="text-muted-foreground">Bodies that vote: </span>
-              <span className="text-foreground">{mechanics.bodies.join(' + ')}</span>
+              <span className="text-foreground">{guidance.bodiesCompact}</span>
             </div>
           </div>
           <div className="flex items-start gap-2">
             <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
             <div>
               <span className="text-muted-foreground">Threshold: </span>
-              <span className="text-foreground">{mechanics.threshold}</span>
+              <span className="text-foreground">{guidance.thresholdSummary}</span>
             </div>
           </div>
           <div className="flex items-start gap-2">

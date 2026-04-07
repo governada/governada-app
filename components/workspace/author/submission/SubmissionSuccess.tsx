@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { ProposalType } from '@/lib/workspace/types';
+import { getDraftVotingGuidance } from '@/lib/governance/votingGuidance';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -23,6 +24,7 @@ interface SubmissionSuccessProps {
   anchorUrl: string;
   proposalTitle: string;
   proposalType: ProposalType;
+  typeSpecific?: Record<string, unknown> | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -34,30 +36,6 @@ function truncateHash(hash: string): string {
   return `${hash.slice(0, 10)}...${hash.slice(-10)}`;
 }
 
-/**
- * Determine which governance bodies vote on this type.
- * Based on CIP-1694 voting thresholds.
- */
-function votingBodies(type: ProposalType): string {
-  switch (type) {
-    case 'TreasuryWithdrawals':
-      return 'DReps and the Constitutional Committee';
-    case 'ParameterChange':
-      return 'DReps and the Constitutional Committee';
-    case 'HardForkInitiation':
-      return 'DReps, SPOs, and the Constitutional Committee';
-    case 'NoConfidence':
-      return 'DReps and SPOs';
-    case 'NewCommittee':
-      return 'DReps and SPOs';
-    case 'NewConstitution':
-      return 'DReps and the Constitutional Committee';
-    case 'InfoAction':
-    default:
-      return 'DReps (non-binding signal)';
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -67,9 +45,11 @@ export function SubmissionSuccess({
   anchorUrl,
   proposalTitle,
   proposalType,
+  typeSpecific,
 }: SubmissionSuccessProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const guidance = getDraftVotingGuidance(proposalType, typeSpecific);
 
   const cardanoscanUrl = `https://cardanoscan.io/transaction/${txHash}`;
 
@@ -140,7 +120,7 @@ export function SubmissionSuccess({
         <ul className="space-y-2 text-sm text-muted-foreground">
           <li className="flex items-start gap-2">
             <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[var(--compass-teal)] shrink-0" />
-            <span>{votingBodies(proposalType)} will review and vote on your proposal</span>
+            <span>{guidance.postSubmissionSummary}</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[var(--compass-teal)] shrink-0" />

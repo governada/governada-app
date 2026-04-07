@@ -250,6 +250,7 @@ function SubmissionPageInner() {
             anchorUrl={phase.anchorUrl}
             proposalTitle={draft.title || 'Untitled Proposal'}
             proposalType={draft.proposalType}
+            typeSpecific={draft.typeSpecific}
           />
         </div>
       </div>
@@ -305,6 +306,7 @@ function SubmissionPageInner() {
               <FinancialSimulation
                 preflight={preflight}
                 proposalType={draft.proposalType}
+                typeSpecific={draft.typeSpecific}
                 isLoading={preflightLoading}
                 onContinue={handleNext}
                 onBack={() => router.push(`/workspace/author/${draftId}`)}

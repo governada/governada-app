@@ -22,7 +22,7 @@ import { ShareActions } from '@/components/ShareActions';
 import { BriefFeedback } from './BriefFeedback';
 import { cn } from '@/lib/utils';
 import { getRelevantArticles } from '@/lib/constitution';
-import { getVotingBodies } from '@/lib/governance/votingBodies';
+import { getVotingGuidance } from '@/lib/governance/votingGuidance';
 import type { ProposalBriefContent } from '@/lib/proposalBrief';
 import type { NclUtilization } from '@/lib/treasury';
 
@@ -161,34 +161,6 @@ function BriefSkeleton() {
       </div>
     </div>
   );
-}
-
-// ---------------------------------------------------------------------------
-// Voting requirements helper
-// ---------------------------------------------------------------------------
-
-function getVotingRequirementsSummary(
-  proposalType: string,
-  paramChanges?: Record<string, unknown> | null,
-): string {
-  const bodies = getVotingBodies(proposalType, paramChanges);
-  const hasSpo = bodies.includes('spo');
-  const hasCc = bodies.includes('cc');
-
-  if (proposalType === 'InfoAction') {
-    return 'This is an advisory action. DReps, SPOs, and the Constitutional Committee can all signal on it, but it does not enact changes on-chain.';
-  }
-
-  const parts: string[] = ['Requires DRep approval'];
-  if (hasSpo) parts.push('SPO approval');
-  if (hasCc) parts.push('Constitutional Committee confirmation');
-
-  if (parts.length === 1) {
-    return `${parts[0]}. SPOs and the Constitutional Committee do not vote on this type of proposal.`;
-  }
-
-  const last = parts.pop()!;
-  return `${parts.join(', ')}, and ${last}.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -429,7 +401,7 @@ function FirstLook({
 }) {
   const totalVotes = yesCount + noCount + abstainCount;
   const articles = getRelevantArticles(proposalType);
-  const votingRequirements = getVotingRequirementsSummary(proposalType, paramChanges);
+  const votingRequirements = getVotingGuidance(proposalType, paramChanges).requirementsSummary;
   const rationalesWithText = rationales.filter((r) => r.rationaleAiSummary || r.rationaleText);
 
   // Build the early signal message

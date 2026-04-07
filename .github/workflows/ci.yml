@@ -204,6 +204,14 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: nextjs-build
+      - name: Prepare standalone runtime
+        run: |
+          mkdir -p .next/standalone/.next
+          rm -rf .next/standalone/.next/static .next/standalone/public
+          cp -R .next/static .next/standalone/.next/static
+          if [ -d public ]; then
+            cp -R public .next/standalone/public
+          fi
       - name: Start server and run browser smoke
         run: |
           PORT=3000 node .next/standalone/server.js &

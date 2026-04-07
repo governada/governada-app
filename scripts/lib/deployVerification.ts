@@ -88,11 +88,14 @@ function validateHealthStatus(
 
 function validateProductionSyncFreshness(body: any): string | null {
   const status = getHealthStatus(body);
-  if (status !== 'healthy') {
+  if (status !== 'healthy' && status !== 'degraded') {
     return `Health status is ${status ?? 'missing'}`;
   }
 
   if (!Array.isArray(body?.syncs)) return 'Missing syncs array';
+  if (body?.operations?.status && body.operations.status !== 'healthy') {
+    return `Operations status is ${body.operations.status}`;
+  }
 
   const coreSyncTypes = new Set(['proposals', 'dreps', 'scoring', 'alignment']);
   const degradedCoreSyncs = body.syncs.filter(
@@ -142,12 +145,7 @@ export function getSmokeChecks(
       path: '/api/health',
       expectedStatus: 200,
       maxResponseMs: 5000,
-      validate: (body) =>
-        validateHealthStatus(
-          body,
-          profile === 'production' ? ['healthy'] : ['healthy', 'degraded'],
-          'Health',
-        ),
+      validate: (body) => validateHealthStatus(body, ['healthy', 'degraded'], 'Health'),
     },
     {
       name: 'DReps list',

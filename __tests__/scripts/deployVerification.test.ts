@@ -47,11 +47,16 @@ describe('deploy verification helpers', () => {
     expect(releaseMatchesExpected('fedcba98', 'abcdef12')).toBe(false);
   });
 
-  it('requires healthy health states in production smoke checks', async () => {
+  it('allows degraded production health when only non-core syncs are failing', async () => {
     const fetch = createFetch({
       '/api/health/ready': response({ status: 'ok', release: { commit_sha: 'abc123' } }),
       '/api/health/deep': response({ status: 'healthy' }),
-      '/api/health': response({ status: 'degraded', syncs: [], snapshots: { status: 'healthy' } }),
+      '/api/health': response({
+        status: 'degraded',
+        operations: { status: 'healthy' },
+        syncs: [{ type: 'metadata_archive', level: 'critical' }],
+        snapshots: { status: 'healthy' },
+      }),
       '/api/dreps': response({ dreps: [{ id: 'drep1' }] }),
       '/api/v1/dreps?limit=5': response({
         data: [{ id: 'drep1', score: 10 }],
@@ -80,12 +85,50 @@ describe('deploy verification helpers', () => {
       log: () => {},
     });
 
-    expect(result.failed).toBe(2);
-    expect(result.results.find((entry) => entry.name === 'Health (full)')?.detail).toContain(
-      'outside allowed set',
-    );
+    expect(result.failed).toBe(0);
+  });
+
+  it('still fails production smoke when degraded health comes from core sync drift', async () => {
+    const fetch = createFetch({
+      '/api/health/ready': response({ status: 'ok', release: { commit_sha: 'abc123' } }),
+      '/api/health/deep': response({ status: 'healthy' }),
+      '/api/health': response({
+        status: 'degraded',
+        operations: { status: 'healthy' },
+        syncs: [{ type: 'dreps', level: 'critical' }],
+        snapshots: { status: 'healthy' },
+      }),
+      '/api/dreps': response({ dreps: [{ id: 'drep1' }] }),
+      '/api/v1/dreps?limit=5': response({
+        data: [{ id: 'drep1', score: 10 }],
+        meta: { api_version: '1.0' },
+      }),
+      '/api/v1/governance/health': response({
+        data: {
+          total_registered_dreps: 200,
+          total_votes: 5000,
+          total_proposals: 20,
+          score_distribution: {},
+        },
+      }),
+      '/api/auth/nonce': response({ nonce: 'n', signature: 's' }),
+      '/api/v1/dreps?limit=20': response({
+        data: Array.from({ length: 20 }, (_, index) => ({ id: `drep${index}`, score: 10 })),
+      }),
+    });
+
+    const result = await runSmokeChecks({
+      baseUrl: 'https://governada.io',
+      expectedSha: 'abc123',
+      fetchImpl: fetch,
+      profile: 'production',
+      quiet: true,
+      log: () => {},
+    });
+
+    expect(result.failed).toBe(1);
     expect(result.results.find((entry) => entry.name === 'Sync freshness')?.detail).toContain(
-      'Health status is degraded',
+      'Non-healthy core syncs',
     );
   });
 

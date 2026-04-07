@@ -53,7 +53,7 @@ function Test-EmbeddedCredentialRemote([string]$RemoteUrl) {
 }
 
 $expectedUser = 'governada'
-$canonicalRemote = 'git@github-governada:governada/governada-app.git'
+$canonicalRemote = 'git@github.com:governada/governada-app.git'
 $ghConfigDir = Set-RepoGhContext
 
 Write-Output 'Repairing GitHub auth for this repo...'

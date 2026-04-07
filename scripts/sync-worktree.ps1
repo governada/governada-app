@@ -127,12 +127,17 @@ function Get-RevCount([string]$Range) {
   return 0
 }
 
-function Ensure-EnvLocal([string]$RepoRoot, [string]$MainCheckoutRoot) {
-  $worktreeEnv = Join-Path $RepoRoot '.env.local'
-  $mainEnv = Join-Path $MainCheckoutRoot '.env.local'
-  if (-not (Test-Path $worktreeEnv) -and (Test-Path $mainEnv)) {
-    Copy-Item -LiteralPath $mainEnv -Destination $worktreeEnv
-    Write-Output '.env.local: copied from main checkout.'
+function Ensure-LocalBootstrapFile([string]$RepoRoot, [string]$MainCheckoutRoot, [string]$RelativePath) {
+  $worktreePath = Join-Path $RepoRoot $RelativePath
+  $mainPath = Join-Path $MainCheckoutRoot $RelativePath
+  if (-not (Test-Path $worktreePath) -and (Test-Path $mainPath)) {
+    $destinationDir = Split-Path -Parent $worktreePath
+    if ($destinationDir) {
+      New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+    }
+
+    Copy-Item -LiteralPath $mainPath -Destination $worktreePath
+    Write-Output "${RelativePath}: copied from main checkout."
   }
 }
 
@@ -238,5 +243,11 @@ if ($behind -gt 0) {
   Write-Output "Git: already up to date with origin/main (ahead $ahead commit(s))."
 }
 
-Ensure-EnvLocal -RepoRoot $repoRoot -MainCheckoutRoot $mainCheckoutRoot
+foreach ($relativePath in @(
+  '.env.local',
+  '.mcp.json',
+  '.claude/settings.local.json'
+)) {
+  Ensure-LocalBootstrapFile -RepoRoot $repoRoot -MainCheckoutRoot $mainCheckoutRoot -RelativePath $relativePath
+}
 Ensure-NodeModulesLink -RepoRoot $repoRoot -MainCheckoutRoot $mainCheckoutRoot

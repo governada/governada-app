@@ -1,6 +1,8 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 
+. "$PSScriptRoot\set_gh_context.ps1"
+
 function Invoke-Git {
   param(
     [Parameter(Mandatory = $true)]
@@ -88,6 +90,117 @@ function Test-RepoFile([string]$RelativePath) {
   return "$RelativePath (missing)"
 }
 
+function Get-BootstrapSource([string]$RelativePath) {
+  $currentPath = Join-Path $repoRoot $RelativePath
+  if (Test-Path $currentPath) {
+    return [PSCustomObject]@{
+      Path  = $currentPath
+      Scope = 'current checkout'
+    }
+  }
+
+  if ($mainCheckoutRoot -and ($mainCheckoutRoot -ne $repoRoot)) {
+    $sharedPath = Join-Path $mainCheckoutRoot $RelativePath
+    if (Test-Path $sharedPath) {
+      return [PSCustomObject]@{
+        Path  = $sharedPath
+        Scope = 'shared checkout fallback'
+      }
+    }
+  }
+
+  return $null
+}
+
+function Format-BootstrapFileStatus([string]$RelativePath) {
+  $source = Get-BootstrapSource $RelativePath
+  if ($null -eq $source) {
+    return "$RelativePath (missing)"
+  }
+
+  return "$RelativePath -> $($source.Scope)"
+}
+
+function Get-RepoBootstrapLines() {
+  return @(
+    (Format-BootstrapFileStatus '.env.local'),
+    (Format-BootstrapFileStatus '.mcp.json'),
+    (Format-BootstrapFileStatus '.claude/settings.local.json'),
+    (Format-BootstrapFileStatus 'scripts/lib/runtime.js'),
+    (Format-BootstrapFileStatus 'scripts/set_gh_context.ps1'),
+    (Format-BootstrapFileStatus 'scripts/set-gh-context.js')
+  )
+}
+
+function Get-McpServerLines() {
+  $mcpSource = Get-BootstrapSource '.mcp.json'
+  if ($null -eq $mcpSource) {
+    return @('.mcp.json -> missing; MCP discovery will fall back to higher-level config')
+  }
+
+  try {
+    $config = Get-Content -LiteralPath $mcpSource.Path -Raw | ConvertFrom-Json -ErrorAction Stop
+  } catch {
+    return @(".mcp.json -> invalid JSON ($($_.Exception.Message))")
+  }
+
+  if ($null -eq $config.mcpServers) {
+    return @('.mcp.json -> mcpServers missing')
+  }
+
+  $lines = @()
+  foreach ($property in $config.mcpServers.PSObject.Properties) {
+    $serverName = $property.Name
+    $server = $property.Value
+    $command = [string]$server.command
+    $args = @($server.args)
+
+    if ($command -eq 'cmd' -and $args.Count -ge 2 -and $args[0] -eq '/c') {
+      $wrapperPath = [string]$args[1]
+      $suffix = if (Test-Path $wrapperPath) { '' } else { ' (missing)' }
+      $lines += "MCP $serverName -> $wrapperPath$suffix"
+      continue
+    }
+
+    $summary = if ($args.Count -gt 0) {
+      "$command $($args -join ' ')"
+    } else {
+      $command
+    }
+
+    $lines += "MCP $serverName -> $summary"
+  }
+
+  return $lines
+}
+
+function Get-RepoScopedToolLines() {
+  $lines = @()
+  $ghConfigDir = $env:GH_CONFIG_DIR
+  if ([string]::IsNullOrWhiteSpace($ghConfigDir)) {
+    $lines += 'GH_CONFIG_DIR (missing)'
+  } else {
+    $suffix = if (Test-Path $ghConfigDir) { '' } else { ' (missing)' }
+    $lines += "GH_CONFIG_DIR -> $ghConfigDir$suffix"
+  }
+
+  if (Test-GhAuthStatus) {
+    $user = (Invoke-GhCommand -Arguments @('api', 'user', '--jq', '.login')).StdOut.Trim()
+    if ($user) {
+      $lines += "GitHub auth -> ready as $user"
+    } else {
+      $lines += 'GitHub auth -> ready'
+    }
+  } else {
+    $lines += "GitHub auth -> not ready (run 'npm run auth:repair')"
+  }
+
+  $lines += (Get-McpServerLines)
+  $lines += 'Lookup order -> current checkout, shared checkout fallback, repo-scoped user paths, then global defaults'
+
+  return $lines
+}
+
 function Print-Section([string]$Title, [string[]]$Lines) {
   Write-Output "${Title}:"
   if ($Lines.Count -eq 0) {
@@ -101,6 +214,8 @@ function Print-Section([string]$Title, [string[]]$Lines) {
 }
 
 $repoRoot = (Invoke-Git -Arguments @('rev-parse', '--show-toplevel')).Output
+$commonGitDir = (Invoke-Git -Arguments @('rev-parse', '--path-format=absolute', '--git-common-dir')).Output
+$mainCheckoutRoot = Split-Path -Parent $commonGitDir
 $branch = (Invoke-Git -Arguments @('branch', '--show-current') -AllowFailure).Output
 if ([string]::IsNullOrWhiteSpace($branch)) {
   $branch = '(detached)'
@@ -133,6 +248,12 @@ if ($stashLines.Count -gt 5) {
 Write-Output ''
 
 Print-Section 'Worktrees' ($worktrees | ForEach-Object { "$($_.Branch) -> $($_.Path)" })
+Write-Output ''
+
+Print-Section 'Repo bootstrap files' (Get-RepoBootstrapLines)
+Write-Output ''
+
+Print-Section 'Repo-scoped auth and MCP' (Get-RepoScopedToolLines)
 Write-Output ''
 
 Print-Section 'Session files' @(

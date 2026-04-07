@@ -18,6 +18,23 @@ function Get-Slug([string]$Value) {
   return $slug
 }
 
+function Copy-LocalBootstrapFile([string]$SourceRoot, [string]$WorktreeRoot, [string]$RelativePath) {
+  $sourcePath = Join-Path $SourceRoot $RelativePath
+  $destinationPath = Join-Path $WorktreeRoot $RelativePath
+
+  if (-not (Test-Path $sourcePath) -or (Test-Path $destinationPath)) {
+    return
+  }
+
+  $destinationDir = Split-Path -Parent $destinationPath
+  if ($destinationDir) {
+    New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+  }
+
+  Copy-Item -LiteralPath $sourcePath -Destination $destinationPath
+  Write-Host "$RelativePath copied."
+}
+
 $repoRoot = (git rev-parse --show-toplevel).Trim()
 if (-not $repoRoot) {
   throw "Run this script from inside the repository."
@@ -40,11 +57,12 @@ git fetch origin main
 Write-Host "Creating worktree $worktreePath on branch $branchName..."
 git worktree add $worktreePath -b $branchName origin/main
 
-$mainEnv = Join-Path $repoRoot '.env.local'
-$worktreeEnv = Join-Path $worktreePath '.env.local'
-if ((Test-Path $mainEnv) -and -not (Test-Path $worktreeEnv)) {
-  Copy-Item -LiteralPath $mainEnv -Destination $worktreeEnv
-  Write-Host ".env.local copied."
+foreach ($relativePath in @(
+  '.env.local',
+  '.mcp.json',
+  '.claude/settings.local.json'
+)) {
+  Copy-LocalBootstrapFile -SourceRoot $repoRoot -WorktreeRoot $worktreePath -RelativePath $relativePath
 }
 
 $mainNodeModules = Join-Path $repoRoot 'node_modules'

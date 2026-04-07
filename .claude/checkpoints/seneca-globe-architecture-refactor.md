@@ -1,7 +1,7 @@
 # Seneca + Globe Architecture Refactor — Checkpoint
 
 **Branch**: `claude/competent-golick`
-**Plan**: `C:\Users\dalto\.claude-personal\plans\goofy-growing-hoare.md`
+**Plan**: Original private plan file (path omitted from the repo copy)
 **Status**: Phase 3 partially complete — 3 of 6 extractions wired (Atmosphere, Camera, Ambient). GlobeConstellation at 2,315 lines (from 2,752).
 
 ## Completed

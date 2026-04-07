@@ -2,7 +2,7 @@
 
 > **Status**: Phases 1-5 DEPLOYED. Phase 6 (Design Language & Mobile) remains.
 > **Branch**: Start a new worktree — `claude/nostalgic-shannon` was used for Phases 3b-5
-> **Plan**: `C:\Users\dalto\.claude-personal\plans\glimmering-discovering-crescent.md`
+> **Plan**: Original private plan file (path omitted from the repo copy)
 > **Updated**: 2026-03-29
 
 ## CRITICAL: Handoff Instructions for Next Agent

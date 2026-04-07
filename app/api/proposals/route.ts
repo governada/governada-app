@@ -41,7 +41,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
   };
 
   const payload = await cached<ProposalPayload>(`proposals:list:${limit}`, 60, async () => {
-    const [proposalsResult, treasuryResult, epochResult, outcomesResult] = await Promise.all([
+    const [proposalsResult, governanceStatsResult] = await Promise.all([
       supabase
         .from('proposals')
         .select(
@@ -49,11 +49,11 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
         )
         .order('proposed_epoch', { ascending: false })
         .limit(limit),
-      supabase.from('governance_stats').select('treasury_balance_lovelace').eq('id', 1).single(),
-      supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
       supabase
-        .from('proposal_outcomes')
-        .select('proposal_tx_hash, proposal_index, delivery_status, delivery_score'),
+        .from('governance_stats')
+        .select('current_epoch, treasury_balance_lovelace')
+        .eq('id', 1)
+        .single(),
     ]);
 
     const { data, error } = proposalsResult;
@@ -67,14 +67,31 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
       throw new Error('Failed to fetch proposals');
     }
 
-    const votingSummaryRows = await fetchProposalVotingSummaries(
-      supabase,
-      (data || []).map((proposal) => proposal.tx_hash),
-      'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
-    );
+    const txHashes = [...new Set((data || []).map((proposal) => proposal.tx_hash))];
+    const [votingSummaryRows, outcomesResult] = await Promise.all([
+      fetchProposalVotingSummaries(
+        supabase,
+        txHashes,
+        'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
+      ),
+      txHashes.length === 0
+        ? Promise.resolve({
+            data: [] as Array<{
+              proposal_tx_hash: string;
+              proposal_index: number;
+              delivery_status: string | null;
+              delivery_score: number | null;
+            }>,
+            error: null,
+          })
+        : supabase
+            .from('proposal_outcomes')
+            .select('proposal_tx_hash, proposal_index, delivery_status, delivery_score')
+            .in('proposal_tx_hash', txHashes),
+    ]);
     const triBodyMap = indexProposalVotingSummaryTriBodies(votingSummaryRows);
 
-    const treasuryBalanceLovelace = treasuryResult.data?.treasury_balance_lovelace ?? null;
+    const treasuryBalanceLovelace = governanceStatsResult.data?.treasury_balance_lovelace ?? null;
     const treasuryBalance = treasuryBalanceLovelace
       ? Number(treasuryBalanceLovelace) / 1_000_000
       : null;
@@ -121,7 +138,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
       };
     });
 
-    const currentEpoch = epochResult.data?.current_epoch ?? null;
+    const currentEpoch = governanceStatsResult.data?.current_epoch ?? null;
 
     return { proposals, currentEpoch };
   });

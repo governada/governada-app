@@ -1172,6 +1172,7 @@ The anonymous landing route was still doing live Supabase pulse queries even tho
 **Expected score impact:** Performance and Reliability: make proposal list cost scale closer to request size than table size
 **Depends on:** Chunk 24
 **PR group:** L
+**Implementation status:** Completed in this worktree
 
 ### Context
 
@@ -1184,18 +1185,28 @@ Public proposal list surfaces still materialize broad proposal sets and shape th
 - Revisit `/api/proposals` cache-key shape so misses do not always rebuild the same broad payload.
 - Add focused verification around page-size and filter behavior.
 
-### Decision Points
+### Progress So Far
 
-The executing agent should decide whether the better seam is:
+- Added `lib/governance/proposalList.ts` as the paged/filter-aware proposal list read seam.
+- `app/api/v1/proposals/route.ts` now uses that helper instead of materializing `getAllProposalsWithVoteSummary()` and then filtering/slicing in memory.
+- `newest` requests now page in the database/read layer and only fetch voting summaries for the returned proposal page.
+- `/api/proposals` now reads `governance_stats` once and scopes `proposal_outcomes` to the fetched proposal tx hashes instead of querying the full outcomes table on every cache miss.
+- `lib/workspace/reviewQueue.ts` now narrows its proposal projection away from `select('*')`.
+- Added focused regression coverage in `__tests__/lib/proposalList.test.ts`, `__tests__/api/proposals.test.ts`, `__tests__/api/workspace-review-queue.test.ts`, and `__tests__/lib/data.test.ts`.
 
-- a new paginated proposal-list read helper in `lib/data.ts` or `lib/governance/*`, or
-- route-local SQL that uses the newer shared summary helpers without re-materializing the full list.
+### Follow-up Work
+
+- If DD05 is reopened, profile whether `most_votes` and `most_contested` need a more explicit ranked-list contract instead of filtered in-memory sorting.
+- If the legacy `/api/proposals` route becomes a hot external surface again, revisit its cache-key strategy rather than rebuilding a single list blob per `limit`.
 
 ### Verification
 
 - Proposal list cost is materially closer to request size than total table size.
 - Filters and sorts are still correct.
 - Cache keys align with the response contract instead of a one-size-fits-all list blob.
+- Verified with `npm run test:unit -- __tests__/lib/proposalList.test.ts __tests__/api/proposals.test.ts __tests__/api/workspace-review-queue.test.ts __tests__/lib/data.test.ts`.
+- Verified with `npm run lint -- app/api/proposals/route.ts lib/workspace/reviewQueue.ts __tests__/api/proposals.test.ts __tests__/api/workspace-review-queue.test.ts app/api/v1/proposals/route.ts lib/governance/proposalList.ts components/globe/GlobeLayout.tsx`.
+- Verified with `npm run type-check`.
 
 ### Files to Read First
 
@@ -1213,6 +1224,7 @@ The executing agent should decide whether the better seam is:
 **Expected score impact:** Performance and Reliability: stop background cost from growing linearly with total vote history
 **Depends on:** None
 **PR group:** M
+**Implementation status:** Deferred follow-up after DD05 close
 
 ### Context
 
@@ -1232,6 +1244,12 @@ The executing agent should confirm whether the right end state is:
 - a single canonical vote-ingestion job with checkpointing, or
 - a staged ingestion model where one append-only raw store feeds the other derived jobs.
 
+### Current Review Outcome
+
+- DD05 validated that `lib/koios.ts:getEnrichedDReps()` already has a `prefetchedVotes` seam that could remove one redundant Koios vote-read path from `lib/sync/dreps.ts`.
+- DD05 also validated that `drep_votes` currently omits raw `meta_json` while the DRep scorer still treats raw rationale content as part of the vote-quality contract.
+- Because of that mismatch, this chunk is explicitly deferred until the repo decides whether cached rationale-quality columns are authoritative or the raw rationale payload must be preserved.
+
 ### Verification
 
 - Vote-ingestion ownership is explicit.
@@ -1243,6 +1261,8 @@ The executing agent should confirm whether the right end state is:
 - `lib/sync/proposals.ts`
 - `lib/sync/votes.ts`
 - `lib/sync/dreps.ts`
+- `lib/koios.ts`
+- `types/database.ts`
 - `lib/sync/data-moat.ts`
 - `lib/sync/slow.ts`
 - `utils/koios.ts`
@@ -1285,3 +1305,39 @@ The homepage globe list overlay stayed mounted while closed, and its entity hook
 - `hooks/queries.ts`
 - `__tests__/components/ListOverlay.test.tsx`
 - `components/globe/GlobeLayout.tsx`
+
+## Chunk 28: Remove Homepage Route-Panel Bundle Tax
+
+**Priority:** P1
+**Effort:** S
+**Audit dimension(s):** Performance and Reliability, Frontend UX Quality
+**Expected score impact:** Performance and Reliability: reduce homepage bundle and parse work for an unused route-only overlay
+**Depends on:** None
+**PR group:** L
+**Implementation status:** Completed in this worktree
+
+### Context
+
+The homepage globe shell was still importing `PanelOverlay` even though that panel only renders on `/g/*` route detail paths and is not used on the anonymous landing page.
+
+### Scope
+
+- Remove the homepage's eager dependency on `PanelOverlay`.
+- Keep `/g/*` route behavior unchanged.
+- Avoid reintroducing the route-panel path into the homepage bundle by accident.
+
+### Progress So Far
+
+- `components/globe/GlobeLayout.tsx` now lazy-loads `PanelOverlay` with `next/dynamic`.
+- The route panel only mounts when `pathname.startsWith('/g/')`, so the anonymous homepage no longer pays for that overlay path.
+
+### Verification
+
+- Verified with `npm run lint -- components/globe/GlobeLayout.tsx`.
+- Verified with `npm run type-check`.
+
+### Files to Read First
+
+- `components/globe/GlobeLayout.tsx`
+- `components/globe/PanelOverlay.tsx`
+- `components/hub/HubHomePage.tsx`

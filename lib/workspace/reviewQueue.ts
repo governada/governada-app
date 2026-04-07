@@ -14,6 +14,9 @@ import type {
 } from '@/lib/workspace/types';
 import { getProposalDisplayTitle } from '@/utils/display';
 
+const REVIEW_QUEUE_PROPOSAL_SELECT =
+  'tx_hash, proposal_index, title, abstract, ai_summary, proposal_type, param_changes, withdrawal_amount, treasury_tier, expiration_epoch, block_time, meta_json';
+
 function extractMetaField(metaJson: unknown, field: string): string | null {
   if (!metaJson || typeof metaJson !== 'object') return null;
 
@@ -65,7 +68,7 @@ export async function buildReviewQueue({
 
   const { data: proposals, error: proposalError } = await supabase
     .from('proposals')
-    .select('*')
+    .select(REVIEW_QUEUE_PROPOSAL_SELECT)
     .is('ratified_epoch', null)
     .is('enacted_epoch', null)
     .is('dropped_epoch', null)

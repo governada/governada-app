@@ -110,5 +110,8 @@ describe('GET /api/workspace/review-queue', () => {
     expect(response.status).toBe(200);
     expect(body.items).toHaveLength(1);
     expect(body.items[0]?.paramChanges).toEqual({ govActionLifetime: 12 });
+    expect(proposalsQuery.select).toHaveBeenCalledWith(
+      'tx_hash, proposal_index, title, abstract, ai_summary, proposal_type, param_changes, withdrawal_amount, treasury_tier, expiration_epoch, block_time, meta_json',
+    );
   });
 });

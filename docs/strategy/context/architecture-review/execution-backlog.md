@@ -1224,7 +1224,7 @@ Public proposal list surfaces still materialize broad proposal sets and shape th
 **Expected score impact:** Performance and Reliability: stop background cost from growing linearly with total vote history
 **Depends on:** None
 **PR group:** M
-**Implementation status:** Deferred follow-up after DD05 close
+**Implementation status:** Implemented on April 6, 2026 follow-up
 
 ### Context
 
@@ -1237,24 +1237,24 @@ Vote ingestion currently spans `sync-proposals`, `sync-votes`, and `sync-dreps`,
 - Move the heavy votes sync away from whole-history import when possible, or introduce explicit checkpointing if true incremental sync is not yet practical.
 - Review related slow-sync and metadata-archive paths for the same “full corpus every run” pattern.
 
-### Decision Points
-
-The executing agent should confirm whether the right end state is:
-
-- a single canonical vote-ingestion job with checkpointing, or
-- a staged ingestion model where one append-only raw store feeds the other derived jobs.
-
 ### Current Review Outcome
 
-- DD05 validated that `lib/koios.ts:getEnrichedDReps()` already has a `prefetchedVotes` seam that could remove one redundant Koios vote-read path from `lib/sync/dreps.ts`.
-- DD05 also validated that `drep_votes` currently omits raw `meta_json` while the DRep scorer still treats raw rationale content as part of the vote-quality contract.
-- Because of that mismatch, this chunk is explicitly deferred until the repo decides whether cached rationale-quality columns are authoritative or the raw rationale payload must be preserved.
+- The follow-up resolved the contract choice in favor of a DB-first cached vote model: `drep_votes` remains normalized, gains `has_rationale`, and does not preserve raw `meta_json`.
+- `sync-votes` is now the canonical `drep_votes` writer with a durable `sync_cursors` checkpoint and inclusive overlap on `block_time`.
+- `sync-proposals` no longer writes `drep_votes`; it only refreshes proposals and can trigger the canonical vote sync when open proposals need freshness.
+- `sync-dreps` now derives `rationale_rate` and alignment transparency from cached vote signals instead of live Koios vote payloads, while V3 scoring remains on stored `rationale_quality` and `meta_hash`.
+- Inline rationale text is written immediately to `vote_rationales`, and the metadata-archive path now reads normalized rationale content from that store instead of a nonexistent `drep_votes.meta_json` column.
+- `vote_rationales` now carries durable external-fetch state (`fetch_status`, retry/error metadata, and `next_fetch_at`), and `lib/sync/slow.ts` consumes that queue directly instead of rescanning the full vote table for uncached anchors.
+- `lib/sync/data-moat.ts` now archives DRep, proposal, and rationale metadata from per-stream timestamp cursors in `sync_cursors` instead of reprocessing the full historical archive corpus on each run.
 
 ### Verification
 
 - Vote-ingestion ownership is explicit.
 - The main vote sync no longer gets slower forever with total historical vote count.
 - Upstream rate-limit exposure is reduced relative to the current overlapping schedule.
+- External rationale fetches now make forward progress from a bounded retry queue instead of bounded scans over unbounded source sets.
+- Metadata archival work now scales with changed DRep, proposal, and rationale content instead of full-corpus rescans.
+- Focused verification passed with `npm run test -- __tests__/sync/data-moat.test.ts __tests__/lib/drep-votes.test.ts __tests__/lib/vote-rationales.test.ts __tests__/sync/votes.test.ts __tests__/sync/slow.test.ts __tests__/lib/koios-cache.test.ts __tests__/scoring/engagementQuality.test.ts`, `npm run agent:validate`, and `npm run type-check`.
 
 ### Files to Read First
 
@@ -1341,3 +1341,571 @@ The homepage globe shell was still importing `PanelOverlay` even though that pan
 - `components/globe/GlobeLayout.tsx`
 - `components/globe/PanelOverlay.tsx`
 - `components/hub/HubHomePage.tsx`
+
+## Chunk 29: Preserve Protected-Route Intent and Wire the Shared Wallet-Connect Event
+
+**Priority:** P0
+**Effort:** M
+**Audit dimension(s):** Frontend UX Quality, Performance and Reliability, Architecture and Code Health
+**Expected score impact:** Critical user journeys: prevent anonymous-to-authenticated intent loss on protected routes
+**Depends on:** None
+**PR group:** N
+**Implementation status:** Completed in this worktree
+
+### Context
+
+DD06 surfaced a major journey break: anonymous users who opened `/workspace` or `/you` were being dumped onto `/` with no preserved destination, and the repo-wide `openWalletConnect` event bus had no actual listener.
+
+### Scope
+
+- Preserve protected-route destination intent through the anonymous home fallback.
+- Reopen the wallet modal automatically when the app redirected a user because auth was required.
+- Make the global `openWalletConnect` event actually open the wallet modal.
+- Resume the saved destination after successful auth when the modal flow completes.
+- Add focused regression coverage around the route-level redirect contract and return-to sanitization.
+
+### Progress So Far
+
+- `proxy.ts` now redirects anonymous protected-route requests to `/?connect=1&returnTo=...`.
+- `components/governada/GovernadaHeader.tsx` now listens for `openWalletConnect`, auto-opens the modal for auth-required redirects, and resumes the saved internal destination after auth when the modal is no longer open.
+- Added `lib/navigation/returnTo.ts` as the shared safe internal-path validator.
+- Added focused regression coverage in `__tests__/proxy.test.ts` and `__tests__/lib/returnTo.test.ts`.
+
+### Verification
+
+- Anonymous `/workspace` and `/you` requests preserve intent instead of silently dropping to `/`.
+- Shared `openWalletConnect` dispatches now have a real listener.
+- Only safe internal `returnTo` values are accepted.
+
+### Files to Read First
+
+- `proxy.ts`
+- `components/governada/GovernadaHeader.tsx`
+- `components/WalletConnectModal.tsx`
+- `hooks/useQuickConnect.ts`
+- `lib/navigation/returnTo.ts`
+- `__tests__/proxy.test.ts`
+- `__tests__/lib/returnTo.test.ts`
+
+## Chunk 30: Turn `/workspace` Into A Stable Route-Owned Entry
+
+**Priority:** P0
+**Effort:** M
+**Audit dimension(s):** Frontend UX Quality, Architecture and Code Health
+**Expected score impact:** Critical user journeys: remove client-owned persona routing from the canonical workspace entry
+**Depends on:** Chunk 29
+**PR group:** O
+**Implementation status:** Completed in this worktree
+
+### Context
+
+The workspace root is currently a client redirect shell whose behavior depends on `SegmentProvider` state settling after mount.
+
+### Scope
+
+- Decide what `/workspace` should mean as a route contract.
+- Remove first-load misrouting risk from `WorkspacePage`.
+- Prefer a route-owned entry or explicit server decision over a client-only redirect shell.
+- Keep review and author subroutes as the real owned destinations if the root remains a chooser.
+
+### Progress So Far
+
+- `app/workspace/page.tsx` is now an async server route that reads the session cookie, validates it, and redirects before render.
+- Added `lib/navigation/workspaceEntry.ts` as the shared workspace-entry decision helper for real sessions, preview sessions, and fallback behavior.
+- Preview sessions now reuse the existing `preview_sessions.persona_snapshot` contract to choose the route-owned workspace destination.
+- Removed the deleted `components/hub/WorkspacePage.tsx` client redirect shell.
+- Added focused regression coverage in `__tests__/lib/workspaceEntry.test.ts`.
+
+### Verification
+
+- `/workspace` is a stable and explainable destination.
+- Persona routing does not depend on an anonymous default race on first load.
+- Verified with `npm run test:unit -- __tests__/proxy.test.ts __tests__/lib/returnTo.test.ts __tests__/lib/workspaceEntry.test.ts`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+
+### Files to Read First
+
+- `app/workspace/page.tsx`
+- `lib/navigation/workspaceEntry.ts`
+- `components/providers/SegmentProvider.tsx`
+- `app/workspace/review/page.tsx`
+- `app/workspace/author/page.tsx`
+
+## Chunk 31: Make `/match` A Durable Journey Route
+
+**Priority:** P1
+**Effort:** M
+**Audit dimension(s):** Frontend UX Quality, Product Completeness vs. Vision
+**Expected score impact:** Critical user journeys: improve sharing, attribution, and iteration on the match flow
+**Depends on:** None
+**PR group:** O
+**Implementation status:** Completed in this worktree
+
+### Context
+
+`/match` currently redirects to `/?match=true`, but multiple journey surfaces still link to `/match` as though it were a stable standalone destination.
+
+### Scope
+
+- Decide whether match should become a real page-owned journey or whether all callers should target the homepage overlay explicitly.
+- Remove the current split contract where the URL and the actual UI owner disagree.
+- Preserve analytics and shareability if the route becomes durable.
+
+### Progress So Far
+
+- `app/match/page.tsx` now renders the homepage match shell directly instead of redirecting to `/?match=true`.
+- Added `components/hub/HomePageShell.tsx` so `/` and `/match` share one server-owned shell.
+- `components/governada/GovernadaShell.tsx`, `hooks/useSenecaThread.ts`, and `lib/nav/config.ts` now treat exact `/match` as a home-owned route for shell context, panel routing, and nav highlighting.
+- Added focused regression coverage in `__tests__/components/HomePageShell.test.tsx` and `__tests__/lib/nav-config.test.ts`.
+
+### Verification
+
+- Match has one clear route contract.
+- Deep links and return paths do not bounce through a redirect shim.
+- Verified with `npm run test:component -- __tests__/components/HomePageShell.test.tsx`.
+- Verified with `npm run test:unit -- __tests__/proxy.test.ts __tests__/lib/returnTo.test.ts __tests__/lib/workspaceEntry.test.ts __tests__/lib/nav-config.test.ts`.
+- Verified with `npm run lint -- app/match/page.tsx app/page.tsx components/hub/HomePageShell.tsx components/governada/GovernadaShell.tsx hooks/useSenecaThread.ts lib/nav/config.ts`.
+- Verified with `npm run agent:validate`.
+- Verified with `npm run type-check`.
+
+### Files to Read First
+
+- `app/match/page.tsx`
+- `app/page.tsx`
+- `components/globe/GlobeLayout.tsx`
+- `app/match/result/MatchResultClient.tsx`
+- `components/governada/match/CuratedVoteFlow.tsx`
+
+## Chunk 32: Normalize Proposal Action Ownership Across Flag And Device Paths
+
+**Priority:** P1
+**Effort:** M
+**Audit dimension(s):** Frontend UX Quality, Architecture and Code Health
+**Expected score impact:** Critical user journeys: make proposal-detail actions predictable across surfaces
+**Depends on:** None
+**PR group:** P
+**Implementation status:** Completed in this worktree
+
+### Context
+
+Proposal detail is the strongest durable public route, but the action path still changes across inline action, workspace bridge, and mobile external-routing branches.
+
+### Scope
+
+- Map the intended proposal-action contract across desktop, mobile, and feature-flag branches.
+- Reduce contradictory routing between inline action, workspace routing, and external mobile flows.
+- Make the chosen action model explicit in the route and components.
+
+### Progress So Far
+
+- `components/governada/proposals/ProposalActionZone.tsx` now uses the shared proposal bridge for governance actors instead of keeping a separate inline vote-flow contract on the public route.
+- Added `lib/navigation/proposalAction.ts` so workspace review hrefs, governance-body eligibility, and the citizen engagement anchor are shared instead of being re-derived independently.
+- `components/governada/proposals/MobileStickyAction.tsx` now routes governance actors into the internal review workflow instead of kicking them out to `gov.tools`, gives citizens a real shared engagement anchor to scroll to, and uses the shared wallet-connect event for anonymous users.
+- Added focused regression coverage in `__tests__/components/MobileStickyAction.test.tsx`, `__tests__/components/ProposalActionZone.test.tsx`, and `__tests__/lib/proposalAction.test.ts`.
+
+### Verification
+
+- Proposal-detail action ownership is consistent across device and flag paths.
+- The same user persona does not get materially different workflow contracts from the same route without an explicit product reason.
+- Verified with `npm run test:unit -- __tests__/lib/proposalAction.test.ts`.
+- Verified with `npm run test:component -- __tests__/components/MobileStickyAction.test.tsx __tests__/components/ProposalActionZone.test.tsx`.
+- Verified with `npm run lint -- app/proposal/[txHash]/[index]/page.tsx components/governada/proposals/ProposalActionZone.tsx components/governada/proposals/ProposalBridge.tsx components/governada/proposals/MobileStickyAction.tsx lib/navigation/proposalAction.ts`.
+- Verified with `npm run agent:validate`.
+- `npm run type-check` is currently blocked by unrelated in-branch errors in `inngest/functions/sync-dreps.ts` and `lib/koios.ts`.
+
+### Files to Read First
+
+- `app/proposal/[txHash]/[index]/page.tsx`
+- `components/governada/proposals/ProposalActionZone.tsx`
+- `components/governada/proposals/ProposalBridge.tsx`
+- `components/governada/proposals/MobileStickyAction.tsx`
+
+## Chunk 33: Reconcile `/you` Protection, Anonymous UI State, And Share URL Contract
+
+**Priority:** P1
+**Effort:** S
+**Audit dimension(s):** Frontend UX Quality, Architecture and Code Health
+**Expected score impact:** Critical user journeys: remove identity-surface route drift
+**Depends on:** Chunk 29
+**PR group:** P
+**Implementation status:** Completed in this worktree
+
+### Context
+
+The identity journey currently mixes a protected route shell, a component that implements an anonymous connect state, and a legacy share URL that redirects back to `/you`.
+
+### Scope
+
+- Decide whether `/you` should stay protected or expose an anonymous-ready preview/connect state.
+- Align the page shell and component state to that decision.
+- Normalize the share URL contract away from legacy redirect indirection if the canonical destination is `/you`.
+
+### Progress So Far
+
+- `app/you/page.tsx` is now route-owned and validates session state before render.
+- Added `lib/navigation/session.ts` so `/workspace` and `/you` share the same validated cookie lookup instead of duplicating session logic.
+- Added `lib/navigation/civicIdentity.ts` so the canonical identity path and share URL live in one place.
+- Updated `app/my-gov/identity/page.tsx`, `components/governada/MyGovClient.tsx`, `components/governada/shared/CivicIdentityCard.tsx`, `components/governada/identity/CivicIdentityProfile.tsx`, `components/governada/identity/MilestoneStamps.tsx`, and `components/governada/identity/CitizenMilestoneCelebration.tsx` to target the canonical `/you` contract.
+- The remaining anonymous identity CTA now routes through `/?connect=1&returnTo=/you`, matching the protected-route recovery flow.
+- Added focused regression coverage in `__tests__/lib/civicIdentityRoute.test.ts`.
+
+### Verification
+
+- `/you` and its shared URLs follow one explicit contract.
+- The component no longer exposes unreachable fallback UI, or the route is opened to match the component.
+- Verified with `npm run test:unit -- __tests__/proxy.test.ts __tests__/lib/returnTo.test.ts __tests__/lib/workspaceEntry.test.ts __tests__/lib/nav-config.test.ts __tests__/lib/civicIdentityRoute.test.ts`.
+- Verified with `npm run lint -- app/you/page.tsx app/my-gov/identity/page.tsx app/workspace/page.tsx components/governada/MyGovClient.tsx components/governada/identity/CivicIdentityProfile.tsx components/governada/identity/MilestoneStamps.tsx components/governada/identity/CitizenMilestoneCelebration.tsx components/governada/shared/CivicIdentityCard.tsx lib/navigation/civicIdentity.ts lib/navigation/session.ts`.
+- Verified with `npm run agent:validate`.
+- Verified with `npm run type-check`.
+
+### Files to Read First
+
+- `proxy.ts`
+- `app/you/page.tsx`
+- `components/governada/identity/CivicIdentityProfile.tsx`
+- `app/my-gov/identity/page.tsx`
+
+## Chunk 34: Run Mobile Playwright Coverage In The Main E2E Workflow
+
+**Priority:** P1
+**Effort:** S
+**Audit dimension(s):** Testing and Code Quality, Frontend UX Quality
+**Expected score impact:** Testing and release gates: make the existing mobile test project count in CI
+**Depends on:** None
+**PR group:** Q
+**Implementation status:** Completed in this worktree
+
+### Context
+
+The repo already defines a `mobile` Playwright project, but `.github/workflows/e2e.yml` only runs `--project=chromium`.
+
+### Scope
+
+- Update the main E2E workflow so it executes both configured browser projects or an explicit equivalent mobile smoke scope.
+- Keep the artifact/reporting behavior understandable when multiple Playwright projects run.
+- Confirm the workflow still aligns with the standalone build artifact path.
+
+### Verification
+
+- The main E2E workflow no longer ignores the configured mobile project.
+- Mobile route regressions can fail the same post-merge browser gate as desktop regressions.
+
+### Progress So Far
+
+- `.github/workflows/e2e.yml` now installs both `chromium` and `webkit`.
+- The post-merge E2E workflow now runs `npm run test:e2e -- --project=chromium --project=mobile`.
+- `e2e/navigation.spec.ts` and `e2e/quick-match.spec.ts` now reflect the durable `/match` route contract so the mobile project tests current behavior instead of the pre-DD06 redirect shim.
+
+### Verification Notes
+
+- Verified with `npm run lint -- e2e/critical-journeys.spec.ts e2e/navigation.spec.ts e2e/quick-match.spec.ts e2e/smoke.spec.ts playwright.config.ts`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+
+### Files to Read First
+
+- `.github/workflows/e2e.yml`
+- `playwright.config.ts`
+- `e2e/`
+
+## Chunk 35: Add A Required PR-Time Browser Gate For Critical Journeys
+
+**Priority:** P0
+**Effort:** M
+**Audit dimension(s):** Testing and Code Quality, Performance and Reliability
+**Expected score impact:** Testing and release gates: stop route-level regressions before merge instead of only after deploy
+**Depends on:** None
+**PR group:** Q
+**Implementation status:** Completed in this worktree
+
+### Context
+
+Playwright currently runs only after `CI` succeeds on `main`, so PRs can merge route-level regressions without any browser-level proof.
+
+### Scope
+
+- Decide the smallest reliable PR-time browser gate for the critical journeys hardened in DD06.
+- Keep runtime cost bounded instead of trying to make the full E2E suite mandatory on every PR.
+- Align the chosen gate with `pre-merge-check` expectations and branch protection strategy.
+
+### Verification
+
+- PRs get a required browser-level signal before merge for the highest-risk route contracts.
+- The selected gate is small enough to stay reliable and fast.
+
+### Progress So Far
+
+- `.github/workflows/ci.yml` now uploads the standalone build artifact on pull requests as well as `main` pushes.
+- Added a dedicated `browser-smoke` CI job that runs focused Playwright coverage before merge against the built artifact instead of trying to run the entire E2E suite on every PR.
+- Added `e2e/critical-journeys.spec.ts` to cover anonymous `/workspace`, anonymous `/you`, durable `/match`, and proposal-detail reachability from discovery.
+- `e2e/smoke.spec.ts` now uses more durable `domcontentloaded` entry timing and longer visibility waits on the homepage shell assertions.
+
+### Verification Notes
+
+- Verified with `npm run lint -- e2e/critical-journeys.spec.ts e2e/navigation.spec.ts e2e/quick-match.spec.ts e2e/smoke.spec.ts playwright.config.ts`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+- Verified the build-artifact runtime path with `npm run build` under CI-style placeholder env vars.
+- Local browser execution remains only partially reproducible from the in-repo worktree:
+  - dev-server Playwright runs are distorted by CSP/eval behavior in development
+  - the local machine does not currently have Playwright WebKit installed for the `mobile` project
+  - worktree standalone output nests under `.next/standalone/.claude/worktrees/platform-architecture-review-series/server.js`, while CI checkouts at the repo root and use `.next/standalone/server.js`
+
+### Files to Read First
+
+- `.github/workflows/ci.yml`
+- `.github/workflows/e2e.yml`
+- `package.json`
+- `e2e/smoke.spec.ts`
+- `e2e/navigation.spec.ts`
+- `e2e/quick-match.spec.ts`
+
+## Chunk 36: Raise Coverage Gates To Match High-Blast-Radius Contracts
+
+**Priority:** P1
+**Effort:** M
+**Audit dimension(s):** Testing and Code Quality, Architecture and Code Health
+**Expected score impact:** Testing and release gates: make coverage a meaningful release signal again
+**Depends on:** Chunk 37
+**PR group:** R
+**Implementation status:** Completed in this worktree
+
+### Context
+
+Current coverage enforcement only checks a small set of library files, which is no longer a strong proxy for the app’s route and contract risk.
+
+### Scope
+
+- Re-evaluate the `coverage.include` set in `vitest.config.ts`.
+- Add or tighten thresholds for the highest-churn shared contracts surfaced in DD01-DD06.
+- Prefer a small number of meaningful gates over a large number of token thresholds.
+
+### Verification
+
+- Passing coverage means the repo has real protection on the highest-blast-radius shared seams.
+- Thresholds are intentionally chosen and documented, not historical leftovers.
+
+### Progress So Far
+
+- Expanded `vitest.config.ts` coverage to include `lib/syncPolicy.ts` plus the DD06 route-contract helpers in `lib/navigation/`.
+- `.github/workflows/ci.yml` now enforces line thresholds for ten direct-test-backed high-blast-radius seams instead of three historical leftovers.
+- Missing threshold targets now fail CI instead of being silently skipped out of the coverage report.
+- The tightened gate passed on a fresh `npm run test:coverage` run, confirming the threshold set is conservative enough to be stable and meaningful.
+
+### Verification Notes
+
+- Verified with `npm run test:coverage`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+
+### Files to Read First
+
+- `vitest.config.ts`
+- `.github/workflows/ci.yml`
+- `__tests__/`
+- DD01-DD06 artifacts in this folder
+
+## Chunk 37: Stabilize The Full-Coverage Baseline Before Tightening Thresholds
+
+**Priority:** P0
+**Effort:** M
+**Audit dimension(s):** Testing and Code Quality, Architecture and Code Health
+**Expected score impact:** Testing and release gates: make `npm run test:coverage` trustworthy enough to support stronger thresholds
+**Depends on:** None
+**PR group:** R
+**Implementation status:** Completed in this worktree
+
+### Context
+
+DD07 can only raise meaningful coverage thresholds once the full coverage command itself is green enough to act as a reliable signal. The latest baseline run is red for a mix of test drift, changed limiter behavior, and one syntax-level transform error.
+
+### Scope
+
+- Fix the unexpected `429` behavior or the stale mocks in the auth, delegation, and polls route tests.
+- Resolve the vote-schema drift in the sync schema tests.
+- Repair the `lib/sync/data-moat.ts` transform error that currently breaks one suite before coverage can complete cleanly.
+- Align the stale `__tests__/app/match-page.test.tsx` expectation with the current page-shell call contract.
+
+### Verification
+
+- `npm run test:coverage` runs to completion.
+- The remaining failures, if any, are narrow enough to support threshold tuning instead of general suite repair.
+
+### Progress So Far
+
+- Added explicit limiter mocks in `__tests__/api/auth.test.ts`, `__tests__/api/delegation.test.ts`, and `__tests__/api/polls.test.ts` so fail-closed rate limiting no longer causes unexpected `429` drift under coverage.
+- Updated vote fixtures in `__tests__/sync/integration.test.ts` and `__tests__/sync/koios-schemas.test.ts` to match the current Koios vote schema.
+- Repaired the `lib/sync/data-moat.ts` coverage transform failure by removing the broken legacy block comment markers around unreachable archival code.
+- Aligned `__tests__/app/match-page.test.tsx` with the current page-shell call contract.
+- Confirmed the repaired baseline by running a fresh green `npm run test:coverage`.
+
+### Verification Notes
+
+- Verified with `npm run test:unit -- __tests__/api/auth.test.ts __tests__/api/delegation.test.ts __tests__/api/polls.test.ts __tests__/sync/koios-schemas.test.ts __tests__/sync/integration.test.ts __tests__/sync/data-moat.test.ts`.
+- Verified with `npm run test:component -- __tests__/app/match-page.test.tsx`.
+- Verified with `npm run test:unit -- __tests__/lib/proposalAction.test.ts`.
+- Verified with `npm run test:coverage`.
+
+### Files to Read First
+
+- `__tests__/api/auth.test.ts`
+- `__tests__/api/delegation.test.ts`
+- `__tests__/api/polls.test.ts`
+- `__tests__/sync/integration.test.ts`
+- `__tests__/sync/koios-schemas.test.ts`
+- `lib/sync/data-moat.ts`
+- `__tests__/app/match-page.test.tsx`
+
+## Chunk 38: Resolve Document Locale And Direction Before Hydration
+
+**Priority:** P0
+**Effort:** S
+**Audit dimension(s):** Frontend UX Quality, Testing and Code Quality
+**Expected score impact:** Global readiness: remove the English-first first-paint contract for non-English and RTL users
+**Depends on:** None
+**PR group:** S
+**Implementation status:** Completed in this worktree
+
+### Context
+
+The app already defined supported locales and RTL languages, but the root document shell was still rendered as `lang="en"` until the client locale provider mounted.
+
+### Scope
+
+- Resolve locale from cookie and `Accept-Language` before render.
+- Apply `lang` and `dir` at the document shell in both the main and embed layouts.
+- Preserve the server-selected locale through hydration instead of resetting to the default client state.
+- Add focused regression coverage for locale resolution behavior.
+
+### Verification
+
+- Initial server render no longer hardcodes English when a supported cookie or request locale is present.
+- RTL languages can set `dir="rtl"` before hydration.
+
+### Progress So Far
+
+- Added `resolvePreferredLocale()` in `lib/i18n/config.ts`.
+- Updated `app/layout.tsx` and `app/embed/layout.tsx` to resolve locale server-side and set `lang` / `dir` before render.
+- Updated `components/providers/LocaleProvider.tsx` to accept `initialLocale`.
+- Added focused regression coverage in `__tests__/lib/i18n-config.test.ts`.
+
+### Verification Notes
+
+- Verified with `npm run test:unit -- __tests__/lib/i18n-config.test.ts`.
+- Verified with `npm run lint -- app/layout.tsx app/embed/layout.tsx components/providers/LocaleProvider.tsx lib/i18n/config.ts`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+
+### Files to Read First
+
+- `app/layout.tsx`
+- `app/embed/layout.tsx`
+- `components/providers/LocaleProvider.tsx`
+- `lib/i18n/config.ts`
+
+## Chunk 39: Centralize Locale-Aware Time And Number Formatting
+
+**Priority:** P1
+**Effort:** M
+**Audit dimension(s):** Frontend UX Quality, Architecture and Code Health
+**Expected score impact:** Global readiness: make selected language and timezone policy visible in actual content, not just chrome
+**Depends on:** Chunk 38
+**PR group:** S
+**Implementation status:** Completed in this worktree
+
+### Context
+
+The repo now resolves document locale correctly, but user-facing dates and numbers are still formatted through scattered `toLocaleString()` calls and hardcoded `en-US` helpers.
+
+### Scope
+
+- Define the shared formatting policy for dates, times, and compact number displays.
+- Add formatter helpers that can consume selected locale and any chosen timezone policy.
+- Replace the highest-traffic hardcoded formatting surfaces first.
+- Add focused regression coverage for the new formatter contract.
+
+### Verification
+
+- The same value formats consistently across public, workspace, and notification surfaces.
+- Hardcoded `en-US` user-facing date formatting is removed from the highest-traffic routes.
+
+### Progress So Far
+
+- Added `lib/i18n/format.ts` as the first shared locale-aware formatter seam for numbers, dates, and times.
+- Migrated the first public/global surfaces onto that helper:
+  - `components/ui/AsyncContent.tsx`
+  - `components/globe/TemporalScrubber.tsx`
+  - `components/hub/DelegationHealthSummary.tsx`
+  - `components/notifications/InboxFeed.tsx`
+  - `components/treasury/TreasuryPersonalImpact.tsx`
+- Finished the remaining high-traffic rollout in:
+  - `components/hub/CitizenHub.tsx`
+  - `components/hub/WorkspaceRationalesPage.tsx`
+  - `components/admin/IntegrityDashboard.tsx`
+- Added focused regression coverage in `__tests__/lib/i18n-format.test.ts`.
+
+### Verification Notes
+
+- Verified with `npm run test:unit -- __tests__/lib/i18n-config.test.ts __tests__/lib/i18n-format.test.ts`.
+- Verified with `npm run lint -- app/layout.tsx app/embed/layout.tsx components/providers/LocaleProvider.tsx lib/i18n/config.ts lib/i18n/format.ts components/ui/AsyncContent.tsx components/globe/TemporalScrubber.tsx components/hub/DelegationHealthSummary.tsx components/notifications/InboxFeed.tsx components/treasury/TreasuryPersonalImpact.tsx`.
+- Verified with `npm run lint -- components/hub/CitizenHub.tsx components/hub/WorkspaceRationalesPage.tsx components/admin/IntegrityDashboard.tsx lib/i18n/format.ts components/providers/LocaleProvider.tsx`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+
+### Files to Read First
+
+- `components/ui/AsyncContent.tsx`
+- `components/globe/TemporalScrubber.tsx`
+- `components/hub/CitizenHub.tsx`
+- `components/hub/DelegationHealthSummary.tsx`
+- `components/notifications/InboxFeed.tsx`
+- `components/treasury/TreasuryPersonalImpact.tsx`
+
+## Chunk 40: Add An Explicit Privacy And Legal Baseline For Analytics-Touched Surfaces
+
+**Priority:** P1
+**Effort:** M
+**Audit dimension(s):** Product Completeness vs. Vision, Frontend UX Quality
+**Expected score impact:** Global readiness: align analytics behavior with discoverable privacy and legal disclosure
+**Depends on:** None
+**PR group:** T
+**Implementation status:** Completed in this worktree
+
+### Context
+
+Analytics can initialize on mount when `NEXT_PUBLIC_POSTHOG_KEY` is configured, but the current app scan did not find dedicated privacy or terms routes, nor a clear in-app consent/disclosure surface tied to that behavior.
+
+### Scope
+
+- Decide the minimum production baseline for privacy-policy, terms, and analytics disclosure surfaces.
+- Add or link the required public routes/components.
+- If consent is required for the chosen posture, make the analytics initialization path respect it explicitly.
+- Add focused verification around route discoverability and analytics gating behavior.
+
+### Verification
+
+- Privacy/legal surfaces are discoverable from the app shell.
+- Analytics behavior matches the documented disclosure or consent posture.
+
+### Progress So Far
+
+- Added public `app/privacy/page.tsx` and `app/terms/page.tsx` routes as the explicit product baseline for privacy and terms disclosure.
+- Added `components/governada/LegalLinks.tsx` and surfaced those links from the shared shell footer in `components/governada/GovernadaShell.tsx`.
+- Added a footer disclosure line that points users to the privacy page when analytics is enabled in production deployments.
+- Updated `lib/posthog.ts` so analytics initialization respects browser Do Not Track instead of always booting when a PostHog key is present.
+- Added focused verification in `__tests__/components/LegalLinks.test.tsx` and `__tests__/lib/posthog.test.ts`.
+
+### Verification Notes
+
+- Verified with `npm run test:unit -- __tests__/lib/i18n-config.test.ts __tests__/lib/i18n-format.test.ts __tests__/lib/posthog.test.ts`.
+- Verified with `npm run test:component -- __tests__/components/LegalLinks.test.tsx`.
+- Verified with `npm run lint -- components/governada/LegalLinks.tsx components/governada/GovernadaShell.tsx lib/posthog.ts app/privacy/page.tsx app/terms/page.tsx`.
+- Verified with `npm run type-check`.
+- Verified with `npm run agent:validate`.
+
+### Files to Read First
+
+- `components/Providers.tsx`
+- `lib/posthog.ts`
+- shared shell/footer/navigation surfaces that should expose policy links

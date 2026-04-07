@@ -136,7 +136,7 @@ export async function buildProposalMonitorData({
 
   const { data: recentVoteRows } = await supabase
     .from('drep_votes')
-    .select('drep_id, vote, epoch_no, block_time, meta_url')
+    .select('drep_id, vote, epoch_no, block_time, meta_url, has_rationale')
     .eq('proposal_tx_hash', txHash)
     .eq('proposal_index', proposalIndex)
     .order('block_time', { ascending: false })
@@ -148,7 +148,7 @@ export async function buildProposalMonitorData({
       voterType: 'drep' as const,
       vote: vote.vote as 'Yes' | 'No' | 'Abstain',
       epochNo: vote.epoch_no != null ? vote.epoch_no : blockTimeToEpoch(vote.block_time),
-      hasRationale: !!vote.meta_url,
+      hasRationale: vote.has_rationale ?? !!vote.meta_url,
     })) ?? [];
 
   const epochsRemaining =

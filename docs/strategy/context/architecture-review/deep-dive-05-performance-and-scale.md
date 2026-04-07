@@ -103,7 +103,7 @@ These routes get slower as proposal count and vote volume rise, even if the requ
 
 ### 3. Background vote ingestion and slow-sync jobs still scale with total history instead of new change volume
 
-**Severity:** Deferred follow-up
+**Severity:** Closed in DD05, with the deferred vote-ingestion follow-up implemented on April 6, 2026
 
 **Evidence**
 
@@ -111,7 +111,7 @@ These routes get slower as proposal count and vote volume rise, even if the requ
 - `utils/koios.ts:fetchAllVotesBulk()` plus `lib/sync/votes.ts` still import and process full vote history in memory on the 6-hour sync path.
 - `lib/koios.ts:getEnrichedDReps()` already exposes a `prefetchedVotes` seam, but `lib/sync/dreps.ts:phaseFetchDReps()` still falls back to per-DRep live vote fetching.
 - The cached `drep_votes` contract currently preserves `meta_url`, `meta_hash`, and rationale-scoring columns, but not the raw `meta_json` that the DRep scorer still treats as part of rationale quality, so the cached-votes switch is not a drop-in change.
-- `lib/sync/data-moat.ts` reprocesses the full metadata-archive corpus daily instead of only newly changed content.
+- Before the follow-up, `lib/sync/data-moat.ts` reprocessed the full metadata-archive corpus daily instead of only newly changed content.
 - `lib/sync/slow.ts` applies bounded cache lookups against unbounded source sets, which risks churn instead of forward progress as the corpus grows.
 
 **Why it matters**
@@ -120,9 +120,11 @@ These jobs get slower forever as history accumulates. Even if traffic stays flat
 
 **Implementation status**
 
-- Deferred explicitly instead of forcing an approximate fix.
-- The highest-value next seam is still `lib/sync/dreps.ts` reusing cached `drep_votes` through `prefetchedVotes`, but only after the repo chooses whether `drep_votes` should preserve raw rationale metadata or whether the stored rationale-quality fields are now the authoritative scoring signal.
-- DD05 closes with that work converted into backlog follow-up rather than silently changing DRep scoring semantics.
+- DD05 still closed on schedule; the follow-up landed later without reopening the review.
+- The repo chose the DB-first contract: `drep_votes` stays normalized, gains `has_rationale`, and does not preserve raw `meta_json`.
+- `sync-votes` is now the canonical incremental owner with `sync_cursors`, `sync-proposals` no longer writes `drep_votes`, and `sync-dreps` now derives legacy rationale/transparency fields from cached vote signals while V3 scoring remains on stored `rationale_quality` and `meta_hash`.
+- `vote_rationales` now carries durable external-fetch state, so `lib/sync/slow.ts` advances a retryable rationale queue instead of doing bounded lookups against the full vote corpus.
+- `lib/sync/data-moat.ts` now archives DRep, proposal, and rationale metadata from per-stream timestamp cursors in `sync_cursors`, removing the last DD05-era full-corpus archive pass from the sync path.
 
 ### 4. The page surface is still heavily dynamic
 
@@ -167,20 +169,18 @@ This is classic hidden-state overfetch and bundle tax: the homepage pays network
 
 ## Risk Ranking
 
-1. Background vote and archive jobs still scale with full historical corpus size instead of deltas, and vote-ingestion ownership remains split.
-2. Dynamic rendering is still widely used across the page surface without a clearly ranked cache strategy.
-3. The homepage still mounts a heavy immediate client globe shell, even after the dead SSR, hidden-state query, and route-panel reductions.
+1. Dynamic rendering is still widely used across the page surface without a clearly ranked cache strategy.
+2. The homepage still mounts a heavy immediate client globe shell, even after the dead SSR, hidden-state query, and route-panel reductions.
 
 ## Deferred Follow-Ups
 
-1. Decide whether `drep_votes` should preserve raw rationale metadata or whether its stored rationale-quality fields are the new scoring contract, then reuse cached votes in `sync-dreps` through `prefetchedVotes`.
-2. Choose the primary vote-ingestion owner and reduce the current triplicated Koios vote-read paths.
-3. Rank the `force-dynamic` pages into truly personalized versus historical-debt buckets before broad caching work starts.
-4. Profile the homepage globe shell itself, since the first-load 3D/client runtime cost still dominates after the query and panel-path cuts.
+1. Completed on April 6, 2026: the vote-ingestion and archive sync follow-up is now DB-first and incremental, with `sync-votes` owning `drep_votes`, `slow.ts` advancing a durable rationale queue in `vote_rationales`, and `data-moat.ts` archiving changed metadata via per-stream cursors instead of corpus rescans.
+2. Rank the `force-dynamic` pages into truly personalized versus historical-debt buckets before broad caching work starts.
+3. Profile the homepage globe shell itself, since the first-load 3D/client runtime cost still dominates after the query and panel-path cuts.
 
 ## Handoff
 
-**Current status:** Completed with deferred follow-up work
+**Current status:** Completed; the remaining DD05 follow-up is non-sync page/runtime work
 
 **What changed this session**
 
@@ -201,9 +201,9 @@ This is classic hidden-state overfetch and bundle tax: the homepage pays network
 - The homepage had unnecessary live Supabase work on every request. Fixed in this worktree.
 - The homepage list overlay and route-panel path were overfetching and overloading the homepage shell. Fixed in this worktree.
 - Public and workspace proposal list surfaces were scaling with broad reads and in-memory shaping. Fixed for the primary hot paths in this worktree, with narrower sort and caching follow-up deferred.
-- Background vote and archive sync paths still scale with total historical corpus size. Deferred follow-up with a validated next seam.
+- The vote and metadata-archive sync paths now advance from explicit cached state instead of full-corpus rescans.
 - `force-dynamic` usage is widespread across the page surface. Deferred follow-up.
 
 **Next agent starts here**
 
-DD05 is closed. If performance work is reopened later, start with `lib/sync/dreps.ts`, `lib/sync/votes.ts`, `lib/koios.ts`, `types/database.ts`, and `lib/sync/data-moat.ts`, then resolve the cached-votes rationale contract before changing vote-ingestion ownership.
+DD05 is closed. If performance work is reopened later, start with the `force-dynamic` route audit and homepage globe runtime profiling; the deferred sync-ownership and archive-scaling seams are already resolved in the current worktree.

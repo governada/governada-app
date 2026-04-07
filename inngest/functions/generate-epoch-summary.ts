@@ -229,7 +229,7 @@ export const generateEpochSummary = inngest.createFunction(
                     .select('vote_tx_hash', { count: 'exact', head: true })
                     .eq('drep_id', drepId)
                     .eq('epoch_no', epoch)
-                    .not('meta_url', 'is', null),
+                    .eq('has_rationale', true),
                   supabase
                     .from('drep_score_history')
                     .select('score')
@@ -522,7 +522,7 @@ Output ONLY the narrative paragraph, nothing else.`,
                   .from('drep_votes')
                   .select('vote_tx_hash', { count: 'exact', head: true })
                   .eq('epoch_no', epoch)
-                  .not('meta_url', 'is', null),
+                  .eq('has_rationale', true),
               ]);
 
             const uniqueVoters = new Set((votersResult.data || []).map((v) => v.drep_id));
@@ -596,7 +596,7 @@ Output ONLY the narrative paragraph, nothing else.`,
                 .from('drep_votes')
                 .select('vote_tx_hash', { count: 'exact', head: true })
                 .eq('epoch_no', epoch)
-                .not('meta_url', 'is', null),
+                .eq('has_rationale', true),
               supabase
                 .from('proposals')
                 .select('tx_hash', { count: 'exact', head: true })

@@ -100,6 +100,7 @@ export interface DRepVote {
     [key: string]: unknown;
   } | null;
   epoch_no?: number;
+  has_rationale?: boolean;
 }
 
 export type DRepVotesResponse = DRepVote[];

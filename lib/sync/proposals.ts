@@ -1,8 +1,8 @@
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { inngest } from '@/lib/inngest';
 import { logger } from '@/lib/logger';
 import { SyncLogger, errMsg, emitPostHog, alertDiscord } from '@/lib/sync-utils';
-import { blockTimeToEpoch } from '@/lib/koios';
-import { fetchProposals, fetchVotesForProposals, fetchProposalVotingSummary } from '@/utils/koios';
+import { fetchProposals, fetchProposalVotingSummary } from '@/utils/koios';
 import { classifyProposals } from '@/lib/alignment';
 import { KoiosProposalSchema, validateArray } from '@/utils/koios-schemas';
 import type { ProposalListResponse } from '@/types/koios';
@@ -44,7 +44,7 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
     const fatalErrors: string[] = [];
     const warnings: string[] = [];
     let proposalCount = 0;
-    let voteCount = 0;
+    let voteSyncsTriggered = 0;
     let summaryCount = 0;
     const voteSnapshotCount = 0;
     let pushSent = 0;
@@ -198,50 +198,23 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
         }
       }
 
-      // --- Fetch and upsert votes for open proposals ---
+      // --- Trigger the canonical incremental vote sync for open proposals ---
       if (openProposals.length > 0) {
         try {
-          const votesMap = await fetchVotesForProposals(openProposals);
-          const voteRows: Record<string, unknown>[] = [];
-
-          for (const [drepId, votes] of Object.entries(votesMap)) {
-            for (const vote of votes) {
-              voteRows.push({
-                vote_tx_hash: vote.vote_tx_hash,
-                drep_id: drepId,
-                proposal_tx_hash: vote.proposal_tx_hash,
-                proposal_index: vote.proposal_index,
-                vote: vote.vote,
-                epoch_no:
-                  vote.epoch_no ?? (vote.block_time ? blockTimeToEpoch(vote.block_time) : null),
-                block_time: vote.block_time,
-                meta_url: vote.meta_url,
-                meta_hash: vote.meta_hash,
-              });
-            }
-          }
-
-          const deduped = [...new Map(voteRows.map((r) => [r.vote_tx_hash as string, r])).values()];
-
-          for (let i = 0; i < deduped.length; i += BATCH_SIZE) {
-            const batch = deduped.slice(i, i + BATCH_SIZE);
-            const { error } = await supabase
-              .from('drep_votes')
-              .upsert(batch, { onConflict: 'vote_tx_hash', ignoreDuplicates: false });
-            if (error) {
-              warnings.push(`Vote upsert: ${error.message}`);
-              logger.warn(`${TAG} Vote upsert error (non-fatal)`, { error: error.message });
-            }
-          }
-
-          voteCount = deduped.length;
-          logger.info(`${TAG} Votes upserted`, {
-            count: voteCount,
+          await inngest.send({
+            name: 'drepscore/sync.votes',
+            data: {
+              source: 'sync.proposals',
+              openProposalCount: openProposals.length,
+            },
+          });
+          voteSyncsTriggered = 1;
+          logger.info(`${TAG} Triggered incremental vote sync`, {
             openProposals: openProposals.length,
           });
         } catch (err) {
-          warnings.push(`Votes: ${errMsg(err)}`);
-          logger.warn(`${TAG} Vote fetch failed (non-fatal)`, { error: errMsg(err) });
+          warnings.push(`Vote sync trigger: ${errMsg(err)}`);
+          logger.warn(`${TAG} Vote sync trigger failed (non-fatal)`, { error: errMsg(err) });
         }
       }
 
@@ -359,7 +332,7 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
     const success = fatalErrors.length === 0;
     const metrics = {
       proposals_synced: proposalCount,
-      votes_synced: voteCount,
+      vote_syncs_triggered: voteSyncsTriggered,
       summaries_refreshed: summaryCount,
       vote_snapshots: voteSnapshotCount,
       push_sent: pushSent,
@@ -376,7 +349,7 @@ export async function executeProposalsSync(): Promise<Record<string, unknown>> {
     return {
       success,
       proposals: proposalCount,
-      votes: voteCount,
+      votesTriggered: voteSyncsTriggered,
       summariesRefreshed: summaryCount,
       voteSnapshots: voteSnapshotCount,
       pushSent,

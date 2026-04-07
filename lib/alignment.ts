@@ -205,6 +205,17 @@ export interface VoteWithProposal {
   proposal: ClassifiedProposal | null;
 }
 
+function voteHasRationale(vote: DRepVote): boolean {
+  if (typeof vote.has_rationale === 'boolean') return vote.has_rationale;
+
+  return Boolean(
+    vote.meta_url ||
+    vote.meta_json?.rationale ||
+    vote.meta_json?.body?.comment ||
+    vote.meta_json?.body?.rationale,
+  );
+}
+
 /**
  * Match votes to classified proposals
  */
@@ -267,7 +278,7 @@ export function calculateTreasuryGrowthScore(votesWithProposals: VoteWithProposa
 
   let totalScore = 0;
   for (const { vote, proposal } of treasuryVotes) {
-    const hasRationale = vote.meta_url || vote.meta_json?.rationale;
+    const hasRationale = voteHasRationale(vote);
     const tier = proposal?.treasuryTier || 'routine';
 
     if (vote.vote === 'Yes') {
@@ -325,9 +336,7 @@ export function calculateSecurityScore(
   const cautionVotes = securityVotes.filter(
     (v) => v.vote.vote === 'No' || v.vote.vote === 'Abstain',
   ).length;
-  const rationalVotes = securityVotes.filter(
-    (v) => v.vote.meta_url || v.vote.meta_json?.rationale,
-  ).length;
+  const rationalVotes = securityVotes.filter((v) => voteHasRationale(v.vote)).length;
 
   const cautionRate = (cautionVotes / securityVotes.length) * 100;
   const rationalRate = (rationalVotes / securityVotes.length) * 100;

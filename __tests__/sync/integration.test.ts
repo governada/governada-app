@@ -77,6 +77,7 @@ const REALISTIC_VOTE_LIST = {
   ...REALISTIC_VOTE,
   drep_id: 'drep1qg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5zg5z',
   epoch_no: 520,
+  has_rationale: true,
 };
 
 const REALISTIC_TREASURY = {

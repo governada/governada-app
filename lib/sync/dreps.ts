@@ -100,7 +100,7 @@ export interface SerializedDRep {
 /** Result of phase 2: fetch + enrich DReps */
 export interface FetchDRepsResult {
   dreps: SerializedDRep[];
-  rawVotesMap: Record<string, DRepVote[]> | null;
+  latestVotesMap: Record<string, DRepVote[]> | null;
   handlesResolved: number;
   delegatorCounts: Record<string, number>;
   errors: string[];
@@ -276,7 +276,7 @@ export async function phaseFetchDReps(
   }
 
   const allDReps = result.allDReps;
-  const rawVotesMap = (result.rawVotesMap as Record<string, DRepVote[]>) || null;
+  const latestVotesMap = (result.rawVotesMap as Record<string, DRepVote[]>) || null;
   log.info('[dreps] Enriched DReps', { count: allDReps.length });
 
   // ADA Handle resolution (non-fatal)
@@ -350,7 +350,7 @@ export async function phaseFetchDReps(
 
   return {
     dreps: serializedDreps,
-    rawVotesMap,
+    latestVotesMap,
     handlesResolved,
     delegatorCounts,
     errors,
@@ -477,7 +477,7 @@ export async function phaseUpsertDReps(
  */
 export async function phasePostSync(
   dreps: SerializedDRep[],
-  rawVotesMap: Record<string, DRepVote[]> | null,
+  latestVotesMap: Record<string, DRepVote[]> | null,
   classifiedProposals: ClassifiedProposal[],
 ): Promise<PostSyncResult> {
   const start = Date.now();
@@ -488,9 +488,9 @@ export async function phasePostSync(
   const parallelResults = await Promise.allSettled([
     // Alignment scores
     (async () => {
-      if (!rawVotesMap || classifiedProposals.length === 0) return;
+      if (!latestVotesMap || classifiedProposals.length === 0) return;
       const updates = dreps.map((drep) => {
-        const votes = rawVotesMap[drep.drepId] || [];
+        const votes = latestVotesMap[drep.drepId] || [];
         // computeAllCategoryScores expects the enriched DRep format
         const drepObj = {
           drepId: drep.drepId,
@@ -668,7 +668,7 @@ export async function executeDrepsSync(): Promise<Record<string, unknown>> {
     // Phase 4: Post-sync (alignment)
     const postSyncResult = await phasePostSync(
       drepData.dreps,
-      drepData.rawVotesMap,
+      drepData.latestVotesMap,
       proposalResult.classifiedProposals,
     );
     allErrors.push(...postSyncResult.errors);

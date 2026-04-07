@@ -125,7 +125,7 @@ export const syncDreps = inngest.createFunction(
 
         const postSyncResult = await phasePostSync(
           drepData.dreps,
-          drepData.rawVotesMap,
+          drepData.latestVotesMap,
           proposalResult.classifiedProposals,
         );
 

@@ -61,6 +61,7 @@ interface VoteRow {
   vote: string;
   block_time: number;
   meta_url?: string | null;
+  has_rationale?: boolean | null;
   rationale_quality?: number | null;
 }
 
@@ -251,7 +252,7 @@ export const syncAlignment = inngest.createFunction(
               sb
                 .from('drep_votes')
                 .select(
-                  'drep_id, proposal_tx_hash, proposal_index, vote, block_time, meta_url, rationale_quality',
+                  'drep_id, proposal_tx_hash, proposal_index, vote, block_time, meta_url, has_rationale, rationale_quality',
                 ),
             ),
             fetchAll(sb.from('proposal_classifications').select('*')),
@@ -318,7 +319,7 @@ export const syncAlignment = inngest.createFunction(
               return {
                 vote: v.vote as 'Yes' | 'No' | 'Abstain',
                 blockTime: v.block_time,
-                hasRationale: !!v.meta_url,
+                hasRationale: v.has_rationale ?? !!v.meta_url,
                 rationaleQuality: v.rationale_quality ?? null,
                 proposalType: proposalTypeMap.get(key) || 'InfoAction',
                 withdrawalAmountAda: proposalAmountMap.get(key) ?? null,

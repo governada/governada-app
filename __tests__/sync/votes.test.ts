@@ -28,17 +28,24 @@ import { fetchAllVotesBulk } from '@/utils/koios';
 const CRON_SECRET = 'test-secret';
 
 function setupMockChain() {
+  const rangedResult = {
+    data: [],
+    error: null,
+    range: vi.fn().mockResolvedValue({ data: [], error: null }),
+  };
   const chain = {
     insert: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: { id: 1 }, error: null }),
+    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     update: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     neq: vi.fn().mockReturnThis(),
     gte: vi.fn().mockReturnThis(),
-    in: vi.fn().mockResolvedValue({ data: [], error: null }),
+    in: vi.fn().mockReturnValue(rangedResult),
     order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
+    range: vi.fn().mockResolvedValue({ data: [], error: null }),
     upsert: vi.fn().mockResolvedValue({ error: null }),
   };
   mockFrom.mockReturnValue(chain);
@@ -67,9 +74,9 @@ describe('GET /api/sync/votes', () => {
           vote_tx_hash: 'vtx1',
           block_time: 1700000000,
           vote: 'Yes',
-          meta_url: null,
+          meta_url: 'https://example.com/rationale.json',
           meta_hash: null,
-          meta_json: null,
+          meta_json: { body: { comment: 'Detailed inline rationale text for the vote.' } },
           epoch_no: 100,
         },
       ],
@@ -84,6 +91,8 @@ describe('GET /api/sync/votes', () => {
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.votesSynced).toBeGreaterThanOrEqual(0);
+    expect(mockFrom).toHaveBeenCalledWith('vote_rationales');
+    expect(mockFrom).toHaveBeenCalledWith('sync_cursors');
   });
 
   it('returns 502 when Koios is down', async () => {

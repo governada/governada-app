@@ -129,6 +129,26 @@ type PerformanceBaselineFormState = {
   notes: string;
 };
 
+type TrustSurfaceReviewFormState = {
+  reviewDate: string;
+  overallStatus: Exclude<SystemsStatus, 'bootstrap'>;
+  linkedSloIds: string[];
+  reviewedSurfaces: string;
+  summary: string;
+  currentUserState: string;
+  honestyGap: string;
+  nextFix: string;
+  owner: string;
+  artifactUrl: string;
+  notes: string;
+};
+
+const TRUST_SURFACE_SLO_OPTIONS = [
+  { id: 'availability', label: 'Availability' },
+  { id: 'freshness', label: 'Freshness' },
+  { id: 'correctness', label: 'Correctness' },
+] as const;
+
 async function createSystemsReview(payload: ReviewFormState) {
   const token = getStoredSession();
   if (!token) throw new Error('Missing session');
@@ -244,6 +264,45 @@ async function createSystemsPerformanceBaseline(payload: PerformanceBaselineForm
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || 'Failed to log systems performance baseline');
+  }
+
+  return res.json();
+}
+
+async function createSystemsTrustSurfaceReview(payload: TrustSurfaceReviewFormState) {
+  const token = getStoredSession();
+  if (!token) throw new Error('Missing session');
+
+  const reviewedSurfaces = payload.reviewedSurfaces
+    .split(/[\n,]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const res = await fetch('/api/admin/systems/trust-surface-review', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      reviewDate: payload.reviewDate,
+      overallStatus: payload.overallStatus,
+      linkedSloIds: payload.linkedSloIds,
+      reviewedSurfaces,
+      summary: payload.summary,
+      currentUserState: payload.currentUserState,
+      honestyGap: payload.honestyGap,
+      nextFix: payload.nextFix,
+      owner: payload.owner,
+      artifactUrl: payload.artifactUrl.trim() || null,
+      notes: payload.notes.trim() || null,
+      actorType: 'manual',
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to log trust-surface review');
   }
 
   return res.json();
@@ -455,6 +514,35 @@ function buildInitialPerformanceBaselineForm(
   };
 }
 
+function buildInitialTrustSurfaceReviewForm(
+  data?: SystemsDashboardData | null,
+): TrustSurfaceReviewFormState {
+  const latest = data?.latestTrustSurfaceReview ?? null;
+  const concernSloIds =
+    latest?.linkedSloIds && latest.linkedSloIds.length > 0
+      ? latest.linkedSloIds
+      : data?.trustSurfaceReviewSummary.linkedSloIds &&
+          data.trustSurfaceReviewSummary.linkedSloIds.length > 0
+        ? data.trustSurfaceReviewSummary.linkedSloIds
+        : ['freshness'];
+
+  return {
+    reviewDate: todayInputValue(),
+    overallStatus: latest?.overallStatus ?? 'warning',
+    linkedSloIds: concernSloIds,
+    reviewedSurfaces:
+      latest?.reviewedSurfaces.join('\n') ??
+      ['Home shell', 'DRep discovery', 'Proposal detail', 'DRep workspace read path'].join('\n'),
+    summary: latest?.summary ?? '',
+    currentUserState: latest?.currentUserState ?? '',
+    honestyGap: latest?.honestyGap ?? '',
+    nextFix: latest?.nextFix ?? '',
+    owner: latest?.owner ?? 'Founder + agents',
+    artifactUrl: latest?.artifactUrl ?? '',
+    notes: latest?.notes ?? '',
+  };
+}
+
 function statusClasses(status: SystemsStatus) {
   switch (status) {
     case 'good':
@@ -628,6 +716,8 @@ function automationActivityTypeLabel(type: SystemsAutomationActivityRecord['type
       return 'Shepherd';
     case 'performance_baseline':
       return 'Baseline';
+    case 'trust_surface_review':
+      return 'Trust review';
     case 'followup':
       return 'Follow-up';
     default:
@@ -641,6 +731,8 @@ function automationTriggerLabel(triggerType: SystemsAutomationFollowup['triggerT
       return 'Review discipline';
     case 'performance_baseline':
       return 'Performance baseline';
+    case 'trust_surface_review':
+      return 'Trust surfaces';
     case 'drill_cadence':
       return 'Drill cadence';
     case 'incident_retro_followup':
@@ -673,6 +765,8 @@ function automationActivityIcon(type: SystemsAutomationActivityRecord['type']) {
       return Target;
     case 'performance_baseline':
       return Gauge;
+    case 'trust_surface_review':
+      return ShieldCheck;
     case 'followup':
       return ListChecks;
     default:
@@ -694,6 +788,10 @@ function performanceBaselineEnvironmentLabel(environment: SystemsPerformanceBase
 function formatPerformanceMetric(value?: number | null) {
   if (value === null || value === undefined) return 'Not recorded';
   return `${Math.round(value)}ms`;
+}
+
+function trustSurfaceSloLabel(sloId: string) {
+  return TRUST_SURFACE_SLO_OPTIONS.find((option) => option.id === sloId)?.label ?? sloId;
 }
 
 function commitmentShepherdStatusLabel(
@@ -1859,6 +1957,183 @@ function PerformanceBaselineHistoryCard({
   );
 }
 
+function TrustSurfaceReviewSummaryCard({ data }: { data: SystemsDashboardData }) {
+  const classes = statusClasses(data.trustSurfaceReviewSummary.status);
+  const latest = data.latestTrustSurfaceReview;
+
+  return (
+    <Card className={cn('border-l-2', classes.border)}>
+      <CardContent className="pt-5 pb-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <Badge variant="outline" className={classes.badge}>
+              {statusLabel(data.trustSurfaceReviewSummary.status)}
+            </Badge>
+            <h3 className="text-sm font-semibold">{data.trustSurfaceReviewSummary.headline}</h3>
+          </div>
+          <ShieldCheck className={cn('h-4 w-4 shrink-0 mt-1', classes.text)} />
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Current state</p>
+          <p className="text-2xl font-bold leading-none">
+            {data.trustSurfaceReviewSummary.currentValue}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Target: {data.trustSurfaceReviewSummary.target}
+          </p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">{data.trustSurfaceReviewSummary.summary}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Latest review
+            </p>
+            <p className="text-sm mt-1">{latest ? latest.reviewDate : 'Not reviewed yet'}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Review owner
+            </p>
+            <p className="text-sm mt-1">{latest?.owner ?? 'Founder + agents'}</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-2 sm:col-span-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Linked SLOs</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(latest?.linkedSloIds ?? data.trustSurfaceReviewSummary.linkedSloIds).length ===
+              0 ? (
+                <span className="text-sm text-muted-foreground">
+                  No active degraded-state review required.
+                </span>
+              ) : (
+                (latest?.linkedSloIds ?? data.trustSurfaceReviewSummary.linkedSloIds).map(
+                  (sloId) => (
+                    <Badge key={sloId} variant="outline" className="text-xs">
+                      {trustSurfaceSloLabel(sloId)}
+                    </Badge>
+                  ),
+                )
+              )}
+            </div>
+          </div>
+        </div>
+
+        {latest ? (
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-3 space-y-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Current user state
+            </p>
+            <p className="text-sm">{latest.currentUserState}</p>
+            <p className="text-sm text-muted-foreground">Honesty gap: {latest.honestyGap}</p>
+            <p className="text-sm text-muted-foreground">Next fix: {latest.nextFix}</p>
+            {latest.artifactUrl ? (
+              <Button asChild size="sm" variant="outline" className="w-full justify-between">
+                <Link href={latest.artifactUrl} target="_blank" rel="noreferrer">
+                  Open artifact
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TrustSurfaceReviewHistoryCard({
+  history,
+}: {
+  history: SystemsDashboardData['trustSurfaceReviewHistory'];
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <History className="h-4 w-4 text-chart-1" />
+          Trust-surface review trail
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Record what degraded users actually saw, where the UI was honest or misleading, and who
+          owns the next honesty fix.
+        </p>
+
+        {history.length === 0 ? (
+          <div className="rounded-md border border-border/60 bg-card/40 px-3 py-4">
+            <p className="text-sm font-medium">No degraded-state trust review is logged yet.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              When availability, freshness, or correctness drifts, log what the user experience
+              looked like before the signal goes stale.
+            </p>
+          </div>
+        ) : (
+          history.map((entry) => (
+            <div
+              key={`${entry.loggedAt}:${entry.reviewDate}`}
+              className="rounded-md border border-border/60 bg-card/40 px-3 py-3 space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className={statusClasses(entry.overallStatus).badge}>
+                      {statusLabel(entry.overallStatus)}
+                    </Badge>
+                    {entry.linkedSloIds.map((sloId) => (
+                      <Badge key={sloId} variant="outline" className="text-xs">
+                        {trustSurfaceSloLabel(sloId)}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold">{entry.reviewDate}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">Owner: {entry.owner}</p>
+                  </div>
+                </div>
+
+                {entry.artifactUrl ? (
+                  <Button asChild size="sm" variant="ghost" className="shrink-0">
+                    <Link href={entry.artifactUrl} target="_blank" rel="noreferrer">
+                      Artifact
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
+
+              <p className="text-sm text-muted-foreground">{entry.summary}</p>
+
+              <div className="rounded-md border border-border/60 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Reviewed surfaces
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {entry.reviewedSurfaces.map((surface) => (
+                    <Badge key={surface} variant="outline" className="text-xs">
+                      {surface}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-border/60 px-3 py-2 space-y-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  User state and next fix
+                </p>
+                <p className="text-sm">{entry.currentUserState}</p>
+                <p className="text-sm text-muted-foreground">Honesty gap: {entry.honestyGap}</p>
+                <p className="text-sm text-muted-foreground">Next fix: {entry.nextFix}</p>
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function AutomationInboxSummaryCard({
   data,
   onRunSweep,
@@ -2048,6 +2323,13 @@ function AutomationCadenceCard({ data }: { data: SystemsDashboardData }) {
         : 'No durable baseline recorded yet.',
     },
     {
+      label: 'Trust-surface review discipline',
+      schedule: 'When availability, freshness, or correctness drops below healthy',
+      latest: data.latestTrustSurfaceReview
+        ? `${new Date(data.latestTrustSurfaceReview.loggedAt).toLocaleString()} (${data.latestTrustSurfaceReview.reviewDate}, ${data.latestTrustSurfaceReview.overallStatus})`
+        : 'No trust-surface review recorded yet.',
+    },
+    {
       label: 'Founder escalation',
       schedule: 'Only when critical follow-ups stay open',
       latest: data.latestOperatorEscalation
@@ -2223,6 +2505,8 @@ export function SystemsClient() {
   const [incidentForm, setIncidentForm] = useState<IncidentFormState | null>(null);
   const [performanceBaselineForm, setPerformanceBaselineForm] =
     useState<PerformanceBaselineFormState | null>(null);
+  const [trustSurfaceReviewForm, setTrustSurfaceReviewForm] =
+    useState<TrustSurfaceReviewFormState | null>(null);
   const [pendingCommitmentId, setPendingCommitmentId] = useState<string | null>(null);
   const [pendingFollowupId, setPendingFollowupId] = useState<string | null>(null);
 
@@ -2242,6 +2526,12 @@ export function SystemsClient() {
       setPerformanceBaselineForm(buildInitialPerformanceBaselineForm(data));
     }
   }, [data, performanceBaselineForm]);
+
+  useEffect(() => {
+    if (!trustSurfaceReviewForm) {
+      setTrustSurfaceReviewForm(buildInitialTrustSurfaceReviewForm(data));
+    }
+  }, [data, trustSurfaceReviewForm]);
 
   const createReviewMutation = useMutation({
     mutationFn: createSystemsReview,
@@ -2297,6 +2587,23 @@ export function SystemsClient() {
     },
     onError: (mutationError: Error) => {
       toast.error(mutationError.message || 'Failed to log performance baseline');
+    },
+  });
+
+  const createTrustSurfaceReviewMutation = useMutation({
+    mutationFn: createSystemsTrustSurfaceReview,
+    onSuccess: (result: {
+      reviewDate: string;
+      overallStatus: Exclude<SystemsStatus, 'bootstrap'>;
+    }) => {
+      toast.success(
+        `Trust-surface review logged for ${result.reviewDate} (${statusLabel(result.overallStatus)})`,
+      );
+      queryClient.invalidateQueries({ queryKey: ['admin', 'systems'] });
+      setTrustSurfaceReviewForm(buildInitialTrustSurfaceReviewForm(null));
+    },
+    onError: (mutationError: Error) => {
+      toast.error(mutationError.message || 'Failed to log trust-surface review');
     },
   });
 
@@ -2403,6 +2710,10 @@ export function SystemsClient() {
     return null;
   }
 
+  if (!trustSurfaceReviewForm) {
+    return null;
+  }
+
   const overallClasses = statusClasses(data.overall.status);
   const criticalJourneys = data.journeys.filter((journey) => journey.gateLevel !== 'L2');
   const automatedJourneys = criticalJourneys.filter((journey) => journey.coverage === 'automated');
@@ -2463,10 +2774,33 @@ export function SystemsClient() {
     setPerformanceBaselineForm((current) => (current ? { ...current, ...patch } : current));
   }
 
+  function updateTrustSurfaceReviewForm(patch: Partial<TrustSurfaceReviewFormState>) {
+    setTrustSurfaceReviewForm((current) => (current ? { ...current, ...patch } : current));
+  }
+
+  function toggleTrustSurfaceSlo(sloId: string) {
+    setTrustSurfaceReviewForm((current) => {
+      if (!current) return current;
+      const nextLinkedSloIds = current.linkedSloIds.includes(sloId)
+        ? current.linkedSloIds.filter((value) => value !== sloId)
+        : [...current.linkedSloIds, sloId];
+      return {
+        ...current,
+        linkedSloIds: nextLinkedSloIds.length > 0 ? nextLinkedSloIds : current.linkedSloIds,
+      };
+    });
+  }
+
   async function handleSubmitPerformanceBaseline(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!performanceBaselineForm) return;
     await createPerformanceBaselineMutation.mutateAsync(performanceBaselineForm);
+  }
+
+  async function handleSubmitTrustSurfaceReview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!trustSurfaceReviewForm) return;
+    await createTrustSurfaceReviewMutation.mutateAsync(trustSurfaceReviewForm);
   }
 
   function applySuggestedDraft() {
@@ -3192,6 +3526,210 @@ export function SystemsClient() {
         </div>
       </section>
 
+      <section id="trust-surface-review" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-chart-1" />
+          <h2 className="text-lg font-semibold">Trust-surface review</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Review what users actually see when availability, freshness, or correctness is degraded,
+          then log the next honesty fix here so the degraded-state UX stays auditable.
+        </p>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-6">
+          <div className="space-y-4">
+            <TrustSurfaceReviewSummaryCard data={data} />
+            <TrustSurfaceReviewHistoryCard history={data.trustSurfaceReviewHistory} />
+          </div>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Log trust-surface review</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-4" onSubmit={handleSubmitTrustSurfaceReview}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="trust-review-date">Review date</Label>
+                    <Input
+                      id="trust-review-date"
+                      type="date"
+                      value={trustSurfaceReviewForm.reviewDate}
+                      onChange={(event) =>
+                        updateTrustSurfaceReviewForm({ reviewDate: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="trust-review-status">Review status</Label>
+                    <Select
+                      value={trustSurfaceReviewForm.overallStatus}
+                      onValueChange={(value) =>
+                        updateTrustSurfaceReviewForm({
+                          overallStatus: value as Exclude<SystemsStatus, 'bootstrap'>,
+                        })
+                      }
+                    >
+                      <SelectTrigger id="trust-review-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="good">Good</SelectItem>
+                        <SelectItem value="warning">Warning</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Linked SLOs</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {TRUST_SURFACE_SLO_OPTIONS.map((option) => {
+                      const isActive = trustSurfaceReviewForm.linkedSloIds.includes(option.id);
+                      return (
+                        <Button
+                          key={option.id}
+                          type="button"
+                          variant={isActive ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleTrustSurfaceSlo(option.id)}
+                        >
+                          {option.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="trust-reviewed-surfaces">Reviewed surfaces</Label>
+                  <Textarea
+                    id="trust-reviewed-surfaces"
+                    value={trustSurfaceReviewForm.reviewedSurfaces}
+                    required
+                    onChange={(event) =>
+                      updateTrustSurfaceReviewForm({ reviewedSurfaces: event.target.value })
+                    }
+                    placeholder="Home shell&#10;DRep discovery&#10;Proposal detail&#10;DRep workspace read path"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="trust-review-summary">Review summary</Label>
+                  <Textarea
+                    id="trust-review-summary"
+                    value={trustSurfaceReviewForm.summary}
+                    required
+                    onChange={(event) =>
+                      updateTrustSurfaceReviewForm({ summary: event.target.value })
+                    }
+                    placeholder="Summarize whether the degraded-state UX stayed honest across the surfaces you reviewed."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="trust-current-user-state">Current user state</Label>
+                  <Textarea
+                    id="trust-current-user-state"
+                    value={trustSurfaceReviewForm.currentUserState}
+                    required
+                    onChange={(event) =>
+                      updateTrustSurfaceReviewForm({ currentUserState: event.target.value })
+                    }
+                    placeholder="Describe exactly what a user sees today when the system is degraded."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="trust-honesty-gap">Honesty gap</Label>
+                  <Textarea
+                    id="trust-honesty-gap"
+                    value={trustSurfaceReviewForm.honestyGap}
+                    required
+                    onChange={(event) =>
+                      updateTrustSurfaceReviewForm({ honestyGap: event.target.value })
+                    }
+                    placeholder="Name the misleading copy, missing state, or ambiguous confidence signal that still needs correction."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="trust-next-fix">Next fix</Label>
+                  <Textarea
+                    id="trust-next-fix"
+                    value={trustSurfaceReviewForm.nextFix}
+                    required
+                    onChange={(event) =>
+                      updateTrustSurfaceReviewForm({ nextFix: event.target.value })
+                    }
+                    placeholder="Describe the concrete UI or messaging fix that should ship next."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="trust-owner">Owner</Label>
+                    <Input
+                      id="trust-owner"
+                      value={trustSurfaceReviewForm.owner}
+                      required
+                      onChange={(event) =>
+                        updateTrustSurfaceReviewForm({ owner: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="trust-artifact">Artifact URL</Label>
+                    <Input
+                      id="trust-artifact"
+                      value={trustSurfaceReviewForm.artifactUrl}
+                      onChange={(event) =>
+                        updateTrustSurfaceReviewForm({ artifactUrl: event.target.value })
+                      }
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="trust-notes">Notes</Label>
+                  <Textarea
+                    id="trust-notes"
+                    value={trustSurfaceReviewForm.notes}
+                    onChange={(event) =>
+                      updateTrustSurfaceReviewForm({ notes: event.target.value })
+                    }
+                    placeholder="Optional notes about the environment, screenshots, temporary mitigations, or follow-up context."
+                    rows={4}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={createTrustSurfaceReviewMutation.isPending}
+                  className="w-full"
+                >
+                  {createTrustSurfaceReviewMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Logging trust review...
+                    </>
+                  ) : (
+                    'Log trust-surface review'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       <section id="performance-baseline" className="space-y-3">
         <div className="flex items-center gap-2">
           <Gauge className="h-4 w-4 text-chart-1" />
@@ -3644,9 +4182,9 @@ export function SystemsClient() {
           </div>
           <p className="text-sm text-muted-foreground">
             The daily sweep, weekly draft, critical follow-up escalation, commitment shepherd, drill
-            cadence nudger, incident retro follow-up, and performance baseline discipline are live
-            now. These are the next routines that can compound on top of the same feed and audit
-            trail.
+            cadence nudger, incident retro follow-up, performance baseline discipline, and
+            trust-surface review loop are live now. These are the next routines that can compound on
+            top of the same feed and audit trail.
           </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {data.automationCandidates.map((candidate) => (

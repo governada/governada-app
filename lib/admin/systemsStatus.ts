@@ -151,7 +151,7 @@ export function buildPromiseCards(
       target: 'Users are told when confidence is reduced',
       summary: input.userHonesty.summary,
       actionLabel: 'Audit trust surfaces',
-      actionHref: '/admin/integrity',
+      actionHref: '/admin/systems#trust-surface-review',
     },
   ];
 
@@ -293,6 +293,7 @@ export function buildRecommendedActions(promises: SystemsPromiseCard[]): Systems
   const performance = promises.find((promise) => promise.id === 'performance');
   const incidentResponse = promises.find((promise) => promise.id === 'incident-response');
   const changeSafety = promises.find((promise) => promise.id === 'change-safety');
+  const userHonesty = promises.find((promise) => promise.id === 'user-honesty');
 
   if (availability && availability.status !== 'good') {
     actions.push({
@@ -364,6 +365,18 @@ export function buildRecommendedActions(promises: SystemsPromiseCard[]): Systems
       summary: changeSafety.summary,
       href: '/admin/systems',
       automationReady: true,
+    });
+  }
+
+  if (userHonesty && userHonesty.status !== 'good') {
+    actions.push({
+      id: 'review-trust-surfaces',
+      title: 'Review degraded-state trust surfaces',
+      priority: userHonesty.status === 'critical' ? 'P0' : 'P1',
+      timeframe: 'this-week',
+      summary: userHonesty.summary,
+      href: '/admin/systems#trust-surface-review',
+      automationReady: false,
     });
   }
 

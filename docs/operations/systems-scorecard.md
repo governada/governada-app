@@ -3,7 +3,7 @@
 > **Purpose:** Weekly operating review for Governada's launch-critical systems.
 > **Cadence:** Update once per week.
 > **Primary references:** `docs/strategy/context/systems-operating-system.md`, `docs/operations/slo-ledger.md`, `docs/operations/weekly-systems-review.md`
-> **Working surface:** `/admin/systems` now keeps the live review log, centralized automation history, open hardening commitments, a durable performance baseline history, and a derived scorecard sync signal for streak, drift, and recurring hotspots. It is also where retro follow-up automation turns logged `follow_up_pending` incidents and drills into next-week hardening commitments.
+> **Working surface:** `/admin/systems` now keeps the live review log, centralized automation history, open hardening commitments, a durable performance baseline history, a degraded-state trust-surface review trail, and a derived scorecard sync signal for streak, drift, and recurring hotspots. It is also where retro follow-up automation turns logged `follow_up_pending` incidents and drills into next-week hardening commitments.
 
 ---
 
@@ -28,6 +28,7 @@ The live cockpit is now the operational source of truth for scorecard sync. Befo
 - the latest automation sweep history, escalations, and follow-up state are all visible in one place
 - incident-retro follow-ups are being converted into named weekly hardening commitments instead of getting lost in the log
 - the latest performance baseline is visible, fresh, and attached to a named bottleneck owner plus next step
+- the latest degraded-state trust-surface review is visible, current, and attached to a named honesty-gap owner plus next fix
 
 | Dimension         | Metric                                             | Current status                                                                                                                                                                                                                                              | Evidence                                                                                        | Trend | Owner   | Action                                                                                                                      |
 | ----------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----- | ------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -38,7 +39,7 @@ The live cockpit is now the operational source of truth for scorecard sync. Befo
 | Change safety     | Deploys needing hotfix or rollback in last 30 days | Unknown - CI and post-deploy verification exist, no scorecard history yet                                                                                                                                                                                   | `.github/workflows/ci.yml`, `.github/workflows/post-deploy.yml`                                 | Flat  | Founder | Begin tracking change failure rate in this file                                                                             |
 | Test health       | Critical journey suite pass rate and flake status  | Yellow - post-merge E2E exists, pre-merge critical gate is missing                                                                                                                                                                                          | `.github/workflows/e2e.yml`                                                                     | Flat  | Founder | Define and wire the smallest stable pre-merge gate                                                                          |
 | Incident response | Time to acknowledge and mitigate recent incidents  | Yellow - live incident trail exists in `/admin/systems`; the daily sweep now nudges stale drill cadence and converts `follow_up_pending` incidents or drills into weekly hardening commitments, but the first durable drill rhythm still needs to be proven | `docs/observability-setup.md`, `/admin/systems#incident-log`, `docs/operations/incident-log.md` | Flat  | Founder | Run the next suggested failure drill, turn follow-up incidents into one named commitment, and keep logging response timings |
-| User trust        | Known stale-data or misleading UX issues           | Yellow - degraded-state philosophy exists, trust surfaces need explicit weekly review                                                                                                                                                                       | `docs/strategy/context/systems-operating-system.md`                                             | Flat  | Founder | Review user-facing stale-data and degraded UX weekly                                                                        |
+| User trust        | Known stale-data or misleading UX issues           | Yellow - `/admin/systems#trust-surface-review` now keeps a durable degraded-state review trail and can turn honesty gaps into weekly commitments, but it still needs to stay current whenever launch-trust signals are non-good                             | `docs/strategy/context/systems-operating-system.md`, `/admin/systems#trust-surface-review`      | Flat  | Founder | Log the degraded user state when launch-trust signals turn non-good and close the named honesty-gap follow-up               |
 
 ---
 
@@ -58,7 +59,7 @@ The live cockpit is now the operational source of truth for scorecard sync. Befo
 
 1. Critical journeys are not yet explicitly defined and gated pre-merge.
 2. Data integrity and methodology governance exist in pieces but are not yet run as recurring control loops.
-3. The performance baseline loop now exists, but it still needs the first current production baseline to make the scorecard evidence concrete.
+3. The final launch decision still needs an explicit control-room layer that turns these live signals into launch blockers, watch items, and launch-week cadence.
 
 ---
 

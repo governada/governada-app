@@ -127,6 +127,18 @@ function buildDashboardFixture(): SystemsDashboardData {
       lastRecordedAt: '2026-03-09T12:00:00.000Z',
       daysSinceBaseline: 24,
     },
+    trustSurfaceReviewSummary: {
+      status: 'warning',
+      headline: 'Latest trust-surface review found an honesty gap to close',
+      currentValue: '2026-04-01 review / 2 surfaces',
+      target:
+        'Review degraded-state trust surfaces within 7 days whenever availability, freshness, or correctness is not healthy',
+      summary: 'Public surfaces are still too subtle about freshness drift.',
+      lastReviewedAt: '2026-04-01T12:00:00.000Z',
+      daysSinceReview: 1,
+      reviewRequired: true,
+      linkedSloIds: ['freshness', 'correctness'],
+    },
     automationSummary: {
       status: 'warning',
       headline: 'Automation is active, but it still needs founder follow-through',
@@ -202,12 +214,30 @@ function buildDashboardFixture(): SystemsDashboardData {
       daysSinceBaseline: 24,
       isStale: true,
     },
+    latestTrustSurfaceReview: {
+      actorType: 'manual',
+      loggedAt: '2026-04-01T12:00:00.000Z',
+      reviewDate: '2026-04-01',
+      overallStatus: 'warning',
+      linkedSloIds: ['freshness', 'correctness'],
+      reviewedSurfaces: ['Home shell', 'Proposal detail'],
+      summary: 'Public surfaces are still too subtle about freshness drift.',
+      currentUserState: 'Users can still read data, but the degraded state is easy to miss.',
+      honestyGap: 'Freshness drift is not explicit enough on public surfaces.',
+      nextFix: 'Add a clear stale-data state to discovery and proposal detail.',
+      owner: 'Founder + agents',
+      artifactUrl: null,
+      notes: null,
+      daysSinceReview: 1,
+      isStale: false,
+    },
     suggestedReviewDraft: null,
     automationOpenCommitments: [],
     openCommitments: [],
     reviewHistory: [],
     incidentHistory: [],
     performanceBaselineHistory: [],
+    trustSurfaceReviewHistory: [],
     journeys: [],
     automationCandidates: [],
     quickLinks: [],
@@ -297,6 +327,43 @@ describe('systems review draft helpers', () => {
     expect(draft.commitmentOwner).toBe('Platform owner');
     expect(draft.changeNotes).toMatch(/Latest performance baseline/i);
     expect(draft.changeNotes).toMatch(/Performance baseline follow-up/i);
+  });
+
+  it('reuses trust-surface follow-up evidence for the weekly commitment draft', () => {
+    const data = buildDashboardFixture();
+    data.latestCommitmentShepherd = null;
+    data.automationFollowups = [
+      {
+        sourceKey: 'systems:trust-surface-review',
+        triggerType: 'trust_surface_review',
+        severity: 'warning',
+        status: 'open',
+        title: 'Close the degraded-state honesty gap',
+        summary: 'Freshness drift is still too subtle on public surfaces.',
+        recommendedAction:
+          'Platform owner owns the next fix: Add explicit stale-data messaging to the affected public surfaces.',
+        actionHref: '/admin/systems#trust-surface-review',
+        evidence: {
+          reason: 'honesty_gap',
+          reviewDate: '2026-04-01',
+          owner: 'Platform owner',
+          honestyGap: 'Freshness drift is still too subtle on public surfaces.',
+          linkedSloIds: ['freshness', 'correctness'],
+          reviewedSurfaces: ['Home shell', 'Proposal detail'],
+        },
+        updatedAt: '2026-04-02T11:55:00.000Z',
+      },
+    ];
+
+    const draft = buildSystemsReviewDraft(data, 'cron');
+
+    expect(draft.focusArea).toMatch(/honesty gap/i);
+    expect(draft.hardeningCommitmentTitle).toMatch(/honesty gap/i);
+    expect(draft.hardeningCommitmentSummary).toMatch(/stale-data messaging/i);
+    expect(draft.commitmentOwner).toBe('Platform owner');
+    expect(draft.linkedSloIds).toEqual(['freshness', 'correctness']);
+    expect(draft.changeNotes).toMatch(/Latest trust-surface review/i);
+    expect(draft.changeNotes).toMatch(/Trust-surface follow-up/i);
   });
 
   it('reads the latest valid draft from audit rows', () => {

@@ -383,6 +383,7 @@ By day 90, the founder needs a concrete way to decide whether launch is safe, ri
 - Create a launch go/no-go checklist based on the scorecard and critical journeys
 - Define launch blockers vs watch items
 - Define the launch-week monitoring and response cadence
+- Build on `/admin/systems`, which already centralizes live scorecard posture, automation history, incident and drill evidence, performance baseline history, and degraded-state trust-surface review history
 
 ### Decision Points
 

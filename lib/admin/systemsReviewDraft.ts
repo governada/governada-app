@@ -125,6 +125,37 @@ function extractPerformanceBaselineEvidence(
   };
 }
 
+function extractTrustSurfaceEvidence(
+  followup: SystemsDashboardData['automationFollowups'][number] | null,
+) {
+  if (!followup || followup.triggerType !== 'trust_surface_review' || !followup.evidence) {
+    return null;
+  }
+
+  const linkedSloIds = Array.isArray(followup.evidence.linkedSloIds)
+    ? followup.evidence.linkedSloIds.filter(
+        (value): value is string => typeof value === 'string' && value.length > 0,
+      )
+    : [];
+
+  const reviewedSurfaces = Array.isArray(followup.evidence.reviewedSurfaces)
+    ? followup.evidence.reviewedSurfaces.filter(
+        (value): value is string => typeof value === 'string' && value.length > 0,
+      )
+    : [];
+
+  return {
+    reviewDate:
+      typeof followup.evidence.reviewDate === 'string' ? followup.evidence.reviewDate : null,
+    owner: typeof followup.evidence.owner === 'string' ? followup.evidence.owner : null,
+    honestyGap:
+      typeof followup.evidence.honestyGap === 'string' ? followup.evidence.honestyGap : null,
+    reason: typeof followup.evidence.reason === 'string' ? followup.evidence.reason : null,
+    linkedSloIds,
+    reviewedSurfaces,
+  };
+}
+
 export function buildSystemsReviewDraft(
   data: SystemsDashboardData,
   actorType: 'manual' | 'cron',
@@ -143,7 +174,14 @@ export function buildSystemsReviewDraft(
   const performanceBaselineEvidence = extractPerformanceBaselineEvidence(
     performanceBaselineFollowup,
   );
-  const linkedSloIds = buildLinkedSloIds(data, incidentRetroEvidence?.linkedSloIds);
+  const trustSurfaceFollowup =
+    data.automationFollowups.find((followup) => followup.triggerType === 'trust_surface_review') ??
+    null;
+  const trustSurfaceEvidence = extractTrustSurfaceEvidence(trustSurfaceFollowup);
+  const linkedSloIds = buildLinkedSloIds(
+    data,
+    incidentRetroEvidence?.linkedSloIds ?? trustSurfaceEvidence?.linkedSloIds,
+  );
   const primaryFollowup = data.automationFollowups[0] ?? null;
   const commitmentShepherd =
     data.latestCommitmentShepherd?.status === 'focus' ? data.latestCommitmentShepherd : null;
@@ -156,6 +194,7 @@ export function buildSystemsReviewDraft(
   const focusArea = clampText(
     commitmentShepherd?.title ??
       incidentRetroFollowup?.title ??
+      trustSurfaceFollowup?.title ??
       performanceBaselineFollowup?.title ??
       primaryFollowup?.title ??
       primaryAction?.title ??
@@ -168,6 +207,7 @@ export function buildSystemsReviewDraft(
   const topRisk = clampText(
     primaryBlocker ??
       commitmentShepherd?.summary ??
+      trustSurfaceFollowup?.summary ??
       performanceBaselineFollowup?.summary ??
       primaryFollowup?.summary ??
       scorecardSync?.summary ??
@@ -180,6 +220,7 @@ export function buildSystemsReviewDraft(
   const hardeningCommitmentTitle = clampText(
     commitmentShepherd?.commitmentTitle ??
       incidentRetroEvidence?.commitmentTitle ??
+      trustSurfaceFollowup?.title ??
       performanceBaselineFollowup?.title ??
       primaryFollowup?.title ??
       primaryAction?.title ??
@@ -191,6 +232,7 @@ export function buildSystemsReviewDraft(
   const hardeningCommitmentSummary = clampText(
     commitmentShepherd?.recommendedAction ??
       incidentRetroEvidence?.commitmentSummary ??
+      trustSurfaceFollowup?.recommendedAction ??
       performanceBaselineFollowup?.recommendedAction ??
       primaryFollowup?.recommendedAction ??
       primaryAction?.summary ??
@@ -209,6 +251,15 @@ export function buildSystemsReviewDraft(
       : null,
     scorecardSync ? `Scorecard sync: ${scorecardSync.summary}` : null,
     incidentSummary ? `Incident response: ${incidentSummary.summary}` : null,
+    data.latestTrustSurfaceReview
+      ? `Latest trust-surface review: ${data.latestTrustSurfaceReview.reviewDate}. ${data.latestTrustSurfaceReview.summary}`
+      : 'Latest trust-surface review: no degraded-state review has been logged yet.',
+    trustSurfaceFollowup
+      ? `Trust-surface follow-up: ${trustSurfaceFollowup.title}. ${trustSurfaceFollowup.recommendedAction}`
+      : null,
+    trustSurfaceEvidence?.honestyGap
+      ? `Trust-surface honesty gap: ${trustSurfaceEvidence.honestyGap} under ${trustSurfaceEvidence.owner ?? 'Founder + agents'}.`
+      : null,
     data.latestPerformanceBaseline
       ? `Latest performance baseline: ${data.latestPerformanceBaseline.baselineDate} on ${data.latestPerformanceBaseline.environment}. ${data.latestPerformanceBaseline.summary}`
       : 'Latest performance baseline: no durable baseline has been logged yet.',
@@ -246,7 +297,9 @@ export function buildSystemsReviewDraft(
     hardeningCommitmentSummary,
     commitmentOwner:
       incidentRetroEvidence?.followUpOwner ??
+      trustSurfaceEvidence?.owner ??
       performanceBaselineEvidence?.mitigationOwner ??
+      data.latestTrustSurfaceReview?.owner ??
       data.latestPerformanceBaseline?.mitigationOwner ??
       'Founder + agents',
     commitmentDueDate: nextFridayInputValue(new Date(generatedAt)),

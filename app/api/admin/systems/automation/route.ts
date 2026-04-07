@@ -82,6 +82,8 @@ export async function runSystemsAutomationSweep(request: NextRequest, ctx: Route
     performanceStatus:
       dashboard.slos.find((slo) => slo.id === 'performance')?.status ?? dashboard.overall.status,
     latestPerformanceBaseline: dashboard.latestPerformanceBaseline ?? null,
+    trustSurfaceReviewSummary: dashboard.trustSurfaceReviewSummary,
+    latestTrustSurfaceReview: dashboard.latestTrustSurfaceReview ?? null,
     incidentSummary: dashboard.incidentSummary,
     incidentHistory: dashboard.incidentHistory,
     openCommitments: dashboard.automationOpenCommitments,

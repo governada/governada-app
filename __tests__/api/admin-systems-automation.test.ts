@@ -85,6 +85,19 @@ describe('systems automation route', () => {
       },
       incidentHistory: [],
       latestPerformanceBaseline: null,
+      trustSurfaceReviewSummary: {
+        status: 'good',
+        headline: 'No active degraded-state honesty review is required',
+        currentValue: 'No active degraded-state review needed',
+        target:
+          'Review degraded-state trust surfaces within 7 days whenever availability, freshness, or correctness is not healthy',
+        summary: 'No active degraded-state review is needed right now.',
+        lastReviewedAt: null,
+        daysSinceReview: null,
+        reviewRequired: false,
+        linkedSloIds: [],
+      },
+      latestTrustSurfaceReview: null,
       automationOpenCommitments: [
         {
           id: '11111111-1111-4111-8111-111111111111',
@@ -167,6 +180,19 @@ describe('systems automation route', () => {
       },
       incidentHistory: [],
       latestPerformanceBaseline: null,
+      trustSurfaceReviewSummary: {
+        status: 'warning',
+        headline: 'Degraded-state trust surfaces need review',
+        currentValue: 'No durable trust-surface review logged',
+        target:
+          'Review degraded-state trust surfaces within 7 days whenever availability, freshness, or correctness is not healthy',
+        summary: 'Freshness is degraded and no trust-surface review is logged yet.',
+        lastReviewedAt: null,
+        daysSinceReview: null,
+        reviewRequired: true,
+        linkedSloIds: ['freshness'],
+      },
+      latestTrustSurfaceReview: null,
       automationOpenCommitments: [],
       openCommitments: [],
       actions: [],
@@ -245,6 +271,35 @@ describe('systems automation route', () => {
         daysSinceBaseline: 24,
         isStale: true,
       },
+      trustSurfaceReviewSummary: {
+        status: 'good',
+        headline: 'No active degraded-state honesty review is required',
+        currentValue: 'Last reviewed 2026-04-01',
+        target:
+          'Review degraded-state trust surfaces within 7 days whenever availability, freshness, or correctness is not healthy',
+        summary: 'No active degraded-state review is needed right now.',
+        lastReviewedAt: '2026-04-01T12:00:00.000Z',
+        daysSinceReview: 1,
+        reviewRequired: false,
+        linkedSloIds: [],
+      },
+      latestTrustSurfaceReview: {
+        actorType: 'manual',
+        loggedAt: '2026-04-01T12:00:00.000Z',
+        reviewDate: '2026-04-01',
+        overallStatus: 'good',
+        linkedSloIds: ['freshness'],
+        reviewedSurfaces: ['Home shell'],
+        summary: 'The stale-data state is explicit.',
+        currentUserState: 'Users are clearly told when freshness is degraded.',
+        honestyGap: 'No major honesty gap remains.',
+        nextFix: 'Keep the copy aligned as surfaces evolve.',
+        owner: 'Founder + agents',
+        artifactUrl: null,
+        notes: null,
+        daysSinceReview: 1,
+        isStale: false,
+      },
       automationOpenCommitments: [],
       openCommitments: [],
       actions: [
@@ -277,6 +332,75 @@ describe('systems automation route', () => {
             sourceKey: 'systems:performance-baseline',
             triggerType: 'performance_baseline',
             actionHref: '/admin/systems#performance-baseline',
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it('opens a trust-surface follow-up when degraded-state review is missing', async () => {
+    mockBuildSystemsDashboardData.mockResolvedValue({
+      overall: { status: 'critical' },
+      slos: [{ id: 'performance', status: 'good' }],
+      reviewDiscipline: {
+        status: 'good',
+        headline: 'Weekly review rhythm is on track',
+        currentValue: 'Reviewed today',
+        target: 'A founder review recorded every 7 days',
+        summary: 'The weekly loop is healthy.',
+        lastReviewedAt: '2026-04-04T00:00:00.000Z',
+        openCommitments: 0,
+        overdueCommitments: 0,
+      },
+      incidentSummary: {
+        status: 'good',
+        headline: 'Incident and drill trail is current',
+        currentValue: '0 open incidents / last drill 3d ago',
+        target: 'Monthly drills with no unresolved high-severity incidents',
+        summary: 'Recent incidents are resolved, and the drill cadence is fresh enough.',
+        lastDrillAt: '2026-04-01',
+        lastIncidentAt: null,
+        openIncidentCount: 0,
+        drillCount: 1,
+        recentEntries: [],
+      },
+      incidentHistory: [],
+      latestPerformanceBaseline: null,
+      trustSurfaceReviewSummary: {
+        status: 'critical',
+        headline: 'Degraded-state trust surfaces need review',
+        currentValue: 'No durable trust-surface review logged',
+        target:
+          'Review degraded-state trust surfaces within 7 days whenever availability, freshness, or correctness is not healthy',
+        summary: 'Freshness and correctness are degraded, but no trust-surface review is logged.',
+        lastReviewedAt: null,
+        daysSinceReview: null,
+        reviewRequired: true,
+        linkedSloIds: ['freshness', 'correctness'],
+      },
+      latestTrustSurfaceReview: null,
+      automationOpenCommitments: [],
+      openCommitments: [],
+      actions: [],
+    });
+
+    const response = await runSystemsAutomationSweep(
+      createRequest('/api/admin/systems/automation', {
+        headers: { authorization: `Bearer ${CRON_SECRET}` },
+      }),
+      { requestId: 'req-4' },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'systems_automation_followup_sync',
+          target: 'systems:trust-surface-review',
+          payload: expect.objectContaining({
+            sourceKey: 'systems:trust-surface-review',
+            triggerType: 'trust_surface_review',
+            actionHref: '/admin/systems#trust-surface-review',
           }),
         }),
       ]),

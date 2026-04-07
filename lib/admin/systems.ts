@@ -9,6 +9,7 @@ export type SystemsPerformanceBaselineEnvironment = 'production' | 'preview' | '
 export type SystemsAutomationTriggerType =
   | 'review_discipline'
   | 'performance_baseline'
+  | 'trust_surface_review'
   | 'drill_cadence'
   | 'incident_retro_followup'
   | 'overdue_commitment'
@@ -174,7 +175,8 @@ export type SystemsAutomationActivityType =
   | 'review_draft'
   | 'operator_escalation'
   | 'commitment_shepherd'
-  | 'performance_baseline';
+  | 'performance_baseline'
+  | 'trust_surface_review';
 
 export type SystemsAutomationActivityTone = 'good' | 'warning' | 'critical' | 'neutral';
 
@@ -283,6 +285,36 @@ export interface SystemsPerformanceBaselineSummary {
   daysSinceBaseline?: number | null;
 }
 
+export interface SystemsTrustSurfaceReviewRecord {
+  actorType: 'manual' | 'cron';
+  loggedAt: string;
+  reviewDate: string;
+  overallStatus: Exclude<SystemsStatus, 'bootstrap'>;
+  linkedSloIds: string[];
+  reviewedSurfaces: string[];
+  summary: string;
+  currentUserState: string;
+  honestyGap: string;
+  nextFix: string;
+  owner: string;
+  artifactUrl?: string | null;
+  notes?: string | null;
+  daysSinceReview: number;
+  isStale: boolean;
+}
+
+export interface SystemsTrustSurfaceReviewSummary {
+  status: SystemsStatus;
+  headline: string;
+  currentValue: string;
+  target: string;
+  summary: string;
+  lastReviewedAt?: string | null;
+  daysSinceReview?: number | null;
+  reviewRequired: boolean;
+  linkedSloIds: string[];
+}
+
 export interface SystemsScorecardReviewRecord {
   id: string;
   reviewDate: string;
@@ -373,6 +405,7 @@ export interface SystemsDashboardData {
   scorecardSync: SystemsScorecardSync;
   incidentSummary: SystemsIncidentSummary;
   performanceBaselineSummary: SystemsPerformanceBaselineSummary;
+  trustSurfaceReviewSummary: SystemsTrustSurfaceReviewSummary;
   automationSummary: SystemsAutomationSummary;
   automationFollowups: SystemsAutomationFollowup[];
   automationHistory: SystemsAutomationActivityRecord[];
@@ -380,12 +413,14 @@ export interface SystemsDashboardData {
   latestOperatorEscalation?: SystemsOperatorEscalationRecord | null;
   latestCommitmentShepherd?: SystemsCommitmentShepherdRecord | null;
   latestPerformanceBaseline?: SystemsPerformanceBaselineRecord | null;
+  latestTrustSurfaceReview?: SystemsTrustSurfaceReviewRecord | null;
   suggestedReviewDraft?: SystemsReviewDraft | null;
   automationOpenCommitments: SystemsCommitmentCard[];
   openCommitments: SystemsCommitmentCard[];
   reviewHistory: SystemsReviewRecord[];
   incidentHistory: SystemsIncidentRecord[];
   performanceBaselineHistory: SystemsPerformanceBaselineRecord[];
+  trustSurfaceReviewHistory: SystemsTrustSurfaceReviewRecord[];
   journeys: SystemsJourney[];
   automationCandidates: AutomationCandidate[];
   quickLinks: QuickLink[];
@@ -562,13 +597,14 @@ export const CRITICAL_JOURNEYS: SystemsJourney[] = [
 
 export const AUTOMATION_CANDIDATES: AutomationCandidate[] = [
   {
-    id: 'trust-surface-audit',
-    title: 'Degraded-state UX review',
-    trigger: 'Freshness, correctness, or availability drops below healthy.',
+    id: 'launch-control-room',
+    title: 'Launch control room',
+    trigger:
+      'Scorecard, drills, journeys, and honesty reviews are all leaving behind durable evidence.',
     action:
-      'Capture whether public and authenticated surfaces are telling the truth about degraded system state and log the next honesty fix.',
+      'Turn the systems cockpit into a go or no-go control room with explicit launch blockers, watch items, and launch-week operating cadence.',
     whyItMatters:
-      'Premium reliability is not only uptime. It is also whether the product stays honest under strain.',
+      'The final launch decision should come from live evidence on one page instead of founder intuition spread across multiple tools.',
   },
 ];
 

@@ -47,6 +47,12 @@ import {
   parseSystemsPerformanceBaselineHistory,
   SYSTEMS_PERFORMANCE_BASELINE_ACTION,
 } from '@/lib/admin/systemsPerformance';
+import {
+  buildSystemsTrustSurfaceReviewHistory,
+  buildSystemsTrustSurfaceReviewSummary,
+  parseSystemsTrustSurfaceReviewHistory,
+  SYSTEMS_TRUST_SURFACE_REVIEW_ACTION,
+} from '@/lib/admin/systemsTrustSurface';
 
 type DependencyProbe = {
   status: 'healthy' | 'unhealthy' | 'unavailable';
@@ -153,6 +159,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     reviewDraftAuditResult,
     incidentAuditResult,
     performanceBaselineAuditResult,
+    trustSurfaceAuditResult,
   ] = await Promise.all([
     probeSupabase(),
     probeKoios(),
@@ -217,6 +224,12 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
       .from('admin_audit_log')
       .select('action, target, payload, created_at')
       .eq('action', SYSTEMS_PERFORMANCE_BASELINE_ACTION)
+      .order('created_at', { ascending: false })
+      .limit(12),
+    supabase
+      .from('admin_audit_log')
+      .select('action, target, payload, created_at')
+      .eq('action', SYSTEMS_TRUST_SURFACE_REVIEW_ACTION)
       .order('created_at', { ascending: false })
       .limit(12),
   ]);
@@ -384,15 +397,34 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
   const latestPerformanceBaseline = performanceBaselineHistory[0] ?? null;
   const performanceBaselineSummary =
     buildSystemsPerformanceBaselineSummary(latestPerformanceBaseline);
+  const incidentHistory = parseSystemsIncidentHistory(incidentAuditResult.data || []);
+  const incidentSummary = buildSystemsIncidentSummary({ history: incidentHistory });
+  const trustSurfaceConcernSloIds = [
+    dependencyStatus !== 'good' ? 'availability' : null,
+    freshnessStatus !== 'good' ? 'freshness' : null,
+    correctnessStatus !== 'good' ? 'correctness' : null,
+  ].filter((value): value is string => Boolean(value));
+  const trustSurfaceReviewHistory = parseSystemsTrustSurfaceReviewHistory(
+    trustSurfaceAuditResult.data || [],
+  );
+  const latestTrustSurfaceReview = trustSurfaceReviewHistory[0] ?? null;
+  const trustSurfaceReviewSummary = buildSystemsTrustSurfaceReviewSummary({
+    latestReview: latestTrustSurfaceReview,
+    reviewRequired: trustSurfaceConcernSloIds.length > 0,
+    concernStatus:
+      trustSurfaceConcernSloIds.length > 0
+        ? worstStatus([dependencyStatus, freshnessStatus, correctnessStatus])
+        : 'good',
+    linkedSloIds: trustSurfaceConcernSloIds,
+  });
   const automationHistory = [
     ...buildSystemsAutomationHistory(automationAuditResult.data || []),
     ...buildSystemsReviewDraftHistory(reviewDraftAuditResult.data || []),
     ...buildSystemsPerformanceBaselineHistory(performanceBaselineAuditResult.data || []),
+    ...buildSystemsTrustSurfaceReviewHistory(trustSurfaceAuditResult.data || []),
   ]
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
     .slice(0, 14);
-  const incidentHistory = parseSystemsIncidentHistory(incidentAuditResult.data || []);
-  const incidentSummary = buildSystemsIncidentSummary({ history: incidentHistory });
 
   if (!latestPerformanceBaseline) {
     performanceStatus = livePerformanceStatus === 'critical' ? 'critical' : 'warning';
@@ -453,13 +485,9 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
       value: incidentSummary.currentValue,
     },
     userHonesty: {
-      status: freshnessStatus === 'critical' ? 'warning' : 'bootstrap',
-      summary:
-        'Governada already has health and integrity surfaces, but degraded-state UX still needs to be reviewed as a first-class operating signal.',
-      value:
-        freshnessStatus === 'critical'
-          ? 'Degraded-state review required'
-          : 'Needs recurring trust-surface review',
+      status: trustSurfaceReviewSummary.status,
+      summary: trustSurfaceReviewSummary.summary,
+      value: trustSurfaceReviewSummary.currentValue,
     },
   };
 
@@ -495,6 +523,8 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
   if (reviewDiscipline.status !== 'good') watchouts.push(reviewDiscipline.summary);
   if (automationSummary.status === 'warning') watchouts.push(automationSummary.summary);
   if (incidentSummary.status === 'warning') watchouts.push(incidentSummary.summary);
+  if (trustSurfaceReviewSummary.status === 'warning')
+    watchouts.push(trustSurfaceReviewSummary.summary);
 
   if (dependencyStatus === 'critical') blockers.push('Core availability is red.');
   if (correctnessStatus === 'critical') blockers.push('Integrity correctness is red.');
@@ -502,6 +532,8 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
   if (reviewDiscipline.status === 'critical') blockers.push(reviewDiscipline.headline);
   if (automationSummary.status === 'critical') blockers.push(automationSummary.headline);
   if (incidentSummary.status === 'critical') blockers.push(incidentSummary.headline);
+  if (trustSurfaceReviewSummary.status === 'critical')
+    blockers.push(trustSurfaceReviewSummary.headline);
 
   return {
     generatedAt: new Date().toISOString(),
@@ -537,6 +569,7 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     scorecardSync,
     incidentSummary,
     performanceBaselineSummary,
+    trustSurfaceReviewSummary,
     automationSummary,
     automationFollowups: automationState.openFollowups,
     automationHistory,
@@ -544,12 +577,14 @@ export async function buildSystemsDashboardData(): Promise<SystemsDashboardData>
     latestOperatorEscalation,
     latestCommitmentShepherd,
     latestPerformanceBaseline,
+    latestTrustSurfaceReview,
     suggestedReviewDraft,
     automationOpenCommitments,
     openCommitments,
     reviewHistory,
     incidentHistory,
     performanceBaselineHistory,
+    trustSurfaceReviewHistory,
     journeys: CRITICAL_JOURNEYS,
     automationCandidates: AUTOMATION_CANDIDATES,
     quickLinks: SYSTEMS_QUICK_LINKS,

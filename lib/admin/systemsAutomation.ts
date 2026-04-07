@@ -18,6 +18,8 @@ import type {
   SystemsPerformanceBaselineRecord,
   SystemsReviewDiscipline,
   SystemsStatus,
+  SystemsTrustSurfaceReviewRecord,
+  SystemsTrustSurfaceReviewSummary,
 } from '@/lib/admin/systems';
 import {
   buildSystemsDrillCadenceTarget,
@@ -27,6 +29,10 @@ import {
   buildSystemsPerformanceBaselineFollowupTarget,
   SYSTEMS_PERFORMANCE_BASELINE_ACTION,
 } from '@/lib/admin/systemsPerformance';
+import {
+  buildSystemsTrustSurfaceFollowupTarget,
+  SYSTEMS_TRUST_SURFACE_REVIEW_ACTION,
+} from '@/lib/admin/systemsTrustSurface';
 
 export const SYSTEMS_AUTOMATION_FOLLOWUP_ACTION = 'systems_automation_followup_sync';
 export const SYSTEMS_AUTOMATION_SWEEP_ACTION = 'systems_automation_sweep';
@@ -38,6 +44,7 @@ export const SYSTEMS_AUTOMATION_AUDIT_ACTIONS = [
   SYSTEMS_OPERATOR_ESCALATION_ACTION,
   SYSTEMS_COMMITMENT_SHEPHERD_ACTION,
   SYSTEMS_PERFORMANCE_BASELINE_ACTION,
+  SYSTEMS_TRUST_SURFACE_REVIEW_ACTION,
 ] as const;
 export const SYSTEMS_OPERATOR_ESCALATION_REMINDER_HOURS = 24;
 
@@ -106,6 +113,7 @@ const followupStatusSchema = z.enum(['open', 'acknowledged', 'resolved']);
 const triggerTypeSchema = z.enum([
   'review_discipline',
   'performance_baseline',
+  'trust_surface_review',
   'drill_cadence',
   'incident_retro_followup',
   'overdue_commitment',
@@ -212,6 +220,8 @@ function triggerTypeLabel(triggerType: SystemsAutomationTriggerType) {
       return 'Review discipline';
     case 'performance_baseline':
       return 'Performance baseline';
+    case 'trust_surface_review':
+      return 'Trust surfaces';
     case 'drill_cadence':
       return 'Drill cadence';
     case 'incident_retro_followup':
@@ -770,6 +780,8 @@ export function buildSystemsAutomationSpecs(input: {
   reviewDiscipline: SystemsReviewDiscipline;
   performanceStatus: SystemsStatus;
   latestPerformanceBaseline: SystemsPerformanceBaselineRecord | null;
+  trustSurfaceReviewSummary: SystemsTrustSurfaceReviewSummary;
+  latestTrustSurfaceReview: SystemsTrustSurfaceReviewRecord | null;
   incidentSummary: SystemsIncidentSummary;
   incidentHistory: SystemsIncidentRecord[];
   openCommitments: SystemsCommitmentCard[];
@@ -813,6 +825,24 @@ export function buildSystemsAutomationSpecs(input: {
       recommendedAction: performanceBaselineTarget.recommendedAction,
       actionHref: performanceBaselineTarget.actionHref,
       evidence: performanceBaselineTarget.evidence,
+    });
+  }
+
+  const trustSurfaceTarget = buildSystemsTrustSurfaceFollowupTarget({
+    latestReview: input.latestTrustSurfaceReview,
+    summary: input.trustSurfaceReviewSummary,
+  });
+
+  if (trustSurfaceTarget) {
+    specs.push({
+      sourceKey: trustSurfaceTarget.sourceKey,
+      triggerType: 'trust_surface_review',
+      severity: trustSurfaceTarget.severity,
+      title: trustSurfaceTarget.title,
+      summary: trustSurfaceTarget.summary,
+      recommendedAction: trustSurfaceTarget.recommendedAction,
+      actionHref: trustSurfaceTarget.actionHref,
+      evidence: trustSurfaceTarget.evidence,
     });
   }
 

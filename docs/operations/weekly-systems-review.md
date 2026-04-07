@@ -39,6 +39,7 @@
 - Log the weekly review directly in `/admin/systems` so the cockpit keeps durable operating history and open commitments
 - Check `/admin/systems#automation` for the latest sweep history, escalations, and follow-up state before you change the written scorecard
 - Check `/admin/systems#performance-baseline` to confirm whether the latest durable load signal is current, stale, or still outside the launch bar
+- When availability, freshness, or correctness is not healthy, check `/admin/systems#trust-surface-review` and log what public and operator users actually saw before the degraded-state story goes stale
 - Update `docs/operations/systems-scorecard.md`
 - Log any real incident, drill, or meaningful regression in `/admin/systems#incident-log`; use `docs/operations/incident-log.md` when the fuller narrative is worth preserving in-repo
 - If methodology or scoring changed, update `docs/operations/methodology-changelog.md`
@@ -84,4 +85,5 @@ The review is intentionally shaped so it can be automated later from `/api/admin
 - apply the commitment shepherd brief into the weekly review form
 - apply the incident-retro brief into the weekly review form when an incident or drill needs a named hardening commitment
 - apply the performance baseline follow-up into the weekly review form when the latest load signal is missing, stale, or still non-good
+- apply the trust-surface follow-up into the weekly review form when degraded-state honesty needs a named product fix
 - escalate unresolved critical follow-ups into the founder operator channel with next-action links

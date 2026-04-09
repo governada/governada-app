@@ -1,7 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-function mockEpochParamsRow(row: Record<string, unknown> | null) {
-  const maybeSingle = vi.fn().mockResolvedValue({ data: row, error: null });
+function mockEpochParamsRows(
+  responses: Array<{ data: Record<string, unknown> | null; error?: unknown }>,
+) {
+  let responseIndex = 0;
+  const maybeSingle = vi.fn().mockImplementation(async () => {
+    const nextResponse = responses[Math.min(responseIndex, responses.length - 1)];
+    responseIndex += 1;
+    return {
+      data: nextResponse?.data ?? null,
+      error: nextResponse?.error ?? null,
+    };
+  });
   const limit = vi.fn(() => ({ maybeSingle }));
   const order = vi.fn(() => ({ limit }));
   const select = vi.fn(() => ({ order }));
@@ -12,7 +22,7 @@ function mockEpochParamsRow(row: Record<string, unknown> | null) {
     return { select };
   });
 
-  return { from };
+  return { client: { from }, maybeSingle };
 }
 
 describe('governance threshold resolver', () => {
@@ -21,16 +31,24 @@ describe('governance threshold resolver', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('uses Supabase epoch_params and the maximum threshold for mixed parameter groups', async () => {
     const fetchGovernanceThresholds = vi.fn();
-
-    vi.doMock('@/lib/supabase', () => ({
-      createClient: () =>
-        mockEpochParamsRow({
+    const epochParams = mockEpochParamsRows([
+      {
+        data: {
           epoch_no: 551,
           dvt_p_p_network_group: 0.51,
           dvt_p_p_gov_group: 0.67,
-        }),
+        },
+      },
+    ]);
+
+    vi.doMock('@/lib/supabase', () => ({
+      createClient: () => epochParams.client,
     }));
     vi.doMock('@/utils/koios', () => ({
       fetchGovernanceThresholds,
@@ -54,13 +72,18 @@ describe('governance threshold resolver', () => {
   });
 
   it('supports legacy parameter aliases when resolving parameter-change groups', async () => {
-    vi.doMock('@/lib/supabase', () => ({
-      createClient: () =>
-        mockEpochParamsRow({
+    const epochParams = mockEpochParamsRows([
+      {
+        data: {
           epoch_no: 551,
           dvt_p_p_economic_group: 0.6,
           dvt_p_p_technical_group: 0.72,
-        }),
+        },
+      },
+    ]);
+
+    vi.doMock('@/lib/supabase', () => ({
+      createClient: () => epochParams.client,
     }));
     vi.doMock('@/utils/koios', () => ({
       fetchGovernanceThresholds: vi.fn(),
@@ -88,7 +111,7 @@ describe('governance threshold resolver', () => {
     });
 
     vi.doMock('@/lib/supabase', () => ({
-      createClient: () => mockEpochParamsRow(null),
+      createClient: () => mockEpochParamsRows([{ data: null }]).client,
     }));
     vi.doMock('@/utils/koios', () => ({
       fetchGovernanceThresholds,
@@ -105,5 +128,82 @@ describe('governance threshold resolver', () => {
       thresholdKeys: ['dvt_treasury_withdrawal'],
     });
     expect(fetchGovernanceThresholds).toHaveBeenCalledTimes(1);
+  });
+
+  it('reuses cached Supabase thresholds inside the revalidation window', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-09T12:00:00Z'));
+
+    const epochParams = mockEpochParamsRows([
+      {
+        data: {
+          epoch_no: 551,
+          dvt_treasury_withdrawal: 0.75,
+        },
+      },
+    ]);
+
+    vi.doMock('@/lib/supabase', () => ({
+      createClient: () => epochParams.client,
+    }));
+    vi.doMock('@/utils/koios', () => ({
+      fetchGovernanceThresholds: vi.fn(),
+    }));
+
+    const mod = await import('@/lib/governanceThresholds');
+
+    const first = await mod.getGovernanceThresholdForProposal({
+      proposalType: 'TreasuryWithdrawals',
+    });
+    const second = await mod.getGovernanceThresholdForProposal({
+      proposalType: 'TreasuryWithdrawals',
+    });
+
+    expect(first.threshold).toBe(0.75);
+    expect(second.threshold).toBe(0.75);
+    expect(epochParams.maybeSingle).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes cached Supabase thresholds when epoch_params changes before the long TTL expires', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-09T12:00:00Z'));
+
+    const epochParams = mockEpochParamsRows([
+      {
+        data: {
+          epoch_no: 551,
+          dvt_treasury_withdrawal: 0.75,
+        },
+      },
+      {
+        data: {
+          epoch_no: 551,
+          dvt_treasury_withdrawal: 0.82,
+        },
+      },
+    ]);
+
+    vi.doMock('@/lib/supabase', () => ({
+      createClient: () => epochParams.client,
+    }));
+    vi.doMock('@/utils/koios', () => ({
+      fetchGovernanceThresholds: vi.fn(),
+    }));
+
+    const mod = await import('@/lib/governanceThresholds');
+
+    const first = await mod.getGovernanceThresholdForProposal({
+      proposalType: 'TreasuryWithdrawals',
+    });
+
+    vi.setSystemTime(new Date('2026-04-09T12:01:01Z'));
+
+    const second = await mod.getGovernanceThresholdForProposal({
+      proposalType: 'TreasuryWithdrawals',
+    });
+
+    expect(first.threshold).toBe(0.75);
+    expect(second.threshold).toBe(0.82);
+    expect(epochParams.maybeSingle).toHaveBeenCalledTimes(2);
   });
 });

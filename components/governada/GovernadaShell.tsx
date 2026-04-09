@@ -323,7 +323,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
               </p>
               <div className="mt-3 space-y-2">
                 <LegalLinks />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Analytics may be enabled in production deployments. See{' '}
                   <Link href="/privacy" className="underline decoration-dotted underline-offset-2">
                     Privacy

@@ -43,19 +43,6 @@ describe('systems review helpers', () => {
         top_risk: 'Operator workflows remain under-defended.',
         change_notes: 'We still need a deterministic seeded harness for workspace reads.',
         linked_slo_ids: ['journeys'],
-        created_at: reviewedAt.toISOString(),
-      });
-    const review = toSystemsReviewRecord(
-      {
-        id: '1d9cad5c-6ba5-4c9a-8f70-9835cff31568',
-        review_date: reviewedAt.toISOString().slice(0, 10),
-        reviewed_at: reviewedAt.toISOString(),
-        overall_status: 'warning',
-        focus_area: 'Critical journey protection',
-        summary: 'Workspace read confidence still needs browser-level proof.',
-        top_risk: 'Operator workflows remain under-defended.',
-        change_notes: 'We still need a deterministic seeded harness for workspace reads.',
-        linked_slo_ids: ['journeys'],
       },
       commitment,
     );

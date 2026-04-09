@@ -16,25 +16,26 @@ export function getRedis(): Redis {
 }
 
 /**
- * Cache helper with TTL. Falls back to fetcher on cache miss or Redis runtime errors.
+ * Cache helper with TTL. Falls back to fetcher when Redis is unavailable
+ * or on cache miss / runtime errors.
  */
 export async function cached<T>(
   key: string,
   ttlSeconds: number,
   fetcher: () => Promise<T>,
 ): Promise<T> {
-  const r = getRedis();
-
   try {
+    const r = getRedis();
     const hit = await r.get<T>(key);
     if (hit !== null && hit !== undefined) return hit;
   } catch {
-    // Redis runtime error — fall through to fetcher
+    // Redis unavailable or cache read failed - fall through to fetcher
   }
 
   const value = await fetcher();
 
   try {
+    const r = getRedis();
     await r.set(key, value, { ex: ttlSeconds });
   } catch {
     // Best-effort cache write

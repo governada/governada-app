@@ -39,7 +39,7 @@ describe('withRouteHandler', () => {
     vi.clearAllMocks();
   });
 
-  it('fails closed when the shared rate limiter cannot initialize', async () => {
+  it('allows public read requests when the shared rate limiter cannot initialize', async () => {
     mockGetRedis.mockImplementation(() => {
       throw new Error('redis unavailable');
     });
@@ -48,6 +48,24 @@ describe('withRouteHandler', () => {
     const wrapped = withRouteHandler(handler, { rateLimit: { max: 2, window: 60 } });
 
     const res = await wrapped(createRequest('/api/internal/test'));
+    const body = (await parseJson(res)) as any;
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(mockLoggerError).toHaveBeenCalled();
+    expect(mockLoggerWarn).toHaveBeenCalled();
+  });
+
+  it('fails closed for mutating requests when the shared rate limiter cannot initialize', async () => {
+    mockGetRedis.mockImplementation(() => {
+      throw new Error('redis unavailable');
+    });
+
+    const handler = vi.fn(async () => NextResponse.json({ ok: true }));
+    const wrapped = withRouteHandler(handler, { rateLimit: { max: 2, window: 60 } });
+
+    const res = await wrapped(createRequest('/api/internal/test', { method: 'POST' }));
     const body = (await parseJson(res)) as any;
 
     expect(res.status).toBe(429);

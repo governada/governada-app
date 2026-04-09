@@ -44,7 +44,7 @@ function getClientIp(request: NextRequest): string {
 async function checkLimit(
   identifier: string,
   config: RateLimitConfig,
-): Promise<{ allowed: boolean; remaining: number }> {
+): Promise<{ allowed: boolean; remaining: number; degraded: boolean }> {
   try {
     const { getRedis } = await import('@/lib/redis');
     const redis = getRedis();
@@ -55,14 +55,18 @@ async function checkLimit(
       prefix: 'rl:route',
     });
     const result = await limiter.limit(identifier);
-    return { allowed: result.success, remaining: result.remaining };
+    return { allowed: result.success, remaining: result.remaining, degraded: false };
   } catch (error) {
-    logger.error('Internal route rate limit check failed — failing closed', {
+    logger.error('Internal route rate limit check failed', {
       context: 'api/withRouteHandler',
       error,
     });
-    return { allowed: false, remaining: 0 };
+    return { allowed: false, remaining: 0, degraded: true };
   }
+}
+
+function canBypassRateLimitFailure(request: NextRequest, auth: RouteOptions['auth']): boolean {
+  return auth === 'none' && (request.method === 'GET' || request.method === 'HEAD');
 }
 
 export function withRouteHandler(handler: HandlerFn, options: RouteOptions = {}) {
@@ -98,10 +102,19 @@ export function withRouteHandler(handler: HandlerFn, options: RouteOptions = {})
 
         const rl = await checkLimit(key, options.rateLimit);
         if (!rl.allowed) {
-          return NextResponse.json(
-            { error: 'Too many requests. Please try again later.' },
-            { status: 429 },
-          );
+          if (rl.degraded && canBypassRateLimitFailure(request, auth)) {
+            logger.warn('Redis-backed route limiter unavailable; allowing public read', {
+              context: 'api/withRouteHandler',
+              method: request.method,
+              path: request.nextUrl.pathname,
+              requestId,
+            });
+          } else {
+            return NextResponse.json(
+              { error: 'Too many requests. Please try again later.' },
+              { status: 429 },
+            );
+          }
         }
       }
 

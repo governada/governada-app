@@ -46,7 +46,7 @@
     "worktree:new": "powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1",
     "worktree:sync": "powershell -ExecutionPolicy Bypass -File scripts/sync-worktree.ps1",
     "inngest:register": "node scripts/register-inngest.js",
-    "deploy:verify": "node scripts/deploy-verify.js",
+    "deploy:verify": "tsx scripts/deploy-verify.ts",
     "health:ready": "node scripts/health-check.js --path /api/health/ready --compact",
     "health:api": "node scripts/health-check.js --path /api/health --compact",
     "health:status": "node scripts/health-check.js --path /api/health --select status --compact",

@@ -22,6 +22,26 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
+function PulseIntro() {
+  return (
+    <section
+      data-discovery="gov-health"
+      className="rounded-2xl border border-border/40 bg-card/70 p-5 backdrop-blur-md"
+    >
+      <p className="text-xs font-medium uppercase tracking-[0.28em] text-muted-foreground">
+        Governance Health
+      </p>
+      <div className="mt-3 space-y-2">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Pulse</h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Track the live state of Cardano governance across participation, treasury, and health
+          signals. The overview below fills in as richer data becomes available.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function PulseFallback() {
   return (
     <div className="space-y-6 pt-4">
@@ -50,7 +70,8 @@ export default function PulsePage() {
   return (
     <>
       <PageViewTracker event="pulse_page_viewed" />
-      <div className="container mx-auto px-4 sm:px-6 py-6">
+      <div className="container mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <PulseIntro />
         <Suspense fallback={<PulseFallback />}>
           <GovernadaPulseOverview />
         </Suspense>

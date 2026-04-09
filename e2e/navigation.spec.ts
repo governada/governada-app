@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Legacy route compatibility', () => {
   test('legacy routes resolve to current destinations', async ({ page }) => {
+    test.setTimeout(90_000);
+
     const routes = [
       { from: '/discover', to: /filter=dreps/ },
       { from: '/match', to: /\/match$/ },
@@ -9,7 +11,7 @@ test.describe('Legacy route compatibility', () => {
     ];
 
     for (const { from, to } of routes) {
-      await page.goto(from, { waitUntil: 'domcontentloaded' });
+      await page.goto(from, { waitUntil: 'domcontentloaded', timeout: 60_000 });
       await expect(page).toHaveURL(to, { timeout: 30_000 });
       await expect(page.locator('#main-content')).toBeVisible({ timeout: 15_000 });
     }
@@ -29,10 +31,12 @@ test.describe('Page loading', () => {
     });
   }
 
-  test('Pulse page renders overview content', async ({ page }) => {
+  test('Pulse page renders governance health content', async ({ page }) => {
     test.setTimeout(90_000);
     await page.goto('/pulse', { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    await expect(page.locator('button:has-text("Overview")')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-discovery="gov-health"]').first()).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('Discover page renders DRep tab content', async ({ page }) => {

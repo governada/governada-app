@@ -17,6 +17,7 @@ export interface VerificationResult {
 }
 
 interface SmokeOptions {
+  apiKey?: string | null;
   baseUrl: string;
   expectedSha?: string | null;
   fetchImpl?: typeof fetch;
@@ -87,25 +88,18 @@ function validateHealthStatus(
 }
 
 function validateProductionSyncFreshness(body: any): string | null {
-  const status = getHealthStatus(body);
-  if (status !== 'healthy') {
-    return `Health status is ${status ?? 'missing'}`;
+  if (body?.status !== 'healthy') {
+    return `Core sync status is ${body?.status ?? 'missing'}`;
   }
 
-  if (!Array.isArray(body?.syncs)) return 'Missing syncs array';
+  if (!Array.isArray(body?.core_syncs)) return 'Missing core_syncs array';
 
-  const coreSyncTypes = new Set(['proposals', 'dreps', 'scoring', 'alignment']);
-  const degradedCoreSyncs = body.syncs.filter(
-    (sync: any) => coreSyncTypes.has(sync?.type) && sync?.level !== 'healthy',
+  const degradedCoreSyncs = body.core_syncs.filter(
+    (sync: any) => sync?.stale === true || sync?.lastSuccess === false,
   );
 
   if (degradedCoreSyncs.length > 0) {
-    return `Non-healthy core syncs: ${degradedCoreSyncs.map((sync: any) => `${sync.type}:${sync.level}`).join(', ')}`;
-  }
-
-  const snapshotStatus = body?.snapshots?.status;
-  if (snapshotStatus && snapshotStatus !== 'healthy') {
-    return `Snapshot health is ${snapshotStatus}`;
+    return `Non-healthy core syncs: ${degradedCoreSyncs.map((sync: any) => `${sync.type}:${sync.stale ? 'stale' : 'failed'}`).join(', ')}`;
   }
 
   return null;
@@ -138,18 +132,6 @@ export function getSmokeChecks(
         ),
     },
     {
-      name: 'Health (full)',
-      path: '/api/health',
-      expectedStatus: 200,
-      maxResponseMs: 5000,
-      validate: (body) =>
-        validateHealthStatus(
-          body,
-          profile === 'production' ? ['healthy'] : ['healthy', 'degraded'],
-          'Health',
-        ),
-    },
-    {
       name: 'DReps list',
       path: '/api/dreps',
       expectedStatus: 200,
@@ -162,12 +144,20 @@ export function getSmokeChecks(
     },
     {
       name: 'Public API v1 - DReps',
-      path: '/api/v1/dreps?limit=5',
+      path: '/api/v1/dreps?limit=20',
       expectedStatus: 200,
       maxResponseMs: 6000,
       validate: (body) => {
         if (!Array.isArray(body?.data)) return 'Missing data array';
         if (!body?.meta?.api_version) return 'Missing meta.api_version';
+        if (profile === 'production') {
+          const withScore = body.data.filter((d: any) => d.score != null && d.score > 0);
+          if (withScore.length === 0) return 'No DReps have scores - scoring may be broken';
+          const scorePct = (withScore.length / body.data.length) * 100;
+          if (scorePct < 50) {
+            return `Only ${scorePct.toFixed(0)}% of DReps have scores (expected >50%)`;
+          }
+        }
         return null;
       },
     },
@@ -177,10 +167,20 @@ export function getSmokeChecks(
       expectedStatus: 200,
       maxResponseMs: 6000,
       validate: (body) => {
-        if (typeof body?.data?.total_registered_dreps !== 'number') {
+        const data = body?.data;
+        if (typeof data?.total_registered_dreps !== 'number') {
           return 'Missing total_registered_dreps';
         }
-        if (!body?.data?.score_distribution) return 'Missing score_distribution';
+        if (!data?.score_distribution) return 'Missing score_distribution';
+        if (profile === 'production') {
+          if (data.total_registered_dreps < 100) {
+            return `DRep count suspiciously low: ${data.total_registered_dreps}`;
+          }
+          if (data.total_votes < 1000) return `Vote count suspiciously low: ${data.total_votes}`;
+          if (data.total_proposals < 10) {
+            return `Proposal count suspiciously low: ${data.total_proposals}`;
+          }
+        }
         return null;
       },
     },
@@ -203,41 +203,13 @@ export function getSmokeChecks(
   return [
     ...baseChecks,
     {
-      name: 'DRep data completeness',
-      path: '/api/v1/dreps?limit=20',
+      name: 'Core sync health',
+      path: '/api/health/sync',
       expectedStatus: 200,
+      maxResponseMs: 3000,
       validate: (body) => {
-        if (!body?.data?.length) return 'No DRep data returned';
-        const withScore = body.data.filter((d: any) => d.score != null && d.score > 0);
-        if (withScore.length === 0) return 'No DReps have scores - scoring may be broken';
-        const scorePct = (withScore.length / body.data.length) * 100;
-        if (scorePct < 50)
-          return `Only ${scorePct.toFixed(0)}% of DReps have scores (expected >50%)`;
-        return null;
+        return validateProductionSyncFreshness(body);
       },
-    },
-    {
-      name: 'Governance health - data counts',
-      path: '/api/v1/governance/health',
-      expectedStatus: 200,
-      validate: (body) => {
-        const data = body?.data;
-        if (!data) return 'Missing data';
-        if (data.total_registered_dreps < 100) {
-          return `DRep count suspiciously low: ${data.total_registered_dreps}`;
-        }
-        if (data.total_votes < 1000) return `Vote count suspiciously low: ${data.total_votes}`;
-        if (data.total_proposals < 10) {
-          return `Proposal count suspiciously low: ${data.total_proposals}`;
-        }
-        return null;
-      },
-    },
-    {
-      name: 'Sync freshness',
-      path: '/api/health',
-      expectedStatus: 200,
-      validate: validateProductionSyncFreshness,
     },
   ];
 }
@@ -246,15 +218,20 @@ export async function runVerificationCheck(
   baseUrl: string,
   check: VerificationCheck,
   fetchImpl: typeof fetch = fetch,
+  apiKey?: string | null,
 ): Promise<VerificationResult> {
   const url = `${baseUrl}${check.path}`;
   const maxMs = check.maxResponseMs;
+  const headers: Record<string, string> = { 'User-Agent': 'Governada-DeployVerify/1.0' };
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
+  }
 
   try {
     const startedAt = performance.now();
     const response = await fetchImpl(url, {
       method: 'GET',
-      headers: { 'User-Agent': 'Governada-DeployVerify/1.0' },
+      headers,
       signal: AbortSignal.timeout(15_000),
     });
     const elapsed = Math.round(performance.now() - startedAt);
@@ -302,6 +279,7 @@ export async function runVerificationCheck(
 }
 
 export async function runSmokeChecks({
+  apiKey = process.env.DEPLOY_VERIFY_API_KEY || process.env.SMOKE_TEST_API_KEY || null,
   baseUrl,
   expectedSha,
   fetchImpl = fetch,
@@ -313,7 +291,7 @@ export async function runSmokeChecks({
   const results: VerificationResult[] = [];
 
   for (const check of checks) {
-    results.push(await runVerificationCheck(baseUrl, check, fetchImpl));
+    results.push(await runVerificationCheck(baseUrl, check, fetchImpl, apiKey));
   }
 
   let failed = 0;

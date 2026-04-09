@@ -316,14 +316,14 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
 
           {!isStudioMode && (
             <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center">
-              <p className="text-xs text-muted-foreground/70">
+              <p className="text-xs text-muted-foreground">
                 {t(
                   'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.',
                 )}
               </p>
               <div className="mt-3 space-y-2">
                 <LegalLinks />
-                <p className="text-[11px] text-muted-foreground/60">
+                <p className="text-[11px] text-muted-foreground">
                   Analytics may be enabled in production deployments. See{' '}
                   <Link href="/privacy" className="underline decoration-dotted underline-offset-2">
                     Privacy

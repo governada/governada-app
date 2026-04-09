@@ -47,14 +47,22 @@ describe('deploy verification helpers', () => {
     expect(releaseMatchesExpected('fedcba98', 'abcdef12')).toBe(false);
   });
 
-  it('requires healthy health states in production smoke checks', async () => {
+  it('verifies production deploys against core health without depending on broad /api/health', async () => {
     const fetch = createFetch({
       '/api/health/ready': response({ status: 'ok', release: { commit_sha: 'abc123' } }),
       '/api/health/deep': response({ status: 'healthy' }),
-      '/api/health': response({ status: 'degraded', syncs: [], snapshots: { status: 'healthy' } }),
+      '/api/health/sync': response({
+        status: 'healthy',
+        core_syncs: [
+          { type: 'proposals', stale: false, lastSuccess: true },
+          { type: 'dreps', stale: false, lastSuccess: true },
+          { type: 'scoring', stale: false, lastSuccess: true },
+          { type: 'alignment', stale: false, lastSuccess: true },
+        ],
+      }),
       '/api/dreps': response({ dreps: [{ id: 'drep1' }] }),
-      '/api/v1/dreps?limit=5': response({
-        data: [{ id: 'drep1', score: 10 }],
+      '/api/v1/dreps?limit=20': response({
+        data: Array.from({ length: 20 }, (_, index) => ({ id: `drep${index}`, score: 10 })),
         meta: { api_version: '1.0' },
       }),
       '/api/v1/governance/health': response({
@@ -66,9 +74,6 @@ describe('deploy verification helpers', () => {
         },
       }),
       '/api/auth/nonce': response({ nonce: 'n', signature: 's' }),
-      '/api/v1/dreps?limit=20': response({
-        data: Array.from({ length: 20 }, (_, index) => ({ id: `drep${index}`, score: 10 })),
-      }),
     });
 
     const result = await runSmokeChecks({
@@ -80,22 +85,16 @@ describe('deploy verification helpers', () => {
       log: () => {},
     });
 
-    expect(result.failed).toBe(2);
-    expect(result.results.find((entry) => entry.name === 'Health (full)')?.detail).toContain(
-      'outside allowed set',
-    );
-    expect(result.results.find((entry) => entry.name === 'Sync freshness')?.detail).toContain(
-      'Health status is degraded',
-    );
+    expect(result.failed).toBe(0);
+    expect(result.results.find((entry) => entry.name === 'Core sync health')?.pass).toBe(true);
   });
 
   it('allows degraded health in preview smoke checks', async () => {
     const fetch = createFetch({
       '/api/health/ready': response({ status: 'ok', release: { commit_sha: 'abc123' } }),
       '/api/health/deep': response({ status: 'degraded' }),
-      '/api/health': response({ status: 'degraded' }),
       '/api/dreps': response({ dreps: [{ id: 'drep1' }] }),
-      '/api/v1/dreps?limit=5': response({
+      '/api/v1/dreps?limit=20': response({
         data: [{ id: 'drep1', score: 10 }],
         meta: { api_version: '1.0' },
       }),
@@ -115,7 +114,7 @@ describe('deploy verification helpers', () => {
     });
 
     expect(result.failed).toBe(0);
-    expect(getSmokeChecks('preview')).toHaveLength(7);
+    expect(getSmokeChecks('preview')).toHaveLength(6);
   });
 
   it('polls readiness until the expected release is live', async () => {

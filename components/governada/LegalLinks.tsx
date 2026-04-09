@@ -9,17 +9,14 @@ export function LegalLinks({ className }: { className?: string }) {
     >
       <Link
         href="/privacy"
-        className="text-muted-foreground/70 transition-colors hover:text-foreground"
+        className="text-muted-foreground transition-colors hover:text-foreground"
       >
         Privacy
       </Link>
       <span className="text-muted-foreground/40" aria-hidden="true">
         /
       </span>
-      <Link
-        href="/terms"
-        className="text-muted-foreground/70 transition-colors hover:text-foreground"
-      >
+      <Link href="/terms" className="text-muted-foreground transition-colors hover:text-foreground">
         Terms
       </Link>
     </nav>

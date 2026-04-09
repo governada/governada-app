@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildReviewDiscipline,
   summarizeReview,
@@ -15,36 +15,43 @@ describe('systems review helpers', () => {
   });
 
   it('marks review discipline warning when an open commitment is overdue', () => {
-    const commitment = toSystemsCommitment({
-      id: '6d872854-b7ab-4ae8-a7bf-ce58fa4f5f90',
-      review_id: '1d9cad5c-6ba5-4c9a-8f70-9835cff31568',
-      title: 'Add deterministic DRep read harness',
-      summary: 'Protect the workspace read path.',
-      owner: 'Founder + agents',
-      status: 'planned',
-      due_date: '2026-03-25',
-      linked_slo_ids: ['journeys'],
-      created_at: '2026-03-20T00:00:00.000Z',
-    });
-    const review = toSystemsReviewRecord(
-      {
-        id: '1d9cad5c-6ba5-4c9a-8f70-9835cff31568',
-        review_date: '2026-03-24',
-        reviewed_at: '2026-03-24T12:00:00.000Z',
-        overall_status: 'warning',
-        focus_area: 'Critical journey protection',
-        summary: 'Workspace read confidence still needs browser-level proof.',
-        top_risk: 'Operator workflows remain under-defended.',
-        change_notes: 'We still need a deterministic seeded harness for workspace reads.',
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-29T12:00:00.000Z'));
+
+    try {
+      const commitment = toSystemsCommitment({
+        id: '6d872854-b7ab-4ae8-a7bf-ce58fa4f5f90',
+        review_id: '1d9cad5c-6ba5-4c9a-8f70-9835cff31568',
+        title: 'Add deterministic DRep read harness',
+        summary: 'Protect the workspace read path.',
+        owner: 'Founder + agents',
+        status: 'planned',
+        due_date: '2026-03-25',
         linked_slo_ids: ['journeys'],
-      },
-      commitment,
-    );
+        created_at: '2026-03-20T00:00:00.000Z',
+      });
+      const review = toSystemsReviewRecord(
+        {
+          id: '1d9cad5c-6ba5-4c9a-8f70-9835cff31568',
+          review_date: '2026-03-24',
+          reviewed_at: '2026-03-24T12:00:00.000Z',
+          overall_status: 'warning',
+          focus_area: 'Critical journey protection',
+          summary: 'Workspace read confidence still needs browser-level proof.',
+          top_risk: 'Operator workflows remain under-defended.',
+          change_notes: 'We still need a deterministic seeded harness for workspace reads.',
+          linked_slo_ids: ['journeys'],
+        },
+        commitment,
+      );
 
-    const discipline = buildReviewDiscipline([review], [commitment]);
+      const discipline = buildReviewDiscipline([review], [commitment]);
 
-    expect(discipline.status).toBe('warning');
-    expect(discipline.overdueCommitments).toBe(1);
+      expect(discipline.status).toBe('warning');
+      expect(discipline.overdueCommitments).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('creates compact review summaries for stored history', () => {

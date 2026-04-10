@@ -20,6 +20,15 @@ const {
   mockSyncLoggerFinalize: vi.fn(),
 }));
 
+type QueryKey = 'dreps' | 'proposals' | 'vote_rationales';
+
+let fetchAllResults: unknown[][] = [];
+let capturedSelects: Record<QueryKey, string[]> = {
+  dreps: [],
+  proposals: [],
+  vote_rationales: [],
+};
+
 vi.mock('@/lib/supabase', () => ({
   getSupabaseAdmin: mockGetSupabaseAdmin,
 }));
@@ -59,8 +68,25 @@ vi.mock('@/utils/koios', () => ({
 import { syncMetadataArchive } from '@/lib/sync/data-moat';
 
 function makeSupabase() {
+  const makeQueryChain = (key: QueryKey) => {
+    const chain: Record<string, unknown> = {};
+    chain.select = vi.fn((selection: string) => {
+      capturedSelects[key].push(selection);
+      return chain;
+    });
+    chain.not = vi.fn(() => chain);
+    chain.order = vi.fn(() => chain);
+    chain.gt = vi.fn(() => chain);
+    chain.neq = vi.fn(() => chain);
+    return chain;
+  };
+
   return {
     from: vi.fn().mockImplementation((table: string) => {
+      if (table === 'dreps') return makeQueryChain('dreps');
+      if (table === 'proposals') return makeQueryChain('proposals');
+      if (table === 'vote_rationales') return makeQueryChain('vote_rationales');
+
       if (table === 'drep_votes') {
         return {
           select: vi.fn().mockReturnThis(),
@@ -68,6 +94,12 @@ function makeSupabase() {
             data: [{ vote_tx_hash: 'vote-1', meta_hash: 'vote-hash' }],
             error: null,
           }),
+        };
+      }
+
+      if (table === 'metadata_archive') {
+        return {
+          upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
         };
       }
 
@@ -79,38 +111,46 @@ function makeSupabase() {
 describe('syncMetadataArchive', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetSupabaseAdmin.mockReturnValue(makeSupabase());
-    mockGetSyncCursorTimestamp
-      .mockResolvedValueOnce('2026-04-05T00:00:00.000Z')
-      .mockResolvedValueOnce('2026-04-05T00:00:00.000Z')
-      .mockResolvedValueOnce('2026-04-05T00:00:00.000Z');
-    mockFetchAll
-      .mockResolvedValueOnce([
+    capturedSelects = {
+      dreps: [],
+      proposals: [],
+      vote_rationales: [],
+    };
+    fetchAllResults = [
+      [
         {
           id: 'drep1',
           anchor_url: 'https://example.com/drep.json',
           anchor_hash: 'drep-hash',
           profile_last_changed_at: '2026-04-06T10:00:00.000Z',
         },
-      ])
-      .mockResolvedValueOnce([
+      ],
+      [
         {
           tx_hash: 'tx1',
           proposal_index: 0,
-          meta_url: 'https://example.com/proposal.json',
-          meta_hash: 'proposal-hash',
           meta_json: { body: { title: 'Title', abstract: 'Abstract' } },
           updated_at: '2026-04-06T11:00:00.000Z',
         },
-      ])
-      .mockResolvedValueOnce([
+      ],
+      [
         {
           vote_tx_hash: 'vote-1',
           meta_url: 'https://example.com/rationale.json',
           rationale_text: 'Because this proposal improves governance.',
           fetched_at: '2026-04-06T12:00:00.000Z',
         },
-      ]);
+      ],
+    ];
+    mockGetSupabaseAdmin.mockReturnValue(makeSupabase());
+    mockGetSyncCursorTimestamp
+      .mockResolvedValueOnce('2026-04-05T00:00:00.000Z')
+      .mockResolvedValueOnce('2026-04-05T00:00:00.000Z')
+      .mockResolvedValueOnce('2026-04-05T00:00:00.000Z');
+    mockFetchAll.mockImplementation(async (factory: () => unknown) => {
+      factory();
+      return fetchAllResults.shift() ?? [];
+    });
     mockFetchDRepMetadata.mockResolvedValue([
       {
         drep_id: 'drep1',
@@ -135,6 +175,18 @@ describe('syncMetadataArchive', () => {
       errors: [],
     });
     expect(mockBatchUpsert).toHaveBeenCalledTimes(3);
+    expect(capturedSelects.proposals).toEqual(['tx_hash, proposal_index, meta_json, updated_at']);
+    expect((mockBatchUpsert.mock.calls[1] ?? [])[2]).toEqual([
+      expect.objectContaining({
+        entity_type: 'proposal',
+        entity_id: 'tx1#0',
+        meta_url: null,
+        meta_hash: null,
+        meta_json: { body: { title: 'Title', abstract: 'Abstract' } },
+        cip_standard: 'CIP-108',
+        fetch_status: 'success',
+      }),
+    ]);
     expect(mockSetSyncCursorTimestamp).toHaveBeenNthCalledWith(
       1,
       expect.anything(),

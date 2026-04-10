@@ -712,7 +712,7 @@ async function syncMetadataArchiveIncremental(
     const proposalsWithMeta = await fetchAll(() => {
       let query = supabase
         .from('proposals')
-        .select('tx_hash, proposal_index, meta_url, meta_hash, meta_json, updated_at')
+        .select('tx_hash, proposal_index, meta_json, updated_at')
         .not('meta_json', 'is', null)
         .order('updated_at', { ascending: true });
 
@@ -732,8 +732,8 @@ async function syncMetadataArchiveIncremental(
           return {
             entity_type: 'proposal' as const,
             entity_id: `${proposal.tx_hash}#${proposal.proposal_index}`,
-            meta_url: proposal.meta_url,
-            meta_hash: proposal.meta_hash,
+            meta_url: null,
+            meta_hash: null,
             meta_json: proposal.meta_json,
             cip_standard: 'CIP-108' as const,
             fetch_status: 'success' as const,
@@ -938,7 +938,7 @@ export async function syncMetadataArchive(): Promise<{
     // Archive proposal metadata (CIP-108) — from proposals.meta_json
     const { data: proposalsWithMeta } = await supabase
       .from('proposals')
-      .select('tx_hash, proposal_index, meta_url, meta_hash, meta_json')
+      .select('tx_hash, proposal_index, meta_json')
       .not('meta_json', 'is', null);
 
     if (proposalsWithMeta?.length) {
@@ -952,8 +952,8 @@ export async function syncMetadataArchive(): Promise<{
         rows.push({
           entity_type: 'proposal' as const,
           entity_id: `${p.tx_hash}#${p.proposal_index}`,
-          meta_url: p.meta_url,
-          meta_hash: p.meta_hash,
+          meta_url: null,
+          meta_hash: null,
           meta_json: p.meta_json,
           cip_standard: 'CIP-108' as const,
           fetch_status: 'success' as const,

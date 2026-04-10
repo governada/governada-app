@@ -14,6 +14,8 @@ vi.mock('@/lib/logger', () => ({
 
 vi.mock('@/lib/sync-utils', () => ({
   SyncLogger: vi.fn(),
+  alertCritical: vi.fn(),
+  alertDiscord: vi.fn(),
   errMsg: (error: unknown) => (error instanceof Error ? error.message : String(error)),
   emitPostHog: vi.fn(),
   batchUpsert: mockBatchUpsert,
@@ -46,7 +48,7 @@ vi.mock('@sentry/nextjs', () => ({
   startSpan: (_span: unknown, callback: () => Promise<unknown>) => callback(),
 }));
 
-import { runRationalePipeline } from '@/lib/sync/slow';
+import { buildSlowSyncAlert, runRationalePipeline } from '@/lib/sync/slow';
 import { RATIONALE_FETCH_MAX_ATTEMPTS, RATIONALE_FETCH_STATUS } from '@/lib/vote-rationales';
 
 function makeQueuedRow(overrides: Record<string, unknown> = {}) {
@@ -164,5 +166,37 @@ describe('runRationalePipeline', () => {
         next_fetch_at: null,
       }),
     );
+  });
+});
+
+describe('buildSlowSyncAlert', () => {
+  it('returns null when there are no issues', () => {
+    expect(buildSlowSyncAlert([], [], '1.0')).toBeNull();
+  });
+
+  it('builds a critical alert when core sync operations fail', () => {
+    const alert = buildSlowSyncAlert(['Rationales: timeout'], [], '8.5');
+
+    expect(alert).toEqual(
+      expect.objectContaining({
+        title: 'Slow Sync Failed',
+        critical: true,
+      }),
+    );
+    expect(alert?.details).toContain('Status: FAILED');
+    expect(alert?.details).toContain('Core issues (1): Rationales: timeout');
+  });
+
+  it('builds a degraded alert for optional failures only', () => {
+    const alert = buildSlowSyncAlert([], ['AI summaries: 503'], '4.2');
+
+    expect(alert).toEqual(
+      expect.objectContaining({
+        title: 'Slow Sync Degraded',
+        critical: false,
+      }),
+    );
+    expect(alert?.details).toContain('Status: DEGRADED');
+    expect(alert?.details).toContain('Optional issues (1): AI summaries: 503');
   });
 });

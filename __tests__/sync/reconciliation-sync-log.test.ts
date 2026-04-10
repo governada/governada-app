@@ -44,6 +44,16 @@ describe('buildReconciliationSyncLogEntry', () => {
     },
   );
 
+  it.each(['drift', 'mismatch'] as const)(
+    'surfaces %s runs in sync_log error_message',
+    (overallStatus) => {
+      const entry = buildReconciliationSyncLogEntry(makeReport(overallStatus), false);
+
+      expect(entry.error_message).toContain(`Reconciliation ${overallStatus}`);
+      expect(entry.error_message).toContain('checks outside tolerance');
+    },
+  );
+
   it('preserves mismatch counts while keeping execution success separate', () => {
     const entry = buildReconciliationSyncLogEntry(makeReport('mismatch'), false);
 

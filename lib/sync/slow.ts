@@ -6,7 +6,14 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger as log } from '@/lib/logger';
-import { SyncLogger, errMsg, emitPostHog, batchUpsert } from '@/lib/sync-utils';
+import {
+  SyncLogger,
+  alertCritical,
+  alertDiscord,
+  batchUpsert,
+  emitPostHog,
+  errMsg,
+} from '@/lib/sync-utils';
 import { generateText } from '@/lib/ai';
 import { blake2bHex } from 'blakejs';
 import { fetchDRepVotingPowerHistory, fetchDRepInfo } from '@/utils/koios';
@@ -746,6 +753,14 @@ export async function executeSlowSync(): Promise<Record<string, unknown>> {
         ? (coreErrors.length > 0 ? 'CORE: ' : 'OPTIONAL: ') + syncErrors.join('; ')
         : null;
     await syncLog.finalize(success, errorSummary, metrics);
+    const alert = buildSlowSyncAlert(coreErrors, optionalErrors, duration);
+    if (alert) {
+      if (alert.critical) {
+        await alertCritical(alert.title, alert.details);
+      } else {
+        await alertDiscord(alert.title, alert.details);
+      }
+    }
     await emitPostHog(success, 'slow', syncLog.elapsed, {
       ...metrics,
       core_errors: coreErrors.length,
@@ -760,4 +775,35 @@ export async function executeSlowSync(): Promise<Record<string, unknown>> {
       timestamp: new Date().toISOString(),
     };
   });
+}
+
+export interface SlowSyncAlert {
+  title: string;
+  details: string;
+  critical: boolean;
+}
+
+export function buildSlowSyncAlert(
+  coreErrors: string[],
+  optionalErrors: string[],
+  durationSeconds: string,
+): SlowSyncAlert | null {
+  if (coreErrors.length === 0 && optionalErrors.length === 0) return null;
+
+  const critical = coreErrors.length > 0;
+  const details = [
+    `Status: ${critical ? 'FAILED' : 'DEGRADED'}`,
+    `Duration: ${durationSeconds}s`,
+    `Core issues (${coreErrors.length}): ${coreErrors.length > 0 ? coreErrors.join('; ') : 'none'}`,
+    `Optional issues (${optionalErrors.length}): ${
+      optionalErrors.length > 0 ? optionalErrors.join('; ') : 'none'
+    }`,
+    'See sync_log for the full metrics payload.',
+  ].join('\n');
+
+  return {
+    title: critical ? 'Slow Sync Failed' : 'Slow Sync Degraded',
+    details,
+    critical,
+  };
 }

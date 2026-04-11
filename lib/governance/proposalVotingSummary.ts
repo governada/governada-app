@@ -13,6 +13,7 @@ export interface ProposalVotingSummaryRow {
   drep_yes_vote_power?: number | null;
   drep_no_vote_power?: number | null;
   drep_abstain_vote_power?: number | null;
+  drep_always_abstain_power?: number | null;
   pool_yes_votes_cast: number | null;
   pool_no_votes_cast: number | null;
   pool_abstain_votes_cast: number | null;
@@ -26,6 +27,27 @@ export interface ProposalVotingSummaryRow {
 
 export function getProposalVotingSummaryKey(txHash: string, proposalIndex: number): string {
   return `${txHash}-${proposalIndex}`;
+}
+
+function getProposalVotingSummaryEpoch(row: ProposalVotingSummaryRow): number {
+  return row.epoch_no ?? Number.NEGATIVE_INFINITY;
+}
+
+function reduceLatestProposalVotingSummaryRows(
+  rows: ProposalVotingSummaryRow[],
+): Map<string, ProposalVotingSummaryRow> {
+  const latestRows = new Map<string, ProposalVotingSummaryRow>();
+
+  for (const row of rows) {
+    const key = getProposalVotingSummaryKey(row.proposal_tx_hash, row.proposal_index);
+    const current = latestRows.get(key);
+
+    if (!current || getProposalVotingSummaryEpoch(row) >= getProposalVotingSummaryEpoch(current)) {
+      latestRows.set(key, row);
+    }
+  }
+
+  return latestRows;
 }
 
 export async function fetchProposalVotingSummaries(
@@ -47,7 +69,9 @@ export async function fetchProposalVotingSummaries(
     return [];
   }
 
-  return data as unknown as ProposalVotingSummaryRow[];
+  return [
+    ...reduceLatestProposalVotingSummaryRows(data as unknown as ProposalVotingSummaryRow[]).values(),
+  ];
 }
 
 export async function fetchLatestProposalVotingSummary(
@@ -84,7 +108,7 @@ export function indexProposalVotingSummaryTriBodies(
 ): Map<string, TriBodyVotes> {
   const triBodyMap = new Map<string, TriBodyVotes>();
 
-  for (const row of rows) {
+  for (const row of reduceLatestProposalVotingSummaryRows(rows).values()) {
     triBodyMap.set(
       getProposalVotingSummaryKey(row.proposal_tx_hash, row.proposal_index),
       buildTriBodyVotes(row),
@@ -99,7 +123,7 @@ export function indexProposalVotingSummaries(
 ): Map<string, ProposalVotingSummaryRow> {
   const summaryMap = new Map<string, ProposalVotingSummaryRow>();
 
-  for (const row of rows) {
+  for (const row of reduceLatestProposalVotingSummaryRows(rows).values()) {
     summaryMap.set(getProposalVotingSummaryKey(row.proposal_tx_hash, row.proposal_index), row);
   }
 

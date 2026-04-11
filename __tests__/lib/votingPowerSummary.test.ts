@@ -18,29 +18,12 @@ async function loadVotingPowerSummaryModule({
     thresholdKey: threshold != null ? 'dvt_p_p_gov_group' : null,
     thresholdKeys: threshold != null ? ['dvt_p_p_gov_group'] : [],
   });
-
-  function makeResolvedQuery(
-    data: Record<string, unknown> | null,
-    terminal: 'single' | 'maybeSingle',
-  ) {
-    const chain = {
-      select: vi.fn(() => chain),
-      eq: vi.fn(() => chain),
-      single:
-        terminal === 'single'
-          ? vi.fn().mockResolvedValue({ data, error: null })
-          : vi.fn().mockResolvedValue({ data: null, error: null }),
-      maybeSingle:
-        terminal === 'maybeSingle'
-          ? vi.fn().mockResolvedValue({ data, error: null })
-          : vi.fn().mockResolvedValue({ data: null, error: null }),
-    };
-
-    return chain;
-  }
-
-  const canonicalQuery = makeResolvedQuery(canonical, 'single');
-  const proposalQuery = makeResolvedQuery(proposal, 'maybeSingle');
+  const fetchLatestProposalVotingSummary = vi.fn().mockResolvedValue(canonical);
+  const proposalQuery = {
+    select: vi.fn(() => proposalQuery),
+    eq: vi.fn(() => proposalQuery),
+    maybeSingle: vi.fn().mockResolvedValue({ data: proposal, error: null }),
+  };
   const votesQuery = {
     select: vi.fn(() => votesQuery),
     eq: vi.fn(() => votesQuery),
@@ -51,7 +34,6 @@ async function loadVotingPowerSummaryModule({
     eq: vi.fn().mockResolvedValue({ data: activeDreps, error: null }),
   };
   const from = vi.fn((table: string) => {
-    if (table === 'proposal_voting_summary') return canonicalQuery;
     if (table === 'proposals') return proposalQuery;
     if (table === 'drep_votes') return votesQuery;
     if (table === 'dreps') return drepsQuery;
@@ -64,6 +46,9 @@ async function loadVotingPowerSummaryModule({
   vi.doMock('@/lib/governanceThresholds', () => ({
     getGovernanceThresholdForProposal,
   }));
+  vi.doMock('@/lib/governance/proposalVotingSummary', () => ({
+    fetchLatestProposalVotingSummary,
+  }));
   vi.doMock('@/lib/logger', () => ({
     logger: {
       info: vi.fn(),
@@ -73,7 +58,11 @@ async function loadVotingPowerSummaryModule({
   }));
 
   const mod = await import('@/lib/governance/votingPowerSummary');
-  return { getVotingPowerSummary: mod.getVotingPowerSummary, getGovernanceThresholdForProposal };
+  return {
+    getVotingPowerSummary: mod.getVotingPowerSummary,
+    getGovernanceThresholdForProposal,
+    fetchLatestProposalVotingSummary,
+  };
 }
 
 describe('getVotingPowerSummary', () => {
@@ -96,7 +85,7 @@ describe('getVotingPowerSummary', () => {
       proposal_type: 'ParameterChange',
       param_changes: { govActionLifetime: 10 },
     };
-    const { getVotingPowerSummary, getGovernanceThresholdForProposal } =
+    const { getVotingPowerSummary, getGovernanceThresholdForProposal, fetchLatestProposalVotingSummary } =
       await loadVotingPowerSummaryModule({
         canonical,
         proposal,
@@ -107,6 +96,10 @@ describe('getVotingPowerSummary', () => {
     expect(getGovernanceThresholdForProposal).toHaveBeenCalledWith({
       proposalType: 'ParameterChange',
       paramChanges: { govActionLifetime: 10 },
+    });
+    expect(fetchLatestProposalVotingSummary).toHaveBeenCalledWith(expect.anything(), {
+      txHash: 'tx1',
+      proposalIndex: 0,
     });
     expect(result).toMatchObject({
       yesPower: 100,

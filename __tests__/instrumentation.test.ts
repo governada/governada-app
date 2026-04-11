@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import * as jose from 'jose';
 
 const mockSetUser = vi.fn();
 const mockSetTag = vi.fn();
 const mockCaptureRequestError = vi.fn();
+const mockValidateSessionToken = vi.fn();
 
 vi.mock('@sentry/nextjs', () => ({
   withScope: (
@@ -12,24 +12,23 @@ vi.mock('@sentry/nextjs', () => ({
   captureRequestError: (...args: unknown[]) => mockCaptureRequestError(...args),
 }));
 
-import { onRequestError } from '@/instrumentation';
+vi.mock('@/lib/supabaseAuth', () => ({
+  validateSessionToken: (...args: unknown[]) => mockValidateSessionToken(...args),
+}));
 
-async function createToken(secret: string, walletAddress: string) {
-  return new jose.SignJWT({ userId: 'user-1', walletAddress, expiresAt: Date.now() + 60_000 })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('1m')
-    .sign(new TextEncoder().encode(secret));
-}
+import { onRequestError } from '@/instrumentation';
 
 describe('onRequestError', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.SESSION_SECRET = 'test-session-secret';
+    mockValidateSessionToken.mockResolvedValue(null);
   });
 
   it('tags Sentry with a verified session wallet hash', async () => {
-    const token = await createToken(process.env.SESSION_SECRET!, 'addr_test1verifiedwallet');
+    mockValidateSessionToken.mockResolvedValue({
+      walletAddress: 'addr_test1verifiedwallet',
+    });
+    const token = encodeURIComponent('verified.session.token');
 
     await onRequestError(
       new Error('boom') as Error & { digest: string },
@@ -46,13 +45,17 @@ describe('onRequestError', () => {
       },
     );
 
+    expect(mockValidateSessionToken).toHaveBeenCalledWith('verified.session.token');
     expect(mockSetUser).toHaveBeenCalledTimes(1);
     expect(mockSetTag).toHaveBeenCalledWith('hashedAddress', expect.any(String));
     expect(mockCaptureRequestError).toHaveBeenCalledTimes(1);
   });
 
   it('accepts the renamed governada session cookie', async () => {
-    const token = await createToken(process.env.SESSION_SECRET!, 'addr_test1renamedwallet');
+    mockValidateSessionToken.mockResolvedValue({
+      walletAddress: 'addr_test1renamedwallet',
+    });
+    const token = encodeURIComponent('renamed.session.token');
 
     await onRequestError(
       new Error('boom') as Error & { digest: string },
@@ -69,18 +72,19 @@ describe('onRequestError', () => {
       },
     );
 
+    expect(mockValidateSessionToken).toHaveBeenCalledWith('renamed.session.token');
     expect(mockSetUser).toHaveBeenCalledTimes(1);
     expect(mockSetTag).toHaveBeenCalledWith('hashedAddress', expect.any(String));
     expect(mockCaptureRequestError).toHaveBeenCalledTimes(1);
   });
 
-  it('does not trust unsigned or invalid session cookies', async () => {
+  it('does not trust sessions rejected by the canonical validator', async () => {
     await onRequestError(
       new Error('boom') as Error & { digest: string },
       {
         path: '/workspace',
         method: 'GET',
-        headers: { cookie: 'drepscore_session=forged.invalid.token' },
+        headers: { cookie: `drepscore_session=${encodeURIComponent('revoked.session.token')}` },
       },
       {
         routerKind: 'App Router',
@@ -90,6 +94,7 @@ describe('onRequestError', () => {
       },
     );
 
+    expect(mockValidateSessionToken).toHaveBeenCalledWith('revoked.session.token');
     expect(mockSetUser).not.toHaveBeenCalled();
     expect(mockSetTag).not.toHaveBeenCalledWith('hashedAddress', expect.any(String));
     expect(mockCaptureRequestError).toHaveBeenCalledTimes(1);

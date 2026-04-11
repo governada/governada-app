@@ -150,4 +150,86 @@ describe('GET /api/proposals', () => {
       'current_epoch, treasury_balance_lovelace',
     );
   });
+
+  it('prefers the latest proposal_voting_summary epoch when duplicate rows are returned', async () => {
+    const proposalsQuery = makeProposalsQuery([
+      {
+        tx_hash: 'tx-1',
+        proposal_index: 0,
+        title: 'Treasury 1',
+        proposal_type: 'TreasuryWithdrawals',
+        expired_epoch: null,
+        ratified_epoch: null,
+        enacted_epoch: null,
+        dropped_epoch: null,
+        expiration_epoch: 400,
+        proposed_epoch: 399,
+        withdrawal_amount: 1_000_000_000,
+        treasury_tier: 'medium',
+        block_time: 1_000,
+        relevant_prefs: ['devex'],
+      },
+    ]);
+    const governanceStatsQuery = makeGovernanceStatsQuery({
+      current_epoch: 390,
+      treasury_balance_lovelace: 10_000_000_000,
+    });
+    const outcomesQuery = makeOutcomeQuery([]);
+    const summaryQuery = makeSummaryQuery([
+      {
+        proposal_tx_hash: 'tx-1',
+        proposal_index: 0,
+        epoch_no: 111,
+        drep_yes_votes_cast: 1,
+        drep_no_votes_cast: 0,
+        drep_abstain_votes_cast: 0,
+        pool_yes_votes_cast: 0,
+        pool_no_votes_cast: 0,
+        pool_abstain_votes_cast: 0,
+        committee_yes_votes_cast: 0,
+        committee_no_votes_cast: 0,
+        committee_abstain_votes_cast: 0,
+      },
+      {
+        proposal_tx_hash: 'tx-1',
+        proposal_index: 0,
+        epoch_no: 114,
+        drep_yes_votes_cast: 6,
+        drep_no_votes_cast: 2,
+        drep_abstain_votes_cast: 1,
+        pool_yes_votes_cast: 1,
+        pool_no_votes_cast: 0,
+        pool_abstain_votes_cast: 0,
+        committee_yes_votes_cast: 0,
+        committee_no_votes_cast: 1,
+        committee_abstain_votes_cast: 0,
+      },
+    ]);
+
+    const from = vi.fn((table: string) => {
+      if (table === 'proposals') return proposalsQuery;
+      if (table === 'governance_stats') return governanceStatsQuery;
+      if (table === 'proposal_outcomes') return outcomesQuery;
+      if (table === 'proposal_voting_summary') return summaryQuery;
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    mockGetSupabaseAdmin.mockReturnValue({ from });
+
+    const response = await GET(createRequest('/api/proposals?limit=1'));
+    const body = (await parseJson(response)) as {
+      proposals: Array<{
+        triBody: {
+          drep: { yes: number; no: number; abstain: number };
+        } | null;
+      }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.proposals[0]?.triBody?.drep).toEqual({
+      yes: 6,
+      no: 2,
+      abstain: 1,
+    });
+  });
 });

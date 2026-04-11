@@ -4,6 +4,13 @@ import { createClient } from '@/lib/supabase';
 import type { AlignmentDimension } from '@/lib/drepIdentity';
 import { extractAlignments, alignmentsToArray, getDominantDimension } from '@/lib/drepIdentity';
 import type { ConstellationApiData } from '@/lib/constellation/types';
+import { buildProposalConstellationNodes } from '@/lib/constellation/proposalNodes';
+import { buildPrecomputedConstellationNodes } from '@/lib/constellation/sceneNodes';
+import type { LayoutInput } from '@/lib/constellation/globe-layout';
+import {
+  fetchProposalVotingSummaries,
+  indexProposalVotingSummaryTriBodies,
+} from '@/lib/governance/proposalVotingSummary';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +23,7 @@ export const GET = withRouteHandler(async () => {
     votesResult,
     rationalesResult,
     proposalsResult,
+    governanceStatsResult,
     pulseResult,
     spoVotesResult,
     ccVotesResult,
@@ -46,10 +54,12 @@ export const GET = withRouteHandler(async () => {
     supabase
       .from('proposals')
       .select(
-        'tx_hash, proposal_index, title, proposal_type, block_time, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch',
+        'tx_hash, proposal_index, title, proposal_type, block_time, ratified_epoch, enacted_epoch, dropped_epoch, expired_epoch, expiration_epoch, proposed_epoch, withdrawal_amount, relevant_prefs',
       )
-      .order('block_time', { ascending: false })
-      .limit(20),
+      .order('proposed_epoch', { ascending: false })
+      .limit(100),
+
+    supabase.from('governance_stats').select('current_epoch').eq('id', 1).single(),
 
     supabase
       .from('dreps')
@@ -82,6 +92,16 @@ export const GET = withRouteHandler(async () => {
   const votes = votesResult.data || [];
   const rationales = rationalesResult.data || [];
   const proposals = proposalsResult.data || [];
+  const currentEpoch = governanceStatsResult.data?.current_epoch ?? null;
+
+  const proposalTxHashes = [...new Set(proposals.map((proposal) => proposal.tx_hash))];
+  const proposalTriBodyMap = indexProposalVotingSummaryTriBodies(
+    await fetchProposalVotingSummaries(
+      supabase,
+      proposalTxHashes,
+      'proposal_tx_hash, proposal_index, drep_yes_votes_cast, drep_no_votes_cast, drep_abstain_votes_cast, pool_yes_votes_cast, pool_no_votes_cast, pool_abstain_votes_cast, committee_yes_votes_cast, committee_no_votes_cast, committee_abstain_votes_cast',
+    ),
+  );
 
   // Compute total ADA governed
   const allActive = pulseResult.data || [];
@@ -101,6 +121,20 @@ export const GET = withRouteHandler(async () => {
   const openProposals = proposals.filter(
     (p) => !p.ratified_epoch && !p.enacted_epoch && !p.dropped_epoch && !p.expired_epoch,
   );
+  const proposalNodes = buildProposalConstellationNodes(
+    openProposals.map((proposal) => ({
+      txHash: proposal.tx_hash,
+      index: proposal.proposal_index,
+      title: proposal.title,
+      status: 'Open',
+      withdrawalAmount:
+        proposal.withdrawal_amount != null ? Number(proposal.withdrawal_amount) : null,
+      expirationEpoch: proposal.expiration_epoch ?? null,
+      relevantPrefs: proposal.relevant_prefs ?? [],
+      triBody: proposalTriBodyMap.get(`${proposal.tx_hash}-${proposal.proposal_index}`) ?? null,
+    })),
+    currentEpoch,
+  );
 
   // Build nodes
   const maxPower = Math.max(
@@ -111,7 +145,7 @@ export const GET = withRouteHandler(async () => {
     1,
   );
 
-  const drepNodes: ConstellationApiData['nodes'] = dreps.map((d) => {
+  const drepNodes: LayoutInput[] = dreps.map((d) => {
     const info = d.info as Record<string, unknown> | null;
     const raw = parseInt((info?.votingPowerLovelace as string) || '0', 10) || 0;
     const adaAmount = Math.round(raw / 1_000_000);
@@ -143,7 +177,7 @@ export const GET = withRouteHandler(async () => {
   }
 
   const maxPoolVotes = Math.max(...poolsData.map((p) => p.vote_count || 0), 1);
-  const spoNodes: ConstellationApiData['nodes'] = poolsData.map((p) => {
+  const spoNodes: LayoutInput[] = poolsData.map((p) => {
     const aligns = {
       treasuryConservative: p.alignment_treasury_conservative ?? 50,
       treasuryGrowth: p.alignment_treasury_growth ?? 50,
@@ -171,7 +205,7 @@ export const GET = withRouteHandler(async () => {
 
   // CC members — read pre-computed alignment from sync pipeline (columns added via migration)
   // Falls back to neutral [50,50,50,50,50,50] if alignment not yet computed
-  const ccNodes: ConstellationApiData['nodes'] = ccMembers.map((m) => {
+  const ccNodes: LayoutInput[] = ccMembers.map((m) => {
     const aligns = extractAlignments(m);
     const arr = alignmentsToArray(aligns);
     const hasAlignment = arr.some((v) => Math.abs(v - 50) > 3);
@@ -190,7 +224,7 @@ export const GET = withRouteHandler(async () => {
     };
   });
 
-  const nodes: ConstellationApiData['nodes'] = [...drepNodes, ...spoNodes, ...ccNodes];
+  const nodes = buildPrecomputedConstellationNodes([...drepNodes, ...spoNodes, ...ccNodes]);
 
   // Build recent events
   const proposalMap = new Map(proposals.map((p) => [p.tx_hash, p]));
@@ -229,10 +263,11 @@ export const GET = withRouteHandler(async () => {
 
   const response: ConstellationApiData = {
     nodes,
+    proposalNodes,
     recentEvents: recentEvents.slice(0, 30),
     stats: {
       totalAdaGoverned: formattedAda,
-      activeProposals: openProposals.length,
+      activeProposals: proposalNodes.length,
       votesThisWeek: votes.length,
       activeDReps: dreps.length,
       activeSpOs: poolsData.length,

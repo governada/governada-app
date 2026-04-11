@@ -26,7 +26,7 @@
 - **Custom visualizations over chart libraries** — if a charting library has it, we build our own. Governance data deserves purpose-built visual design
 - shadcn/ui for structural components (dialogs, dropdowns, inputs) — never for data visualizations
 - Tailwind CSS v4 utility classes — no custom CSS unless absolutely necessary
-- Dark mode via `next-themes` — always support both themes
+- The main app shell is dark-first without a global runtime theme toggle; isolate any embed-specific or surface-specific theme negotiation instead of treating light/dark as a root contract
 - Mobile-considered design throughout
 - Every page's first viewport must be emotionally complete without scrolling
 

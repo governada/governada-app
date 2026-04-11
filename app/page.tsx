@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import { HomePageShell } from '@/components/hub/HomePageShell';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   title: 'Governada — Cardano Governance Intelligence',
   description:

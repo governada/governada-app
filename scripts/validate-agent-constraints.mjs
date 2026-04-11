@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { validateRouteRenderContract } from './lib/agentConstraints.mjs';
 
 const root = process.cwd();
 const errors = [];
@@ -58,21 +59,13 @@ function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function validateForceDynamic() {
+function validateRouteRenderPolicy() {
   const appDir = path.join(root, 'app');
-  const routeFiles = walk(appDir).filter((file) => /[\\/](page|route)\.tsx?$/.test(file));
-  const dynamicExport = /export\s+const\s+dynamic\s*=\s*['"]force-dynamic['"]/;
-  const runtimeUsage =
-    /process\.env\.[A-Z0-9_]+|from\s+['"]@\/lib\/(?:data|redis|supabase(?:[^'"]*)?)['"]|from\s+['"]@\/lib\/(?:data|redis|supabase(?:[^'"]*)?)\/[^'"]+['"]/;
+  const routeFiles = walk(appDir).filter((file) => /[\\/](layout|page|route)\.tsx?$/.test(file));
 
   for (const file of routeFiles) {
     const content = readFileSync(file, 'utf8');
-    if (!runtimeUsage.test(content)) continue;
-    if (dynamicExport.test(content)) continue;
-
-    errors.push(
-      `${toPosix(path.relative(root, file))}: missing "export const dynamic = 'force-dynamic'" for a page/route that touches Supabase, Redis, or env vars.`,
-    );
+    errors.push(...validateRouteRenderContract(toPosix(path.relative(root, file)), content));
   }
 }
 
@@ -132,7 +125,7 @@ function validateRequiredFiles() {
 validateRequiredFiles();
 
 if (errors.length === 0) {
-  validateForceDynamic();
+  validateRouteRenderPolicy();
   validateInngestRegistration();
 }
 

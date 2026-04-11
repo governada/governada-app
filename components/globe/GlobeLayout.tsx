@@ -30,7 +30,6 @@ import type { SortMode } from './FilterBar';
 import type { GlobeIntent } from '@/lib/intelligence/advisor';
 import { useDeviceCapability } from '@/hooks/useDeviceCapability';
 import { useUserConstellationNode } from '@/hooks/useUserConstellationNode';
-import { useConstellationProposals } from '@/hooks/useConstellationProposals';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import {
   parseEntityParam,
@@ -39,13 +38,17 @@ import {
 } from '@/lib/homepage/parseEntityParam';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { posthog } from '@/lib/posthog';
-import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
 import { ClusterLabels3D } from './ClusterLabels3D';
 import { ClusterNebulae } from './ClusterNebula';
 import { setClusterCache } from '@/lib/globe/behaviors/clusterBehavior';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { STORAGE_KEYS, readStoredValue } from '@/lib/persistence';
+
+const ListOverlay = dynamic(
+  () => import('./ListOverlay').then((m) => ({ default: m.ListOverlay })),
+  { ssr: false },
+);
 
 const WorkspaceCards = dynamic(
   () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
@@ -170,14 +173,13 @@ export function GlobeLayout({
   const { segment, drepId } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
   // Epoch context available via useEpochContext() in child components
-  const { use2D } = useDeviceCapability();
+  const { gpuTier, use2D } = useDeviceCapability();
 
   // ---------------------------------------------------------------------------
   // Homepage features: user node, proposals, entity detail, tooltips, match trigger
   // ---------------------------------------------------------------------------
 
   const { userNode, delegationBond } = useUserConstellationNode();
-  const { proposalNodes } = useConstellationProposals();
 
   // Entity detail sheet state (bottom sheet for entity clicks on homepage)
   const [activeEntity, setActiveEntity] = useState<EntityRef | null>(
@@ -316,6 +318,10 @@ export function GlobeLayout({
     globeRef.current?.resetCamera();
   }, []);
   const showRoutePanel = pathname.startsWith('/g/');
+  const showListOverlay = listOpen;
+  const showTooltip = hoveredNode !== null && hoverScreenPos !== null;
+  const showEntityDetailSheet = activeEntity !== null;
+  const showDiscoveryOverlay = filter !== null;
 
   // Reset initial focus on path changes
   useEffect(() => {
@@ -514,8 +520,8 @@ export function GlobeLayout({
             onNodeSelect={handleNodeSelect}
             onNodeHoverScreen={handleNodeHoverScreen}
             breathing
+            gpuTier={gpuTier}
             userNode={userNode}
-            proposalNodes={proposalNodes}
             delegationBond={delegationBond}
             clusters={clusterLabels}
           >
@@ -548,16 +554,18 @@ export function GlobeLayout({
       </div>
 
       {/* List overlay — z-25: left side panel */}
-      <ListOverlay
-        isOpen={listOpen}
-        onClose={handleListClose}
-        filter={filter}
-        onFilterChange={handleFilterChange}
-        sort={sort}
-        onSortChange={setSort}
-        highlightedNodeId={highlightedNodeId}
-        onNodeHover={handleNodeHover}
-      />
+      {showListOverlay && (
+        <ListOverlay
+          isOpen={listOpen}
+          onClose={handleListClose}
+          filter={filter}
+          onFilterChange={handleFilterChange}
+          sort={sort}
+          onSortChange={setSort}
+          highlightedNodeId={highlightedNodeId}
+          onNodeHover={handleNodeHover}
+        />
+      )}
 
       {/* Workspace cards overlay — z-28 */}
       {workspaceCardsVisible && <WorkspaceCards onClose={() => setWorkspaceCardsVisible(false)} />}
@@ -572,21 +580,31 @@ export function GlobeLayout({
       )}
 
       {/* Cursor-following tooltip */}
-      <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} showMatchCta={!isAuthenticated} />
+      {showTooltip && (
+        <GlobeTooltip
+          node={hoveredNode}
+          screenPos={hoverScreenPos}
+          showMatchCta={!isAuthenticated}
+        />
+      )}
 
       {/* Entity detail sheet — bottom sheet for entity clicks on homepage */}
-      <EntityDetailSheet entity={activeEntity} onClose={handleEntityClose} />
+      {showEntityDetailSheet && (
+        <EntityDetailSheet entity={activeEntity} onClose={handleEntityClose} />
+      )}
 
       {/* Discovery overlay — filter-driven entity list */}
-      <DiscoveryOverlay
-        filter={filter}
-        initialSort={initialSort}
-        onEntitySelect={handleEntitySelect}
-        onClose={() => {
-          setFilter(null);
-          bridge.executeGlobeCommand({ type: 'clear' });
-        }}
-      />
+      {showDiscoveryOverlay && (
+        <DiscoveryOverlay
+          filter={filter}
+          initialSort={initialSort}
+          onEntitySelect={handleEntitySelect}
+          onClose={() => {
+            setFilter(null);
+            bridge.executeGlobeCommand({ type: 'clear' });
+          }}
+        />
+      )}
 
       {/* Since last visit — compact activity summary for returning authenticated users */}
       {previousVisitAt && isAuthenticated && (

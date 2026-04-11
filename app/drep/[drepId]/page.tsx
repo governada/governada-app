@@ -13,7 +13,6 @@
  */
 
 import { cache } from 'react';
-import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 import nextDynamic from 'next/dynamic';
@@ -105,6 +104,10 @@ import { EntityPageConnections } from '@/components/shared/EntityPageConnections
 import { ScoreDeepDive } from '@/components/ScoreDeepDive';
 import { DRepOutcomeSummary } from '@/components/governada/profiles/DRepOutcomeSummary';
 import { ScoreAnalysisGate } from '@/components/governada/profiles/ScoreAnalysisGate';
+import {
+  StructuredDataMeta,
+  StructuredDataNested,
+} from '@/components/shared/StructuredDataMicrodata';
 import { getProposalOutcomesBatch } from '@/lib/proposalOutcomes';
 import {
   getDRepById,
@@ -520,29 +523,29 @@ export default async function DRepDetailPage({ params, searchParams }: DRepDetai
   // For DRep owners, also shows a "Write Statement" button
   const statementsContent = <DRepStatementsTab drepId={drep.drepId} />;
 
-  // JSON-LD structured data for DRep profile
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Person',
-    name: drepName,
-    url: `https://governada.io/drep/${encodeURIComponent(drep.drepId)}`,
-    description: drep.description || `Cardano DRep with governance score ${drep.drepScore}/100`,
-    image: `${BASE_URL}/api/og/drep/${encodeURIComponent(drep.drepId)}`,
-    jobTitle: 'Delegated Representative (DRep)',
-    memberOf: {
-      '@type': 'Organization',
-      name: 'Cardano Governance',
-    },
-  };
-  const nonce = (await headers()).get('x-nonce') ?? undefined;
-
   const profileContent = (
-    <div className="container mx-auto px-4 py-8 space-y-6">
-      <script
-        nonce={nonce}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    <div
+      className="container mx-auto px-4 py-8 space-y-6"
+      itemScope
+      itemType="https://schema.org/Person"
+    >
+      <StructuredDataMeta itemProp="name" content={drepName} />
+      <StructuredDataMeta
+        itemProp="url"
+        content={`https://governada.io/drep/${encodeURIComponent(drep.drepId)}`}
       />
+      <StructuredDataMeta
+        itemProp="description"
+        content={drep.description || `Cardano DRep with governance score ${drep.drepScore}/100`}
+      />
+      <StructuredDataMeta
+        itemProp="image"
+        content={`${BASE_URL}/api/og/drep/${encodeURIComponent(drep.drepId)}`}
+      />
+      <StructuredDataMeta itemProp="jobTitle" content="Delegated Representative (DRep)" />
+      <StructuredDataNested itemProp="memberOf" itemType="https://schema.org/Organization">
+        <StructuredDataMeta itemProp="name" content="Cardano Governance" />
+      </StructuredDataNested>
       <ProfileViewTracker drepId={drep.drepId} />
       <PageViewTracker
         event="drep_profile_viewed"

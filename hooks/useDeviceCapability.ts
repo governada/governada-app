@@ -55,23 +55,35 @@ function detectMobile(): boolean {
   return window.innerWidth < 768;
 }
 
-export function useDeviceCapability(): DeviceCapability {
-  const [capability, setCapability] = useState<DeviceCapability>({
+export function createInitialDeviceCapability(): DeviceCapability {
+  return {
+    // Prefer the 2D fallback until the browser probe confirms the device can
+    // comfortably run the 3D constellation. This prevents speculative 3D boot.
     gpuTier: 'mid',
     isTouch: false,
     isMobile: false,
-    use2D: false,
-  });
+    use2D: true,
+  };
+}
+
+export function probeDeviceCapability(): DeviceCapability {
+  const gpuTier = estimateGPUTier();
+  const isTouch = detectTouch();
+  const isMobile = detectMobile();
+
+  return {
+    gpuTier,
+    isTouch,
+    isMobile,
+    use2D: gpuTier === 'low',
+  };
+}
+
+export function useDeviceCapability(): DeviceCapability {
+  const [capability, setCapability] = useState<DeviceCapability>(createInitialDeviceCapability);
 
   useEffect(() => {
-    const gpuTier = estimateGPUTier();
-    const isTouch = detectTouch();
-    const isMobile = detectMobile();
-
-    // Use 2D fallback when WebGL is unavailable or device is very low-end
-    const use2D = gpuTier === 'low';
-
-    setCapability({ gpuTier, isTouch, isMobile, use2D });
+    setCapability(probeDeviceCapability());
   }, []);
 
   return capability;

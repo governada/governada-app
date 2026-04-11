@@ -1909,3 +1909,67 @@ Analytics can initialize on mount when `NEXT_PUBLIC_POSTHOG_KEY` is configured, 
 - `components/Providers.tsx`
 - `lib/posthog.ts`
 - shared shell/footer/navigation surfaces that should expose policy links
+
+## Chunk 41: Rank Remaining Route Dynamism And Defer Homepage Overlay Runtime
+
+**Priority:** P1
+**Effort:** S
+**Audit dimension(s):** Performance and Reliability, Architecture and Code Health
+**Expected score impact:** Performance and Reliability: clarify real cache blockers and reduce homepage bundle tax from closed overlay paths
+**Depends on:** Chunk 26, Chunk 28
+**PR group:** U
+**Implementation status:** Completed in this worktree
+
+### Context
+
+After the DD05 sync follow-up landed, the remaining performance debt was no longer background jobs. It was the still-broad `force-dynamic` footprint and the homepage globe shell continuing to mount client-only overlay code paths that were not yet visible or active.
+
+### Scope
+
+- Rank the remaining `force-dynamic` routes into root-shell, private/request-scoped, and public-live-read buckets.
+- Remove redundant page-level `force-dynamic` exports from redirect-only or root-shell pages that do not themselves own request-scoped data work.
+- Defer homepage overlay-only client chunks until the user actually opens or activates them.
+- Add focused coverage for the deferred homepage overlay contract.
+
+### Progress So Far
+
+- Added `docs/strategy/context/architecture-review/dd05-force-dynamic-audit.md` as the explicit DD05 route-dynamism artifact.
+- Added `docs/strategy/context/architecture-review/dd05-cache-policy-decision.md` plus `scripts/lib/routeRenderPolicy.mjs`, making the remaining DD05 cache-policy choice explicit and machine-readable.
+- Added `components/shared/StructuredDataMicrodata.tsx` and moved homepage, DRep, and proposal SEO markup onto shared microdata primitives, removing the nonce-aware public JSON-LD seam from those surfaces.
+- Removed the root `ThemeProvider` / `next-themes` bootstrap from `app/layout.tsx`, keeping the main shell dark-first while shrinking the remaining request-scoped shell pressure to locale/CSP ownership.
+- Moved `ModeProvider`, `ShortcutProvider`, and `ShortcutOverlay` out of `components/governada/GovernadaShell.tsx` and into `components/governada/AppShellProviders.tsx`, so `app/admin`, `app/workspace`, `app/you`, `app/my-gov`, `app/claim`, `app/preview`, and `app/dev` now opt into workflow-only shell behavior explicitly.
+- Removed `22` redundant page-level `force-dynamic` exports from redirect-only and root-shell page files, including `/`, `/match`, governance redirects, and legacy `my-gov` / workspace / `you` redirect shims.
+- `components/globe/GlobeLayout.tsx` now lazy-loads and conditionally mounts the closed `ListOverlay`, inactive `DiscoveryOverlay`, unopened `EntityDetailSheet`, and hover-only `GlobeTooltip` instead of always putting them on the homepage path.
+- `app/api/governance/constellation/route.ts` now emits cached `proposalNodes`, so the homepage constellation no longer makes a second `/api/proposals` request just to decorate the globe with open proposals.
+- `app/api/governance/constellation/route.ts` now also emits precomputed main-scene node positions, and `components/GlobeConstellation.tsx` now selects the right quality tier from that cached payload instead of recomputing the full 3D layout on mount.
+- `app/layout.tsx`, `app/embed/layout.tsx`, `proxy.ts`, and `next.config.ts` now enforce the DD05 locale/CSP split: the root document shell is static/default-locale, nonce CSP is confined to app/private prefixes, and public routes use static CSP plus App Router SRI.
+- `npm run agent:validate` now treats `public-cache`, `public-dynamic-exception`, and `app-dynamic` as explicit route contracts instead of forcing every `lib/data.ts` read to remain dynamic.
+- Added focused component coverage in `__tests__/components/GlobeLayout.test.tsx`.
+
+### Verification Notes
+
+- Verified with `npm run test:component -- __tests__/components/GlobeLayout.test.tsx __tests__/components/HomePageShell.test.tsx`.
+- Verified with `npm run test -- __tests__/lib/proposalNodes.test.ts`.
+- Verified with `npm run test -- __tests__/lib/sceneNodes.test.ts`.
+- Verified with `npm run test -- __tests__/scripts/agentConstraints.test.ts`.
+- Verified with `npm run test -- __tests__/components/HomePageShell.test.tsx __tests__/components/StructuredDataMicrodata.test.tsx`.
+- Verified with `npm run test -- __tests__/components/AppShellProviders.test.tsx`.
+- Verified with `npm run test:e2e -- e2e/csp.spec.ts --project=chromium`.
+- Verified with `npm run agent:validate`.
+- Verified with `npm run type-check`.
+- Verified with `npm run build`.
+
+### Result
+
+- Completed in this worktree. The root document shell is static for the public contract, app/private routes keep nonce CSP, and the remaining DD05 route-dynamism work is limited to page-local public live-read surfaces and homepage profiling.
+
+### Files to Read First
+
+- `components/globe/GlobeLayout.tsx`
+- `app/layout.tsx`
+- `app/page.tsx`
+- `app/match/page.tsx`
+- `docs/strategy/context/architecture-review/dd05-force-dynamic-audit.md`
+- `docs/strategy/context/architecture-review/dd05-cache-policy-decision.md`
+- `components/shared/StructuredDataMicrodata.tsx`
+- `app/layout.tsx`

@@ -128,7 +128,7 @@ These jobs get slower forever as history accumulates. Even if traffic stays flat
 
 ### 4. The page surface is still heavily dynamic
 
-**Severity:** Deferred follow-up
+**Severity:** Partially addressed follow-up
 
 **Evidence**
 
@@ -141,8 +141,14 @@ Not every page should be static, but a large fully dynamic footprint narrows cac
 
 **Implementation status**
 
-- Deferred with a ranked follow-up instead of blocking DD05 closeout.
-- The public-route and sync-cost fixes above were higher-leverage than a broad route-cache audit, but the `force-dynamic` footprint remains a clear DD05-era finding that later work should treat as a cache-policy backlog rather than accidental debt.
+- The route-dynamism ranking now exists in `dd05-force-dynamic-audit.md`.
+- The cache-policy decision now exists in `dd05-cache-policy-decision.md`, and `npm run agent:validate` now recognizes explicit `public-cache`, `public-dynamic-exception`, and `app-dynamic` route classes.
+- The homepage, DRep, and proposal surfaces now emit shared microdata through `components/shared/StructuredDataMicrodata.tsx`, removing the last nonce-aware public JSON-LD script from that SEO seam.
+- The main root shell no longer uses `next-themes` at runtime; `app/layout.tsx` now owns dark mode directly and no longer reads `x-nonce` for a forced-dark theme bootstrap.
+- The shared `GovernadaShell` no longer carries app-only workflow providers; `ModeProvider`, `ShortcutProvider`, and `ShortcutOverlay` now live behind `components/governada/AppShellProviders.tsx`, with private/app layouts opting in explicitly.
+- This follow-up removed `22` redundant page-level `force-dynamic` exports from redirect-only or root-shell pages that did not themselves own request-scoped data work.
+- After that cleanup, the explicit dynamic set is easier to reason about: `55` page routes remain dynamic, split between private/request-scoped surfaces and public live-read detail surfaces. The root document shell no longer belongs to that set.
+- The root-shell locale/CSP blocker is resolved in this worktree; the remaining dynamic pages are page-local runtime assemblies, not shell-owned cache ceilings.
 
 ### 5. The homepage globe shell had hidden-state entity overfetch and unnecessary route-panel bundle cost
 
@@ -161,26 +167,34 @@ This is classic hidden-state overfetch and bundle tax: the homepage pays network
 
 **Implementation status**
 
-- Fixed in this worktree.
+- Fixed in this worktree, with one more runtime slice added on April 7.
 - `hooks/queries.ts` now supports explicit `enabled` gating for `useDReps()`, `useProposals()`, and `useCommitteeMembers()`.
 - `components/globe/ListOverlay.tsx` now disables those entity queries, plus the pools query, while the overlay is closed.
 - `components/globe/GlobeLayout.tsx` now lazy-loads `PanelOverlay` and only mounts it on `/g/*` routes, removing that route-panel code path from the anonymous homepage.
-- Added focused component coverage in `__tests__/components/ListOverlay.test.tsx`.
+- `components/globe/GlobeLayout.tsx` now also defers the closed `ListOverlay`, inactive `DiscoveryOverlay`, unopened `EntityDetailSheet`, and hover-only `GlobeTooltip` until they are actually needed on the homepage.
+- `app/api/governance/constellation/route.ts` now emits cached `proposalNodes`, so the homepage globe no longer makes a second `/api/proposals` request just to render open proposal markers.
+- `app/api/governance/constellation/route.ts` now also emits precomputed main-scene nodes, and `components/GlobeConstellation.tsx` now picks the right quality-tier slice from that payload instead of recomputing the full 3D layout on mount.
+- Added focused component coverage in `__tests__/components/ListOverlay.test.tsx` and `__tests__/components/GlobeLayout.test.tsx`.
 
 ## Risk Ranking
 
-1. Dynamic rendering is still widely used across the page surface without a clearly ranked cache strategy.
-2. The homepage still mounts a heavy immediate client globe shell, even after the dead SSR, hidden-state query, and route-panel reductions.
+1. The homepage still pays for the core 3D/client globe itself, even after the query, route-panel, deferred-overlay, single-payload, and precomputed-layout reductions.
+2. The remaining public live-read detail surfaces are still page-local dynamic routes, so they still have their own cache and freshness costs even after the root-shell contract was cleaned up.
 
 ## Deferred Follow-Ups
 
 1. Completed on April 6, 2026: the vote-ingestion and archive sync follow-up is now DB-first and incremental, with `sync-votes` owning `drep_votes`, `slow.ts` advancing a durable rationale queue in `vote_rationales`, and `data-moat.ts` archiving changed metadata via per-stream cursors instead of corpus rescans.
-2. Rank the `force-dynamic` pages into truly personalized versus historical-debt buckets before broad caching work starts.
-3. Profile the homepage globe shell itself, since the first-load 3D/client runtime cost still dominates after the query and panel-path cuts.
+2. Completed on April 7, 2026: the `force-dynamic` route set is now ranked in `dd05-force-dynamic-audit.md`, and redundant redirect-shell exports were removed from the page surface.
+3. Completed on April 8, 2026: the remaining cache-policy choice is now explicit in `dd05-cache-policy-decision.md`, and the validator contract now permits cache-first public routes to read `lib/data.ts` without forcing page-level dynamism.
+4. Completed on April 8, 2026: homepage, DRep, and proposal SEO markup now runs through shared microdata primitives instead of nonce-aware JSON-LD scripts.
+5. Completed on April 8, 2026: the main root shell dropped its `next-themes` bootstrap and now hard-owns dark mode without a request-scoped nonce read.
+6. Completed on April 9, 2026: the shared shell no longer carries app-only workflow providers; `AppShellProviders.tsx` plus nested app layouts now own density and shortcut behavior for private/workflow routes.
+7. Completed on April 9, 2026: the locale ownership shift and public CSP split are closed; the root document shell is static for the public contract and nonce CSP is confined to app/private prefixes.
+8. Completed on 2026-04-10: the homepage globe shell now starts on the 2D-safe path until the browser probe resolves and reuses the shared GPU tier for the 3D scene, so the speculative first-load WebGL boot is removed.
 
 ## Handoff
 
-**Current status:** Completed; the remaining DD05 follow-up is non-sync page/runtime work
+**Current status:** Completed; DD05 is closed, and the last homepage globe runtime slice landed by removing speculative 3D boot and sharing GPU-tier detection between the homepage shell and 3D scene.
 
 **What changed this session**
 
@@ -194,6 +208,14 @@ This is classic hidden-state overfetch and bundle tax: the homepage pays network
 - Reduced `/api/proposals` cache-miss work by merging `governance_stats` reads and scoping `proposal_outcomes` to the fetched proposal tx hashes.
 - Narrowed the workspace review queue proposal projection away from `select('*')`.
 - Removed `PanelOverlay` from the anonymous homepage path by lazy-loading it only for `/g/*` routes.
+- Ranked the remaining `force-dynamic` footprint in `dd05-force-dynamic-audit.md` and removed redundant page-level exports from redirect-only and root-shell page files.
+- Added `dd05-cache-policy-decision.md` plus the machine-readable `scripts/lib/routeRenderPolicy.mjs` contract so public cache policy is explicit in docs and validator rules.
+- Added `components/shared/StructuredDataMicrodata.tsx` and moved homepage, DRep, and proposal SEO markup onto shared microdata primitives instead of relying on nonce-aware JSON-LD scripts.
+- Removed the root `ThemeProvider` / `next-themes` bootstrap from `app/layout.tsx`, keeping the main shell dark-first while shrinking the remaining request-scoped shell surface to app/private-only concerns.
+- Moved `ModeProvider`, `ShortcutProvider`, and `ShortcutOverlay` out of `components/governada/GovernadaShell.tsx` and into `components/governada/AppShellProviders.tsx`, with app/private layouts opting into those workflow providers explicitly.
+- Deferred closed homepage overlay chunks until they are actually opened or activated.
+- Folded homepage proposal-node shaping into `app/api/governance/constellation/route.ts`, removing the extra `/api/proposals` request from the globe shell while keeping the proposal list API separate for other consumers.
+- Moved main constellation-node positioning into the cached constellation payload so `components/GlobeConstellation.tsx` no longer computes the full 3D layout during homepage boot.
 - Verified the DD05 code changes with focused unit coverage, lint, and `npm run type-check`.
 
 **Validated findings**
@@ -202,8 +224,8 @@ This is classic hidden-state overfetch and bundle tax: the homepage pays network
 - The homepage list overlay and route-panel path were overfetching and overloading the homepage shell. Fixed in this worktree.
 - Public and workspace proposal list surfaces were scaling with broad reads and in-memory shaping. Fixed for the primary hot paths in this worktree, with narrower sort and caching follow-up deferred.
 - The vote and metadata-archive sync paths now advance from explicit cached state instead of full-corpus rescans.
-- `force-dynamic` usage is widespread across the page surface. Deferred follow-up.
+- The remaining `force-dynamic` set is now ranked, and the public locale/CSP split is complete after the provider-level public/app shell split landed.
 
 **Next agent starts here**
 
-DD05 is closed. If performance work is reopened later, start with the `force-dynamic` route audit and homepage globe runtime profiling; the deferred sync-ownership and archive-scaling seams are already resolved in the current worktree.
+DD05 is closed. If performance work is reopened later, start with deeper 3D scene quality tuning or route-specific rendering measurement; the deferred sync-ownership, archive-scaling, public structured-data, root-theme-bootstrap, provider-level public/app shell, locale/CSP, and homepage globe runtime seams are already resolved in the current worktree.

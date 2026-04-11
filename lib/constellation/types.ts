@@ -55,23 +55,8 @@ export interface ConstellationEvent {
 }
 
 export interface ConstellationApiData {
-  nodes: Array<{
-    id: string;
-    fullId: string;
-    name: string | null;
-    power: number;
-    score: number;
-    dominant: AlignmentDimension;
-    alignments: number[];
-    nodeType: GovernanceNodeType;
-    geoLat?: number;
-    geoLon?: number;
-    adaAmount?: number;
-    drepStatus?: string;
-    delegatorCount?: number;
-    voteCount?: number;
-    fidelityGrade?: string;
-  }>;
+  nodes: ConstellationNode3D[];
+  proposalNodes: ConstellationNode3D[];
   recentEvents: ConstellationEvent[];
   stats: {
     totalAdaGoverned: string;

@@ -25,13 +25,14 @@ The validator source of truth is `scripts/lib/routeRenderPolicy.mjs`.
 ### `public-cache`
 
 - Public route intended to be cache-first.
+- Current example includes the root shell at `app/layout.tsx`.
 - May read cached governance data through `lib/data.ts` or equivalent DB-first read helpers.
 - May not read request headers, cookies, direct Supabase clients, direct Redis clients, or raw `process.env` in the route file.
 
 ### `public-dynamic-exception`
 
 - Public route that is still request-scoped because of an explicit product or infrastructure contract.
-- Current examples include the root shell, DRep/proposal detail, embed surfaces, and several public report/share flows.
+- Current examples include DRep/proposal detail, embed surfaces, and several public report/share flows.
 - Must export `const dynamic = 'force-dynamic'` when it touches cached governance data or request-scoped runtime APIs.
 
 ### `app-dynamic`

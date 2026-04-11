@@ -15,6 +15,19 @@ export type GovernanceThresholdKey =
 type GovernanceThresholdMap = Partial<Record<GovernanceThresholdKey, number>>;
 export type ParameterGroup = 'network' | 'economic' | 'technical' | 'governance';
 
+interface GovernanceThresholdSnapshot {
+  data: GovernanceThresholdMap;
+  epochNo: number | null;
+}
+
+interface GovernanceThresholdCacheEntry {
+  data: GovernanceThresholdMap;
+  epochNo: number | null;
+  fetchedAt: number;
+  revalidatedAt: number;
+  source: 'supabase' | 'koios';
+}
+
 export interface GovernanceThresholdResolution {
   threshold: number | null;
   thresholdKey: GovernanceThresholdKey | null;
@@ -40,6 +53,7 @@ const GOVERNANCE_THRESHOLD_COLUMNS = [
 ] as const satisfies readonly GovernanceThresholdKey[];
 
 const THRESHOLD_CACHE_MS = 24 * 60 * 60 * 1000;
+const SUPABASE_THRESHOLD_REVALIDATE_MS = 60 * 1000;
 
 const PROPOSAL_TYPE_THRESHOLD_KEY_MAP: Record<string, GovernanceThresholdKey> = {
   TreasuryWithdrawals: 'dvt_treasury_withdrawal',
@@ -134,7 +148,7 @@ const SPO_SECURITY_PARAMETER_ALIASES = [
   'minFeeRefScriptCoinsPerByte',
 ].map(normalizeParamKey);
 
-let cachedThresholds: { data: GovernanceThresholdMap; fetchedAt: number } | null = null;
+let cachedThresholds: GovernanceThresholdCacheEntry | null = null;
 
 function normalizeParamKey(paramKey: string): string {
   return paramKey
@@ -241,7 +255,46 @@ export function resolveGovernanceThresholdKeys(
   return thresholdKey ? [thresholdKey] : [];
 }
 
-async function loadThresholdsFromSupabase(): Promise<GovernanceThresholdMap | null> {
+function mapGovernanceThresholdRow(
+  thresholdRow: Record<string, unknown>,
+): GovernanceThresholdSnapshot | null {
+  const thresholds: GovernanceThresholdMap = {};
+  for (const key of GOVERNANCE_THRESHOLD_COLUMNS) {
+    const value = Number(thresholdRow[key]);
+    if (Number.isFinite(value)) {
+      thresholds[key] = value;
+    }
+  }
+
+  if (Object.keys(thresholds).length === 0) {
+    return null;
+  }
+
+  const epochNo = Number(thresholdRow.epoch_no);
+  return {
+    data: thresholds,
+    epochNo: Number.isFinite(epochNo) ? epochNo : null,
+  };
+}
+
+function hasGovernanceThresholdSnapshotChanged(
+  cacheEntry: GovernanceThresholdCacheEntry,
+  snapshot: GovernanceThresholdSnapshot,
+): boolean {
+  if (cacheEntry.epochNo !== snapshot.epochNo) {
+    return true;
+  }
+
+  for (const key of GOVERNANCE_THRESHOLD_COLUMNS) {
+    if ((cacheEntry.data[key] ?? null) !== (snapshot.data[key] ?? null)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function loadThresholdsFromSupabase(): Promise<GovernanceThresholdSnapshot | null> {
   const supabase = createClient();
   const { data } = await supabase
     .from('epoch_params')
@@ -254,33 +307,65 @@ async function loadThresholdsFromSupabase(): Promise<GovernanceThresholdMap | nu
     return null;
   }
 
-  const thresholds: GovernanceThresholdMap = {};
-  const thresholdRow = data as unknown as Record<string, unknown>;
-  for (const key of GOVERNANCE_THRESHOLD_COLUMNS) {
-    const value = Number(thresholdRow[key]);
-    if (Number.isFinite(value)) {
-      thresholds[key] = value;
-    }
-  }
-
-  return Object.keys(thresholds).length > 0 ? thresholds : null;
+  return mapGovernanceThresholdRow(data as unknown as Record<string, unknown>);
 }
 
 async function loadGovernanceThresholds(): Promise<GovernanceThresholdMap | null> {
-  if (cachedThresholds && Date.now() - cachedThresholds.fetchedAt < THRESHOLD_CACHE_MS) {
-    return cachedThresholds.data;
+  const now = Date.now();
+
+  if (cachedThresholds) {
+    if (now - cachedThresholds.fetchedAt >= THRESHOLD_CACHE_MS) {
+      cachedThresholds = null;
+    } else if (
+      cachedThresholds.source !== 'supabase' ||
+      now - cachedThresholds.revalidatedAt < SUPABASE_THRESHOLD_REVALIDATE_MS
+    ) {
+      return cachedThresholds.data;
+    } else {
+      const latestSupabaseThresholds = await loadThresholdsFromSupabase().catch(() => null);
+      if (!latestSupabaseThresholds) {
+        cachedThresholds = { ...cachedThresholds, revalidatedAt: now };
+        return cachedThresholds.data;
+      }
+
+      if (hasGovernanceThresholdSnapshotChanged(cachedThresholds, latestSupabaseThresholds)) {
+        cachedThresholds = {
+          data: latestSupabaseThresholds.data,
+          epochNo: latestSupabaseThresholds.epochNo,
+          fetchedAt: now,
+          revalidatedAt: now,
+          source: 'supabase',
+        };
+        return latestSupabaseThresholds.data;
+      }
+
+      cachedThresholds = { ...cachedThresholds, revalidatedAt: now };
+      return cachedThresholds.data;
+    }
   }
 
   const supabaseThresholds = await loadThresholdsFromSupabase().catch(() => null);
   if (supabaseThresholds) {
-    cachedThresholds = { data: supabaseThresholds, fetchedAt: Date.now() };
-    return supabaseThresholds;
+    cachedThresholds = {
+      data: supabaseThresholds.data,
+      epochNo: supabaseThresholds.epochNo,
+      fetchedAt: now,
+      revalidatedAt: now,
+      source: 'supabase',
+    };
+    return supabaseThresholds.data;
   }
 
   const { fetchGovernanceThresholds } = await import('@/utils/koios');
   const koiosThresholds = await fetchGovernanceThresholds();
   if (koiosThresholds) {
-    cachedThresholds = { data: koiosThresholds, fetchedAt: Date.now() };
+    cachedThresholds = {
+      data: koiosThresholds,
+      epochNo: null,
+      fetchedAt: now,
+      revalidatedAt: now,
+      source: 'koios',
+    };
     return koiosThresholds;
   }
 

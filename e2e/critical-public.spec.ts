@@ -41,13 +41,21 @@ test.describe('Critical public journeys', () => {
     await page.goto('/match', { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/\/match$/, { timeout: 30_000 });
     await expect(page.locator('#main-content')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(/Treasury spending\?/i)).toBeVisible({ timeout: 15_000 });
 
-    await page
-      .locator('button')
-      .filter({ hasText: /^Conservative$/i })
-      .click();
-    await expect(page.getByText(/Protocol changes\?/i)).toBeVisible({ timeout: 10_000 });
+    const firstChoice = page.getByRole('button', { name: /^Protect it$/i });
+    const matchPanelOpen = await firstChoice.isVisible({ timeout: 3_000 }).catch(() => false);
+
+    if (!matchPanelOpen) {
+      await page.getByRole('button', { name: /Open Seneca/i }).click();
+    }
+
+    await expect(page.getByText(/Find Your Match/i).first()).toBeVisible({ timeout: 15_000 });
+    await expect(firstChoice).toBeVisible({ timeout: 15_000 });
+
+    await firstChoice.click();
+    await expect(page.getByRole('button', { name: /^Stability first$/i })).toBeVisible({
+      timeout: 10_000,
+    });
   });
 
   test('health endpoint reports operational status', async ({ request }) => {

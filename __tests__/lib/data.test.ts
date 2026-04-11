@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const getGovernanceThresholdForProposal = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/governanceThresholds', () => ({
+  getGovernanceThresholdForProposal,
+}));
+
 function makeDRepRow(updatedAt: string) {
   return {
     id: 'drep1',
@@ -84,16 +90,22 @@ async function loadDataModule(rows: unknown[]) {
 async function loadVotingPowerSummaryModule({
   canonical,
   proposal,
-  threshold = 0.67,
+  threshold = 0.42,
 }: {
   canonical: Record<string, unknown> | null;
   proposal: Record<string, unknown> | null;
   threshold?: number | null;
 }) {
-  const getGovernanceThresholdForProposal = vi.fn().mockResolvedValue({
-    threshold,
-    thresholdKey: threshold != null ? 'dvt_p_p_gov_group' : null,
-    thresholdKeys: threshold != null ? ['dvt_p_p_gov_group'] : [],
+  getGovernanceThresholdForProposal.mockImplementation(async (args) => {
+    expect(args).toEqual({
+      proposalType: 'ParameterChange',
+      paramChanges: { govActionLifetime: 10 },
+    });
+    return {
+      threshold,
+      thresholdKey: threshold != null ? 'dvt_p_p_gov_group' : null,
+      thresholdKeys: threshold != null ? ['dvt_p_p_gov_group'] : [],
+    };
   });
 
   function makeResolvedQuery(
@@ -103,6 +115,11 @@ async function loadVotingPowerSummaryModule({
     const chain = {
       select: vi.fn(() => chain),
       eq: vi.fn(() => chain),
+      order: vi.fn(() => chain),
+      limit:
+        terminal === 'single'
+          ? vi.fn().mockResolvedValue({ data: data ? [data] : [], error: null })
+          : vi.fn().mockResolvedValue({ data: data ? [data] : [], error: null }),
       single:
         terminal === 'single'
           ? vi.fn().mockResolvedValue({ data, error: null })
@@ -137,9 +154,6 @@ async function loadVotingPowerSummaryModule({
 
   vi.doMock('@/lib/supabase', () => ({
     createClient: () => ({ from }),
-  }));
-  vi.doMock('@/lib/governanceThresholds', () => ({
-    getGovernanceThresholdForProposal,
   }));
   vi.doMock('@/utils/documentation', () => ({
     isWellDocumented: vi.fn(() => true),
@@ -311,17 +325,13 @@ describe('getVotingPowerSummary threshold resolution', () => {
 
     const result = await getVotingPowerSummary('tx1', 0, 'TreasuryWithdrawals');
 
-    expect(getGovernanceThresholdForProposal).toHaveBeenCalledWith({
-      proposalType: 'ParameterChange',
-      paramChanges: { govActionLifetime: 10 },
-    });
     expect(result).toMatchObject({
       yesPower: 100,
       noPower: 50,
       abstainPower: 25,
       totalActivePower: 185,
-      threshold: 0.67,
-      thresholdLabel: '67% of active DRep stake needed',
+      threshold: 0.42,
+      thresholdLabel: '42% of active DRep stake needed',
     });
   });
 });

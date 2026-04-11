@@ -12,6 +12,7 @@ describe('route render policy contract', () => {
       'public-dynamic-exception',
     );
     expect(getRouteRenderPolicy('app/workspace/page.tsx')?.mode).toBe('app-dynamic');
+    // The root shell is now cache-first and should remain classified that way.
     expect(getRouteRenderPolicy('app/layout.tsx')?.mode).toBe('public-cache');
   });
 

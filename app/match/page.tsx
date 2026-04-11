@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { HomePageShell } from '@/components/hub/HomePageShell';
+import { MatchRouteActivator } from './MatchRouteActivator';
 
 // Keep /match on the request lifecycle so nonce-aware scripts still receive the
 // live request headers under the repo CSP policy.
@@ -23,5 +24,10 @@ export const metadata: Metadata = {
 };
 
 export default function MatchPage() {
-  return <HomePageShell match pageViewEvent="match_page_viewed" />;
+  return (
+    <>
+      <MatchRouteActivator />
+      <HomePageShell match pageViewEvent="match_page_viewed" />
+    </>
+  );
 }

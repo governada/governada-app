@@ -118,7 +118,7 @@ describe('systems trust-surface helpers', () => {
     expect(history[0]).toMatchObject({
       type: 'trust_surface_review',
       statusLabel: 'Honesty reviewed',
-      actionHref: '/admin/systems#trust-surface-review',
+      actionHref: '/admin/systems/evidence?panel=trust',
     });
   });
 });

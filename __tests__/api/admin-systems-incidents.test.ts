@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequest, parseJson } from '../helpers';
 
-const { mockAuditInsert, mockIncidentInsert, mockIncidentEventInsert, mockFrom } = vi.hoisted(() => ({
-  mockAuditInsert: vi.fn(),
-  mockIncidentInsert: vi.fn(),
-  mockIncidentEventInsert: vi.fn(),
-  mockFrom: vi.fn(),
-}));
+const { mockAuditInsert, mockIncidentInsert, mockIncidentEventInsert, mockFrom } = vi.hoisted(
+  () => ({
+    mockAuditInsert: vi.fn(),
+    mockIncidentInsert: vi.fn(),
+    mockIncidentEventInsert: vi.fn(),
+    mockFrom: vi.fn(),
+  }),
+);
 
 vi.mock('@/lib/supabase', () => ({
   getSupabaseAdmin: () => ({

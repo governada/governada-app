@@ -45,10 +45,7 @@ function resolveVerificationActor(
   return { wallet: '', allowed: false };
 }
 
-export const loadSystemsJourneyVerifications = async (
-  _request: NextRequest,
-  ctx: RouteContext,
-) => {
+export const loadSystemsJourneyVerifications = async (_request: NextRequest, ctx: RouteContext) => {
   if (!isAdminWallet(ctx.wallet!)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
@@ -67,10 +64,10 @@ export const loadSystemsJourneyVerifications = async (
   return NextResponse.json(data ?? []);
 };
 
-export const GET = withRouteHandler(
-  loadSystemsJourneyVerifications,
-  { auth: 'required', rateLimit: { max: 20, window: 60 } },
-);
+export const GET = withRouteHandler(loadSystemsJourneyVerifications, {
+  auth: 'required',
+  rateLimit: { max: 20, window: 60 },
+});
 
 export const recordSystemsJourneyVerifications = async (
   request: NextRequest,
@@ -101,16 +98,13 @@ export const recordSystemsJourneyVerifications = async (
 
   const { error } = await supabase.from('systems_journey_verifications').insert(rows);
   if (error) {
-    return NextResponse.json(
-      { error: 'Failed to persist journey verifications' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to persist journey verifications' }, { status: 500 });
   }
 
   return NextResponse.json({ inserted: rows.length }, { status: 201 });
 };
 
-export const POST = withRouteHandler(
-  recordSystemsJourneyVerifications,
-  { auth: 'optional', rateLimit: { max: 20, window: 60 } },
-);
+export const POST = withRouteHandler(recordSystemsJourneyVerifications, {
+  auth: 'optional',
+  rateLimit: { max: 20, window: 60 },
+});

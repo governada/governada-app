@@ -43,7 +43,10 @@ test.describe('Critical public journeys', () => {
     await expect(page.locator('#main-content')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Question 1 of 3/i)).toBeVisible({ timeout: 10_000 });
 
-    await page.locator('button').filter({ hasText: /^Conservative$/i }).click();
+    await page
+      .locator('button')
+      .filter({ hasText: /^Conservative$/i })
+      .click();
     await expect(page.getByText(/Question 2 of 3/i)).toBeVisible({ timeout: 10_000 });
   });
 

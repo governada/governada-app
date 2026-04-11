@@ -247,9 +247,8 @@ function RiskColumn({
             <div
               key={item}
               className={
-                statusTone(
-                  tone === 'good' ? 'good' : tone === 'warning' ? 'warning' : 'critical',
-                ) + ' rounded-xl border p-3 text-sm leading-6'
+                statusTone(tone === 'good' ? 'good' : tone === 'warning' ? 'warning' : 'critical') +
+                ' rounded-xl border p-3 text-sm leading-6'
               }
             >
               {item}

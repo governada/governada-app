@@ -95,9 +95,7 @@ export function HistoryWorkspaceClient() {
               data.automationHistory.map((record) => (
                 <div key={record.id} className="rounded-2xl border border-border/70 bg-card/70 p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge
-                      status={record.tone === 'neutral' ? 'warning' : record.tone}
-                    />
+                    <StatusBadge status={record.tone === 'neutral' ? 'warning' : record.tone} />
                     <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
                       {record.statusLabel}
                     </Badge>
@@ -147,7 +145,10 @@ export function HistoryWorkspaceClient() {
             ) : (
               <>
                 {data.automationRuns.map((run) => (
-                  <div key={`${run.actorType}:${run.createdAt}`} className="rounded-2xl border border-border/70 bg-card/70 p-4">
+                  <div
+                    key={`${run.actorType}:${run.createdAt}`}
+                    className="rounded-2xl border border-border/70 bg-card/70 p-4"
+                  >
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={run.status} />
                       <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
@@ -169,12 +170,17 @@ export function HistoryWorkspaceClient() {
                         Resolved {run.resolvedCount}
                       </Badge>
                     </div>
-                    <p className="mt-3 text-xs text-muted-foreground">{formatDateTime(run.createdAt)}</p>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {formatDateTime(run.createdAt)}
+                    </p>
                   </div>
                 ))}
 
                 {data.operatorEscalations.map((escalation) => (
-                  <div key={`${escalation.createdAt}:${escalation.title}`} className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                  <div
+                    key={`${escalation.createdAt}:${escalation.title}`}
+                    className="rounded-2xl border border-border/70 bg-muted/20 p-4"
+                  >
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={escalation.status === 'sent' ? 'warning' : 'critical'} />
                       <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
@@ -182,8 +188,12 @@ export function HistoryWorkspaceClient() {
                       </Badge>
                     </div>
                     <p className="mt-3 text-sm font-semibold">{escalation.title}</p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{escalation.details}</p>
-                    <p className="mt-3 text-xs text-muted-foreground">{formatDateTime(escalation.createdAt)}</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {escalation.details}
+                    </p>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {formatDateTime(escalation.createdAt)}
+                    </p>
                   </div>
                 ))}
               </>
@@ -204,7 +214,10 @@ export function HistoryWorkspaceClient() {
             ) : (
               <>
                 {data.reviewDrafts.map((draft) => (
-                  <div key={`${draft.generatedAt}:${draft.reviewDate}`} className="rounded-2xl border border-border/70 bg-card/70 p-4">
+                  <div
+                    key={`${draft.generatedAt}:${draft.reviewDate}`}
+                    className="rounded-2xl border border-border/70 bg-card/70 p-4"
+                  >
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={draft.overallStatus} />
                       <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
@@ -213,12 +226,17 @@ export function HistoryWorkspaceClient() {
                     </div>
                     <p className="mt-3 text-sm font-semibold">{draft.focusArea}</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">{draft.topRisk}</p>
-                    <p className="mt-3 text-xs text-muted-foreground">{formatDateTime(draft.generatedAt)}</p>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {formatDateTime(draft.generatedAt)}
+                    </p>
                   </div>
                 ))}
 
                 {data.incidentEvents.map((eventRecord) => (
-                  <div key={eventRecord.id} className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                  <div
+                    key={eventRecord.id}
+                    className="rounded-2xl border border-border/70 bg-muted/20 p-4"
+                  >
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
                         {eventRecord.eventType.replace('_', ' ')}
@@ -228,8 +246,12 @@ export function HistoryWorkspaceClient() {
                       </Badge>
                     </div>
                     <p className="mt-3 text-sm font-semibold">{eventRecord.title}</p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{eventRecord.summary}</p>
-                    <p className="mt-3 text-xs text-muted-foreground">{formatDateTime(eventRecord.createdAt)}</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {eventRecord.summary}
+                    </p>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {formatDateTime(eventRecord.createdAt)}
+                    </p>
                   </div>
                 ))}
               </>

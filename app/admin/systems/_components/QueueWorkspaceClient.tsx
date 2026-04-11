@@ -227,7 +227,10 @@ export function QueueWorkspaceClient() {
               />
             ) : (
               data.automationFollowups.map((followup) => (
-                <div key={followup.sourceKey} className="rounded-2xl border border-border/70 bg-card/70 p-4">
+                <div
+                  key={followup.sourceKey}
+                  className="rounded-2xl border border-border/70 bg-card/70 p-4"
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge
                       status={followup.severity === 'critical' ? 'critical' : 'warning'}
@@ -240,9 +243,7 @@ export function QueueWorkspaceClient() {
                     </Badge>
                     <p className="text-sm font-semibold">{followup.title}</p>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {followup.summary}
-                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{followup.summary}</p>
                   <p className="mt-3 text-sm leading-6">{followup.recommendedAction}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {followup.status === 'open' ? (
@@ -345,7 +346,10 @@ export function QueueWorkspaceClient() {
               />
             ) : (
               data.openCommitments.map((commitment) => (
-                <div key={commitment.id} className="rounded-2xl border border-border/70 bg-card/70 p-4">
+                <div
+                  key={commitment.id}
+                  className="rounded-2xl border border-border/70 bg-card/70 p-4"
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
                       {commitmentStatusLabel(commitment.status)}
@@ -382,7 +386,9 @@ export function QueueWorkspaceClient() {
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => commitmentMutation.mutate({ id: commitment.id, status: 'done' })}
+                      onClick={() =>
+                        commitmentMutation.mutate({ id: commitment.id, status: 'done' })
+                      }
                     >
                       Complete
                     </Button>

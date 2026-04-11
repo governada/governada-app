@@ -10,8 +10,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import {
   buildInitialPerformanceBaselineForm,
@@ -89,14 +101,23 @@ export function EvidenceWorkspaceClient() {
   });
 
   if (query.isLoading) {
-    return <div className="space-y-6"><div className="h-72 animate-pulse rounded-3xl border border-border/60 bg-muted/25" /><div className="h-[36rem] animate-pulse rounded-3xl border border-border/60 bg-muted/25" /></div>;
+    return (
+      <div className="space-y-6">
+        <div className="h-72 animate-pulse rounded-3xl border border-border/60 bg-muted/25" />
+        <div className="h-[36rem] animate-pulse rounded-3xl border border-border/60 bg-muted/25" />
+      </div>
+    );
   }
 
   if (query.isError || !query.data) {
     return (
       <EmptyState
         title="Evidence workspace unavailable"
-        description={query.error instanceof Error ? query.error.message : 'The evidence workspace could not be loaded.'}
+        description={
+          query.error instanceof Error
+            ? query.error.message
+            : 'The evidence workspace could not be loaded.'
+        }
       />
     );
   }
@@ -152,7 +173,10 @@ export function EvidenceWorkspaceClient() {
       </WorkspaceHero>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <SectionCard title="Operational SLOs" description="These are the durable operating promises behind the launch call.">
+        <SectionCard
+          title="Operational SLOs"
+          description="These are the durable operating promises behind the launch call."
+        >
           <div className="space-y-3">
             {data.slos.map((slo) => (
               <div key={slo.id} className="rounded-2xl border border-border/70 bg-card/70 p-4">
@@ -160,12 +184,20 @@ export function EvidenceWorkspaceClient() {
                   <StatusBadge status={slo.status} />
                   <p className="text-sm font-semibold">{slo.title}</p>
                 </div>
-                <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{slo.currentValue}</p>
+                <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  {slo.currentValue}
+                </p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{slo.summary}</p>
                 <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
-                  <p><span className="font-medium text-foreground">Objective:</span> {slo.objective}</p>
-                  <p><span className="font-medium text-foreground">Target:</span> {slo.target}</p>
-                  <p><span className="font-medium text-foreground">Alert:</span> {slo.alertThreshold}</p>
+                  <p>
+                    <span className="font-medium text-foreground">Objective:</span> {slo.objective}
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">Target:</span> {slo.target}
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">Alert:</span> {slo.alertThreshold}
+                  </p>
                 </div>
                 {slo.actionHref ? (
                   <Button asChild variant="ghost" className="mt-3 px-0">
@@ -177,7 +209,10 @@ export function EvidenceWorkspaceClient() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Critical journey proof" description="Static definitions set expectations; persisted verification runs determine current truth.">
+        <SectionCard
+          title="Critical journey proof"
+          description="Static definitions set expectations; persisted verification runs determine current truth."
+        >
           <div className="space-y-3">
             {data.journeys.map((journey) => (
               <div key={journey.id} className="rounded-2xl border border-border/70 bg-card/70 p-4">
@@ -188,14 +223,32 @@ export function EvidenceWorkspaceClient() {
                   <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
                     {journey.gateLevel}
                   </Badge>
-                  <StatusBadge status={journey.verificationStatus === 'passed' ? 'good' : journey.verificationStatus === 'failed' ? 'critical' : 'warning'} />
+                  <StatusBadge
+                    status={
+                      journey.verificationStatus === 'passed'
+                        ? 'good'
+                        : journey.verificationStatus === 'failed'
+                          ? 'critical'
+                          : 'warning'
+                    }
+                  />
                 </div>
                 <p className="mt-3 text-base font-semibold">{journey.title}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{journey.currentEvidence}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {journey.currentEvidence}
+                </p>
                 <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
-                  <p><span className="font-medium text-foreground">Coverage:</span> {evidenceCoverageLabel(journey)}</p>
-                  <p><span className="font-medium text-foreground">Gap:</span> {journey.gap}</p>
-                  <p><span className="font-medium text-foreground">Next step:</span> {journey.nextStep}</p>
+                  <p>
+                    <span className="font-medium text-foreground">Coverage:</span>{' '}
+                    {evidenceCoverageLabel(journey)}
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">Gap:</span> {journey.gap}
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">Next step:</span>{' '}
+                    {journey.nextStep}
+                  </p>
                 </div>
                 {journey.runUrl ? (
                   <Button asChild variant="ghost" className="mt-3 px-0">
@@ -212,7 +265,10 @@ export function EvidenceWorkspaceClient() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <SectionCard title="Performance baseline" description={data.performanceBaselineSummary.summary}>
+        <SectionCard
+          title="Performance baseline"
+          description={data.performanceBaselineSummary.summary}
+        >
           <div className="space-y-3">
             <SummaryPanel
               title={data.performanceBaselineSummary.headline}
@@ -226,8 +282,12 @@ export function EvidenceWorkspaceClient() {
             />
             {data.latestPerformanceBaseline ? (
               <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
-                <p className="text-sm font-semibold">{data.latestPerformanceBaseline.scenarioLabel}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{data.latestPerformanceBaseline.summary}</p>
+                <p className="text-sm font-semibold">
+                  {data.latestPerformanceBaseline.scenarioLabel}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {data.latestPerformanceBaseline.summary}
+                </p>
                 <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
                   <p>Slowest p95: {data.latestPerformanceBaseline.maxObservedP95Ms}ms</p>
                   <p>Error rate: {data.latestPerformanceBaseline.errorRatePct}%</p>
@@ -238,7 +298,10 @@ export function EvidenceWorkspaceClient() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Trust-surface review" description={data.trustSurfaceReviewSummary.summary}>
+        <SectionCard
+          title="Trust-surface review"
+          description={data.trustSurfaceReviewSummary.summary}
+        >
           <div className="space-y-3">
             <SummaryPanel
               title={data.trustSurfaceReviewSummary.headline}
@@ -253,9 +316,13 @@ export function EvidenceWorkspaceClient() {
             {data.latestTrustSurfaceReview ? (
               <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
                 <p className="text-sm font-semibold">{data.latestTrustSurfaceReview.summary}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{data.latestTrustSurfaceReview.honestyGap}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {data.latestTrustSurfaceReview.honestyGap}
+                </p>
                 <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
-                  <p>Reviewed surfaces: {data.latestTrustSurfaceReview.reviewedSurfaces.join(', ')}</p>
+                  <p>
+                    Reviewed surfaces: {data.latestTrustSurfaceReview.reviewedSurfaces.join(', ')}
+                  </p>
                   <p>Owner: {data.latestTrustSurfaceReview.owner}</p>
                 </div>
               </div>
@@ -265,7 +332,10 @@ export function EvidenceWorkspaceClient() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <SectionCard title="Scorecard sync" description="The weekly review history should feed the scorecard without hidden windowing assumptions.">
+        <SectionCard
+          title="Scorecard sync"
+          description="The weekly review history should feed the scorecard without hidden windowing assumptions."
+        >
           <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={data.scorecardSync.status} />
@@ -274,7 +344,9 @@ export function EvidenceWorkspaceClient() {
               </Badge>
             </div>
             <p className="mt-3 text-base font-semibold">{data.scorecardSync.headline}</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{data.scorecardSync.summary}</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {data.scorecardSync.summary}
+            </p>
             <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
               <p>Reviews logged: {data.scorecardSync.reviewCount}</p>
               <p>Weekly streak: {data.scorecardSync.weeklyStreak}</p>
@@ -283,7 +355,10 @@ export function EvidenceWorkspaceClient() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Verification history" description="Persisted journey verification runs are the evidence feed for launch-control.">
+        <SectionCard
+          title="Verification history"
+          description="Persisted journey verification runs are the evidence feed for launch-control."
+        >
           <div className="space-y-3">
             {data.journeyVerifications.length === 0 ? (
               <EmptyState
@@ -292,7 +367,10 @@ export function EvidenceWorkspaceClient() {
               />
             ) : (
               data.journeyVerifications.map((verification) => (
-                <div key={verification.id} className="rounded-2xl border border-border/70 bg-card/70 p-4">
+                <div
+                  key={verification.id}
+                  className="rounded-2xl border border-border/70 bg-card/70 p-4"
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
                       {verification.journeyId}
@@ -321,18 +399,27 @@ export function EvidenceWorkspaceClient() {
         </SectionCard>
       </div>
 
-      <Sheet open={isPanelOpen} onOpenChange={(open) => (open ? panel === 'trust' ? openTrustPanel() : openPerformancePanel() : closePanel())}>
+      <Sheet
+        open={isPanelOpen}
+        onOpenChange={(open) =>
+          open ? (panel === 'trust' ? openTrustPanel() : openPerformancePanel()) : closePanel()
+        }
+      >
         <SheetContent className="w-full sm:max-w-2xl">
           {panel === 'trust' ? (
             <>
               <SheetHeader>
                 <SheetTitle>Log trust-surface review</SheetTitle>
                 <SheetDescription>
-                  Record how the product currently communicates degraded state to the founder and public.
+                  Record how the product currently communicates degraded state to the founder and
+                  public.
                 </SheetDescription>
               </SheetHeader>
               {trustForm ? (
-                <form onSubmit={submitTrust} className="flex h-full flex-col gap-4 overflow-y-auto px-4 pb-6">
+                <form
+                  onSubmit={submitTrust}
+                  className="flex h-full flex-col gap-4 overflow-y-auto px-4 pb-6"
+                >
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div className="space-y-2">
                       <Label htmlFor="trust-review-date">Review date</Label>
@@ -340,7 +427,9 @@ export function EvidenceWorkspaceClient() {
                         id="trust-review-date"
                         type="date"
                         value={trustForm.reviewDate}
-                        onChange={(event) => setTrustForm({ ...trustForm, reviewDate: event.target.value })}
+                        onChange={(event) =>
+                          setTrustForm({ ...trustForm, reviewDate: event.target.value })
+                        }
                       />
                     </div>
                     <div className="space-y-2">
@@ -348,7 +437,9 @@ export function EvidenceWorkspaceClient() {
                       <Input
                         id="trust-owner"
                         value={trustForm.owner}
-                        onChange={(event) => setTrustForm({ ...trustForm, owner: event.target.value })}
+                        onChange={(event) =>
+                          setTrustForm({ ...trustForm, owner: event.target.value })
+                        }
                       />
                     </div>
                     <div className="space-y-2">
@@ -397,7 +488,9 @@ export function EvidenceWorkspaceClient() {
                       id="reviewed-surfaces"
                       rows={4}
                       value={trustForm.reviewedSurfaces}
-                      onChange={(event) => setTrustForm({ ...trustForm, reviewedSurfaces: event.target.value })}
+                      onChange={(event) =>
+                        setTrustForm({ ...trustForm, reviewedSurfaces: event.target.value })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -406,7 +499,9 @@ export function EvidenceWorkspaceClient() {
                       id="trust-summary"
                       rows={4}
                       value={trustForm.summary}
-                      onChange={(event) => setTrustForm({ ...trustForm, summary: event.target.value })}
+                      onChange={(event) =>
+                        setTrustForm({ ...trustForm, summary: event.target.value })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -415,7 +510,9 @@ export function EvidenceWorkspaceClient() {
                       id="current-state"
                       rows={4}
                       value={trustForm.currentUserState}
-                      onChange={(event) => setTrustForm({ ...trustForm, currentUserState: event.target.value })}
+                      onChange={(event) =>
+                        setTrustForm({ ...trustForm, currentUserState: event.target.value })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -424,7 +521,9 @@ export function EvidenceWorkspaceClient() {
                       id="honesty-gap"
                       rows={4}
                       value={trustForm.honestyGap}
-                      onChange={(event) => setTrustForm({ ...trustForm, honestyGap: event.target.value })}
+                      onChange={(event) =>
+                        setTrustForm({ ...trustForm, honestyGap: event.target.value })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -433,7 +532,9 @@ export function EvidenceWorkspaceClient() {
                       id="next-fix"
                       rows={4}
                       value={trustForm.nextFix}
-                      onChange={(event) => setTrustForm({ ...trustForm, nextFix: event.target.value })}
+                      onChange={(event) =>
+                        setTrustForm({ ...trustForm, nextFix: event.target.value })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -441,7 +542,9 @@ export function EvidenceWorkspaceClient() {
                     <Input
                       id="trust-artifact"
                       value={trustForm.artifactUrl}
-                      onChange={(event) => setTrustForm({ ...trustForm, artifactUrl: event.target.value })}
+                      onChange={(event) =>
+                        setTrustForm({ ...trustForm, artifactUrl: event.target.value })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -450,12 +553,16 @@ export function EvidenceWorkspaceClient() {
                       id="trust-notes"
                       rows={4}
                       value={trustForm.notes}
-                      onChange={(event) => setTrustForm({ ...trustForm, notes: event.target.value })}
+                      onChange={(event) =>
+                        setTrustForm({ ...trustForm, notes: event.target.value })
+                      }
                     />
                   </div>
                   <div className="flex gap-3 pt-2">
                     <Button type="submit" disabled={trustMutation.isPending}>
-                      {trustMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      {trustMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
                       Save review
                     </Button>
                     <Button type="button" variant="outline" onClick={closePanel}>
@@ -470,11 +577,15 @@ export function EvidenceWorkspaceClient() {
               <SheetHeader>
                 <SheetTitle>Record performance baseline</SheetTitle>
                 <SheetDescription>
-                  Store a durable baseline so launch-control can distinguish live performance from the evidence trail.
+                  Store a durable baseline so launch-control can distinguish live performance from
+                  the evidence trail.
                 </SheetDescription>
               </SheetHeader>
               {performanceForm ? (
-                <form onSubmit={submitPerformance} className="flex h-full flex-col gap-4 overflow-y-auto px-4 pb-6">
+                <form
+                  onSubmit={submitPerformance}
+                  className="flex h-full flex-col gap-4 overflow-y-auto px-4 pb-6"
+                >
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="baseline-date">Baseline date</Label>
@@ -483,7 +594,10 @@ export function EvidenceWorkspaceClient() {
                         type="date"
                         value={performanceForm.baselineDate}
                         onChange={(event) =>
-                          setPerformanceForm({ ...performanceForm, baselineDate: event.target.value })
+                          setPerformanceForm({
+                            ...performanceForm,
+                            baselineDate: event.target.value,
+                          })
                         }
                       />
                     </div>
@@ -517,7 +631,10 @@ export function EvidenceWorkspaceClient() {
                       id="scenario-label"
                       value={performanceForm.scenarioLabel}
                       onChange={(event) =>
-                        setPerformanceForm({ ...performanceForm, scenarioLabel: event.target.value })
+                        setPerformanceForm({
+                          ...performanceForm,
+                          scenarioLabel: event.target.value,
+                        })
                       }
                     />
                   </div>
@@ -576,7 +693,10 @@ export function EvidenceWorkspaceClient() {
                         id="artifact-url"
                         value={performanceForm.artifactUrl}
                         onChange={(event) =>
-                          setPerformanceForm({ ...performanceForm, artifactUrl: event.target.value })
+                          setPerformanceForm({
+                            ...performanceForm,
+                            artifactUrl: event.target.value,
+                          })
                         }
                       />
                     </div>
@@ -602,7 +722,10 @@ export function EvidenceWorkspaceClient() {
                         step="1"
                         value={performanceForm.apiHealthP95Ms}
                         onChange={(event) =>
-                          setPerformanceForm({ ...performanceForm, apiHealthP95Ms: event.target.value })
+                          setPerformanceForm({
+                            ...performanceForm,
+                            apiHealthP95Ms: event.target.value,
+                          })
                         }
                       />
                     </div>
@@ -615,7 +738,10 @@ export function EvidenceWorkspaceClient() {
                         step="1"
                         value={performanceForm.apiDrepsP95Ms}
                         onChange={(event) =>
-                          setPerformanceForm({ ...performanceForm, apiDrepsP95Ms: event.target.value })
+                          setPerformanceForm({
+                            ...performanceForm,
+                            apiDrepsP95Ms: event.target.value,
+                          })
                         }
                       />
                     </div>
@@ -628,7 +754,10 @@ export function EvidenceWorkspaceClient() {
                         step="1"
                         value={performanceForm.apiV1DrepsP95Ms}
                         onChange={(event) =>
-                          setPerformanceForm({ ...performanceForm, apiV1DrepsP95Ms: event.target.value })
+                          setPerformanceForm({
+                            ...performanceForm,
+                            apiV1DrepsP95Ms: event.target.value,
+                          })
                         }
                       />
                     </div>
@@ -659,7 +788,10 @@ export function EvidenceWorkspaceClient() {
                         step="0.1"
                         value={performanceForm.errorRatePct}
                         onChange={(event) =>
-                          setPerformanceForm({ ...performanceForm, errorRatePct: event.target.value })
+                          setPerformanceForm({
+                            ...performanceForm,
+                            errorRatePct: event.target.value,
+                          })
                         }
                       />
                     </div>
@@ -677,7 +809,9 @@ export function EvidenceWorkspaceClient() {
                   </div>
                   <div className="flex gap-3 pt-2">
                     <Button type="submit" disabled={performanceMutation.isPending}>
-                      {performanceMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      {performanceMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
                       Save baseline
                     </Button>
                     <Button type="button" variant="outline" onClick={closePanel}>

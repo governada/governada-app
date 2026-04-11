@@ -457,11 +457,7 @@ function buildStamp(
   const ageDays = daysAgo(updatedAt);
   const isStale = ageDays === null ? true : ageDays > staleAfterDays;
   const freshnessLabel =
-    ageDays === null
-      ? 'No record yet'
-      : ageDays === 0
-        ? 'Updated today'
-        : `${ageDays}d old`;
+    ageDays === null ? 'No record yet' : ageDays === 0 ? 'Updated today' : `${ageDays}d old`;
 
   return {
     kind: isStale ? 'stale' : kind,
@@ -682,11 +678,12 @@ function proofStatusFromJourneys(journeys: SystemsJourney[]): SystemsStatus {
 }
 
 function latestCiProofStamp(journeys: SystemsJourney[]): SystemsProvenanceStamp {
-  const latest = journeys
-    .filter((journey) => journey.provenance?.label?.startsWith('CI'))
-    .map((journey) => journey.lastVerifiedAt)
-    .filter((value): value is string => Boolean(value))
-    .sort((left, right) => right.localeCompare(left))[0] ?? null;
+  const latest =
+    journeys
+      .filter((journey) => journey.provenance?.label?.startsWith('CI'))
+      .map((journey) => journey.lastVerifiedAt)
+      .filter((value): value is string => Boolean(value))
+      .sort((left, right) => right.localeCompare(left))[0] ?? null;
 
   return buildStamp('ci_verified', 'Critical journeys', latest, 7);
 }
@@ -772,20 +769,14 @@ async function loadSystemsContext(): Promise<SystemsContext> {
       .from('systems_automation_followups')
       .select('*')
       .order('updated_at', { ascending: false }),
-    supabase
-      .from('systems_automation_runs')
-      .select('*')
-      .order('started_at', { ascending: false }),
+    supabase.from('systems_automation_runs').select('*').order('started_at', { ascending: false }),
     supabase
       .from('systems_automation_escalations')
       .select('*')
       .order('created_at', { ascending: false }),
     supabase.from('systems_review_drafts').select('*').order('created_at', { ascending: false }),
     supabase.from('systems_incidents').select('*').order('last_event_at', { ascending: false }),
-    supabase
-      .from('systems_incident_events')
-      .select('*')
-      .order('created_at', { ascending: false }),
+    supabase.from('systems_incident_events').select('*').order('created_at', { ascending: false }),
     supabase
       .from('systems_performance_baselines')
       .select('*')
@@ -962,9 +953,9 @@ async function loadSystemsContext(): Promise<SystemsContext> {
   const reviewDrafts = ((draftsResult.data || []) as SystemsReviewDraftRow[]).map(toReviewDraft);
   const suggestedReviewDraft = reviewDrafts[0] ?? null;
 
-  const performanceBaselineHistory = ((performanceResult.data || []) as SystemsPerformanceBaselineRow[]).map(
-    (row) => toSystemsPerformanceBaselineRecord(row),
-  );
+  const performanceBaselineHistory = (
+    (performanceResult.data || []) as SystemsPerformanceBaselineRow[]
+  ).map((row) => toSystemsPerformanceBaselineRecord(row));
   const latestPerformanceBaseline = performanceBaselineHistory[0] ?? null;
   const performanceBaselineSummary =
     buildSystemsPerformanceBaselineSummary(latestPerformanceBaseline);
@@ -983,9 +974,9 @@ async function loadSystemsContext(): Promise<SystemsContext> {
     correctnessStatus !== 'good' ? 'correctness' : null,
   ].filter((value): value is string => Boolean(value));
 
-  const trustSurfaceReviewHistory = ((trustSurfaceResult.data || []) as SystemsTrustSurfaceReviewRow[]).map(
-    (row) => toSystemsTrustSurfaceReviewRecord(row),
-  );
+  const trustSurfaceReviewHistory = (
+    (trustSurfaceResult.data || []) as SystemsTrustSurfaceReviewRow[]
+  ).map((row) => toSystemsTrustSurfaceReviewRecord(row));
   const latestTrustSurfaceReview = trustSurfaceReviewHistory[0] ?? null;
   const trustSurfaceReviewSummary = buildSystemsTrustSurfaceReviewSummary({
     latestReview: latestTrustSurfaceReview,
@@ -997,9 +988,9 @@ async function loadSystemsContext(): Promise<SystemsContext> {
     linkedSloIds: trustSurfaceConcernSloIds,
   });
 
-  const journeyVerifications = ((verificationResult.data || []) as SystemsJourneyVerificationRow[]).map(
-    toJourneyVerificationRecord,
-  );
+  const journeyVerifications = (
+    (verificationResult.data || []) as SystemsJourneyVerificationRow[]
+  ).map(toJourneyVerificationRecord);
   const journeys = buildJourneyStatuses(journeyVerifications);
 
   const performanceStatus = !latestPerformanceBaseline
@@ -1370,7 +1361,10 @@ function toLegacyDashboardData(context: SystemsContext): SystemsDashboardData {
   };
 }
 
-function summaryFor(section: SystemsWorkspaceSection, context: SystemsContext): SystemsWorkspaceSummary {
+function summaryFor(
+  section: SystemsWorkspaceSection,
+  context: SystemsContext,
+): SystemsWorkspaceSummary {
   const proofStamps = [
     latestCiProofStamp(context.journeys),
     buildStamp('durable_record', 'Weekly review', context.scorecardSync.lastReviewedAt ?? null, 7),

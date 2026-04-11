@@ -62,7 +62,7 @@ export const PATCH = withRouteHandler(
         status: body.status,
         acknowledged_at:
           body.status === 'acknowledged'
-            ? current.acknowledged_at ?? now
+            ? (current.acknowledged_at ?? now)
             : body.status === 'open'
               ? null
               : current.acknowledged_at,

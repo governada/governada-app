@@ -132,7 +132,7 @@ describe('systems performance baseline helpers', () => {
       type: 'performance_baseline',
       statusLabel: 'Healthy baseline',
       tone: 'good',
-      actionHref: '/admin/systems#performance-baseline',
+      actionHref: '/admin/systems/evidence?panel=performance',
     });
   });
 

@@ -201,7 +201,9 @@ export function IncidentsWorkspaceClient() {
           entryType,
           severity: current.severity === 'drill' ? 'p1' : current.severity,
           status:
-            current.entryType === 'drill' && current.status === 'resolved' ? 'open' : current.status,
+            current.entryType === 'drill' && current.status === 'resolved'
+              ? 'open'
+              : current.status,
         };
       }
 
@@ -240,7 +242,10 @@ export function IncidentsWorkspaceClient() {
               />
             ) : (
               liveIncidents.map((incident) => (
-                <div key={incident.id} className="rounded-2xl border border-border/70 bg-card/70 p-4">
+                <div
+                  key={incident.id}
+                  className="rounded-2xl border border-border/70 bg-card/70 p-4"
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge
                       status={
@@ -298,19 +303,22 @@ export function IncidentsWorkspaceClient() {
               />
             ) : (
               data.automationFollowups.map((followup) => (
-                <div key={followup.sourceKey} className="rounded-2xl border border-border/70 bg-card/70 p-4">
+                <div
+                  key={followup.sourceKey}
+                  className="rounded-2xl border border-border/70 bg-card/70 p-4"
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
                       {followup.triggerType === 'drill_cadence'
                         ? 'Drill cadence'
                         : 'Incident retro'}
                     </Badge>
-                    <StatusBadge status={followup.severity === 'critical' ? 'critical' : 'warning'} />
+                    <StatusBadge
+                      status={followup.severity === 'critical' ? 'critical' : 'warning'}
+                    />
                   </div>
                   <p className="mt-3 text-base font-semibold">{followup.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {followup.summary}
-                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{followup.summary}</p>
                   {followup.actionHref ? (
                     <Button asChild variant="ghost" className="mt-3 px-0">
                       <Link href={followup.actionHref}>Open source</Link>
@@ -336,7 +344,10 @@ export function IncidentsWorkspaceClient() {
               />
             ) : (
               data.incidents.map((incident) => (
-                <div key={incident.id} className="rounded-2xl border border-border/70 bg-card/70 p-4">
+                <div
+                  key={incident.id}
+                  className="rounded-2xl border border-border/70 bg-card/70 p-4"
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
                       {incident.entryType}
@@ -351,9 +362,7 @@ export function IncidentsWorkspaceClient() {
                   </p>
                   <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
                     <p>Detected by {incident.detectedBy}</p>
-                    <p>
-                      Systems affected: {incident.systemsAffected.join(', ') || 'Not recorded'}
-                    </p>
+                    <p>Systems affected: {incident.systemsAffected.join(', ') || 'Not recorded'}</p>
                   </div>
                 </div>
               ))
@@ -373,7 +382,10 @@ export function IncidentsWorkspaceClient() {
               />
             ) : (
               data.incidentEvents.map((eventRecord) => (
-                <div key={eventRecord.id} className="rounded-2xl border border-border/70 bg-card/70 p-4">
+                <div
+                  key={eventRecord.id}
+                  className="rounded-2xl border border-border/70 bg-card/70 p-4"
+                >
                   <div className="flex items-start gap-3">
                     <div className="rounded-full bg-muted p-2 text-muted-foreground">
                       <History className="h-4 w-4" />
@@ -415,7 +427,9 @@ export function IncidentsWorkspaceClient() {
       >
         <SheetContent className="w-full sm:max-w-2xl">
           <SheetHeader>
-            <SheetTitle>{form?.id ? 'Update incident or drill' : 'Log incident or drill'}</SheetTitle>
+            <SheetTitle>
+              {form?.id ? 'Update incident or drill' : 'Log incident or drill'}
+            </SheetTitle>
             <SheetDescription>
               Keep the founder-facing incident state durable, explicit, and auditable.
             </SheetDescription>
@@ -432,9 +446,7 @@ export function IncidentsWorkspaceClient() {
                     id="incident-date"
                     type="date"
                     value={form.incidentDate}
-                    onChange={(event) =>
-                      setForm({ ...form, incidentDate: event.target.value })
-                    }
+                    onChange={(event) => setForm({ ...form, incidentDate: event.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -442,9 +454,7 @@ export function IncidentsWorkspaceClient() {
                   <Input
                     id="follow-up-owner"
                     value={form.followUpOwner}
-                    onChange={(event) =>
-                      setForm({ ...form, followUpOwner: event.target.value })
-                    }
+                    onChange={(event) => setForm({ ...form, followUpOwner: event.target.value })}
                   />
                 </div>
               </div>
@@ -454,9 +464,7 @@ export function IncidentsWorkspaceClient() {
                   <Label htmlFor="entry-type">Entry type</Label>
                   <Select
                     value={form.entryType}
-                    onValueChange={(value) =>
-                      setEntryType(value as IncidentFormState['entryType'])
-                    }
+                    onValueChange={(value) => setEntryType(value as IncidentFormState['entryType'])}
                   >
                     <SelectTrigger id="entry-type" className="w-full">
                       <SelectValue placeholder="Choose entry type" />
@@ -544,9 +552,7 @@ export function IncidentsWorkspaceClient() {
                   id="systems-affected"
                   rows={3}
                   value={form.systemsAffected}
-                  onChange={(event) =>
-                    setForm({ ...form, systemsAffected: event.target.value })
-                  }
+                  onChange={(event) => setForm({ ...form, systemsAffected: event.target.value })}
                 />
               </div>
 
@@ -586,9 +592,7 @@ export function IncidentsWorkspaceClient() {
                   id="permanent-fix"
                   rows={4}
                   value={form.permanentFix}
-                  onChange={(event) =>
-                    setForm({ ...form, permanentFix: event.target.value })
-                  }
+                  onChange={(event) => setForm({ ...form, permanentFix: event.target.value })}
                 />
               </div>
 

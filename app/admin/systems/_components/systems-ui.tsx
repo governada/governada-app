@@ -43,7 +43,10 @@ export function StatusBadge({ status }: { status: SystemsStatus | SystemsLaunchD
       : statusLabel(status);
 
   return (
-    <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-medium', statusTone(status))}>
+    <Badge
+      variant="outline"
+      className={cn('rounded-full px-3 py-1 text-xs font-medium', statusTone(status))}
+    >
       {label}
     </Badge>
   );
@@ -93,8 +96,16 @@ export function WorkspaceHero({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 lg:w-[22rem] lg:grid-cols-1">
-            <HeroMetric label="Blockers" value={String(summary.blockerCount)} status={summary.blockerCount > 0 ? 'critical' : 'good'} />
-            <HeroMetric label="Queue" value={String(summary.queueCount)} status={summary.queueCount > 0 ? 'warning' : 'good'} />
+            <HeroMetric
+              label="Blockers"
+              value={String(summary.blockerCount)}
+              status={summary.blockerCount > 0 ? 'critical' : 'good'}
+            />
+            <HeroMetric
+              label="Queue"
+              value={String(summary.queueCount)}
+              status={summary.queueCount > 0 ? 'warning' : 'good'}
+            />
             <HeroMetric label="Updated" value={formatDateTime(summary.generatedAt)} status="good" />
           </div>
         </div>
@@ -153,7 +164,9 @@ export function SectionCard({
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div className="space-y-1">
           <CardTitle className="text-base tracking-tight">{title}</CardTitle>
-          {description ? <CardDescription className="max-w-3xl text-sm leading-6">{description}</CardDescription> : null}
+          {description ? (
+            <CardDescription className="max-w-3xl text-sm leading-6">{description}</CardDescription>
+          ) : null}
         </div>
         {action ? (
           action
@@ -188,7 +201,9 @@ export function EmptyState({
         <Clock3 className="h-5 w-5" />
       </div>
       <h3 className="text-sm font-semibold">{title}</h3>
-      <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
+      <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+        {description}
+      </p>
       {actionLabel && onAction ? (
         <Button className="mt-4" variant="outline" onClick={onAction}>
           {actionLabel}
@@ -217,7 +232,12 @@ export function DecisionStrip({
     );
 
   return (
-    <div className={cn('flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between', statusTone(decision))}>
+    <div
+      className={cn(
+        'flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between',
+        statusTone(decision),
+      )}
+    >
       <div className="flex items-center gap-3">
         <div className="rounded-full bg-black/15 p-2">{icon}</div>
         <div>
@@ -226,10 +246,16 @@ export function DecisionStrip({
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Badge variant="outline" className="rounded-full border-current/30 bg-black/10 px-3 py-1 text-xs">
+        <Badge
+          variant="outline"
+          className="rounded-full border-current/30 bg-black/10 px-3 py-1 text-xs"
+        >
           {blockerCount} blocker{blockerCount === 1 ? '' : 's'}
         </Badge>
-        <Badge variant="outline" className="rounded-full border-current/30 bg-black/10 px-3 py-1 text-xs">
+        <Badge
+          variant="outline"
+          className="rounded-full border-current/30 bg-black/10 px-3 py-1 text-xs"
+        >
           {watchCount} watch item{watchCount === 1 ? '' : 's'}
         </Badge>
       </div>

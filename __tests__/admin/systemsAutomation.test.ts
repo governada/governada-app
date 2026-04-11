@@ -351,9 +351,7 @@ describe('systems automation helpers', () => {
 
     expect(target?.commitmentId).toBe('8a6bb2b7-0dd9-4d67-9f59-20f5f2e31d54');
     expect(target?.reason).toBe('blocked');
-    expect(target?.actionHref).toBe(
-      '/admin/systems#commitment-8a6bb2b7-0dd9-4d67-9f59-20f5f2e31d54',
-    );
+    expect(target?.actionHref).toBe('/admin/systems/queue');
   });
 
   it('builds and parses the latest commitment shepherd record', () => {

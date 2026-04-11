@@ -440,7 +440,7 @@ describe('systems review draft helpers', () => {
       type: 'review_draft',
       statusLabel: 'Scheduled draft',
       tone: 'warning',
-      actionHref: '/admin/systems#weekly-review',
+      actionHref: '/admin/systems/queue?panel=review',
     });
   });
 });

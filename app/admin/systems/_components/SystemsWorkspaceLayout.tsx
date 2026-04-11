@@ -87,13 +87,20 @@ export function SystemsWorkspaceLayout({ children }: { children: React.ReactNode
                   )}
                 >
                   <div className="mb-3 flex items-center justify-between">
-                    <Icon className={cn('h-4 w-4', active ? 'text-amber-300' : 'text-muted-foreground')} />
+                    <Icon
+                      className={cn('h-4 w-4', active ? 'text-amber-300' : 'text-muted-foreground')}
+                    />
                     <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                       {item.section}
                     </span>
                   </div>
                   <p className="text-sm font-semibold tracking-tight">{item.label}</p>
-                  <p className={cn('mt-1 text-xs leading-5', active ? 'text-slate-300' : 'text-muted-foreground')}>
+                  <p
+                    className={cn(
+                      'mt-1 text-xs leading-5',
+                      active ? 'text-slate-300' : 'text-muted-foreground',
+                    )}
+                  >
                     {item.summary}
                   </p>
                 </Link>

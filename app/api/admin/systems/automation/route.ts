@@ -154,7 +154,8 @@ function linkedIncidentId(
   current?: DurableAutomationFollowupRow,
 ) {
   if (current?.linked_incident_id) return current.linked_incident_id;
-  return spec.triggerType === 'incident_retro_followup' && typeof spec.evidence?.entryId === 'string'
+  return spec.triggerType === 'incident_retro_followup' &&
+    typeof spec.evidence?.entryId === 'string'
     ? spec.evidence.entryId
     : null;
 }
@@ -192,14 +193,14 @@ function buildFollowupUpsertRow(input: {
     linked_incident_id: linkedIncidentId(spec, current),
     linked_commitment_id: linkedCommitmentId(spec, current),
     created_at: current?.created_at ?? now,
-    first_opened_at: reopened ? now : current?.first_opened_at ?? now,
+    first_opened_at: reopened ? now : (current?.first_opened_at ?? now),
     last_surfaced_at: now,
     acknowledged_at:
       desiredStatus === 'acknowledged'
-        ? current?.acknowledged_at ?? now
+        ? (current?.acknowledged_at ?? now)
         : desiredStatus === 'open'
           ? null
-          : current?.acknowledged_at ?? null,
+          : (current?.acknowledged_at ?? null),
     resolved_at: null,
   };
 }
@@ -338,29 +339,30 @@ export async function runSystemsAutomationSweep(request: NextRequest, ctx: Route
 
   const supabase = getSupabaseAdmin();
 
-  const [dashboard, followupsResult, sentEscalationsResult, runEscalationsResult] = await Promise.all([
-    buildSystemsDashboardData(),
-    supabase
-      .from('systems_automation_followups')
-      .select(
-        'source_key, trigger_type, severity, status, title, summary, recommended_action, action_href, evidence, linked_incident_id, linked_commitment_id, created_at, updated_at, first_opened_at, last_surfaced_at, acknowledged_at, resolved_at',
-      )
-      .order('updated_at', { ascending: false }),
-    supabase
-      .from('systems_automation_escalations')
-      .select(
-        'id, run_id, source_key, reason, status, title, details, followup_updated_at, critical_count, channel_count, channels, created_at, delivered_at',
-      )
-      .eq('status', 'sent')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('systems_automation_escalations')
-      .select(
-        'id, run_id, source_key, reason, status, title, details, followup_updated_at, critical_count, channel_count, channels, created_at, delivered_at',
-      )
-      .eq('run_id', run.row.id)
-      .order('created_at', { ascending: false }),
-  ]);
+  const [dashboard, followupsResult, sentEscalationsResult, runEscalationsResult] =
+    await Promise.all([
+      buildSystemsDashboardData(),
+      supabase
+        .from('systems_automation_followups')
+        .select(
+          'source_key, trigger_type, severity, status, title, summary, recommended_action, action_href, evidence, linked_incident_id, linked_commitment_id, created_at, updated_at, first_opened_at, last_surfaced_at, acknowledged_at, resolved_at',
+        )
+        .order('updated_at', { ascending: false }),
+      supabase
+        .from('systems_automation_escalations')
+        .select(
+          'id, run_id, source_key, reason, status, title, details, followup_updated_at, critical_count, channel_count, channels, created_at, delivered_at',
+        )
+        .eq('status', 'sent')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('systems_automation_escalations')
+        .select(
+          'id, run_id, source_key, reason, status, title, details, followup_updated_at, critical_count, channel_count, channels, created_at, delivered_at',
+        )
+        .eq('run_id', run.row.id)
+        .order('created_at', { ascending: false }),
+    ]);
 
   if (followupsResult.error || sentEscalationsResult.error || runEscalationsResult.error) {
     await supabase
@@ -608,7 +610,8 @@ export async function runSystemsAutomationSweep(request: NextRequest, ctx: Route
     payload: commitmentShepherd,
   });
 
-  const existingRunEscalations = (runEscalationsResult.data || []) as DurableAutomationEscalationRow[];
+  const existingRunEscalations = (runEscalationsResult.data ||
+    []) as DurableAutomationEscalationRow[];
   const existingRunEscalationBySource = new Map(
     existingRunEscalations.map((row) => [row.source_key, row]),
   );

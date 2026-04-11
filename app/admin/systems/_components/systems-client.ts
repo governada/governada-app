@@ -210,14 +210,10 @@ export function buildInitialReviewForm(data: SystemsQueueViewData): ReviewFormSt
       primaryCommitment?.summary ??
       'Refresh the systems operating loop and close the top launch gap this week.',
     commitmentOwner:
-      data.latestCommitmentShepherd?.owner ??
-      primaryCommitment?.owner ??
-      'Founder + agents',
+      data.latestCommitmentShepherd?.owner ?? primaryCommitment?.owner ?? 'Founder + agents',
     commitmentDueDate: data.latestCommitmentShepherd?.dueDate ?? '',
-    linkedSloIds:
-      linkedSloIdsFromFollowup(primaryFollowup).slice(0, 3) ??
-      primaryCommitment?.linkedSloIds.slice(0, 3) ??
-      ['availability'],
+    linkedSloIds: linkedSloIdsFromFollowup(primaryFollowup).slice(0, 3) ??
+      primaryCommitment?.linkedSloIds.slice(0, 3) ?? ['availability'],
     linkedIncidentId: linkedIncidentIdFromFollowup(primaryFollowup),
   };
 }
@@ -313,8 +309,9 @@ export function buildInitialTrustSurfaceReviewForm(input: {
   return {
     reviewDate: todayInputValue(),
     overallStatus: latest?.overallStatus ?? 'warning',
-    linkedSloIds:
-      latest?.linkedSloIds.length ? latest.linkedSloIds : input.linkedSloIds?.slice(0, 3) ?? ['freshness'],
+    linkedSloIds: latest?.linkedSloIds.length
+      ? latest.linkedSloIds
+      : (input.linkedSloIds?.slice(0, 3) ?? ['freshness']),
     reviewedSurfaces:
       latest?.reviewedSurfaces.join('\n') ??
       ['Home shell', 'DRep discovery', 'Proposal detail', 'Quick Match'].join('\n'),
@@ -655,7 +652,10 @@ export function workspaceTitle(section: SystemsWorkspaceSection) {
   }
 }
 
-export function workspaceDescription(section: SystemsWorkspaceSection, summary: SystemsWorkspaceSummary) {
+export function workspaceDescription(
+  section: SystemsWorkspaceSection,
+  summary: SystemsWorkspaceSummary,
+) {
   switch (section) {
     case 'launch':
       return `${summary.launchHeadline} Focus on the launch call, the blockers, and the proof freshness.`;

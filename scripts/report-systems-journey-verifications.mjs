@@ -8,15 +8,12 @@ if (!endpoint || !token) {
 
 const statusInput = (process.env.SYSTEMS_JOURNEY_STATUS || '').toLowerCase();
 const status = statusInput === 'success' || statusInput === 'passed' ? 'passed' : 'failed';
-const journeyIds =
-  process.env.SYSTEMS_JOURNEY_IDS?.split(',')
-    .map((value) => value.trim())
-    .filter(Boolean) ?? ['J01', 'J02', 'J03', 'J04', 'J05', 'J06'];
+const journeyIds = process.env.SYSTEMS_JOURNEY_IDS?.split(',')
+  .map((value) => value.trim())
+  .filter(Boolean) ?? ['J01', 'J02', 'J03', 'J04', 'J05', 'J06'];
 
 const runUrl =
-  process.env.GITHUB_SERVER_URL &&
-  process.env.GITHUB_REPOSITORY &&
-  process.env.GITHUB_RUN_ID
+  process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY && process.env.GITHUB_RUN_ID
     ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
     : null;
 

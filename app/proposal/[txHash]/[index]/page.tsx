@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import {
   getProposalByKey,
@@ -34,6 +33,10 @@ import { ProposalActionZone } from '@/components/governada/proposals/ProposalAct
 import { ProposalBridge } from '@/components/governada/proposals/ProposalBridge';
 import { ProposalDepthGate } from '@/components/governada/proposals/ProposalDepthGate';
 import { ProposalDepthSection } from '@/components/governada/proposals/ProposalDepthSection';
+import {
+  StructuredDataMeta,
+  StructuredDataNested,
+} from '@/components/shared/StructuredDataMicrodata';
 import { getFeatureFlag } from '@/lib/featureFlags';
 import { getProposalBrief } from '@/lib/proposalBrief';
 import { computeConvictionPulseData } from '@/lib/convictionPulse';
@@ -293,32 +296,28 @@ export default async function ProposalDetailPage({ params }: PageProps) {
     totalVoters,
   });
 
-  // JSON-LD structured data for governance proposal
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: title,
-    description: proposal.abstract || `Cardano governance proposal`,
-    url: `https://governada.io/proposal/${encodeURIComponent(txHash)}/${proposalIndex}`,
-    publisher: {
-      '@type': 'Organization',
-      name: 'Governada',
-      url: 'https://governada.io',
-    },
-    about: {
-      '@type': 'Thing',
-      name: 'Cardano Governance',
-    },
-  };
-  const nonce = (await headers()).get('x-nonce') ?? undefined;
-
   return livingBriefEnabled ? (
-    <div className="container mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
-      <script
-        nonce={nonce}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    <div
+      className="container mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8"
+      itemScope
+      itemType="https://schema.org/Article"
+    >
+      <StructuredDataMeta itemProp="headline" content={title} />
+      <StructuredDataMeta
+        itemProp="description"
+        content={proposal.abstract || 'Cardano governance proposal'}
       />
+      <StructuredDataMeta
+        itemProp="url"
+        content={`https://governada.io/proposal/${encodeURIComponent(txHash)}/${proposalIndex}`}
+      />
+      <StructuredDataNested itemProp="publisher" itemType="https://schema.org/Organization">
+        <StructuredDataMeta itemProp="name" content="Governada" />
+        <StructuredDataMeta itemProp="url" content="https://governada.io" />
+      </StructuredDataNested>
+      <StructuredDataNested itemProp="about" itemType="https://schema.org/Thing">
+        <StructuredDataMeta itemProp="name" content="Cardano Governance" />
+      </StructuredDataNested>
       <PageViewTracker
         event="proposal_detail_viewed"
         properties={{ tx_hash: txHash, index: proposalIndex }}
@@ -476,12 +475,27 @@ export default async function ProposalDetailPage({ params }: PageProps) {
       />
     </div>
   ) : (
-    <div className="container mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
-      <script
-        nonce={nonce}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    <div
+      className="container mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8"
+      itemScope
+      itemType="https://schema.org/Article"
+    >
+      <StructuredDataMeta itemProp="headline" content={title} />
+      <StructuredDataMeta
+        itemProp="description"
+        content={proposal.abstract || 'Cardano governance proposal'}
       />
+      <StructuredDataMeta
+        itemProp="url"
+        content={`https://governada.io/proposal/${encodeURIComponent(txHash)}/${proposalIndex}`}
+      />
+      <StructuredDataNested itemProp="publisher" itemType="https://schema.org/Organization">
+        <StructuredDataMeta itemProp="name" content="Governada" />
+        <StructuredDataMeta itemProp="url" content="https://governada.io" />
+      </StructuredDataNested>
+      <StructuredDataNested itemProp="about" itemType="https://schema.org/Thing">
+        <StructuredDataMeta itemProp="name" content="Cardano Governance" />
+      </StructuredDataNested>
       <PageViewTracker
         event="proposal_detail_viewed"
         properties={{ tx_hash: txHash, index: proposalIndex }}

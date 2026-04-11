@@ -4,6 +4,7 @@ import { forwardRef, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import type { ConstellationRef } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
+import type { GPUTier } from '@/hooks/useDeviceCapability';
 
 const GlobeConstellation = dynamic(
   () =>
@@ -58,6 +59,8 @@ interface ConstellationSceneProps {
   children?: ReactNode;
   /** Cluster data for constellation lines (MST within clusters) */
   clusters?: Array<{ memberIds: string[] }>;
+  /** Capability tier from the homepage device probe. Reused by 3D scene quality. */
+  gpuTier?: GPUTier;
   /** When false, disables the reactive focus engine tick + shared state sync.
    *  Decorative/background globes should set this to false. */
   engineEnabled?: boolean;

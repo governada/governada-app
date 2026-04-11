@@ -14,6 +14,11 @@ import { useGovernanceConstellation } from '@/hooks/queries';
 import { CameraControls } from '@react-three/drei';
 import { GlobePostProcessing } from '@/components/globe/GlobePostProcessing';
 import { computeGlobeLayout } from '@/lib/constellation/globe-layout';
+import {
+  CONSTELLATION_NODE_LIMITS,
+  hasPrecomputedConstellationNodes,
+  limitPrecomputedConstellationNodes,
+} from '@/lib/constellation/sceneNodes';
 import { DelegationBond as DelegationBondComponent } from '@/components/globe/DelegationBond';
 import { AmbientStarfield } from '@/components/globe/GlobeAmbient';
 import { ConstellationLines } from '@/components/globe/GlobeEdges';
@@ -46,8 +51,8 @@ import { getSharedFocus, setSharedFocus, getSharedFocusVersion } from '@/lib/glo
 import { getSharedIntent, getSharedIntentVersion, setSharedIntent } from '@/lib/globe/focusIntent';
 import { deriveFromIntent } from '@/lib/globe/focusEngine';
 import { isEngineLocked, releaseEngineLock } from '@/lib/globe/sequencer';
-import { estimateGPUTier } from '@/lib/globe/helpers';
 import { createConstellationCommands } from '@/lib/globe/constellationCommands';
+import type { GPUTier } from '@/hooks/useDeviceCapability';
 
 interface GlobeConstellationProps {
   interactive?: boolean;
@@ -94,6 +99,8 @@ interface GlobeConstellationProps {
   visitedNodeIds?: Set<string>;
   /** Cluster data for constellation lines (MST within clusters) */
   clusters?: Array<{ memberIds: string[] }>;
+  /** Capability tier determined by the homepage device probe. */
+  gpuTier?: GPUTier;
   /** When false, disables the reactive focus engine tick + shared state sync.
    *  Decorative/background globe instances should set this to false to prevent
    *  multiple engine ticks fighting over the shared window globals. */
@@ -129,6 +136,7 @@ export const GlobeConstellation = forwardRef<
     visitedNodeIds,
     children,
     clusters,
+    gpuTier,
     engineEnabled = true,
   },
   ref,
@@ -202,7 +210,7 @@ export const GlobeConstellation = forwardRef<
   const sceneStateRef = useRef(sceneState);
   sceneStateRef.current = sceneState;
 
-  const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('high');
+  const [quality, setQuality] = useState<'low' | 'mid' | 'high'>(gpuTier ?? 'mid');
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   // Bridge focus state into R3F's separate fiber tree.
@@ -315,6 +323,7 @@ export const GlobeConstellation = forwardRef<
   }, [sceneState.nodes, engineEnabled]);
 
   const { data: apiData } = useGovernanceConstellation();
+  const cachedProposalNodes = apiData?.proposalNodes ?? [];
 
   const onNodeSelectRef = useRef(onNodeSelect);
   useEffect(() => {
@@ -398,31 +407,36 @@ export const GlobeConstellation = forwardRef<
 
   useEffect(() => {
     if (!apiData) return;
-    const gpu = estimateGPUTier();
+    const gpu = gpuTier ?? 'mid';
     setQuality(gpu);
-    const nodeLimit = gpu === 'low' ? 200 : gpu === 'mid' ? 500 : 800;
+    const nodeLimit = CONSTELLATION_NODE_LIMITS[gpu];
     const typedData = apiData as ConstellationApiData;
-    const layout = computeGlobeLayout(typedData.nodes, nodeLimit);
+    const proposalNodesForScene = proposalNodes?.length ? proposalNodes : cachedProposalNodes;
+    const baseNodes = hasPrecomputedConstellationNodes(typedData.nodes)
+      ? limitPrecomputedConstellationNodes(typedData.nodes, gpu)
+      : computeGlobeLayout(typedData.nodes, nodeLimit).nodes;
+    const sceneNodes = [...baseNodes];
+    const nodeMap = new Map(sceneNodes.map((node) => [node.id, node] as const));
 
     // Inject authenticated user's node into the constellation
     if (userNode) {
-      layout.nodes.push(userNode);
-      layout.nodeMap.set(userNode.id, userNode);
+      sceneNodes.push(userNode);
+      nodeMap.set(userNode.id, userNode);
     }
 
     // Inject proposal nodes
-    if (proposalNodes?.length) {
-      for (const pNode of proposalNodes) {
-        layout.nodes.push(pNode);
-        layout.nodeMap.set(pNode.id, pNode);
+    if (proposalNodesForScene.length) {
+      for (const pNode of proposalNodesForScene) {
+        sceneNodes.push(pNode);
+        nodeMap.set(pNode.id, pNode);
       }
     }
 
     setSceneState((prev) => ({
       ...prev,
-      nodes: layout.nodes,
-      edges: layout.edges,
-      nodeMap: layout.nodeMap,
+      nodes: sceneNodes,
+      edges: [],
+      nodeMap,
     }));
     setReady(true);
     onReady?.();
@@ -439,7 +453,7 @@ export const GlobeConstellation = forwardRef<
         controls.setLookAt(0, 0, 0, 8, 0, 0, true);
       }, 1200);
     }
-  }, [apiData, onReady, userNode, proposalNodes, flyToUserOnReady]);
+  }, [apiData, cachedProposalNodes, gpuTier, onReady, proposalNodes, userNode, flyToUserOnReady]);
 
   const dpr =
     quality === 'low' ? 1 : quality === 'mid' ? 1.5 : Math.min(window.devicePixelRatio, 2);

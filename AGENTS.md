@@ -12,7 +12,7 @@ Provider-agnostic instructions for autonomous agents working in this repo. Treat
 
 ## Hard Constraints
 
-- Any `app/**/page.tsx` or `app/**/route.ts` touching Supabase, Redis, or `process.env` must export `const dynamic = 'force-dynamic'`.
+- Route rendering follows `scripts/lib/routeRenderPolicy.mjs`. `app-dynamic` and `public-dynamic-exception` layouts/pages/routes that touch cached governance data, request headers/cookies, Supabase, Redis, or `process.env` must export `const dynamic = 'force-dynamic'`. `public-cache` routes may read DB-first cached governance data via `lib/data.ts` without `force-dynamic`, but may not read request-scoped APIs, direct Supabase/Redis clients, or raw `process.env` in the route file.
 - Any new file in `inngest/functions/` must be imported and registered in `app/api/inngest/route.ts`.
 - Client-side data fetching uses TanStack Query, not raw `fetch` with ad-hoc `useEffect` state.
 - Pages and components read cached governance data via `lib/data.ts`, not direct Koios calls.

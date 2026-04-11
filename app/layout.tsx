@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { cookies, headers } from 'next/headers';
 import { Geist, Space_Grotesk, Fraunces } from 'next/font/google';
 import './globals.css';
-import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/Providers';
 import { BrandedLoader } from '@/components/BrandedLoader';
 import { NavDirectionProvider } from '@/components/NavDirectionProvider';
@@ -13,12 +11,14 @@ import { Toaster } from '@/components/ui/toaster';
 import { GovernadaShell } from '@/components/governada/GovernadaShell';
 import { GovernanceFontProvider } from '@/components/GovernanceFontProvider';
 import { LocaleProvider } from '@/components/providers/LocaleProvider';
-import { ModeProvider } from '@/components/providers/ModeProvider';
-import { LOCALE_COOKIE, RTL_LOCALES, resolvePreferredLocale } from '@/lib/i18n/config';
+import { DEFAULT_LOCALE, RTL_LOCALES } from '@/lib/i18n/config';
 
-// Nonce-based CSP requires dynamic rendering so Next can attach a request-scoped
-// nonce to its inline/bootstrap scripts in production mode.
-export const dynamic = 'force-dynamic';
+// DD05 route-owned locale contract:
+// - Unprefixed routes render canonical English HTML at the document boundary.
+// - User-selected locale remains a client-owned preference for translated chrome
+//   and formatting until explicit localized route paths exist.
+const DOCUMENT_LOCALE = DEFAULT_LOCALE;
+const DOCUMENT_DIR = RTL_LOCALES.has(DOCUMENT_LOCALE) ? 'rtl' : 'ltr';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -75,24 +75,15 @@ export const viewport: Viewport = {
   themeColor: '#0a0b14',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headerStore = await headers();
-  const cookieStore = await cookies();
-  const nonce = headerStore.get('x-nonce') ?? undefined;
-  const locale = resolvePreferredLocale({
-    cookieLocale: cookieStore.get(LOCALE_COOKIE)?.value,
-    acceptLanguage: headerStore.get('accept-language'),
-  });
-  const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
-
   return (
     <html
-      lang={locale}
-      dir={dir}
+      lang={DOCUMENT_LOCALE}
+      dir={DOCUMENT_DIR}
       className="dark"
       style={{ colorScheme: 'dark' }}
       suppressHydrationWarning
@@ -101,35 +92,25 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${spaceGrotesk.variable} ${fraunces.variable} antialiased`}
         suppressHydrationWarning
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          forcedTheme="dark"
-          disableTransitionOnChange
-          nonce={nonce}
-        >
-          <LocaleProvider initialLocale={locale}>
-            <Providers>
-              <NavDirectionProvider>
-                <BrandedLoader />
-                <a
-                  href="#main-content"
-                  className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none"
-                >
-                  Skip to main content
-                </a>
-                <GovernanceFontProvider />
-                <ModeProvider>
-                  <GovernadaShell>{children}</GovernadaShell>
-                </ModeProvider>
-                <CommandProvider />
-                <Toaster />
-                <InstallPrompt />
-                <OfflineBanner />
-              </NavDirectionProvider>
-            </Providers>
-          </LocaleProvider>
-        </ThemeProvider>
+        <LocaleProvider initialLocale={DOCUMENT_LOCALE}>
+          <Providers>
+            <NavDirectionProvider>
+              <BrandedLoader />
+              <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none"
+              >
+                Skip to main content
+              </a>
+              <GovernanceFontProvider />
+              <GovernadaShell>{children}</GovernadaShell>
+              <CommandProvider />
+              <Toaster />
+              <InstallPrompt />
+              <OfflineBanner />
+            </NavDirectionProvider>
+          </Providers>
+        </LocaleProvider>
       </body>
     </html>
   );

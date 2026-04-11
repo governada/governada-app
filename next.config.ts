@@ -3,6 +3,7 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { withSentryConfig } from '@sentry/nextjs';
 import withBundleAnalyzer from '@next/bundle-analyzer';
+import { buildPublicCsp } from './lib/security/csp';
 
 function getCommonAncestor(paths: string[]): string {
   const [first, ...rest] = paths
@@ -59,6 +60,9 @@ const nextConfig: NextConfig = {
     // Enable browser-native View Transitions API for smooth route navigation.
     // GPU-accelerated, zero JavaScript cost. Graceful degradation in unsupported browsers.
     viewTransition: true,
+    sri: {
+      algorithm: 'sha256',
+    },
   },
   serverExternalPackages: [
     'libsodium-wrappers-sumo',
@@ -66,12 +70,13 @@ const nextConfig: NextConfig = {
     '@emurgo/cardano-serialization-lib-nodejs',
   ],
   async headers() {
-    // CSP is handled per-request in proxy.ts (nonce-based, dynamic).
-    // Only static security headers remain here.
+    const publicCsp = buildPublicCsp({ isDev: process.env.NODE_ENV === 'development' });
+
     return [
       {
         source: '/((?!api).*)',
         headers: [
+          { key: 'Content-Security-Policy', value: publicCsp },
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',

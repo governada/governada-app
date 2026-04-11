@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
+import { AppShellProviders } from '@/components/governada/AppShellProviders';
 import { SectionTabBar } from '@/components/governada/SectionTabBar';
 import { SectionSpotlightTrigger } from '@/components/discovery/SectionSpotlightTrigger';
 
@@ -15,10 +16,10 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   const isStudioMode = isReviewStudio || isAuthorStudio;
 
   return (
-    <>
+    <AppShellProviders>
       {!isStudioMode && <SectionTabBar section="workspace" />}
       {!isStudioMode && <SectionSpotlightTrigger section="workspace" />}
       {children}
-    </>
+    </AppShellProviders>
   );
 }

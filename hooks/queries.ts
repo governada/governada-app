@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { NclUtilization, DRepNclImpact } from '@/lib/treasury';
 import { fetchJson } from '@/lib/api/client';
+import type { ConstellationApiData } from '@/lib/constellation/types';
 
 export interface CCHealthSummaryResponse {
   status: 'healthy' | 'attention' | 'critical';
@@ -391,7 +392,7 @@ export function useGovernanceInterBody() {
 }
 
 export function useGovernanceConstellation() {
-  return useQuery({
+  return useQuery<ConstellationApiData>({
     queryKey: ['governance-constellation'],
     queryFn: () => fetchJson('/api/governance/constellation'),
     staleTime: 5 * 60_000,

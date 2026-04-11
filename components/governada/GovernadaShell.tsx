@@ -10,8 +10,6 @@ import { TierThemeProvider } from '@/components/providers/TierThemeProvider';
 import { GovernadaHeader } from './GovernadaHeader';
 import { GovernadaBottomNav } from './GovernadaBottomNav';
 import { EdgeSwipeMenu } from './EdgeSwipeMenu';
-import { ShortcutProvider } from './ShortcutProvider';
-import { ShortcutOverlay } from './ShortcutOverlay';
 import { SectionTransition } from './SectionTransition';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
@@ -27,8 +25,6 @@ import { useWhisper } from '@/hooks/useWhisper';
 import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
 import { useSenecaProactiveWhispers } from '@/hooks/useSenecaProactiveWhispers';
 import { useEpochContext } from '@/hooks/useEpochContext';
-import { DiscoveryHub } from '@/components/discovery/DiscoveryHub';
-import { SpotlightProvider } from '@/components/discovery/SpotlightProvider';
 import { LegalLinks } from './LegalLinks';
 
 const SenecaOrb = dynamic(
@@ -52,9 +48,18 @@ const ConstellationScene = dynamic(
   { ssr: false },
 );
 
-// DiscoveryHub is a regular import (not lazy) because it wraps the header
-// and provides context for the Compass icon. It's lightweight — just state +
-// context provider. The heavy CompassPanel is inside a Sheet (renders on open).
+const SpotlightProvider = dynamic(
+  () =>
+    import('@/components/discovery/SpotlightProvider').then((m) => ({
+      default: m.SpotlightProvider,
+    })),
+  { ssr: false },
+);
+
+// DiscoveryHub is a regular import because it wraps the header and provides
+// context for the Compass icon. The heavy Compass panel still mounts on demand.
+import { DiscoveryHub } from '@/components/discovery/DiscoveryHub';
+
 const EngagementNudge = dynamic(
   () =>
     import('@/components/discovery/EngagementNudge').then((m) => ({ default: m.EngagementNudge })),
@@ -102,7 +107,6 @@ function DeepLinkHandler() {
   return null;
 }
 
-/** Background globe — hidden on homepage (GlobeLayout provides its own full-viewport interactive globe). */
 function BackgroundGlobe({
   isHomepage,
   governanceTint,
@@ -110,8 +114,6 @@ function BackgroundGlobe({
   isHomepage: boolean;
   governanceTint?: string;
 }) {
-  // Hide the background globe on homepage — GlobeLayout provides its own full-viewport
-  // interactive globe that extends behind the header.
   if (isHomepage) return null;
   return (
     <div
@@ -123,14 +125,10 @@ function BackgroundGlobe({
           : undefined
       }
     >
-      {/* Higher opacity on homepage so the transparent header has visible stars behind it */}
       <div className={cn('absolute inset-0', isHomepage ? 'opacity-50' : 'opacity-30')}>
         <ConstellationScene interactive={false} engineEnabled={false} className="w-full h-full" />
       </div>
-      {/* Governance temperature ambient tint overlay */}
       {governanceTint && <div className="governance-tint-overlay" />}
-      {/* Gradient fade — globe is most visible at top, fades toward bottom.
-          On homepage the fade starts later so the header area shows stars clearly. */}
       <div
         className={cn(
           'absolute inset-0 bg-gradient-to-b to-background',
@@ -143,14 +141,12 @@ function BackgroundGlobe({
   );
 }
 
-/** Invisible component that syncs user segment and feature flags to Sentry. */
 function SentryContextSync() {
   useSentryContext();
   useSentryFeatureFlags();
   return null;
 }
 
-/** Seneca Orb + Thread wrapper — renders the floating orb and conversation panel. */
 function SenecaOrbAndThread({
   seneca,
   isStudioMode,
@@ -163,7 +159,6 @@ function SenecaOrbAndThread({
   const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
   const daysRemaining = totalDays - day;
 
-  // Whisper system — contextual one-liners from the orb
   const pageContext = seneca.panelRoute === 'hub' ? 'homepage' : seneca.panelRoute;
   const { currentWhisper: templateWhisper, dismissWhisper: dismissTemplate } = useWhisper(
     pageContext,
@@ -175,15 +170,12 @@ function SenecaOrbAndThread({
     },
   );
 
-  // Proactive data-driven whispers — take priority over templates
   const { currentWhisper: proactiveWhisper, dismissWhisper: dismissProactive } =
     useSenecaProactiveWhispers(isAuthenticated, !isStudioMode);
 
-  // Proactive whispers take priority when available
   const currentWhisper = proactiveWhisper ?? templateWhisper;
   const dismissWhisper = proactiveWhisper ? dismissProactive : dismissTemplate;
 
-  // Sigil state based on mode
   const sigilState =
     seneca.mode === 'matching'
       ? ('searching' as const)
@@ -193,14 +185,12 @@ function SenecaOrbAndThread({
           ? ('thinking' as const)
           : ('idle' as const);
 
-  // 1B: Stable globe command bridge — dispatches to centralized command bus
   const handleGlobeCommand = useCallback((cmd: unknown) => {
     dispatchGlobeCommand(cmd as import('@/lib/globe/types').GlobeCommand);
   }, []);
 
   return (
     <>
-      {/* Floating Orb — always visible (except when Thread is open) */}
       {!seneca.isOpen && (
         <SenecaOrb
           onClick={seneca.toggle}
@@ -211,7 +201,6 @@ function SenecaOrbAndThread({
         />
       )}
 
-      {/* Floating Thread Panel */}
       <SenecaThread
         isOpen={seneca.isOpen}
         onClose={seneca.close}
@@ -239,7 +228,6 @@ function SenecaOrbAndThread({
   );
 }
 
-/** Derive a page context key from the pathname for Seneca's contextual awareness. */
 function derivePageContext(pathname: string): string | undefined {
   if (pathname === '/' || pathname === '/match') return 'governance';
   if (pathname.startsWith('/proposal/')) return 'proposals';
@@ -252,8 +240,8 @@ function derivePageContext(pathname: string): string | undefined {
 }
 
 /**
- * Governada layout shell — sidebar on desktop, bottom bar on mobile.
- * Sidebar is persona-adaptive via the nav config.
+ * Shared public chrome. Private/app routes can layer additional providers via
+ * their nested layouts instead of forcing those concerns onto every route.
  */
 export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -263,81 +251,69 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
     pathname === '/workspace/review' ||
     /^\/workspace\/(author|editor|amendment)\/[^/]+/.test(pathname);
   const temporalAdaptation = useFeatureFlag('temporal_adaptation') === true;
-  // Seneca is always available — no feature flag gate. Individual features
-  // within Seneca (research mode, etc.) can be gated separately.
-  const mobileGesturesFlag = useFeatureFlag('mobile_gestures');
-  const mobileGestures = mobileGesturesFlag === true;
+  const mobileGestures = useFeatureFlag('mobile_gestures') === true;
   const { tintColor } = useGovernanceTemperature();
   const seneca = useSenecaThread();
 
-  // Horizontal swipe navigation between Home/Governance/You (mobile only)
   useSwipeNavigation(mobileGestures && !isStudioMode);
 
   return (
     <SegmentProvider>
       <TierThemeProvider score={null}>
-        <ShortcutProvider>
-          <SentryContextSync />
-          <Suspense fallback={null}>
-            <DeepLinkHandler />
-          </Suspense>
-          <SyncFreshnessBanner />
-          <PreviewBanner />
-          {/* Discovery context wraps everything so header Compass icon can open the panel */}
-          <SpotlightProvider>
-            <DiscoveryHub currentPage={derivePageContext(pathname)}>
-              {!isStudioMode && <GovernadaHeader />}
-              {/* Global constellation globe — subtle glassmorphic background */}
-              {!isStudioMode && (
-                <BackgroundGlobe
-                  isHomepage={isHomepage}
-                  governanceTint={temporalAdaptation ? tintColor : undefined}
-                />
+        <SentryContextSync />
+        <Suspense fallback={null}>
+          <DeepLinkHandler />
+        </Suspense>
+        <SyncFreshnessBanner />
+        <PreviewBanner />
+        <SpotlightProvider>
+          <DiscoveryHub currentPage={derivePageContext(pathname)}>
+            {!isStudioMode && <GovernadaHeader />}
+            {!isStudioMode && (
+              <BackgroundGlobe
+                isHomepage={isHomepage}
+                governanceTint={temporalAdaptation ? tintColor : undefined}
+              />
+            )}
+            <main
+              id="main-content"
+              className={cn(
+                'relative z-0',
+                isStudioMode ? 'min-h-screen' : 'min-h-screen pb-16 lg:pb-0',
+                isHomepage && '-mt-10',
               )}
-              <main
-                id="main-content"
-                className={cn(
-                  'relative z-0',
-                  isStudioMode ? 'min-h-screen' : 'min-h-screen pb-16 lg:pb-0',
-                  // On homepage, pull content up behind the transparent header so the
-                  // globe extends to the top of the viewport and peeks through
-                  isHomepage && '-mt-10',
-                )}
-                tabIndex={-1}
-              >
-                {isStudioMode ? children : <SectionTransition>{children}</SectionTransition>}
-              </main>
-              {!isStudioMode && <EngagementNudge />}
-              {!isStudioMode && <MilestoneTrigger />}
-            </DiscoveryHub>
-          </SpotlightProvider>
-          {/* Seneca Orb + Thread — unified floating companion */}
-          <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} />
+              tabIndex={-1}
+            >
+              {isStudioMode ? children : <SectionTransition>{children}</SectionTransition>}
+            </main>
+            {!isStudioMode && <EngagementNudge />}
+            {!isStudioMode && <MilestoneTrigger />}
+          </DiscoveryHub>
+        </SpotlightProvider>
+        <SenecaOrbAndThread seneca={seneca} isStudioMode={isStudioMode} />
 
-          {!isStudioMode && (
-            <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center">
-              <p className="text-xs text-muted-foreground">
-                {t(
-                  'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.',
-                )}
+        {!isStudioMode && (
+          <footer className="relative z-0 border-t border-border/40 py-4 px-4 text-center">
+            <p className="text-xs text-muted-foreground/70">
+              {t(
+                'Governada is an independent community project and is not affiliated with, endorsed by, or associated with the Cardano Foundation, IOG, or EMURGO.',
+              )}
+            </p>
+            <div className="mt-3 space-y-2">
+              <LegalLinks />
+              <p className="text-[11px] text-muted-foreground/60">
+                Analytics may be enabled in production deployments. See{' '}
+                <Link href="/privacy" className="underline decoration-dotted underline-offset-2">
+                  Privacy
+                </Link>{' '}
+                for the current telemetry baseline.
               </p>
-              <div className="mt-3 space-y-2">
-                <LegalLinks />
-                <p className="text-xs text-muted-foreground">
-                  Analytics may be enabled in production deployments. See{' '}
-                  <Link href="/privacy" className="underline decoration-dotted underline-offset-2">
-                    Privacy
-                  </Link>{' '}
-                  for the current telemetry baseline.
-                </p>
-              </div>
-            </footer>
-          )}
-          {!isStudioMode && <GovernadaBottomNav />}
-          {!isStudioMode && mobileGestures && <EdgeSwipeMenu enabled={mobileGestures} />}
-          <FeedbackWidget />
-          <ShortcutOverlay />
-        </ShortcutProvider>
+            </div>
+          </footer>
+        )}
+        {!isStudioMode && <GovernadaBottomNav />}
+        {!isStudioMode && mobileGestures && <EdgeSwipeMenu enabled={mobileGestures} />}
+        <FeedbackWidget />
       </TierThemeProvider>
     </SegmentProvider>
   );

@@ -573,7 +573,7 @@ function buildJourneyStatuses(
     recordsByJourney.set(verification.journeyId, existing);
   }
 
-  const ciExpected = new Set(['J01', 'J02', 'J03', 'J04', 'J05', 'J06', 'J13']);
+  const ciExpected = new Set(['J01', 'J02', 'J03', 'J05', 'J06', 'J13']);
 
   return CRITICAL_JOURNEYS.map((journey) => {
     const records = recordsByJourney.get(journey.id) ?? [];

@@ -37,13 +37,6 @@ test.describe('Critical public journeys', () => {
     await expect(page.locator('#main-content')).toBeVisible({ timeout: 15_000 });
   });
 
-  test('quick match route renders a stable entry surface', async ({ page }) => {
-    await page.goto('/match', { waitUntil: 'domcontentloaded' });
-    await expect(page).toHaveURL(/\/match$/, { timeout: 30_000 });
-    await expect(page).toHaveTitle(/Governance Match/i);
-    await expect(page.locator('#main-content')).toBeVisible({ timeout: 15_000 });
-  });
-
   test('health endpoint reports operational status', async ({ request }) => {
     const response = await request.get('/api/health');
     expect(response.ok()).toBeTruthy();

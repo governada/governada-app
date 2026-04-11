@@ -635,11 +635,13 @@ export const CRITICAL_JOURNEYS: SystemsJourney[] = [
     title: 'Start Quick Match and progress through the quiz',
     persona: 'Anonymous citizen',
     gateLevel: 'L0',
-    coverage: 'automated',
+    coverage: 'manual',
     whyItMatters: 'Match is one of the clearest value propositions at launch.',
-    currentEvidence: 'Quick Match E2E covers redirect, start, and interaction.',
-    gap: 'Does not yet verify result quality or persistence.',
-    nextStep: 'Keep in the minimum pre-merge gate and add one result-state assertion.',
+    currentEvidence:
+      'Dedicated Quick Match specs exist, but the route is not treated as CI-proven.',
+    gap: 'The current /match experience still depends on legacy shell/bootstrap behavior and needs a route-owned refactor before it is safe to gate.',
+    nextStep:
+      'Rebuild /match as a dedicated route, then reintroduce blocking quiz/result assertions.',
   },
   {
     id: 'J05',

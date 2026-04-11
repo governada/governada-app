@@ -15,6 +15,22 @@ type SystemsTrustSurfaceReviewAuditRow = {
   created_at: string;
 };
 
+type SystemsTrustSurfaceReviewRow = {
+  actor_type: 'manual' | 'cron';
+  created_at: string;
+  review_date: string;
+  overall_status: SystemsTrustSurfaceReviewRecord['overallStatus'];
+  linked_slo_ids: string[] | null;
+  reviewed_surfaces: string[] | null;
+  summary: string;
+  current_user_state: string;
+  honesty_gap: string;
+  next_fix: string;
+  owner: string;
+  artifact_url: string | null;
+  notes: string | null;
+};
+
 export type SystemsTrustSurfaceFollowupTarget = {
   sourceKey: string;
   severity: 'warning' | 'critical';
@@ -165,6 +181,31 @@ export function parseSystemsTrustSurfaceReviewHistory(
   return history;
 }
 
+export function toSystemsTrustSurfaceReviewRecord(
+  row: SystemsTrustSurfaceReviewRow,
+  now = new Date(),
+): SystemsTrustSurfaceReviewRecord {
+  const daysSinceReview = reviewAgeDays(row.review_date, now);
+
+  return {
+    actorType: row.actor_type,
+    loggedAt: row.created_at,
+    reviewDate: row.review_date,
+    overallStatus: row.overall_status,
+    linkedSloIds: row.linked_slo_ids ?? [],
+    reviewedSurfaces: row.reviewed_surfaces ?? [],
+    summary: row.summary,
+    currentUserState: row.current_user_state,
+    honestyGap: row.honesty_gap,
+    nextFix: row.next_fix,
+    owner: row.owner,
+    artifactUrl: row.artifact_url,
+    notes: row.notes,
+    daysSinceReview,
+    isStale: daysSinceReview > SYSTEMS_TRUST_SURFACE_REVIEW_FRESHNESS_DAYS,
+  };
+}
+
 export function buildSystemsTrustSurfaceReviewSummary(input: {
   latestReview: SystemsTrustSurfaceReviewRecord | null;
   reviewRequired: boolean;
@@ -277,8 +318,8 @@ export function buildSystemsTrustSurfaceFollowupTarget(input: {
           : 'Review degraded-state trust surfaces soon',
       summary: input.summary.summary,
       recommendedAction:
-        'Open the trust-surface review in /admin/systems, inspect what public and operator users actually see, and log the next honesty fix with an owner.',
-      actionHref: '/admin/systems#trust-surface-review',
+        'Open the Evidence workspace, inspect what public and operator users actually see, and log the next honesty fix with an owner.',
+      actionHref: '/admin/systems/evidence?panel=trust',
       reason: 'missing',
       evidence: {
         reason: 'missing',
@@ -296,7 +337,7 @@ export function buildSystemsTrustSurfaceFollowupTarget(input: {
       title: 'Close the degraded-state honesty gap',
       summary: input.latestReview.honestyGap,
       recommendedAction: `${input.latestReview.owner} owns the next fix: ${input.latestReview.nextFix}`,
-      actionHref: '/admin/systems#trust-surface-review',
+      actionHref: '/admin/systems/evidence?panel=trust',
       reason: 'honesty_gap',
       evidence: {
         reason: 'honesty_gap',
@@ -317,8 +358,8 @@ export function buildSystemsTrustSurfaceFollowupTarget(input: {
       summary:
         'The latest degraded-state trust review is stale while launch-trust signals are still degraded.',
       recommendedAction:
-        'Recheck the affected trust surfaces, confirm the user-facing state is still honest, and log any new honesty fix in /admin/systems.',
-      actionHref: '/admin/systems#trust-surface-review',
+        'Recheck the affected trust surfaces, confirm the user-facing state is still honest, and log any new honesty fix in the Evidence workspace.',
+      actionHref: '/admin/systems/evidence?panel=trust',
       reason: 'stale',
       evidence: {
         reason: 'stale',
@@ -348,7 +389,7 @@ export function buildSystemsTrustSurfaceReviewHistory(
       title: `Trust-surface review for ${entry.reviewDate}`,
       summary: `${entry.summary} Honesty gap: ${entry.honestyGap}`,
       createdAt: entry.loggedAt,
-      actionHref: '/admin/systems#trust-surface-review',
+      actionHref: '/admin/systems/evidence?panel=trust',
       metricItems: [
         { label: 'Linked SLOs', value: String(entry.linkedSloIds.length) },
         { label: 'Surfaces', value: String(entry.reviewedSurfaces.length) },

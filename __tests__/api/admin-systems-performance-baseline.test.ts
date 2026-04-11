@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequest, parseJson } from '../helpers';
 
-const { mockInsert, mockFrom } = vi.hoisted(() => ({
-  mockInsert: vi.fn(),
+const { mockAuditInsert, mockBaselineInsert, mockFrom } = vi.hoisted(() => ({
+  mockAuditInsert: vi.fn(),
+  mockBaselineInsert: vi.fn(),
   mockFrom: vi.fn(),
 }));
 
@@ -18,26 +19,36 @@ vi.mock('@/lib/adminAuth', () => ({
 
 import { logSystemsPerformanceBaseline } from '@/app/api/admin/systems/performance-baseline/route';
 
+function createBaselinesChain() {
+  return {
+    insert: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    single: mockBaselineInsert,
+  };
+}
+
 function createAuditLogChain() {
   return {
-    insert: mockInsert,
+    insert: mockAuditInsert,
   };
 }
 
 describe('systems performance baseline route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockInsert.mockResolvedValue({ error: null });
+    mockAuditInsert.mockResolvedValue({ error: null });
+    mockBaselineInsert.mockResolvedValue({
+      data: { id: '22222222-2222-4222-8222-222222222222' },
+      error: null,
+    });
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'admin_audit_log') {
-        return createAuditLogChain();
-      }
-
+      if (table === 'systems_performance_baselines') return createBaselinesChain();
+      if (table === 'admin_audit_log') return createAuditLogChain();
       throw new Error(`Unexpected table: ${table}`);
     });
   });
 
-  it('logs performance baselines into the admin audit trail', async () => {
+  it('logs performance baselines into durable state and the admin audit trail', async () => {
     const response = await logSystemsPerformanceBaseline(
       createRequest('/api/admin/systems/performance-baseline', {
         method: 'POST',
@@ -69,10 +80,11 @@ describe('systems performance baseline route', () => {
     };
 
     expect(response.status).toBe(201);
+    expect(body.id).toBe('22222222-2222-4222-8222-222222222222');
     expect(body.baselineDate).toBe('2026-04-06');
     expect(body.overallStatus).toBe('warning');
     expect(body.scenarioLabel).toBe('Minimum public read baseline');
-    expect(mockInsert).toHaveBeenCalledWith(
+    expect(mockAuditInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: 'addr_test_admin',
         action: 'systems_performance_baseline_logged',

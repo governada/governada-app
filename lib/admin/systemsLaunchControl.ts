@@ -156,7 +156,7 @@ export function buildSystemsLaunchControlRoom(input: {
         .filter((item): item is SystemsSloCard => Boolean(item))
         .map((item) => `${item.title}: ${item.currentValue}`)
         .join(' | '),
-      href: '/admin/systems#slos',
+      href: '/admin/systems/evidence#slos',
     },
     {
       id: 'critical-journeys',
@@ -171,7 +171,7 @@ export function buildSystemsLaunchControlRoom(input: {
       threshold:
         'All L0 journeys automated; L1 launch paths have explicit proof or an explicit manual launch check.',
       evidence: `${journeyCoverage.automatedCount}/${journeyCoverage.totalCount} automated | ${l0Gaps.length} L0 gaps | ${l1Manual.length} L1 manual`,
-      href: '/admin/systems#journeys',
+      href: '/admin/systems/evidence#journeys',
     },
     {
       id: 'performance-discipline',
@@ -186,7 +186,7 @@ export function buildSystemsLaunchControlRoom(input: {
       threshold:
         'Key APIs under the launch bar and a current durable baseline attached to a named next step.',
       evidence: `${performance?.currentValue ?? 'No live performance card'} | Baseline: ${input.performanceBaselineSummary.currentValue}`,
-      href: '/admin/systems#performance-baseline',
+      href: '/admin/systems/evidence?panel=performance',
     },
     {
       id: 'operator-loop',
@@ -201,7 +201,7 @@ export function buildSystemsLaunchControlRoom(input: {
       threshold:
         'Fresh weekly review, no unresolved critical follow-ups, and a practiced drill / incident loop.',
       evidence: `${input.reviewDiscipline.currentValue} | ${input.incidentSummary.currentValue} | ${input.automationSummary.currentValue}`,
-      href: '/admin/systems#automation',
+      href: '/admin/systems/queue',
     },
     {
       id: 'user-honesty',
@@ -216,7 +216,7 @@ export function buildSystemsLaunchControlRoom(input: {
       threshold:
         'When launch-trust signals degrade, the UI is explicit and the latest review is still current.',
       evidence: input.trustSurfaceReviewSummary.currentValue,
-      href: '/admin/systems#trust-surface-review',
+      href: '/admin/systems/evidence?panel=trust',
     },
     {
       id: 'scorecard-evidence',
@@ -230,7 +230,7 @@ export function buildSystemsLaunchControlRoom(input: {
             : 'The live posture and the last durable review are not fully aligned yet, so the launch record still needs tightening.',
       threshold: 'The durable weekly review matches the live cockpit and keeps the streak intact.',
       evidence: input.scorecardSync.currentValue,
-      href: '/admin/systems#operating-rhythm',
+      href: '/admin/systems/history',
     },
   ];
 

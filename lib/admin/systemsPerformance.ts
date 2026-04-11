@@ -15,6 +15,27 @@ type SystemsPerformanceBaselineAuditRow = {
   created_at: string;
 };
 
+type SystemsPerformanceBaselineRow = {
+  actor_type: 'manual' | 'cron';
+  created_at: string;
+  baseline_date: string;
+  environment: SystemsPerformanceBaselineRecord['environment'];
+  scenario_label: string;
+  concurrency_profile: string;
+  overall_status: SystemsPerformanceBaselineRecord['overallStatus'];
+  summary: string;
+  bottleneck: string;
+  mitigation_owner: string;
+  next_step: string;
+  artifact_url: string | null;
+  notes: string | null;
+  api_health_p95_ms: number;
+  api_dreps_p95_ms: number;
+  api_v1_dreps_p95_ms: number;
+  governance_health_p95_ms: number;
+  error_rate_pct: number;
+};
+
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 const performanceBaselinePayloadSchema = z.object({
@@ -218,6 +239,42 @@ export function parseSystemsPerformanceBaselineHistory(
   return history;
 }
 
+export function toSystemsPerformanceBaselineRecord(
+  row: SystemsPerformanceBaselineRow,
+  now = new Date(),
+): SystemsPerformanceBaselineRecord {
+  const daysSinceBaseline = baselineDayAge(row.baseline_date, now);
+
+  return {
+    actorType: row.actor_type,
+    loggedAt: row.created_at,
+    baselineDate: row.baseline_date,
+    environment: row.environment,
+    scenarioLabel: row.scenario_label,
+    concurrencyProfile: row.concurrency_profile,
+    overallStatus: row.overall_status,
+    summary: row.summary,
+    bottleneck: row.bottleneck,
+    mitigationOwner: row.mitigation_owner,
+    nextStep: row.next_step,
+    artifactUrl: row.artifact_url,
+    notes: row.notes,
+    apiHealthP95Ms: row.api_health_p95_ms,
+    apiDrepsP95Ms: row.api_dreps_p95_ms,
+    apiV1DrepsP95Ms: row.api_v1_dreps_p95_ms,
+    governanceHealthP95Ms: row.governance_health_p95_ms,
+    errorRatePct: row.error_rate_pct,
+    maxObservedP95Ms: Math.max(
+      row.api_health_p95_ms,
+      row.api_dreps_p95_ms,
+      row.api_v1_dreps_p95_ms,
+      row.governance_health_p95_ms,
+    ),
+    daysSinceBaseline,
+    isStale: daysSinceBaseline > SYSTEMS_PERFORMANCE_BASELINE_FRESHNESS_DAYS,
+  };
+}
+
 export function buildSystemsPerformanceBaselineSummary(
   latestBaseline: SystemsPerformanceBaselineRecord | null,
 ): SystemsPerformanceBaselineSummary {
@@ -297,8 +354,8 @@ export function buildSystemsPerformanceBaselineFollowupTarget(input: {
       summary:
         'The systems cockpit still has no durable minimum-load performance baseline with named ownership for the current bottleneck.',
       recommendedAction:
-        'Run the minimum public baseline, log the result in /admin/systems, and leave behind the bottleneck owner plus the next mitigation step.',
-      actionHref: '/admin/systems#performance-baseline',
+        'Run the minimum public baseline, log the result in the Evidence workspace, and leave behind the bottleneck owner plus the next mitigation step.',
+      actionHref: '/admin/systems/evidence?panel=performance',
       reason: 'missing',
       evidence: {
         reason: 'missing',
@@ -317,7 +374,7 @@ export function buildSystemsPerformanceBaselineFollowupTarget(input: {
       title: 'Close the performance bottleneck from the latest baseline',
       summary: `${input.latestBaseline.bottleneck} Latest ${environmentLabel(input.latestBaseline.environment).toLowerCase()} baseline was logged on ${input.latestBaseline.baselineDate}${input.latestBaseline.isStale ? ` and is now ${input.latestBaseline.daysSinceBaseline} days old` : ''}.`,
       recommendedAction: `${input.latestBaseline.mitigationOwner} owns the next move: ${input.latestBaseline.nextStep}`,
-      actionHref: '/admin/systems#performance-baseline',
+      actionHref: '/admin/systems/evidence?panel=performance',
       reason: 'bottleneck',
       evidence: {
         reason: 'bottleneck',
@@ -337,8 +394,8 @@ export function buildSystemsPerformanceBaselineFollowupTarget(input: {
       title: 'Refresh the performance baseline',
       summary: `The latest minimum-load baseline is ${input.latestBaseline.daysSinceBaseline} days old, so route or caching changes can land without a fresh load signal.`,
       recommendedAction:
-        'Rerun the minimum public baseline, update the bottleneck owner if it changed, and attach the new result to /admin/systems.',
-      actionHref: '/admin/systems#performance-baseline',
+        'Rerun the minimum public baseline, update the bottleneck owner if it changed, and attach the new result in the Evidence workspace.',
+      actionHref: '/admin/systems/evidence?panel=performance',
       reason: 'stale',
       evidence: {
         reason: 'stale',
@@ -369,7 +426,7 @@ export function buildSystemsPerformanceBaselineHistory(
       title: `Performance baseline for ${entry.baselineDate}`,
       summary: `${entry.summary} Bottleneck: ${entry.bottleneck}`,
       createdAt: entry.loggedAt,
-      actionHref: '/admin/systems#performance-baseline',
+      actionHref: '/admin/systems/evidence?panel=performance',
       metricItems: [
         { label: 'Environment', value: environmentLabel(entry.environment) },
         { label: 'Slowest p95', value: `${entry.maxObservedP95Ms}ms` },

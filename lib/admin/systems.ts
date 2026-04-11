@@ -7,6 +7,15 @@ export type SystemsAutomationSeverity = 'warning' | 'critical';
 export type SystemsAutomationFollowupStatus = 'open' | 'acknowledged' | 'resolved';
 export type SystemsPerformanceBaselineEnvironment = 'production' | 'preview' | 'local';
 export type SystemsLaunchDecision = 'ready' | 'risky' | 'blocked';
+export type SystemsWorkspaceSection = 'launch' | 'queue' | 'incidents' | 'evidence' | 'history';
+export type SystemsProvenanceKind =
+  | 'live_probe'
+  | 'durable_record'
+  | 'derived'
+  | 'manual_review'
+  | 'ci_verified'
+  | 'stale';
+export type SystemsJourneyVerificationStatus = 'passed' | 'failed' | 'missing' | 'stale';
 export type SystemsAutomationTriggerType =
   | 'review_discipline'
   | 'performance_baseline'
@@ -19,6 +28,16 @@ export type SystemsScorecardTrend = 'improving' | 'steady' | 'worsening' | 'new'
 export type SystemsIncidentType = 'incident' | 'drill';
 export type SystemsIncidentSeverity = 'drill' | 'p0' | 'p1' | 'p2' | 'near_miss';
 export type SystemsIncidentStatus = 'open' | 'mitigated' | 'resolved' | 'follow_up_pending';
+
+export interface SystemsProvenanceStamp {
+  kind: SystemsProvenanceKind;
+  label: string;
+  freshnessLabel: string;
+  updatedAt?: string | null;
+  isStale: boolean;
+  detail?: string | null;
+  href?: string | null;
+}
 
 export interface SystemsPromiseCard {
   id: string;
@@ -53,6 +72,11 @@ export interface SystemsJourney {
   currentEvidence: string;
   gap: string;
   nextStep: string;
+  verificationStatus?: SystemsJourneyVerificationStatus;
+  lastVerifiedAt?: string | null;
+  freshnessLabel?: string | null;
+  runUrl?: string | null;
+  provenance?: SystemsProvenanceStamp | null;
 }
 
 export interface AutomationCandidate {
@@ -104,6 +128,7 @@ export interface SystemsReviewLoop {
 export interface SystemsCommitmentCard {
   id: string;
   reviewId?: string | null;
+  linkedIncidentId?: string | null;
   title: string;
   summary: string;
   owner: string;
@@ -250,6 +275,7 @@ export interface SystemsReviewDraft {
   commitmentOwner: string;
   commitmentDueDate?: string | null;
   linkedSloIds: string[];
+  linkedIncidentId?: string | null;
 }
 
 export interface SystemsPerformanceBaselineRecord {
@@ -395,6 +421,32 @@ export interface SystemsIncidentRecord {
   timeToResolveMinutes?: number | null;
 }
 
+export interface SystemsIncidentEventRecord {
+  id: string;
+  incidentId: string;
+  eventType: 'created' | 'updated' | 'status_changed';
+  createdAt: string;
+  actorWalletAddress: string;
+  title: string;
+  entryType: SystemsIncidentType;
+  severity: SystemsIncidentSeverity;
+  status: SystemsIncidentStatus;
+  summary: string;
+}
+
+export interface SystemsJourneyVerificationRecord {
+  id: string;
+  journeyId: string;
+  verificationType: 'ci' | 'manual';
+  status: 'passed' | 'failed';
+  workflowName: string;
+  jobName?: string | null;
+  commitSha?: string | null;
+  runUrl?: string | null;
+  executedAt: string;
+  details?: Record<string, unknown>;
+}
+
 export interface SystemsIncidentSummary {
   status: SystemsStatus;
   headline: string;
@@ -457,6 +509,84 @@ export interface SystemsDashboardData {
   automationCandidates: AutomationCandidate[];
   quickLinks: QuickLink[];
 }
+
+export interface SystemsWorkspaceSummary {
+  generatedAt: string;
+  section: SystemsWorkspaceSection;
+  launchDecision: SystemsLaunchDecision;
+  launchHeadline: string;
+  blockerCount: number;
+  queueCount: number;
+  proofFreshness: string;
+  proofStatus: SystemsStatus;
+  proofStamps: SystemsProvenanceStamp[];
+}
+
+export interface SystemsWorkspaceMetricCard {
+  id: string;
+  title: string;
+  status: SystemsStatus | SystemsLaunchDecision;
+  value: string;
+  summary: string;
+  href?: string | null;
+  provenance?: SystemsProvenanceStamp | null;
+}
+
+export interface SystemsLaunchViewData {
+  summary: SystemsWorkspaceSummary;
+  launchControlRoom: SystemsLaunchControlRoom;
+  topActions: SystemsAction[];
+  proofItems: SystemsWorkspaceMetricCard[];
+}
+
+export interface SystemsQueueViewData {
+  summary: SystemsWorkspaceSummary;
+  reviewDiscipline: SystemsReviewDiscipline;
+  suggestedReviewDraft?: SystemsReviewDraft | null;
+  automationSummary: SystemsAutomationSummary;
+  automationFollowups: SystemsAutomationFollowup[];
+  openCommitments: SystemsCommitmentCard[];
+  latestCommitmentShepherd?: SystemsCommitmentShepherdRecord | null;
+  actions: SystemsAction[];
+}
+
+export interface SystemsIncidentsViewData {
+  summary: SystemsWorkspaceSummary;
+  incidentSummary: SystemsIncidentSummary;
+  incidents: SystemsIncidentRecord[];
+  incidentEvents: SystemsIncidentEventRecord[];
+  automationFollowups: SystemsAutomationFollowup[];
+}
+
+export interface SystemsEvidenceViewData {
+  summary: SystemsWorkspaceSummary;
+  slos: SystemsSloCard[];
+  scorecardSync: SystemsScorecardSync;
+  journeys: SystemsJourney[];
+  latestPerformanceBaseline?: SystemsPerformanceBaselineRecord | null;
+  latestTrustSurfaceReview?: SystemsTrustSurfaceReviewRecord | null;
+  performanceBaselineSummary: SystemsPerformanceBaselineSummary;
+  trustSurfaceReviewSummary: SystemsTrustSurfaceReviewSummary;
+  journeyVerifications: SystemsJourneyVerificationRecord[];
+}
+
+export interface SystemsHistoryViewData {
+  summary: SystemsWorkspaceSummary;
+  reviewHistory: SystemsReviewRecord[];
+  automationHistory: SystemsAutomationActivityRecord[];
+  automationRuns: SystemsAutomationRunRecord[];
+  operatorEscalations: SystemsOperatorEscalationRecord[];
+  reviewDrafts: SystemsReviewDraft[];
+  incidentEvents: SystemsIncidentEventRecord[];
+}
+
+export const SYSTEMS_SECTION_HREFS: Record<SystemsWorkspaceSection, string> = {
+  launch: '/admin/systems/launch',
+  queue: '/admin/systems/queue',
+  incidents: '/admin/systems/incidents',
+  evidence: '/admin/systems/evidence',
+  history: '/admin/systems/history',
+};
 
 export const SYSTEMS_SLO_IDS = [
   'availability',

@@ -22,6 +22,7 @@ type SystemsReviewRow = {
 type SystemsCommitmentRow = {
   id: string;
   review_id: string | null;
+  linked_incident_id?: string | null;
   title: string;
   summary: string | null;
   owner: string;
@@ -44,6 +45,7 @@ export const createSystemsReviewSchema = z.object({
   commitmentOwner: z.string().trim().min(2).max(120),
   commitmentDueDate: dateString.nullable().optional(),
   linkedSloIds: z.array(z.string().trim().min(1)).max(5),
+  linkedIncidentId: z.string().uuid().nullable().optional(),
 });
 
 export const updateSystemsCommitmentSchema = z.object({
@@ -68,6 +70,7 @@ export function toSystemsCommitment(row: SystemsCommitmentRow): SystemsCommitmen
   return {
     id: row.id,
     reviewId: row.review_id,
+    linkedIncidentId: row.linked_incident_id ?? null,
     title: row.title,
     summary: row.summary?.trim() || 'No commitment summary recorded yet.',
     owner: row.owner,

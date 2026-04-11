@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequest, parseJson } from '../helpers';
 
-const { mockInsert, mockFrom } = vi.hoisted(() => ({
-  mockInsert: vi.fn(),
+const { mockAuditInsert, mockReviewInsert, mockFrom } = vi.hoisted(() => ({
+  mockAuditInsert: vi.fn(),
+  mockReviewInsert: vi.fn(),
   mockFrom: vi.fn(),
 }));
 
@@ -18,26 +19,36 @@ vi.mock('@/lib/adminAuth', () => ({
 
 import { logSystemsTrustSurfaceReview } from '@/app/api/admin/systems/trust-surface-review/route';
 
+function createTrustReviewsChain() {
+  return {
+    insert: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    single: mockReviewInsert,
+  };
+}
+
 function createAuditLogChain() {
   return {
-    insert: mockInsert,
+    insert: mockAuditInsert,
   };
 }
 
 describe('systems trust-surface review route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockInsert.mockResolvedValue({ error: null });
+    mockAuditInsert.mockResolvedValue({ error: null });
+    mockReviewInsert.mockResolvedValue({
+      data: { id: '33333333-3333-4333-8333-333333333333' },
+      error: null,
+    });
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'admin_audit_log') {
-        return createAuditLogChain();
-      }
-
+      if (table === 'systems_trust_surface_reviews') return createTrustReviewsChain();
+      if (table === 'admin_audit_log') return createAuditLogChain();
       throw new Error(`Unexpected table: ${table}`);
     });
   });
 
-  it('logs trust-surface reviews into the admin audit trail', async () => {
+  it('logs trust-surface reviews into durable state and the admin audit trail', async () => {
     const response = await logSystemsTrustSurfaceReview(
       createRequest('/api/admin/systems/trust-surface-review', {
         method: 'POST',
@@ -65,10 +76,11 @@ describe('systems trust-surface review route', () => {
     };
 
     expect(response.status).toBe(201);
+    expect(body.id).toBe('33333333-3333-4333-8333-333333333333');
     expect(body.reviewDate).toBe('2026-04-06');
     expect(body.overallStatus).toBe('warning');
     expect(body.reviewedSurfaces).toEqual(['Home shell', 'Proposal detail']);
-    expect(mockInsert).toHaveBeenCalledWith(
+    expect(mockAuditInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: 'addr_test_admin',
         action: 'systems_trust_surface_review_logged',

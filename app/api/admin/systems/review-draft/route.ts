@@ -40,10 +40,34 @@ async function generateSystemsReviewDraftRoute(request: NextRequest, ctx: RouteC
   const draft = buildSystemsReviewDraft(dashboard, actor.actorType);
   const supabase = getSupabaseAdmin();
 
+  const { data: storedDraft, error: draftError } = await supabase
+    .from('systems_review_drafts')
+    .insert({
+      actor_type: draft.actorType,
+      wallet_address: actor.actor,
+      review_date: draft.reviewDate,
+      overall_status: draft.overallStatus,
+      focus_area: draft.focusArea,
+      top_risk: draft.topRisk,
+      change_notes: draft.changeNotes,
+      hardening_commitment_title: draft.hardeningCommitmentTitle,
+      hardening_commitment_summary: draft.hardeningCommitmentSummary,
+      commitment_owner: draft.commitmentOwner,
+      commitment_due_date: draft.commitmentDueDate ?? null,
+      linked_slo_ids: draft.linkedSloIds,
+      linked_incident_id: draft.linkedIncidentId ?? null,
+    })
+    .select('id')
+    .single();
+
+  if (draftError || !storedDraft) {
+    return NextResponse.json({ error: 'Failed to persist systems review draft' }, { status: 500 });
+  }
+
   const { error } = await supabase.from('admin_audit_log').insert({
     user_id: actor.actor,
     action: SYSTEMS_REVIEW_DRAFT_ACTION,
-    target: `systems-review:${draft.reviewDate}`,
+    target: storedDraft.id,
     payload: draft,
   });
 

@@ -103,7 +103,7 @@ export function buildPromiseCards(
       summary:
         'Public entry, discovery, proposal, and match flows are covered. DRep and authoring flows still depend on lower-layer or manual verification.',
       actionLabel: 'Review journeys',
-      actionHref: '/admin/systems#journeys',
+      actionHref: '/admin/systems/evidence#journeys',
     },
     {
       id: 'performance',
@@ -115,7 +115,7 @@ export function buildPromiseCards(
       target: 'p95 key APIs < 500ms, LCP under launch bar',
       summary: input.performance.summary,
       actionLabel: 'Run baseline',
-      actionHref: '/admin/systems#performance-baseline',
+      actionHref: '/admin/systems/evidence?panel=performance',
     },
     {
       id: 'change-safety',
@@ -127,7 +127,7 @@ export function buildPromiseCards(
       target: 'Reliable risk-based gates and post-deploy verification',
       summary: input.changeSafety.summary,
       actionLabel: 'Start weekly review',
-      actionHref: '/admin/systems#actions',
+      actionHref: '/admin/systems/queue',
     },
     {
       id: 'incident-response',
@@ -139,7 +139,7 @@ export function buildPromiseCards(
       target: 'Alert, acknowledge, mitigate, learn',
       summary: input.incidentResponse.summary,
       actionLabel: 'Open incident log',
-      actionHref: '/admin/systems#incident-log',
+      actionHref: '/admin/systems/incidents?panel=create',
     },
     {
       id: 'user-honesty',
@@ -151,7 +151,7 @@ export function buildPromiseCards(
       target: 'Users are told when confidence is reduced',
       summary: input.userHonesty.summary,
       actionLabel: 'Audit trust surfaces',
-      actionHref: '/admin/systems#trust-surface-review',
+      actionHref: '/admin/systems/evidence?panel=trust',
     },
   ];
 
@@ -223,7 +223,7 @@ export function buildSloCards(
       alertThreshold: 'p95 > 500ms, rising 5xx rate, or no baseline discipline',
       summary: input.performance.summary,
       actionLabel: 'Run baseline',
-      actionHref: '/admin/systems#performance-baseline',
+      actionHref: '/admin/systems/evidence?panel=performance',
     },
     {
       id: 'journeys',
@@ -237,7 +237,7 @@ export function buildSloCards(
       alertThreshold: 'Any L0 manual gap or regression in critical-path protection',
       summary: journeySummary,
       actionLabel: 'Review journeys',
-      actionHref: '/admin/systems#journeys',
+      actionHref: '/admin/systems/evidence#journeys',
     },
   ];
 }
@@ -327,7 +327,7 @@ export function buildRecommendedActions(promises: SystemsPromiseCard[]): Systems
       timeframe: 'this-week',
       summary:
         'Public launch flows are covered, but DRep and authoring surfaces still rely too much on manual or lower-layer verification.',
-      href: '/admin/systems#journeys',
+      href: '/admin/systems/evidence#journeys',
       automationReady: false,
     });
   }
@@ -339,7 +339,7 @@ export function buildRecommendedActions(promises: SystemsPromiseCard[]): Systems
       priority: performance.status === 'critical' ? 'P0' : 'P1',
       timeframe: 'this-week',
       summary: performance.summary,
-      href: '/admin/systems#performance-baseline',
+      href: '/admin/systems/evidence?panel=performance',
       automationReady: true,
     });
   }
@@ -351,7 +351,7 @@ export function buildRecommendedActions(promises: SystemsPromiseCard[]): Systems
       priority: 'P1',
       timeframe: 'foundation',
       summary: incidentResponse.summary,
-      href: '/admin/systems#incident-log',
+      href: '/admin/systems/incidents?panel=create',
       automationReady: true,
     });
   }
@@ -363,7 +363,7 @@ export function buildRecommendedActions(promises: SystemsPromiseCard[]): Systems
       priority: 'P1',
       timeframe: 'foundation',
       summary: changeSafety.summary,
-      href: '/admin/systems',
+      href: '/admin/systems/queue',
       automationReady: true,
     });
   }
@@ -375,7 +375,7 @@ export function buildRecommendedActions(promises: SystemsPromiseCard[]): Systems
       priority: userHonesty.status === 'critical' ? 'P0' : 'P1',
       timeframe: 'this-week',
       summary: userHonesty.summary,
-      href: '/admin/systems#trust-surface-review',
+      href: '/admin/systems/evidence?panel=trust',
       automationReady: false,
     });
   }
@@ -414,7 +414,7 @@ export function buildWeeklyReviewLoop(
         id: 'refresh-snapshot',
         title: 'Refresh the live snapshot',
         summary:
-          'Open /admin/systems first and confirm the current posture before looking at any backlog or feature work.',
+          'Open the launch workspace first and confirm the current posture before looking at any backlog or feature work.',
         output: 'Current operating snapshot for the week',
         automationReady: true,
       },

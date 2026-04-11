@@ -26,15 +26,13 @@ export const GET = withRouteHandler(
         .select(
           'id, review_date, reviewed_at, overall_status, focus_area, summary, top_risk, change_notes, linked_slo_ids',
         )
-        .order('reviewed_at', { ascending: false })
-        .limit(8),
+        .order('reviewed_at', { ascending: false }),
       supabase
         .from('systems_commitments')
         .select(
-          'id, review_id, title, summary, owner, status, due_date, linked_slo_ids, created_at',
+          'id, review_id, linked_incident_id, title, summary, owner, status, due_date, linked_slo_ids, created_at',
         )
-        .order('created_at', { ascending: false })
-        .limit(16),
+        .order('created_at', { ascending: false }),
     ]);
 
     const commitmentRows = commitmentsResult.data || [];
@@ -98,6 +96,7 @@ export const POST = withRouteHandler(
         status: 'planned',
         due_date: body.commitmentDueDate ?? null,
         linked_slo_ids: body.linkedSloIds,
+        linked_incident_id: body.linkedIncidentId ?? null,
       })
       .select('id')
       .single();

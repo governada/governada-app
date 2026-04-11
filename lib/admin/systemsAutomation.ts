@@ -285,7 +285,7 @@ function buildSweepActivity(
     title: payload.actorType === 'cron' ? 'Scheduled daily sweep' : 'Manual automation sweep',
     summary: payload.summary,
     createdAt: row.created_at,
-    actionHref: '/admin/systems#automation',
+    actionHref: '/admin/systems/history',
     metricItems: [
       { label: 'Open follow-ups', value: String(payload.followupCount) },
       { label: 'Critical', value: String(payload.criticalCount) },
@@ -331,7 +331,7 @@ function buildOperatorEscalationActivity(
     title: payload.title,
     summary: payload.details,
     createdAt: row.created_at,
-    actionHref: '/admin/systems#automation',
+    actionHref: '/admin/systems/history',
     metricItems: [
       { label: 'Critical follow-ups', value: String(payload.criticalCount) },
       { label: 'Channels', value: String(payload.channelCount) },
@@ -357,7 +357,7 @@ function buildCommitmentShepherdActivity(
     title: payload.title,
     summary: payload.summary,
     createdAt: row.created_at,
-    actionHref: payload.actionHref ?? '/admin/systems#weekly-review',
+    actionHref: payload.actionHref ?? '/admin/systems/queue',
     metricItems: [
       { label: 'Commitment', value: payload.commitmentTitle ?? 'No stale commitment' },
       ...(payload.owner ? [{ label: 'Owner', value: payload.owner }] : []),
@@ -552,7 +552,7 @@ export function buildSystemsCommitmentShepherdTarget(
         owner: commitment.owner,
         dueDate: commitment.dueDate ?? null,
         reason,
-        actionHref: `/admin/systems#commitment-${commitment.id}`,
+        actionHref: '/admin/systems/queue',
         summary:
           reason === 'blocked'
             ? `${commitment.title} is blocked under ${commitment.owner}. Leaving it stale will keep the same launch risk alive until the blocker is named and either cleared or replaced.`
@@ -757,7 +757,7 @@ export function formatSystemsOperatorEscalationDigest(
     ...targets.slice(0, 3).flatMap((target, index) => {
       const nextStep = target.actionHref
         ? `${normalizedBaseUrl}${target.actionHref}`
-        : `${normalizedBaseUrl}/admin/systems`;
+        : `${normalizedBaseUrl}/admin/systems/queue`;
       return [
         `${index + 1}. [${reasonLabel(target.reason)}] ${target.title}`,
         `   Why: ${target.summary}`,
@@ -767,7 +767,7 @@ export function formatSystemsOperatorEscalationDigest(
   ];
 
   if (targets.length > 3) {
-    lines.push('', `+${targets.length - 3} more critical follow-up(s) in /admin/systems`);
+    lines.push('', `+${targets.length - 3} more critical follow-up(s) in /admin/systems/queue`);
   }
 
   return {
@@ -801,7 +801,7 @@ export function buildSystemsAutomationSpecs(input: {
       summary: input.reviewDiscipline.summary,
       recommendedAction:
         'Open the weekly operating loop, log a fresh review, and leave behind one named hardening commitment for the week.',
-      actionHref: '/admin/systems#weekly-review',
+      actionHref: '/admin/systems/queue?panel=review',
       evidence: {
         lastReviewedAt: input.reviewDiscipline.lastReviewedAt ?? null,
         overdueCommitments: input.reviewDiscipline.overdueCommitments,
@@ -909,7 +909,7 @@ export function buildSystemsAutomationSpecs(input: {
       }`,
       recommendedAction:
         'Either move the commitment forward, re-scope it honestly, or mark it blocked with a clear explanation so the loop stays trustworthy.',
-      actionHref: '/admin/systems#weekly-review',
+      actionHref: '/admin/systems/queue',
       evidence: {
         commitmentId: commitment.id,
         owner: commitment.owner,

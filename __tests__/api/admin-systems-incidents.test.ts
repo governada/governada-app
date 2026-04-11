@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequest, parseJson } from '../helpers';
 
-const { mockInsert, mockFrom } = vi.hoisted(() => ({
-  mockInsert: vi.fn(),
+const { mockAuditInsert, mockIncidentInsert, mockIncidentEventInsert, mockFrom } = vi.hoisted(() => ({
+  mockAuditInsert: vi.fn(),
+  mockIncidentInsert: vi.fn(),
+  mockIncidentEventInsert: vi.fn(),
   mockFrom: vi.fn(),
 }));
 
@@ -18,26 +20,48 @@ vi.mock('@/lib/adminAuth', () => ({
 
 import { logSystemsIncident } from '@/app/api/admin/systems/incidents/route';
 
+function createIncidentsChain() {
+  return {
+    insert: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    single: mockIncidentInsert,
+  };
+}
+
+function createIncidentEventsChain() {
+  return {
+    insert: mockIncidentEventInsert,
+  };
+}
+
 function createAuditLogChain() {
   return {
-    insert: mockInsert,
+    insert: mockAuditInsert,
   };
 }
 
 describe('systems incidents route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockInsert.mockResolvedValue({ error: null });
+    mockAuditInsert.mockResolvedValue({ error: null });
+    mockIncidentEventInsert.mockResolvedValue({ error: null });
+    mockIncidentInsert.mockResolvedValue({
+      data: {
+        id: '11111111-1111-4111-8111-111111111111',
+        entry_type: 'drill',
+        title: 'Readiness drill',
+      },
+      error: null,
+    });
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'admin_audit_log') {
-        return createAuditLogChain();
-      }
-
+      if (table === 'systems_incidents') return createIncidentsChain();
+      if (table === 'systems_incident_events') return createIncidentEventsChain();
+      if (table === 'admin_audit_log') return createAuditLogChain();
       throw new Error(`Unexpected table: ${table}`);
     });
   });
 
-  it('logs incident and drill entries into the admin audit trail', async () => {
+  it('logs incident and drill entries into durable state and the admin audit trail', async () => {
     const response = await logSystemsIncident(
       createRequest('/api/admin/systems/incidents', {
         method: 'POST',
@@ -66,12 +90,18 @@ describe('systems incidents route', () => {
 
     expect(response.status).toBe(201);
     expect(body.entryType).toBe('drill');
-    expect(body.id).toMatch(/^drill:2026-04-04:/);
-    expect(mockInsert).toHaveBeenCalledWith(
+    expect(body.id).toBe('11111111-1111-4111-8111-111111111111');
+    expect(mockIncidentEventInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        incident_id: '11111111-1111-4111-8111-111111111111',
+        event_type: 'created',
+      }),
+    );
+    expect(mockAuditInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: 'addr_test_admin',
         action: 'log_systems_incident',
-        target: expect.stringMatching(/^drill:2026-04-04:/),
+        target: '11111111-1111-4111-8111-111111111111',
         payload: expect.objectContaining({
           entryType: 'drill',
           severity: 'drill',

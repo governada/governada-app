@@ -31,6 +31,7 @@ const reviewDraftPayloadSchema = z.object({
   commitmentOwner: z.string().min(1),
   commitmentDueDate: dateString.nullable().optional(),
   linkedSloIds: z.array(z.string().min(1)).max(5),
+  linkedIncidentId: z.string().uuid().nullable().optional(),
 });
 
 function clampText(input: string | null | undefined, max: number, fallback: string) {
@@ -99,6 +100,7 @@ function extractIncidentRetroEvidence(
     followUpOwner: followup.evidence.followUpOwner,
     incidentTitle:
       typeof followup.evidence.incidentTitle === 'string' ? followup.evidence.incidentTitle : null,
+    incidentId: typeof followup.evidence.entryId === 'string' ? followup.evidence.entryId : null,
     linkedSloIds,
   };
 }
@@ -304,6 +306,7 @@ export function buildSystemsReviewDraft(
       'Founder + agents',
     commitmentDueDate: nextFridayInputValue(new Date(generatedAt)),
     linkedSloIds,
+    linkedIncidentId: incidentRetroEvidence?.incidentId ?? null,
   };
 }
 
@@ -345,7 +348,7 @@ export function buildSystemsReviewDraftHistory(
       title: `Weekly review draft for ${parsed.data.reviewDate}`,
       summary: `${parsed.data.focusArea} ${parsed.data.topRisk}`,
       createdAt: parsed.data.generatedAt || row.created_at,
-      actionHref: '/admin/systems#weekly-review',
+      actionHref: '/admin/systems/queue?panel=review',
       metricItems: [
         { label: 'Review date', value: parsed.data.reviewDate },
         { label: 'Linked SLOs', value: String(parsed.data.linkedSloIds.length) },

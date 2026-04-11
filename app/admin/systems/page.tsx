@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
-import { SystemsClient } from './SystemsClient';
+import { redirect } from 'next/navigation';
 
-export default function AdminSystemsPage() {
-  return <SystemsClient />;
+export default function AdminSystemsIndexPage() {
+  redirect('/admin/systems/launch');
 }

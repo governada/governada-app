@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type {
   SystemsCommitmentCard,
+  SystemsIncidentEventRecord,
   SystemsIncidentRecord,
   SystemsIncidentSeverity,
   SystemsIncidentStatus,
@@ -133,10 +134,46 @@ export const createSystemsIncidentSchema = systemsIncidentPayloadSchema.superRef
   },
 );
 
+export const updateSystemsIncidentSchema = createSystemsIncidentSchema.extend({
+  id: z.string().uuid(),
+});
+
 type IncidentAuditRow = {
   action: string;
   target: string | null;
   payload: Record<string, unknown> | null;
+  created_at: string;
+};
+
+type SystemsIncidentCurrentRow = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  last_event_at: string;
+  incident_date: string;
+  entry_type: SystemsIncidentType;
+  severity: SystemsIncidentSeverity;
+  status: SystemsIncidentStatus;
+  title: string;
+  detected_by: string;
+  systems_affected: string[] | null;
+  user_impact: string;
+  root_cause: string;
+  mitigation: string;
+  permanent_fix: string;
+  follow_up_owner: string;
+  time_to_acknowledge_minutes: number | null;
+  time_to_mitigate_minutes: number | null;
+  time_to_resolve_minutes: number | null;
+};
+
+type SystemsIncidentEventRow = {
+  id: string;
+  incident_id: string;
+  event_type: 'created' | 'updated' | 'status_changed';
+  status: SystemsIncidentStatus;
+  incident_snapshot: Record<string, unknown>;
+  actor_wallet_address: string;
   created_at: string;
 };
 
@@ -234,6 +271,67 @@ export function parseSystemsIncidentHistory(rows: IncidentAuditRow[]): SystemsIn
   return sortIncidentHistory(parsedEntries);
 }
 
+export function toSystemsIncidentRecord(row: SystemsIncidentCurrentRow): SystemsIncidentRecord {
+  const payload = {
+    incidentDate: row.incident_date,
+    entryType: row.entry_type,
+    severity: row.severity,
+    status: row.status,
+    title: row.title,
+    detectedBy: row.detected_by,
+    systemsAffected: row.systems_affected ?? [],
+    userImpact: row.user_impact,
+    rootCause: row.root_cause,
+    mitigation: row.mitigation,
+    permanentFix: row.permanent_fix,
+    followUpOwner: row.follow_up_owner,
+    timeToAcknowledgeMinutes: row.time_to_acknowledge_minutes,
+    timeToMitigateMinutes: row.time_to_mitigate_minutes,
+    timeToResolveMinutes: row.time_to_resolve_minutes,
+  } as z.infer<typeof createSystemsIncidentSchema>;
+
+  return {
+    id: row.id,
+    loggedAt: row.last_event_at || row.updated_at || row.created_at,
+    incidentDate: row.incident_date,
+    entryType: row.entry_type,
+    severity: row.severity,
+    status: row.status,
+    title: row.title,
+    summary: buildIncidentSummaryText(payload),
+    detectedBy: row.detected_by,
+    systemsAffected: row.systems_affected ?? [],
+    userImpact: row.user_impact,
+    rootCause: row.root_cause,
+    mitigation: row.mitigation,
+    permanentFix: row.permanent_fix,
+    followUpOwner: row.follow_up_owner,
+    timeToAcknowledgeMinutes: row.time_to_acknowledge_minutes,
+    timeToMitigateMinutes: row.time_to_mitigate_minutes,
+    timeToResolveMinutes: row.time_to_resolve_minutes,
+  };
+}
+
+export function toSystemsIncidentEventRecord(
+  row: SystemsIncidentEventRow,
+): SystemsIncidentEventRecord | null {
+  const parsed = systemsIncidentPayloadSchema.safeParse(row.incident_snapshot);
+  if (!parsed.success) return null;
+
+  return {
+    id: row.id,
+    incidentId: row.incident_id,
+    eventType: row.event_type,
+    createdAt: row.created_at,
+    actorWalletAddress: row.actor_wallet_address,
+    title: parsed.data.title,
+    entryType: parsed.data.entryType,
+    severity: parsed.data.severity,
+    status: row.status,
+    summary: buildIncidentSummaryText(parsed.data),
+  };
+}
+
 function severityRank(severity: SystemsIncidentSeverity) {
   switch (severity) {
     case 'p0':
@@ -318,11 +416,14 @@ function buildIncidentRetroLinkedSloIds(entry: SystemsIncidentRecord) {
 
 function existingCommitmentMatchesRetro(
   openCommitments: SystemsCommitmentCard[],
+  incidentId: string,
   commitmentTitle: string,
 ) {
   const normalizedCommitmentTitle = normalizeText(commitmentTitle);
   return openCommitments.some(
-    (commitment) => normalizeText(commitment.title) === normalizedCommitmentTitle,
+    (commitment) =>
+      commitment.linkedIncidentId === incidentId ||
+      normalizeText(commitment.title) === normalizedCommitmentTitle,
   );
 }
 
@@ -404,8 +505,8 @@ export function buildSystemsDrillCadenceTarget(input: {
     sourceKey: 'systems:drill-cadence',
     title,
     summary: `${cadenceSummary} Next scenario: ${nextScenario.summary}`,
-    recommendedAction: `Run a ${nextScenario.title.toLowerCase()} this week, log it in /admin/systems#incident-log, capture the detection path, and carry one permanent-fix follow-up into the next weekly review.`,
-    actionHref: '/admin/systems#incident-log',
+    recommendedAction: `Run a ${nextScenario.title.toLowerCase()} this week, log it in the incidents workspace, capture the detection path, and carry one permanent-fix follow-up into the next weekly review.`,
+    actionHref: '/admin/systems/incidents?panel=create',
     severity,
     reason,
     drillCount: input.summary.drillCount,
@@ -427,8 +528,8 @@ export function buildSystemsIncidentRetroTarget(input: {
       commitmentTitle: buildRetroCommitmentTitle(entry),
     }))
     .filter(
-      ({ commitmentTitle }) =>
-        !existingCommitmentMatchesRetro(input.openCommitments, commitmentTitle),
+      ({ entry, commitmentTitle }) =>
+        !existingCommitmentMatchesRetro(input.openCommitments, entry.id, commitmentTitle),
     )
     .sort((left, right) => {
       const severityDelta = severityRank(right.entry.severity) - severityRank(left.entry.severity);
@@ -457,7 +558,7 @@ export function buildSystemsIncidentRetroTarget(input: {
         ? `The drill is logged as follow-up pending, so the lesson still needs to become named operating work. Permanent fix: ${truncate(entry.permanentFix, 240)}`
         : `This incident is logged as follow-up pending, so the permanent fix is still not anchored in the weekly operating loop. Permanent fix: ${truncate(entry.permanentFix, 240)}`,
     recommendedAction: `Apply the suggested weekly commitment "${commitmentTitle}" under ${entry.followUpOwner}, use the permanent fix as the acceptance bar, and keep the incident loop open until that commitment is real.`,
-    actionHref: '/admin/systems#weekly-review',
+    actionHref: '/admin/systems/queue?panel=review',
     severity,
     entryId: entry.id,
     entryType: entry.entryType,

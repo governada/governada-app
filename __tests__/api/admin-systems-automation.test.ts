@@ -1,13 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequest, parseJson } from '../helpers';
 
-const { mockBuildSystemsDashboardData, mockSendFounderNotification, mockInsert, mockFrom } =
-  vi.hoisted(() => ({
-    mockBuildSystemsDashboardData: vi.fn(),
-    mockSendFounderNotification: vi.fn(),
-    mockInsert: vi.fn(),
-    mockFrom: vi.fn(),
-  }));
+const {
+  mockBuildSystemsDashboardData,
+  mockSendFounderNotification,
+  mockAuditInsert,
+  mockRunsInsertSingle,
+  mockRunsUpdateEq,
+  mockFollowupsOrder,
+  mockFollowupsUpsert,
+  mockEscalationsUpsert,
+  mockEscalationsUpdateIn,
+  mockFrom,
+} = vi.hoisted(() => ({
+  mockBuildSystemsDashboardData: vi.fn(),
+  mockSendFounderNotification: vi.fn(),
+  mockAuditInsert: vi.fn(),
+  mockRunsInsertSingle: vi.fn(),
+  mockRunsUpdateEq: vi.fn(),
+  mockFollowupsOrder: vi.fn(),
+  mockFollowupsUpsert: vi.fn(),
+  mockEscalationsUpsert: vi.fn(),
+  mockEscalationsUpdateIn: vi.fn(),
+  mockFrom: vi.fn(),
+}));
 
 vi.mock('@/lib/admin/systemsDashboard', () => ({
   buildSystemsDashboardData: mockBuildSystemsDashboardData,
@@ -29,19 +45,97 @@ const CRON_SECRET = 'test-secret';
 
 function createAuditLogChain() {
   return {
-    select: vi.fn().mockReturnThis(),
-    in: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-    insert: mockInsert,
+    insert: mockAuditInsert,
   };
+}
+
+function createRunsChain() {
+  const chain = {
+    insert: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    single: mockRunsInsertSingle,
+    update: vi.fn().mockReturnThis(),
+    eq: mockRunsUpdateEq,
+  };
+  return chain;
+}
+
+function createFollowupsChain() {
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    order: mockFollowupsOrder,
+    upsert: mockFollowupsUpsert,
+  };
+  return chain;
+}
+
+function createEscalationsChain(runId = 'run-1') {
+  let filterField: string | null = null;
+  let filterValue: string | null = null;
+  let mode: 'select' | 'update' = 'select';
+
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    update: vi.fn(() => {
+      mode = 'update';
+      return chain;
+    }),
+    eq: vi.fn((field: string, value: string) => {
+      filterField = field;
+      filterValue = value;
+      return chain;
+    }),
+    order: vi.fn(() => {
+      if (mode === 'update') {
+        return Promise.resolve({ data: null, error: null });
+      }
+
+      if (filterField === 'status' && filterValue === 'sent') {
+        return Promise.resolve({ data: [], error: null });
+      }
+
+      if (filterField === 'run_id' && filterValue === runId) {
+        return Promise.resolve({ data: [], error: null });
+      }
+
+      throw new Error(`Unexpected escalation filter ${filterField}:${filterValue}`);
+    }),
+    upsert: mockEscalationsUpsert,
+    in: mockEscalationsUpdateIn,
+  };
+
+  return chain;
 }
 
 describe('systems automation route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('CRON_SECRET', CRON_SECRET);
-    mockInsert.mockResolvedValue({ error: null });
+    mockAuditInsert.mockResolvedValue({ error: null });
+    mockRunsInsertSingle.mockResolvedValue({
+      data: {
+        id: 'run-1',
+        run_key: 'systems:cron:2026-04-10',
+        actor_type: 'cron',
+        actor_wallet_address: 'system:systems-automation',
+        request_id: 'req-1',
+        status: 'running',
+        summary: null,
+        followup_count: 0,
+        critical_count: 0,
+        opened_count: 0,
+        updated_count: 0,
+        resolved_count: 0,
+        started_at: '2026-04-10T00:00:00.000Z',
+        completed_at: null,
+      },
+      error: null,
+    });
+    mockRunsUpdateEq.mockResolvedValue({ error: null });
+    mockFollowupsOrder.mockResolvedValue({ data: [], error: null });
+    mockFollowupsUpsert.mockResolvedValue({ error: null });
+    mockEscalationsUpsert.mockResolvedValue({ error: null });
+    mockEscalationsUpdateIn.mockResolvedValue({ error: null });
     mockSendFounderNotification.mockResolvedValue({
       ok: true,
       channelCount: 0,
@@ -49,10 +143,10 @@ describe('systems automation route', () => {
       failureReason: null,
     });
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'admin_audit_log') {
-        return createAuditLogChain();
-      }
-
+      if (table === 'admin_audit_log') return createAuditLogChain();
+      if (table === 'systems_automation_runs') return createRunsChain();
+      if (table === 'systems_automation_followups') return createFollowupsChain();
+      if (table === 'systems_automation_escalations') return createEscalationsChain();
       throw new Error(`Unexpected table: ${table}`);
     });
   });
@@ -143,12 +237,13 @@ describe('systems automation route', () => {
 
     expect(response.status).toBe(200);
     expect(body.commitmentShepherd.commitmentId).toBe('11111111-1111-4111-8111-111111111111');
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: 'systems_commitment_shepherd',
-        target: '11111111-1111-4111-8111-111111111111',
-      }),
-    );
+    expect(
+      mockAuditInsert.mock.calls.some(
+        ([payload]) =>
+          payload?.action === 'systems_commitment_shepherd' &&
+          payload?.target === '11111111-1111-4111-8111-111111111111',
+      ),
+    ).toBe(true);
   });
 
   it('opens a drill cadence follow-up when no drill is logged yet', async () => {
@@ -206,18 +301,15 @@ describe('systems automation route', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockInsert).toHaveBeenCalledWith(
+    expect(mockFollowupsUpsert).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
-          action: 'systems_automation_followup_sync',
-          target: 'systems:drill-cadence',
-          payload: expect.objectContaining({
-            sourceKey: 'systems:drill-cadence',
-            triggerType: 'drill_cadence',
-            actionHref: '/admin/systems#incident-log',
-          }),
+          source_key: 'systems:drill-cadence',
+          trigger_type: 'drill_cadence',
+          action_href: '/admin/systems/incidents?panel=create',
         }),
       ]),
+      expect.anything(),
     );
   });
 
@@ -309,7 +401,7 @@ describe('systems automation route', () => {
           priority: 'P1',
           timeframe: 'this-week',
           summary: 'The latest minimum-load baseline is stale.',
-          href: '/admin/systems#performance-baseline',
+          href: '/admin/systems/evidence?panel=performance',
           automationReady: true,
         },
       ],
@@ -323,18 +415,15 @@ describe('systems automation route', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockInsert).toHaveBeenCalledWith(
+    expect(mockFollowupsUpsert).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
-          action: 'systems_automation_followup_sync',
-          target: 'systems:performance-baseline',
-          payload: expect.objectContaining({
-            sourceKey: 'systems:performance-baseline',
-            triggerType: 'performance_baseline',
-            actionHref: '/admin/systems#performance-baseline',
-          }),
+          source_key: 'systems:performance-baseline',
+          trigger_type: 'performance_baseline',
+          action_href: '/admin/systems/evidence?panel=performance',
         }),
       ]),
+      expect.anything(),
     );
   });
 
@@ -392,18 +481,15 @@ describe('systems automation route', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockInsert).toHaveBeenCalledWith(
+    expect(mockFollowupsUpsert).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
-          action: 'systems_automation_followup_sync',
-          target: 'systems:trust-surface-review',
-          payload: expect.objectContaining({
-            sourceKey: 'systems:trust-surface-review',
-            triggerType: 'trust_surface_review',
-            actionHref: '/admin/systems#trust-surface-review',
-          }),
+          source_key: 'systems:trust-surface-review',
+          trigger_type: 'trust_surface_review',
+          action_href: '/admin/systems/evidence?panel=trust',
         }),
       ]),
+      expect.anything(),
     );
   });
 });

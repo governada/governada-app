@@ -275,10 +275,19 @@ jobs:
             cp -R public .next/standalone/public
           fi
       - name: Run critical public E2E
+        id: critical_public
         run: |
           PORT=3000 node .next/standalone/server.js &
           npx wait-on http://127.0.0.1:3000 --timeout 60000
           npx playwright test e2e/critical-public.spec.ts e2e/critical-a11y.spec.ts --project=chromium
+      - name: Report journey verification results
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          SYSTEMS_JOURNEY_VERIFICATION_URL: ${{ secrets.SYSTEMS_JOURNEY_VERIFICATION_URL }}
+          SYSTEMS_JOURNEY_VERIFICATION_TOKEN: ${{ secrets.SYSTEMS_JOURNEY_VERIFICATION_TOKEN }}
+          SYSTEMS_JOURNEY_STATUS: ${{ steps.critical_public.outcome }}
+          SYSTEMS_JOURNEY_JOB_NAME: e2e-critical
+        run: node scripts/report-systems-journey-verifications.mjs
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v7
@@ -319,5 +328,5 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
         run: |
           curl -H "Content-Type: application/json" \
-            -d "{\"content\": \"❌ CI failed on \`${{ github.ref_name }}\` — ${{ github.event.head_commit.message || github.event.pull_request.title || 'PR check' }}\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            -d "{\"content\": \"âŒ CI failed on \`${{ github.ref_name }}\` â€” ${{ github.event.head_commit.message || github.event.pull_request.title || 'PR check' }}\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "$DISCORD_WEBHOOK_URL"

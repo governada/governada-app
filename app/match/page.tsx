@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
 import { HomePageShell } from '@/components/hub/HomePageShell';
 
 // The /match route must render per-request so proxy nonce headers reach Next's
-// inline bootstrap scripts under the repo CSP policy.
+// inline/bootstrap scripts under the repo CSP policy.
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -23,5 +24,6 @@ export const metadata: Metadata = {
 };
 
 export default async function MatchPage() {
+  await connection();
   return <HomePageShell match pageViewEvent="match_page_viewed" />;
 }

@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import { HomePageShell } from '@/components/hub/HomePageShell';
 
+// The /match route must render per-request so proxy nonce headers reach Next's
+// inline bootstrap scripts under the repo CSP policy.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Governance Match - Governada',
   description:

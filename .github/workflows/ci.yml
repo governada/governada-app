@@ -328,5 +328,5 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
         run: |
           curl -H "Content-Type: application/json" \
-            -d "{\"content\": \"âŒ CI failed on \`${{ github.ref_name }}\` â€” ${{ github.event.head_commit.message || github.event.pull_request.title || 'PR check' }}\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            -d "{\"content\": \"❌ CI failed on \`${{ github.ref_name }}\` — ${{ github.event.head_commit.message || github.event.pull_request.title || 'PR check' }}\\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "$DISCORD_WEBHOOK_URL"

@@ -1,10 +1,8 @@
 import type { Metadata } from 'next';
-import { connection } from 'next/server';
 import { HomePageShell } from '@/components/hub/HomePageShell';
-import { MatchRouteActivator } from './MatchRouteActivator';
 
-// The /match route must render per-request so proxy nonce headers reach Next's
-// inline bootstrap scripts under the repo CSP policy.
+// Keep /match on the request lifecycle so nonce-aware scripts still receive the
+// live request headers under the repo CSP policy.
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -24,12 +22,6 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function MatchPage() {
-  await connection();
-  return (
-    <>
-      <MatchRouteActivator />
-      <HomePageShell pageViewEvent="match_page_viewed" />
-    </>
-  );
+export default function MatchPage() {
+  return <HomePageShell match pageViewEvent="match_page_viewed" />;
 }

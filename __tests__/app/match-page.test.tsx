@@ -10,34 +10,25 @@ const homePageShellMock = vi.fn(
     />
   ),
 );
-const matchRouteActivatorMock = vi.fn(() => <div data-testid="match-route-activator" />);
 
 vi.mock('@/components/hub/HomePageShell', () => ({
   HomePageShell: homePageShellMock,
-}));
-vi.mock('@/app/match/MatchRouteActivator', () => ({
-  MatchRouteActivator: matchRouteActivatorMock,
-}));
-
-vi.mock('next/server', () => ({
-  connection: vi.fn().mockResolvedValue(undefined),
 }));
 
 const { default: MatchPage } = await import('@/app/match/page');
 
 describe('MatchPage', () => {
-  it('renders the shared home shell with the match route activator', async () => {
-    render(await MatchPage());
+  it('renders the shared home shell in match mode', () => {
+    render(<MatchPage />);
 
-    expect(matchRouteActivatorMock).toHaveBeenCalledWith({}, undefined);
     expect(homePageShellMock).toHaveBeenCalledWith(
       {
+        match: true,
         pageViewEvent: 'match_page_viewed',
       },
       undefined,
     );
-    expect(screen.queryByTestId('match-route-activator')).not.toBeNull();
-    expect(screen.getByTestId('home-page-shell').getAttribute('data-match')).toBe('false');
+    expect(screen.getByTestId('home-page-shell').getAttribute('data-match')).toBe('true');
     expect(screen.getByTestId('home-page-shell').getAttribute('data-page-view-event')).toBe(
       'match_page_viewed',
     );

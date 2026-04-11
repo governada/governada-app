@@ -1,3 +1,4 @@
+import { fetchLatestProposalVotingSummary } from '@/lib/governance/proposalVotingSummary';
 import { getGovernanceThresholdForProposal } from '@/lib/governanceThresholds';
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase';
@@ -22,13 +23,8 @@ export async function getVotingPowerSummary(
   try {
     const supabase = createClient();
 
-    const [canonicalResult, proposalResult] = await Promise.all([
-      supabase
-        .from('proposal_voting_summary')
-        .select('*')
-        .eq('proposal_tx_hash', txHash)
-        .eq('proposal_index', proposalIndex)
-        .single(),
+    const [canonical, proposalResult] = await Promise.all([
+      fetchLatestProposalVotingSummary(supabase, { txHash, proposalIndex }),
       supabase
         .from('proposals')
         .select('proposal_type, param_changes')
@@ -37,7 +33,6 @@ export async function getVotingPowerSummary(
         .maybeSingle(),
     ]);
 
-    const canonical = canonicalResult.data;
     const proposalRow = proposalResult.data as {
       proposal_type?: string | null;
       param_changes?: Record<string, unknown> | null;

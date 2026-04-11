@@ -6,6 +6,7 @@ Provider-agnostic instructions for autonomous agents working in this repo. Treat
 
 - Feature work happens in a fresh worktree. The shared `governada-app` checkout stays on `main`. Hotfixes are the only exception. Read-only inspection on `main` is fine; the first mutating step must happen only after the agent has created a worktree.
 - Search before creating. Extend existing components, hooks, routes, and utilities unless extension is genuinely infeasible.
+- Prefer elegant, durable solutions over expedient shortcuts. Do not default to intentionally minimal stopgaps when a cleaner fix is clear and practical within scope. Optimize for long-term maintainability, performance, scalability, and reduced rework.
 - Non-trivial bugs require root-cause analysis before fixing. Do not patch symptoms first.
 - `.env.local` points at production services. Never perform write-heavy syncs, backfills, or destructive data operations without explicit approval.
 - Risky user-facing work should be feature-flagged.
@@ -25,11 +26,12 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 1. If the task is feature work, create a fresh worktree first with `powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1 <name>`. Do not start feature work in the shared checkout. `npm run worktree:new -- <name>` is a convenience wrapper, but on Windows Codex Desktop the direct PowerShell entrypoint is more reliable because it matches persistent approval prefixes cleanly.
 2. Start from fresh `origin/main`. When resuming an existing worktree or when session diagnostics show drift/setup gaps, run `npm run worktree:sync`.
 3. Read only the minimal context needed. Use the strategy registry and manifest before diving into the full vision docs.
-4. Make the smallest change that solves the actual problem.
+4. Make the most elegant change that cleanly solves the actual problem within scope. Do not choose a shortcut or merely minimal patch when a more coherent fix is clear and practical.
 5. Run `npm run agent:validate` and the relevant local verification for the scope.
-6. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, and `Impact` sections.
-7. Before merging, run `npm run pre-merge-check -- <PR#>`.
-8. After merge, verify deploy health and smoke tests with `npm run deploy:verify`.
+6. Communicate impact explicitly in updates, handoffs, and reviews: what changed, why it matters, which surfaces or constraints it affects, and any real tradeoffs or risks.
+7. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, and `Impact` sections.
+8. Before merging, run `npm run pre-merge-check -- <PR#>`.
+9. After merge, verify deploy health and smoke tests with `npm run deploy:verify`.
 
 ## Autonomy Boundary
 

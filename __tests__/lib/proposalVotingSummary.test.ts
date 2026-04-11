@@ -58,6 +58,51 @@ describe('proposalVotingSummary helpers', () => {
     expect(query.in).toHaveBeenCalledWith('proposal_tx_hash', ['tx-1']);
   });
 
+  it('keeps only the latest epoch row per proposal when bulk-fetching summaries', async () => {
+    const query = makeInQuery([
+      {
+        proposal_tx_hash: 'tx-1',
+        proposal_index: 0,
+        epoch_no: 111,
+        drep_yes_votes_cast: 1,
+        drep_no_votes_cast: 0,
+        drep_abstain_votes_cast: 0,
+        pool_yes_votes_cast: 0,
+        pool_no_votes_cast: 0,
+        pool_abstain_votes_cast: 0,
+        committee_yes_votes_cast: 0,
+        committee_no_votes_cast: 0,
+        committee_abstain_votes_cast: 0,
+      },
+      {
+        proposal_tx_hash: 'tx-1',
+        proposal_index: 0,
+        epoch_no: 113,
+        drep_yes_votes_cast: 4,
+        drep_no_votes_cast: 2,
+        drep_abstain_votes_cast: 1,
+        pool_yes_votes_cast: 3,
+        pool_no_votes_cast: 1,
+        pool_abstain_votes_cast: 0,
+        committee_yes_votes_cast: 2,
+        committee_no_votes_cast: 0,
+        committee_abstain_votes_cast: 0,
+      },
+    ]);
+    const supabase = {
+      from: vi.fn(() => query),
+    };
+
+    await expect(fetchProposalVotingSummaries(supabase as any, ['tx-1'])).resolves.toEqual([
+      expect.objectContaining({
+        proposal_tx_hash: 'tx-1',
+        proposal_index: 0,
+        epoch_no: 113,
+        drep_yes_votes_cast: 4,
+      }),
+    ]);
+  });
+
   it('returns the latest summary row and can fail closed or throw', async () => {
     const successQuery = makeLatestQuery([
       {
@@ -100,11 +145,26 @@ describe('proposalVotingSummary helpers', () => {
     ).rejects.toEqual({ message: 'boom' });
   });
 
-  it('indexes summary rows by proposal key and tri-body votes', () => {
+  it('indexes the latest summary row by proposal key and tri-body votes', () => {
     const rows = [
       {
         proposal_tx_hash: 'tx-1',
         proposal_index: 0,
+        epoch_no: 111,
+        drep_yes_votes_cast: 1,
+        drep_no_votes_cast: 0,
+        drep_abstain_votes_cast: 0,
+        pool_yes_votes_cast: 0,
+        pool_no_votes_cast: 0,
+        pool_abstain_votes_cast: 0,
+        committee_yes_votes_cast: 0,
+        committee_no_votes_cast: 0,
+        committee_abstain_votes_cast: 0,
+      },
+      {
+        proposal_tx_hash: 'tx-1',
+        proposal_index: 0,
+        epoch_no: 112,
         drep_yes_votes_cast: 3,
         drep_no_votes_cast: 1,
         drep_abstain_votes_cast: 0,
@@ -118,7 +178,7 @@ describe('proposalVotingSummary helpers', () => {
     ];
 
     expect(getProposalVotingSummaryKey('tx-1', 0)).toBe('tx-1-0');
-    expect(indexProposalVotingSummaries(rows as any).get('tx-1-0')).toMatchObject(rows[0]);
+    expect(indexProposalVotingSummaries(rows as any).get('tx-1-0')).toMatchObject(rows[1]);
     expect(indexProposalVotingSummaryTriBodies(rows as any).get('tx-1-0')).toEqual({
       drep: { yes: 3, no: 1, abstain: 0 },
       spo: { yes: 2, no: 1, abstain: 0 },

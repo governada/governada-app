@@ -1,4 +1,3 @@
-import * as jose from 'jose';
 import { findCookieValue } from './lib/persistence';
 
 export async function register() {
@@ -40,16 +39,10 @@ async function extractSessionPayload(
   const token = findCookieValue(cookieHeader);
   if (!token) return null;
 
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) return null;
-
   try {
-    const { payload } = await jose.jwtVerify(
-      decodeURIComponent(token),
-      new TextEncoder().encode(secret),
-    );
-
-    if (typeof payload.walletAddress !== 'string' || payload.walletAddress.length === 0) {
+    const { validateSessionToken } = await import('@/lib/supabaseAuth');
+    const payload = await validateSessionToken(decodeURIComponent(token));
+    if (!payload?.walletAddress) {
       return null;
     }
 

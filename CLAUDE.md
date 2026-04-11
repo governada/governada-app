@@ -29,9 +29,11 @@ Build failures or production bugs if violated:
 
 - **The burden of proof is on change.** Prove why the change is necessary. "It could be better" is not sufficient.
 - **Existing code is the starting point.** Search before creating. See `.claude/rules/build-on-existing.md`.
+- **Elegant beats expedient.** Prefer the cleanest durable solution that fits the scope. Do not default to shortcut fixes or intentionally minimal patches when a more coherent design is clear. Optimize for maintainability, performance, scalability, and reduced rework.
 - **Root causes, not symptoms.** Trace the full cause chain. Use `/diagnose` for non-trivial bugs. Infrastructure fixes > process fixes.
 - **Done means done.** Edge cases handled, error/loading/empty states designed, mobile verified, feature gated if risky, tested against real user journeys.
 - **Less is more.** 3 robust features beats 7 fragile ones. Defer rather than ship half-baked.
+- **Always explain impact.** In updates, reviews, and PRs, state what changed, why it matters, what behavior or system boundaries it affects, and any real tradeoffs or risks.
 - **Pushback is valuable.** Honest friction over compliant speed.
 - **Improve, don't replace.** Extend what exists; build from scratch only when explicitly requested.
 

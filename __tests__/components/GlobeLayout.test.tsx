@@ -80,6 +80,12 @@ vi.mock('@/hooks/useUserConstellationNode', () => ({
   }),
 }));
 
+vi.mock('@/hooks/useConstellationProposals', () => ({
+  useConstellationProposals: () => ({
+    proposalNodes: [],
+  }),
+}));
+
 vi.mock('@/stores/senecaThreadStore', () => ({
   useSenecaThreadStore: {
     getState: () => ({
@@ -121,7 +127,8 @@ vi.mock('@/components/globe/Constellation2D', () => ({
 }));
 
 vi.mock('@/components/globe/ListOverlay', () => ({
-  ListOverlay: () => <div data-testid="list-overlay" />,
+  ListOverlay: ({ isOpen }: { isOpen: boolean }) =>
+    isOpen ? <div data-testid="list-overlay" /> : null,
 }));
 
 vi.mock('@/components/globe/WorkspaceCards', () => ({
@@ -129,15 +136,18 @@ vi.mock('@/components/globe/WorkspaceCards', () => ({
 }));
 
 vi.mock('@/components/governada/GlobeTooltip', () => ({
-  GlobeTooltip: () => <div data-testid="globe-tooltip" />,
+  GlobeTooltip: ({ node }: { node: unknown }) =>
+    node ? <div data-testid="globe-tooltip" /> : null,
 }));
 
 vi.mock('@/components/globe/PanelOverlay', () => ({
-  PanelOverlay: () => <div data-testid="panel-overlay" />,
+  PanelOverlay: ({ onClose }: { onClose?: () => void }) =>
+    onClose ? <div data-testid="panel-overlay" /> : null,
 }));
 
 vi.mock('@/components/hub/EntityDetailSheet', () => ({
-  EntityDetailSheet: () => <div data-testid="entity-detail-sheet" />,
+  EntityDetailSheet: ({ entity }: { entity: unknown }) =>
+    entity ? <div data-testid="entity-detail-sheet" /> : null,
 }));
 
 vi.mock('@/components/SinceLastVisit', () => ({
@@ -145,7 +155,8 @@ vi.mock('@/components/SinceLastVisit', () => ({
 }));
 
 vi.mock('@/components/hub/DiscoveryOverlay', () => ({
-  DiscoveryOverlay: () => <div data-testid="discovery-overlay" />,
+  DiscoveryOverlay: ({ filter }: { filter: string | null }) =>
+    filter ? <div data-testid="discovery-overlay" /> : null,
 }));
 
 vi.mock('@/components/globe/GlobeControls', () => ({

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * GlobeLayout — Full-viewport globe experience with Seneca thread.
+ * GlobeLayout â€” Full-viewport globe experience with Seneca thread.
  *
  * This is the client-side core of the /g/ route namespace.
  * The globe fills the viewport. Entity focus is driven by URL params.
@@ -11,7 +11,7 @@
  *   z-0:  ConstellationScene (full viewport)
  *   z-20: GlobeControls (floating top-left)
  *   z-25: ListOverlay (left panel)
- *   z-30: PanelOverlay (right panel — entity detail)
+ *   z-30: PanelOverlay (right panel â€” entity detail)
  *   z-40: SenecaOrb + SenecaThread
  */
 
@@ -30,7 +30,7 @@ import type { SortMode } from './FilterBar';
 import type { GlobeIntent } from '@/lib/intelligence/advisor';
 import { useDeviceCapability } from '@/hooks/useDeviceCapability';
 import { useUserConstellationNode } from '@/hooks/useUserConstellationNode';
-import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
+import { useConstellationProposals } from '@/hooks/useConstellationProposals';
 import {
   parseEntityParam,
   encodeEntityParam,
@@ -38,17 +38,13 @@ import {
 } from '@/lib/homepage/parseEntityParam';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { posthog } from '@/lib/posthog';
+import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
 import { ClusterLabels3D } from './ClusterLabels3D';
 import { ClusterNebulae } from './ClusterNebula';
 import { setClusterCache } from '@/lib/globe/behaviors/clusterBehavior';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { STORAGE_KEYS, readStoredValue } from '@/lib/persistence';
-
-const ListOverlay = dynamic(
-  () => import('./ListOverlay').then((m) => ({ default: m.ListOverlay })),
-  { ssr: false },
-);
 
 const WorkspaceCards = dynamic(
   () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
@@ -102,7 +98,6 @@ interface GlobeLayoutProps {
   /** URL params forwarded from the page (homepage deep-link support) */
   initialFilter?: string;
   initialEntity?: string;
-  initialMatch?: boolean;
   initialSort?: string;
 }
 
@@ -110,7 +105,6 @@ export function GlobeLayout({
   children,
   initialFilter,
   initialEntity,
-  initialMatch,
   initialSort,
 }: GlobeLayoutProps) {
   const globeRef = useRef<ConstellationRef>(null);
@@ -173,13 +167,14 @@ export function GlobeLayout({
   const { segment, drepId } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
   // Epoch context available via useEpochContext() in child components
-  const { gpuTier, use2D } = useDeviceCapability();
+  const { use2D } = useDeviceCapability();
 
   // ---------------------------------------------------------------------------
   // Homepage features: user node, proposals, entity detail, tooltips, match trigger
   // ---------------------------------------------------------------------------
 
   const { userNode, delegationBond } = useUserConstellationNode();
+  const { proposalNodes } = useConstellationProposals();
 
   // Entity detail sheet state (bottom sheet for entity clicks on homepage)
   const [activeEntity, setActiveEntity] = useState<EntityRef | null>(
@@ -218,15 +213,6 @@ export function GlobeLayout({
     [],
   );
 
-  // Trigger match flow from URL param on mount
-  const matchTriggered = useRef(false);
-  useEffect(() => {
-    if (initialMatch && !matchTriggered.current) {
-      matchTriggered.current = true;
-      useSenecaThreadStore.getState().startMatch();
-    }
-  }, [initialMatch]);
-
   // SinceLastVisit state (auth only)
   const [previousVisitAt, setPreviousVisitAt] = useState<string | null>(null);
   // drepId already destructured from useSegment() above
@@ -257,7 +243,7 @@ export function GlobeLayout({
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [workspaceCardsVisible, setWorkspaceCardsVisible] = useState(false);
 
-  // Sync filter from URL on navigation — only update filter state, don't force list open
+  // Sync filter from URL on navigation â€” only update filter state, don't force list open
   useEffect(() => {
     const f = searchParams.get('filter') as GlobeFilter | null;
     if (f && f !== filter) {
@@ -318,10 +304,6 @@ export function GlobeLayout({
     globeRef.current?.resetCamera();
   }, []);
   const showRoutePanel = pathname.startsWith('/g/');
-  const showListOverlay = listOpen;
-  const showTooltip = hoveredNode !== null && hoverScreenPos !== null;
-  const showEntityDetailSheet = activeEntity !== null;
-  const showDiscoveryOverlay = filter !== null;
 
   // Reset initial focus on path changes
   useEffect(() => {
@@ -334,7 +316,7 @@ export function GlobeLayout({
   }, [pathname]);
 
   // ---------------------------------------------------------------------------
-  // List ↔ Globe sync: hover highlight
+  // List â†” Globe sync: hover highlight
   // ---------------------------------------------------------------------------
 
   const handleNodeHover = useCallback((nodeId: string | null) => {
@@ -411,7 +393,7 @@ export function GlobeLayout({
   }, [handleToggleList, handleCycleFilter]);
 
   // ---------------------------------------------------------------------------
-  // Seneca intent → Globe dispatch
+  // Seneca intent â†’ Globe dispatch
   // ---------------------------------------------------------------------------
 
   const consumeGlobeAction = seneca.consumeGlobeAction;
@@ -441,7 +423,7 @@ export function GlobeLayout({
           break;
 
         case 'compare':
-          // For now, open list with all entities visible — AI handles comparison in response
+          // For now, open list with all entities visible â€” AI handles comparison in response
           // Future: highlight two specific nodes
           break;
 
@@ -500,7 +482,7 @@ export function GlobeLayout({
 
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden">
-      {/* Full-viewport constellation — z-0 */}
+      {/* Full-viewport constellation â€” z-0 */}
       <div className="absolute inset-0 z-0">
         {use2D ? (
           <Constellation2D
@@ -520,8 +502,8 @@ export function GlobeLayout({
             onNodeSelect={handleNodeSelect}
             onNodeHoverScreen={handleNodeHoverScreen}
             breathing
-            gpuTier={gpuTier}
             userNode={userNode}
+            proposalNodes={proposalNodes}
             delegationBond={delegationBond}
             clusters={clusterLabels}
           >
@@ -537,10 +519,12 @@ export function GlobeLayout({
 
       {/* Cluster labels moved inside Canvas as children of ConstellationScene */}
 
-      {/* SSR content for SEO — hidden from visual users */}
-      <div className="sr-only">{children}</div>
+      {/* SSR content for SEO â€” hidden from visual users */}
+      <section className="sr-only" aria-label="Governance entity details">
+        {children}
+      </section>
 
-      {/* Globe controls — z-20: floating top-left */}
+      {/* Globe controls â€” z-20: floating top-left */}
       <div className="absolute top-20 left-4 z-20 pointer-events-auto">
         <GlobeControls
           listOpen={listOpen}
@@ -551,24 +535,22 @@ export function GlobeLayout({
         />
       </div>
 
-      {/* List overlay — z-25: left side panel */}
-      {showListOverlay && (
-        <ListOverlay
-          isOpen={listOpen}
-          onClose={handleListClose}
-          filter={filter}
-          onFilterChange={handleFilterChange}
-          sort={sort}
-          onSortChange={setSort}
-          highlightedNodeId={highlightedNodeId}
-          onNodeHover={handleNodeHover}
-        />
-      )}
+      {/* List overlay â€” z-25: left side panel */}
+      <ListOverlay
+        isOpen={listOpen}
+        onClose={handleListClose}
+        filter={filter}
+        onFilterChange={handleFilterChange}
+        sort={sort}
+        onSortChange={setSort}
+        highlightedNodeId={highlightedNodeId}
+        onNodeHover={handleNodeHover}
+      />
 
-      {/* Workspace cards overlay — z-28 */}
+      {/* Workspace cards overlay â€” z-28 */}
       {workspaceCardsVisible && <WorkspaceCards onClose={() => setWorkspaceCardsVisible(false)} />}
 
-      {/* Panel overlay — z-30: entity detail panels over the globe */}
+      {/* Panel overlay â€” z-30: entity detail panels over the globe */}
       {showRoutePanel && (
         <PanelOverlay
           onClose={handlePanelClose}
@@ -578,40 +560,30 @@ export function GlobeLayout({
       )}
 
       {/* Cursor-following tooltip */}
-      {showTooltip && (
-        <GlobeTooltip
-          node={hoveredNode}
-          screenPos={hoverScreenPos}
-          showMatchCta={!isAuthenticated}
-        />
-      )}
+      <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} showMatchCta={!isAuthenticated} />
 
-      {/* Entity detail sheet — bottom sheet for entity clicks on homepage */}
-      {showEntityDetailSheet && (
-        <EntityDetailSheet entity={activeEntity} onClose={handleEntityClose} />
-      )}
+      {/* Entity detail sheet â€” bottom sheet for entity clicks on homepage */}
+      <EntityDetailSheet entity={activeEntity} onClose={handleEntityClose} />
 
-      {/* Discovery overlay — filter-driven entity list */}
-      {showDiscoveryOverlay && (
-        <DiscoveryOverlay
-          filter={filter}
-          initialSort={initialSort}
-          onEntitySelect={handleEntitySelect}
-          onClose={() => {
-            setFilter(null);
-            bridge.executeGlobeCommand({ type: 'clear' });
-          }}
-        />
-      )}
+      {/* Discovery overlay â€” filter-driven entity list */}
+      <DiscoveryOverlay
+        filter={filter}
+        initialSort={initialSort}
+        onEntitySelect={handleEntitySelect}
+        onClose={() => {
+          setFilter(null);
+          bridge.executeGlobeCommand({ type: 'clear' });
+        }}
+      />
 
-      {/* Since last visit — compact activity summary for returning authenticated users */}
+      {/* Since last visit â€” compact activity summary for returning authenticated users */}
       {previousVisitAt && isAuthenticated && (
         <div className="fixed bottom-[calc(theme(spacing.6)+14rem)] left-6 z-40 w-[min(440px,calc(100vw-3rem))] max-md:bottom-[calc(14rem)] max-md:left-4 max-md:right-4 max-md:w-auto">
           <SinceLastVisit previousVisitAt={previousVisitAt} delegatedDrepId={drepId} />
         </div>
       )}
 
-      {/* Seneca companion provided by GovernadaShell (app-wide) — no duplication here */}
+      {/* Seneca companion provided by GovernadaShell (app-wide) â€” no duplication here */}
     </div>
   );
 }

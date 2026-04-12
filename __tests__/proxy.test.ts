@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
-import { proxy } from '@/proxy';
+import { config, proxy } from '@/proxy';
 
 describe('proxy CORS headers', () => {
   it('allows Authorization for v1 API preflight requests', () => {
@@ -32,5 +32,18 @@ describe('proxy CORS headers', () => {
     expect(response.headers.get('location')).toBe(
       'http://localhost:3000/?connect=1&returnTo=%2Fyou',
     );
+  });
+
+  it('skips proxy execution for router prefetch requests in the matcher config', () => {
+    expect(config.matcher).toEqual([
+      {
+        source:
+          '/((?!api|_next/static|_next/image|favicon\\.ico|manifest\\.json|sw\\.js|workbox-|icons/|og-image).*)',
+        missing: [
+          { type: 'header', key: 'next-router-prefetch' },
+          { type: 'header', key: 'purpose', value: 'prefetch' },
+        ],
+      },
+    ]);
   });
 });

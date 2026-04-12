@@ -39,7 +39,7 @@ test.describe('Visual Regression - Key Pages', () => {
   });
 
   test('match page renders correctly', async ({ page }) => {
-    await page.goto('/?match=true');
+    await page.goto('/?mode=match');
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveScreenshot('match.png', {
       fullPage: false,

@@ -1,11 +1,11 @@
-# Matching & Discovery — Domain Registry
+# Matching & Discovery â€” Domain Registry
 
 ## Architecture
 
 PCA-based alignment system powers DRep/Pool matching. 6 governance dimensions from AI proposal classification.
 
 ```
-Proposals → AI classification (6D) → PCA alignment → Match scoring → Discovery/Match UI
+Proposals â†’ AI classification (6D) â†’ PCA alignment â†’ Match scoring â†’ Discovery/Match UI
 ```
 
 ## Core Engine
@@ -22,13 +22,13 @@ Proposals → AI classification (6D) → PCA alignment → Match scoring → Dis
 
 ## Match Flows
 
-| Flow                 | Route                    | Key Files                                             |
-| -------------------- | ------------------------ | ----------------------------------------------------- |
-| Quick Match (PCA 6D) | `/match`, `/match/vote`  | `hooks/useQuickMatch.ts`, `components/QuickMatch.tsx` |
-| Match results        | `/match/result`          | `components/governada/match/QuickMatchFlow.tsx`       |
-| Conversational Match | `/match` (Seneca-driven) | `hooks/useConversationalMatch.ts`                     |
-| Pool Match           | `/match` (pool tab)      | `lib/matching/` (match_type param)                    |
-| Curated Vote Flow    | `/match/vote`            | `components/governada/match/CuratedVoteFlow.tsx`      |
+| Flow                 | Route                                         | Key Files                                                                |
+| -------------------- | --------------------------------------------- | ------------------------------------------------------------------------ |
+| Quick Match (PCA 6D) | `/?mode=match`, `/match` alias, `/match/vote` | `components/matching/QuickMatchExperience.tsx`, `hooks/useQuickMatch.ts` |
+| Match results        | `/match/result`                               | `components/governada/match/QuickMatchFlow.tsx`                          |
+| Conversational Match | `Seneca overlay`                              | `hooks/useConversationalMatch.ts`                                        |
+| Pool Match           | `/?mode=match`                                | `lib/matching/` (match_type param)                                       |
+| Curated Vote Flow    | `/match/vote`                                 | `components/governada/match/CuratedVoteFlow.tsx`                         |
 
 ## Supporting Components
 

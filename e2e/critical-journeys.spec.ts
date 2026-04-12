@@ -13,10 +13,11 @@ test.describe('Critical journey contracts', () => {
     await expect(page.locator('#main-content')).toBeVisible({ timeout: 15000 });
   });
 
-  test('durable match route owns the match flow', async ({ page }) => {
+  test('homepage owns the canonical quick match flow', async ({ page }) => {
     await page.goto('/match', { waitUntil: 'domcontentloaded' });
-    await expect(page).toHaveURL(/\/match$/);
-    await expect(page.locator('#main-content')).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL(/[?&]mode=match/, { timeout: 30000 });
+    await expect(page.getByTestId('homepage-match-workspace')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('match-start-button')).toBeVisible({ timeout: 15000 });
   });
 
   test('proposal discovery can still reach a proposal detail route', async ({ page }) => {

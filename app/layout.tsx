@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Space_Grotesk, Fraunces } from 'next/font/google';
+import { connection } from 'next/server';
 import './globals.css';
 import { Providers } from '@/components/Providers';
 import { BrandedLoader } from '@/components/BrandedLoader';
@@ -37,8 +38,10 @@ const fraunces = Fraunces({
   axes: ['SOFT', 'WONK', 'opsz'],
 });
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
-  title: 'Governada — Cardano Governance Intelligence',
+  title: 'Governada â€” Cardano Governance Intelligence',
   description:
     'Governance intelligence for Cardano. Find your DRep, track governance proposals, and participate in on-chain democracy.',
   keywords: [
@@ -53,7 +56,7 @@ export const metadata: Metadata = {
     'SPO',
   ],
   openGraph: {
-    title: 'Governada — Cardano Governance Intelligence',
+    title: 'Governada â€” Cardano Governance Intelligence',
     description:
       'Governance intelligence for Cardano. Find your DRep, track proposals, and take action in governance.',
     type: 'website',
@@ -75,11 +78,15 @@ export const viewport: Viewport = {
   themeColor: '#0a0b14',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Keep the full App Router tree request-bound so CSP nonces are resolved during
+  // request-time rendering instead of drifting through prerendered shells.
+  await connection();
+
   return (
     <html
       lang={DOCUMENT_LOCALE}

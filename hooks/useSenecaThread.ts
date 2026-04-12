@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * useSenecaThread — Hook that wraps the Seneca Zustand store with route detection
+ * useSenecaThread â€” Hook that wraps the Seneca Zustand store with route detection
  * and derived state. The canonical Seneca state hook for the unified Thread.
  *
  * Provides:
@@ -20,7 +20,7 @@ import type { ThreadMessage } from '@/stores/senecaThreadStore';
 import { detectGlobeIntent, type GlobeIntent } from '@/lib/intelligence/advisor';
 
 // ---------------------------------------------------------------------------
-// Route types — canonical source for PanelRoute
+// Route types â€” canonical source for PanelRoute
 // ---------------------------------------------------------------------------
 
 export type PanelRoute =
@@ -42,7 +42,7 @@ export function getWorldForRoute(route: PanelRoute): World {
 }
 
 function detectPanelRoute(pathname: string): PanelRoute {
-  if (pathname === '/' || pathname === '/hub' || pathname === '/match') return 'hub';
+  if (pathname === '/' || pathname === '/hub') return 'hub';
   // Entity routes
   if (/^\/proposal\/[^/]+\/\d+/.test(pathname)) return 'proposal';
   if (/^\/drep\/[^/]+/.test(pathname)) return 'drep';
@@ -118,7 +118,7 @@ export interface UseSenecaThreadResult {
 
   /**
    * Detect & dispatch a globe intent from user text.
-   * Returns the detected intent (or null if no intent matched — query should go to AI).
+   * Returns the detected intent (or null if no intent matched â€” query should go to AI).
    */
   executeIntent: (query: string) => GlobeIntent | null;
   /** Clear the pending globe action after GlobeLayout consumes it */
@@ -199,7 +199,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
         return intent;
       }
 
-      // Dispatch the intent to the store — GlobeLayout will pick it up
+      // Dispatch the intent to the store â€” GlobeLayout will pick it up
       dispatchGlobeIntent(intent);
       return intent;
     },

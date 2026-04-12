@@ -635,13 +635,13 @@ export const CRITICAL_JOURNEYS: SystemsJourney[] = [
     title: 'Start Quick Match and progress through the quiz',
     persona: 'Anonymous citizen',
     gateLevel: 'L0',
-    coverage: 'manual',
+    coverage: 'automated',
     whyItMatters: 'Match is one of the clearest value propositions at launch.',
     currentEvidence:
-      'Dedicated Quick Match specs exist, but the route is not treated as CI-proven.',
-    gap: 'The current /match experience still depends on legacy shell/bootstrap behavior and needs a route-owned refactor before it is safe to gate.',
+      'Critical public E2E now enters the homepage-owned `/?mode=match` workspace, answers the quiz, and verifies a live result surface.',
+    gap: 'Confidence still comes from quiz answers alone until the user votes on real proposals.',
     nextStep:
-      'Rebuild /match as a dedicated route, then reintroduce blocking quiz/result assertions.',
+      'Keep the homepage workspace in the blocking public gate, keep `/match` as an alias only, and continue strengthening match confidence through /match/vote.',
   },
   {
     id: 'J05',

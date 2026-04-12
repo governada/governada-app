@@ -1,61 +1,39 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('CSP route classes', () => {
-  const publicRoutes = [
+test.describe('CSP nonce coverage', () => {
+  const routes = [
     '/',
     '/?filter=dreps',
     '/engage',
     '/pulse',
     '/learn',
     '/help/methodology',
-    '/match',
+    '/?mode=match',
   ];
-  const nonceRoutes = ['/dev/vote-test', '/dev/delegation-test'];
 
-  for (const route of publicRoutes) {
-    test(`${route} uses static public CSP`, async ({ page }) => {
+  for (const route of routes) {
+    test(`${route} applies the response nonce to every script tag`, async ({ page }) => {
       test.setTimeout(90_000);
 
       const response = await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 60_000 });
       expect(response?.status()).toBeLessThan(400);
-
       const csp = response?.headers()['content-security-policy'] ?? '';
-      expect(csp).toContain("script-src 'self'");
-      expect(csp).not.toContain("'strict-dynamic'");
-      expect(csp).not.toContain("'nonce-");
-    });
-  }
+      const responseNonce = csp.match(/'nonce-([^']+)'/)?.[1];
 
-  for (const route of nonceRoutes) {
-    test(`${route} keeps nonce-based CSP`, async ({ page }) => {
-      test.setTimeout(90_000);
+      expect(responseNonce).toBeTruthy();
 
-      const response = await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-      expect(response?.status()).toBeLessThan(400);
-
-      const csp = response?.headers()['content-security-policy'] ?? '';
-      expect(csp).toContain("'strict-dynamic'");
-      expect(csp).toContain("'nonce-");
-
-      const missingNonceScripts = await page.locator('script').evaluateAll((scripts) =>
-        scripts
-          .filter((script) => {
-            const src = script.getAttribute('src') ?? '';
-
-            if (src.includes('browser_dev_hmr-client')) {
-              return false;
-            }
-
-            if (script.hasAttribute('data-nextjs-dev-overlay')) {
-              return false;
-            }
-
-            return !script.nonce;
-          })
-          .map((script) => script.outerHTML.slice(0, 200)),
+      const scriptNonceMismatches = await page.locator('script').evaluateAll(
+        (scripts, expectedNonce) =>
+          scripts
+            .map((script) => ({
+              nonce: script.nonce,
+              html: script.outerHTML.slice(0, 200),
+            }))
+            .filter((script) => script.nonce !== expectedNonce),
+        responseNonce,
       );
 
-      expect(missingNonceScripts).toEqual([]);
+      expect(scriptNonceMismatches).toEqual([]);
     });
   }
 });

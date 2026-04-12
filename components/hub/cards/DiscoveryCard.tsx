@@ -2,9 +2,10 @@
 
 import { Search, Sparkles } from 'lucide-react';
 import { HubCard } from './HubCard';
+import { HOMEPAGE_MATCH_PATH } from '@/lib/matching/routes';
 
 /**
- * DiscoveryCard — Contextual suggestions for anonymous/undelegated users.
+ * DiscoveryCard â€” Contextual suggestions for anonymous/undelegated users.
  *
  * Lowest priority card. Guides new users toward action.
  * Two variants: Match (find a DRep) and Explore (browse governance).
@@ -12,7 +13,11 @@ import { HubCard } from './HubCard';
 
 export function DiscoveryMatchCard() {
   return (
-    <HubCard href="/match" urgency="default" label="Find a DRep who shares your values">
+    <HubCard
+      href={HOMEPAGE_MATCH_PATH}
+      urgency="default"
+      label="Find a DRep who shares your values"
+    >
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />

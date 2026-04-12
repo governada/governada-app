@@ -1,46 +1,56 @@
 import { PageViewTracker } from '@/components/PageViewTracker';
-import { HubHomePage } from '@/components/hub/HubHomePage';
-import {
-  StructuredDataMeta,
-  StructuredDataNested,
-  StructuredDataRoot,
-} from '@/components/shared/StructuredDataMicrodata';
+import { GlobeLayout } from '@/components/globe/GlobeLayout';
+import { HomepageMatchWorkspace } from '@/components/hub/HomepageMatchWorkspace';
+import { headers } from 'next/headers';
+import Script from 'next/script';
+import { isHomepageMatchMode } from '@/lib/matching/routes';
 
 interface HomePageShellProps {
   filter?: string;
   entity?: string;
-  match?: boolean;
+  mode?: string;
   sort?: string;
-  pageViewEvent?: string;
 }
 
-export function HomePageShell({
-  filter,
-  entity,
-  match,
-  sort,
-  pageViewEvent = 'homepage_viewed',
-}: HomePageShellProps) {
+const HOME_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'Governada',
+  url: 'https://governada.io',
+  description:
+    'Governance intelligence for Cardano. Build your governance team, track proposals, and participate in on-chain democracy.',
+  applicationCategory: 'GovernanceApplication',
+  operatingSystem: 'Web',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Governada',
+    url: 'https://governada.io',
+  },
+};
+
+export async function HomePageShell({ filter, entity, mode, sort }: HomePageShellProps) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+  const isMatchWorkspace = isHomepageMatchMode(mode);
+
   return (
-    <StructuredDataRoot itemType="https://schema.org/WebApplication">
-      <StructuredDataMeta itemProp="name" content="Governada" />
-      <StructuredDataMeta itemProp="url" content="https://governada.io" />
-      <StructuredDataMeta
-        itemProp="description"
-        content="Governance intelligence for Cardano. Build your governance team, track proposals, and participate in on-chain democracy."
+    <>
+      <Script
+        id="json-ld-organization"
+        nonce={nonce}
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(HOME_JSON_LD) }}
       />
-      <StructuredDataMeta itemProp="applicationCategory" content="GovernanceApplication" />
-      <StructuredDataMeta itemProp="operatingSystem" content="Web" />
-      <StructuredDataNested itemProp="offers" itemType="https://schema.org/Offer">
-        <StructuredDataMeta itemProp="price" content="0" />
-        <StructuredDataMeta itemProp="priceCurrency" content="USD" />
-      </StructuredDataNested>
-      <StructuredDataNested itemProp="publisher" itemType="https://schema.org/Organization">
-        <StructuredDataMeta itemProp="name" content="Governada" />
-        <StructuredDataMeta itemProp="url" content="https://governada.io" />
-      </StructuredDataNested>
-      <PageViewTracker event={pageViewEvent} />
-      <HubHomePage filter={filter} entity={entity} match={match} sort={sort} />
-    </StructuredDataRoot>
+      <PageViewTracker event="homepage_viewed" />
+      {isMatchWorkspace ? (
+        <HomepageMatchWorkspace />
+      ) : (
+        <GlobeLayout initialFilter={filter} initialEntity={entity} initialSort={sort} />
+      )}
+    </>
   );
 }

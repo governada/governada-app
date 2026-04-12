@@ -3,7 +3,6 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { withSentryConfig } from '@sentry/nextjs';
 import withBundleAnalyzer from '@next/bundle-analyzer';
-import { buildPublicCsp } from './lib/security/csp';
 
 function getCommonAncestor(paths: string[]): string {
   const [first, ...rest] = paths
@@ -56,27 +55,18 @@ const nextConfig: NextConfig = {
     // Root must encompass both the worktree and the junction target.
     root: turbopackRoot,
   },
-  experimental: {
-    // Enable browser-native View Transitions API for smooth route navigation.
-    // GPU-accelerated, zero JavaScript cost. Graceful degradation in unsupported browsers.
-    viewTransition: true,
-    sri: {
-      algorithm: 'sha256',
-    },
-  },
   serverExternalPackages: [
     'libsodium-wrappers-sumo',
     '@emurgo/cardano-serialization-lib-browser',
     '@emurgo/cardano-serialization-lib-nodejs',
   ],
   async headers() {
-    const publicCsp = buildPublicCsp({ isDev: process.env.NODE_ENV === 'development' });
-
+    // CSP is handled per-request in proxy.ts (nonce-based, dynamic).
+    // Only static security headers remain here.
     return [
       {
         source: '/((?!api).*)',
         headers: [
-          { key: 'Content-Security-Policy', value: publicCsp },
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
@@ -103,8 +93,8 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // ── Navigation architecture v2 ────────────────────────────────────
-      // Old sections → new sections
+      // â”€â”€ Navigation architecture v2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Old sections â†’ new sections
       { source: '/discover', destination: '/?filter=dreps', permanent: true },
       { source: '/proposals', destination: '/?filter=proposals', permanent: true },
       { source: '/my-gov', destination: '/', permanent: true },
@@ -134,13 +124,13 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
 
-      // Three Worlds IA — delegation moved under You
+      // Three Worlds IA â€” delegation moved under You
       { source: '/delegation', destination: '/you/delegation', permanent: true },
 
-      // Legacy get-started wizard — replaced by Globe Convergence + Seneca onboarding
+      // Legacy get-started wizard â€” replaced by Globe Convergence + Seneca onboarding
       { source: '/get-started', destination: '/', permanent: true },
 
-      // Workspace IA refactor — old sub-pages → new canonical routes
+      // Workspace IA refactor â€” old sub-pages â†’ new canonical routes
       { source: '/workspace/rationales', destination: '/workspace', permanent: false },
     ];
   },

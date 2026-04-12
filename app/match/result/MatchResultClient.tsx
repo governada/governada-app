@@ -9,6 +9,7 @@ import { GovernanceRadar } from '@/components/GovernanceRadar';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import { getDominantDimension, getIdentityColor } from '@/lib/drepIdentity';
 import { webShare, canWebShare, copyToClipboard } from '@/lib/share';
+import { HOMEPAGE_MATCH_PATH } from '@/lib/matching/routes';
 
 interface ShareableProfile {
   personality: string;
@@ -30,7 +31,7 @@ function parseProfile(encoded: string | undefined): ShareableProfile | null {
 
 function getPersonalityDescription(label: string): string {
   const descriptions: Record<string, string> = {
-    'The Guardian': 'Protects what matters — treasury discipline and institutional stability.',
+    'The Guardian': 'Protects what matters â€” treasury discipline and institutional stability.',
     'The Fiscal Hawk': 'Holds every ADA accountable. The treasury exists to be guarded.',
     'The Prudent Steward': 'Balances caution with responsibility. Thoughtful governance.',
     'The Builder': 'Invests in growth. The ecosystem thrives when we fund boldly.',
@@ -72,7 +73,7 @@ export function MatchResultClient({ encoded }: { encoded: string | undefined }) 
             </p>
           </div>
           <Button asChild size="lg" className="text-base px-8 py-6 rounded-xl font-semibold">
-            <Link href="/match">
+            <Link href={HOMEPAGE_MATCH_PATH}>
               Take the Quiz
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
@@ -124,7 +125,7 @@ export function MatchResultClient({ encoded }: { encoded: string | undefined }) 
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4 pb-8">
           <Button asChild size="lg" className="text-base px-8 font-semibold">
-            <Link href="/match">
+            <Link href={HOMEPAGE_MATCH_PATH}>
               <Zap className="mr-2 h-5 w-5" />
               Take the Quiz
             </Link>
@@ -150,7 +151,7 @@ function ShareResultButton({ personality, encoded }: { personality: string; enco
 
     if (canWebShare()) {
       const shared = await webShare({
-        title: `I'm ${personality} — Governada`,
+        title: `I'm ${personality} â€” Governada`,
         text,
         url,
       });

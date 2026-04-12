@@ -9,7 +9,19 @@ export const ROUTE_RENDER_POLICIES = Object.freeze([
     match: 'app/layout.tsx',
     mode: 'public-dynamic-exception',
     reason:
-      'Root document shell currently binds locale and CSP nonce from request headers, so it remains a request-scoped public runtime contract.',
+      'Root document shell stays request-bound so CSP nonces apply consistently to the public runtime.',
+  },
+  {
+    match: 'app/page.tsx',
+    mode: 'public-dynamic-exception',
+    reason:
+      'The homepage now owns canonical discovery and quick-match entry, so it remains request-bound.',
+  },
+  {
+    match: 'app/match/page.tsx',
+    mode: 'public-dynamic-exception',
+    reason:
+      'The legacy /match alias is a request-bound redirect into the canonical homepage workspace.',
   },
   {
     prefix: 'app/api/',
@@ -105,10 +117,14 @@ export const ROUTE_RENDER_POLICIES = Object.freeze([
     reason: 'Wrapped share pages are public but remain request-scoped.',
   },
   {
-    prefix: 'app/match/',
+    prefix: 'app/match/result/',
     mode: 'public-dynamic-exception',
-    reason:
-      'Match routes remain public but request-scoped while the interactive journey still depends on runtime nonce and CSP handling.',
+    reason: 'Match result flow is public but request-specific.',
+  },
+  {
+    prefix: 'app/match/vote/',
+    mode: 'public-dynamic-exception',
+    reason: 'Match vote flow is public but request-specific.',
   },
   {
     prefix: 'app/governance/briefing/',

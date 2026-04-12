@@ -6,7 +6,7 @@ test.describe('Legacy route compatibility', () => {
 
     const routes = [
       { from: '/discover', to: /filter=dreps/ },
-      { from: '/match', to: /\/match$/ },
+      { from: '/match', to: /[?&]mode=match/ },
       { from: '/methodology', to: /\/help\/methodology$/ },
     ];
 
@@ -19,14 +19,18 @@ test.describe('Legacy route compatibility', () => {
 });
 
 test.describe('Page loading', () => {
-  const pages = ['/', '/?filter=dreps', '/match', '/pulse', '/learn', '/help/methodology'];
+  const pages = ['/', '/?filter=dreps', '/?mode=match', '/pulse', '/learn', '/help/methodology'];
 
   for (const path of pages) {
     test(`${path} loads without redirect`, async ({ page }) => {
       test.setTimeout(90_000);
       const response = await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 60_000 });
       expect(response?.status()).toBeLessThan(400);
-      expect(page.url()).toContain(path === '/' ? '/' : path);
+      if (path === '/') {
+        expect(page.url()).toContain('/');
+      } else {
+        expect(page.url()).toContain(path);
+      }
       await expect(page.locator('#main-content')).toBeVisible({ timeout: 15_000 });
     });
   }
@@ -58,7 +62,7 @@ test.describe('Console error guard', () => {
       }
     });
 
-    const routes = ['/', '/?filter=dreps', '/match', '/pulse', '/learn', '/help/methodology'];
+    const routes = ['/', '/?filter=dreps', '/?mode=match', '/pulse', '/learn', '/help/methodology'];
     for (const route of routes) {
       await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 60_000 });
       await page.waitForTimeout(3000);

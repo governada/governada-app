@@ -11,7 +11,7 @@ import type { Result } from 'axe-core';
 const KEY_PAGES = [
   { name: 'Home', path: '/' },
   { name: 'Discovery', path: '/?filter=dreps' },
-  { name: 'Match', path: '/?match=true' },
+  { name: 'Match', path: '/?mode=match' },
   { name: 'Engage', path: '/engage' },
   { name: 'Pulse', path: '/pulse' },
   { name: 'Learn', path: '/learn' },

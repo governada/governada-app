@@ -157,9 +157,7 @@ function main() {
   const advisories = [];
 
   if (sharedCheckout && !['main', 'master'].includes(branch)) {
-    blockingIssues.push(
-      `Shared checkout should stay on main/master. Current branch: ${branch}.`,
-    );
+    blockingIssues.push(`Shared checkout should stay on main/master. Current branch: ${branch}.`);
   }
 
   if (statusLines.length > 0) {
@@ -221,7 +219,9 @@ function main() {
 
   printSection(
     'Dirty worktrees',
-    dirtyWorktrees.map((worktree) => `${worktree.branch} -> ${worktree.path} (${worktree.dirtyCount} changes)`),
+    dirtyWorktrees.map(
+      (worktree) => `${worktree.branch} -> ${worktree.path} (${worktree.dirtyCount} changes)`,
+    ),
   );
   console.log('');
 

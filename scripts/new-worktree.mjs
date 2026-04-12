@@ -68,7 +68,57 @@ function slugify(value) {
 }
 
 function git(args, options = {}) {
-  return commandOutput('git', args, { cwd: options.cwd ?? repoRoot });
+  return commandOutput('git', args, {
+    allowFailure: options.allowFailure ?? false,
+    cwd: options.cwd ?? repoRoot,
+  });
+}
+
+function getLines(value) {
+  return value
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function revCount(range) {
+  const value = Number.parseInt(git(['rev-list', '--count', range], { allowFailure: true }), 10);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function ensureSharedCheckoutReady(repoTopLevel) {
+  if (path.resolve(repoTopLevel) !== path.resolve(repoRoot)) {
+    throw new Error(`Run this script from the shared checkout at ${repoRoot}.`);
+  }
+
+  const gitDir = git(['rev-parse', '--path-format=absolute', '--git-dir'], { allowFailure: true });
+  const commonDir = git(['rev-parse', '--path-format=absolute', '--git-common-dir'], {
+    allowFailure: true,
+  });
+  if (!gitDir || !commonDir || path.resolve(gitDir) !== path.resolve(commonDir)) {
+    throw new Error('Run this script from the shared checkout, not from an existing worktree.');
+  }
+
+  const branch = git(['branch', '--show-current'], { allowFailure: true }) || '(detached)';
+  if (!['main', 'master'].includes(branch)) {
+    throw new Error(
+      `Shared checkout must stay on main/master before creating a new worktree. Current branch: ${branch}.`,
+    );
+  }
+
+  const statusLines = getLines(git(['status', '--short'], { allowFailure: true }));
+  if (statusLines.length > 0) {
+    throw new Error(
+      'Shared checkout is dirty. Clean it before creating another worktree. Run npm run session:doctor.',
+    );
+  }
+
+  const stashCount = getLines(git(['stash', 'list'], { allowFailure: true })).length;
+  if (stashCount > 0) {
+    throw new Error(
+      `Repo has ${stashCount} stash(es). Clear or export them before creating another worktree. Run npm run session:doctor.`,
+    );
+  }
 }
 
 function ensureNodeModulesLink(worktreePath, noNodeModulesLink) {
@@ -112,10 +162,7 @@ const { repoRoot } = getScriptContext(import.meta.url);
 function main() {
   const options = parseArgs(process.argv.slice(2));
   const repoTopLevel = git(['rev-parse', '--show-toplevel']);
-
-  if (path.resolve(repoTopLevel) !== path.resolve(repoRoot)) {
-    throw new Error(`Run this script from the shared checkout at ${repoRoot}.`);
-  }
+  ensureSharedCheckoutReady(repoTopLevel);
 
   const slug = slugify(options.name);
   const branchName = options.branch || `feat/${slug}`;
@@ -130,6 +177,13 @@ function main() {
 
   console.log('Fetching origin/main...');
   git(['fetch', 'origin', 'main']);
+
+  const ahead = revCount('origin/main..HEAD');
+  if (ahead > 0) {
+    throw new Error(
+      `Shared checkout has ${ahead} local commit(s) ahead of origin/main. Reconcile them before creating another worktree.`,
+    );
+  }
 
   console.log(`Creating worktree ${worktreePath} on branch ${branchName}...`);
   git(['worktree', 'add', worktreePath, '-b', branchName, 'origin/main']);

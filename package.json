@@ -43,6 +43,7 @@
     "migration:test": "node scripts/test-migration.js",
     "codex:sync-windows-rules": "node scripts/codex-sync-windows-rules.js",
     "session:doctor": "powershell -ExecutionPolicy Bypass -File scripts/session-doctor.ps1",
+    "session:guard": "powershell -ExecutionPolicy Bypass -File scripts/session-doctor.ps1 --strict",
     "worktree:new": "powershell -ExecutionPolicy Bypass -File scripts/new-worktree.ps1",
     "worktree:sync": "powershell -ExecutionPolicy Bypass -File scripts/sync-worktree.ps1",
     "inngest:register": "node scripts/register-inngest.js",

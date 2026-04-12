@@ -9,6 +9,7 @@
  */
 
 import type { UserSegment } from '@/components/providers/SegmentProvider';
+import { HOMEPAGE_MATCH_PATH } from '@/lib/matching/routes';
 
 export type CardType = 'action' | 'status' | 'engagement' | 'discovery';
 
@@ -39,7 +40,7 @@ export interface HubCardDefinition {
   href: string;
 }
 
-/** Card definitions — the registry of all possible Hub cards */
+/** Card definitions â€” the registry of all possible Hub cards */
 export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
   // Citizen cards
   representation: {
@@ -137,7 +138,7 @@ export const CARD_DEFINITIONS: Record<CardId, HubCardDefinition> = {
     type: 'discovery',
     priority: 1,
     conditional: false,
-    href: '/match',
+    href: HOMEPAGE_MATCH_PATH,
   },
   'discovery-explore': {
     id: 'discovery-explore',

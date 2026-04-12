@@ -1,36 +1,42 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildHomepageMatchPath } from '@/lib/matching/routes';
 
-const homePageShellMock = vi.fn(
-  ({ match, pageViewEvent }: { match?: boolean; pageViewEvent?: string }) => (
-    <div
-      data-testid="home-page-shell"
-      data-match={String(Boolean(match))}
-      data-page-view-event={pageViewEvent}
-    />
-  ),
-);
+const connectionMock = vi.fn();
+const redirectMock = vi.fn();
 
-vi.mock('@/components/hub/HomePageShell', () => ({
-  HomePageShell: homePageShellMock,
+vi.mock('next/navigation', () => ({
+  redirect: redirectMock,
 }));
 
-const { default: MatchPage } = await import('@/app/match/page');
+vi.mock('next/server', () => ({
+  connection: connectionMock,
+}));
+
+const { default: MatchPage, dynamic } = await import('@/app/match/page');
 
 describe('MatchPage', () => {
-  it('renders the shared home shell in match mode', async () => {
-    render(await MatchPage());
+  beforeEach(() => {
+    connectionMock.mockReset();
+    connectionMock.mockResolvedValue(undefined);
+    redirectMock.mockReset();
+  });
 
-    expect(homePageShellMock).toHaveBeenCalledWith(
-      {
-        match: true,
-        pageViewEvent: 'match_page_viewed',
-      },
-      undefined,
-    );
-    expect(screen.getByTestId('home-page-shell').getAttribute('data-match')).toBe('true');
-    expect(screen.getByTestId('home-page-shell').getAttribute('data-page-view-event')).toBe(
-      'match_page_viewed',
+  it('forces direct request rendering for redirect alias requests', () => {
+    expect(dynamic).toBe('force-dynamic');
+  });
+
+  it('redirects /match into the canonical homepage match workspace', async () => {
+    await MatchPage({
+      searchParams: Promise.resolve({
+        utm_source: 'social',
+      }),
+    });
+
+    expect(connectionMock).toHaveBeenCalledOnce();
+    expect(redirectMock).toHaveBeenCalledWith(
+      buildHomepageMatchPath({
+        utm_source: 'social',
+      }),
     );
   });
 });

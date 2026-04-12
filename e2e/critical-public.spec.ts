@@ -1,4 +1,24 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+async function completeHomepageQuickMatch(page: Page) {
+  await page.getByTestId('match-start-button').click();
+  await expect(page.getByTestId('match-question-treasury')).toBeVisible({ timeout: 15_000 });
+
+  await page.getByTestId('match-answer-treasury-balanced').click();
+  await expect(page.getByTestId('match-question-protocol')).toBeVisible({ timeout: 15_000 });
+
+  await page.getByTestId('match-answer-protocol-case_by_case').click();
+  await expect(page.getByTestId('match-question-transparency')).toBeVisible({
+    timeout: 15_000,
+  });
+
+  await page.getByTestId('match-answer-transparency-essential').click();
+  await expect(page.getByTestId('match-question-decentralization')).toBeVisible({
+    timeout: 15_000,
+  });
+
+  await page.getByTestId('match-answer-decentralization-spread_widely').click();
+}
 
 test.describe('Critical public journeys', () => {
   test('homepage shell renders for anonymous visitors', async ({ page }) => {
@@ -35,6 +55,18 @@ test.describe('Critical public journeys', () => {
     await proposalLink.click();
     await expect(page).toHaveURL(/\/(proposal|g\/proposal)\//, { timeout: 30_000 });
     await expect(page.locator('#main-content')).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('homepage match workspace can reach a live result state', async ({ page }) => {
+    await page.goto('/?mode=match', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('homepage-match-workspace')).toBeVisible({ timeout: 15_000 });
+
+    await completeHomepageQuickMatch(page);
+    await expect(page.getByTestId('match-results')).toBeVisible({ timeout: 30_000 });
+    await Promise.any([
+      page.getByTestId('match-top-result').waitFor({ state: 'visible', timeout: 30_000 }),
+      page.getByTestId('match-empty-state').waitFor({ state: 'visible', timeout: 30_000 }),
+    ]);
   });
 
   test('health endpoint reports operational status', async ({ request }) => {

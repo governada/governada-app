@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
+import { HOMEPAGE_MATCH_PATH } from '@/lib/matching/routes';
 
 vi.mock('@/lib/utils', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
@@ -132,7 +133,7 @@ describe('GovernanceImpactCard', () => {
     expect(container.textContent).toContain('Your Governance Impact');
     const matchLink = screen.getByText('Find your DRep match');
     expect(matchLink).toBeDefined();
-    expect(matchLink.closest('a')?.getAttribute('href')).toBe('/match');
+    expect(matchLink.closest('a')?.getAttribute('href')).toBe(HOMEPAGE_MATCH_PATH);
     // Should mention their ADA balance
     expect(container.textContent).toContain('5,000 ADA');
     expect(container.textContent).toContain("aren't represented in governance");

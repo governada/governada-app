@@ -1,5 +1,5 @@
 /**
- * Navigation configuration — Three Worlds model (task-shaped).
+ * Navigation configuration â€” Three Worlds model (task-shaped).
  *
  * Three conceptual worlds:
  *   Home      = Seneca-powered command center + governance discovery
@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import type { UserSegment } from '@/components/providers/SegmentProvider';
 import { type GovernanceDepth, getTunerLevel } from '@/lib/governanceTuner';
+import { HOMEPAGE_MATCH_PATH } from '@/lib/matching/routes';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,12 +96,12 @@ export interface BottomBarConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Workspace section definitions — Actions only: Review + Author
+// Workspace section definitions â€” Actions only: Review + Author
 // ---------------------------------------------------------------------------
 
 /**
  * Operator workspace (DRep / SPO): Review-first (their #1 JTBD), then Author.
- * Homepage serves as the command center — workspace is strictly for actions.
+ * Homepage serves as the command center â€” workspace is strictly for actions.
  */
 export const WORKSPACE_OPERATOR_ITEMS: NavItem[] = [
   {
@@ -128,7 +129,7 @@ export const WORKSPACE_CITIZEN_ITEMS: NavItem[] = [
 ];
 
 /**
- * Home discovery sub-items — shown in pill bar on the homepage.
+ * Home discovery sub-items â€” shown in pill bar on the homepage.
  * Each sets a ?filter= URL param on / to activate the discovery overlay + globe highlighting.
  */
 export const HOME_DISCOVERY_ITEMS: NavItem[] = [
@@ -213,7 +214,7 @@ export function getYouItems(
     });
   }
 
-  // Delegation health for citizens (not for DRep/SPO — they have Scorecard with delegator metrics)
+  // Delegation health for citizens (not for DRep/SPO â€” they have Scorecard with delegator metrics)
   if (segment === 'citizen') {
     items.push({
       href: '/you/delegation',
@@ -228,9 +229,9 @@ export function getYouItems(
   return items;
 }
 
-/** Help items — used in header dropdown (no longer in sidebar) */
+/** Help items â€” used in header dropdown (no longer in sidebar) */
 export const HELP_ITEMS: NavItem[] = [
-  { href: '/match', label: 'Get Started', icon: Rocket },
+  { href: HOMEPAGE_MATCH_PATH, label: 'Get Started', icon: Rocket },
   { href: '/help', label: 'FAQ', icon: HelpCircle },
   { href: '/help/glossary', label: 'Glossary', icon: BookOpen },
   { href: '/help/methodology', label: 'Methodology', icon: BarChart3 },
@@ -238,10 +239,10 @@ export const HELP_ITEMS: NavItem[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Sidebar sections — Three Worlds: Home, Workspace, You
+// Sidebar sections â€” Three Worlds: Home, Workspace, You
 // ---------------------------------------------------------------------------
 
-/** Context for sidebar generation — supports dual-role detection */
+/** Context for sidebar generation â€” supports dual-role detection */
 export interface SidebarContext {
   segment: UserSegment;
   /** Non-null when user is a registered DRep */
@@ -273,7 +274,7 @@ function filterByDepth(items: NavItem[], depth: GovernanceDepth | undefined): Na
   return items.filter((item) => meetsDepth(item, depth));
 }
 
-/** All authenticated users get Workspace — any citizen can author proposals. */
+/** All authenticated users get Workspace â€” any citizen can author proposals. */
 function hasWorkspace(ctx: NavContext): boolean {
   return ctx.segment !== 'anonymous';
 }
@@ -288,7 +289,7 @@ export function getSidebarSections(
 
   const sections: NavSection[] = [];
 
-  // ── World 1: Home — briefing surface (always a single link) ───────────
+  // â”€â”€ World 1: Home â€” briefing surface (always a single link) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   sections.push({
     id: 'home',
     label: 'Home',
@@ -296,7 +297,7 @@ export function getSidebarSections(
     href: '/',
   });
 
-  // ── World 2: Workspace — actions only (Review + Author) ───────────────
+  // â”€â”€ World 2: Workspace â€” actions only (Review + Author) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Operators (DRep/SPO) get Review + Author. Citizens get Author + disabled Review.
   if (hasWorkspace(ctx)) {
     const isOperator = segment === 'drep' || segment === 'spo' || !!drepId || !!poolId;
@@ -311,7 +312,7 @@ export function getSidebarSections(
     });
   }
 
-  // ── World 3: You ──────────────────────────────────────────────────────
+  // â”€â”€ World 3: You â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (segment !== 'anonymous') {
     sections.push({
       id: 'you',
@@ -327,7 +328,7 @@ export function getSidebarSections(
 }
 
 // ---------------------------------------------------------------------------
-// Bottom bar — 3 or 4 items, persona-adaptive
+// Bottom bar â€” 3 or 4 items, persona-adaptive
 // ---------------------------------------------------------------------------
 
 /** Anonymous: Home only (match is a Seneca mode on Home) */
@@ -392,7 +393,7 @@ export function getBottomBarItems(
 }
 
 // ---------------------------------------------------------------------------
-// Pill bar — derive from current route's section
+// Pill bar â€” derive from current route's section
 // ---------------------------------------------------------------------------
 
 export function getPillBarItems(
@@ -428,7 +429,7 @@ export function getPillBarItems(
 // ---------------------------------------------------------------------------
 
 export function getCurrentSection(pathname: string): string | null {
-  if (pathname === '/' || pathname === '/match') return 'home';
+  if (pathname === '/') return 'home';
   if (pathname.startsWith('/workspace')) return 'workspace';
   if (pathname.startsWith('/you')) return 'you';
   if (pathname.startsWith('/help')) return 'help';
@@ -436,7 +437,7 @@ export function getCurrentSection(pathname: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Section-level metric keys — used by NavigationRail for rich tooltips
+// Section-level metric keys â€” used by NavigationRail for rich tooltips
 // ---------------------------------------------------------------------------
 
 /** Maps section IDs to the primary sidebar-metric key for that section's summary. */

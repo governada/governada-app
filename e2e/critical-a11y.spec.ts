@@ -5,7 +5,7 @@ import type { Result } from 'axe-core';
 const CRITICAL_PAGES = [
   { name: 'Home', path: '/' },
   { name: 'Discovery', path: '/?filter=dreps' },
-  { name: 'Match', path: '/match' },
+  { name: 'Match', path: '/?mode=match' },
 ];
 
 test.describe('Critical public accessibility', () => {

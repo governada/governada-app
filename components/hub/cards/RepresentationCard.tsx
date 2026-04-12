@@ -6,9 +6,10 @@ import { useGovernanceHolder } from '@/hooks/queries';
 import { HubCard, HubCardSkeleton, HubCardError, type CardUrgency } from './HubCard';
 import { computeTier } from '@/lib/scoring/tiers';
 import { getScoreNarrative } from '@/lib/scoring/scoreNarratives';
+import { HOMEPAGE_MATCH_PATH } from '@/lib/matching/routes';
 
 /**
- * RepresentationCard — THE citizen's primary card.
+ * RepresentationCard â€” THE citizen's primary card.
  *
  * Shows at a glance: Do I have a DRep? Are they active? Are they voting?
  * Also shows pool governance status if they have a staking pool.
@@ -21,10 +22,10 @@ import { getScoreNarrative } from '@/lib/scoring/scoreNarratives';
 export function RepresentationCard() {
   const { stakeAddress, delegatedDrep, delegatedPool } = useSegment();
 
-  // Undelegated citizens — show CTA immediately
+  // Undelegated citizens â€” show CTA immediately
   if (!delegatedDrep) {
     return (
-      <HubCard href="/match" urgency="warning" label="You have no representative yet.">
+      <HubCard href={HOMEPAGE_MATCH_PATH} urgency="warning" label="You have no representative yet.">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-amber-500" />
@@ -43,10 +44,10 @@ export function RepresentationCard() {
     );
   }
 
-  // Always-abstain delegation — valid choice, no data fetch needed
+  // Always-abstain delegation â€” valid choice, no data fetch needed
   if (delegatedDrep === 'drep_always_abstain') {
     return (
-      <HubCard href="/match" urgency="default" label="Delegation: Always Abstain">
+      <HubCard href={HOMEPAGE_MATCH_PATH} urgency="default" label="Delegation: Always Abstain">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Ban className="h-4 w-4 text-muted-foreground" />
@@ -66,10 +67,10 @@ export function RepresentationCard() {
     );
   }
 
-  // No-confidence delegation — valid choice, no data fetch needed
+  // No-confidence delegation â€” valid choice, no data fetch needed
   if (delegatedDrep === 'drep_always_no_confidence') {
     return (
-      <HubCard href="/match" urgency="warning" label="Delegation: No Confidence">
+      <HubCard href={HOMEPAGE_MATCH_PATH} urgency="warning" label="Delegation: No Confidence">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <ThumbsDown className="h-4 w-4 text-amber-500" />
@@ -89,7 +90,7 @@ export function RepresentationCard() {
     );
   }
 
-  // Normal delegation — fetch holder data
+  // Normal delegation â€” fetch holder data
   return (
     <DelegatedRepresentationCard
       stakeAddress={stakeAddress}
@@ -202,5 +203,5 @@ function BehavioralInsight({
 
   if (traits.length === 0) return null;
 
-  return <p className="text-xs text-muted-foreground/80 italic">{traits.join(' · ')}</p>;
+  return <p className="text-xs text-muted-foreground/80 italic">{traits.join(' Â· ')}</p>;
 }

@@ -8,6 +8,7 @@ import { useWallet } from '@/utils/wallet-context';
 import { useSegment } from '@/components/providers/SegmentProvider';
 import { useDRepReportCard, useAccountInfo, useEpochSummary } from '@/hooks/queries';
 import { computeTier } from '@/lib/scoring/tiers';
+import { HOMEPAGE_MATCH_PATH } from '@/lib/matching/routes';
 
 interface GovernanceImpactCardProps {
   /** Total ADA under DRep governance in lovelace (from pulse API) */
@@ -92,7 +93,7 @@ export function GovernanceImpactCard({
     );
   }
 
-  // Connected but no delegation — show CTA with ADA balance
+  // Connected but no delegation â€” show CTA with ADA balance
   if (!effectiveDrepId) {
     const balanceAda = accountInfo?.totalBalanceAda
       ? Math.round(Number(accountInfo.totalBalanceAda))
@@ -112,7 +113,7 @@ export function GovernanceImpactCard({
             : `You're connected but not yet represented in governance.`}
         </p>
         <Link
-          href="/match"
+          href={HOMEPAGE_MATCH_PATH}
           className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
         >
           Find your DRep match <ChevronRight className="h-3.5 w-3.5" />

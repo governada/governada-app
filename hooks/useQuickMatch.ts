@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { ConfidenceBreakdown } from '@/lib/matching/confidence';
 import { saveMatchProfile, type StoredMatchProfile } from '@/lib/matchStore';
@@ -8,7 +9,7 @@ import { getStoredSession } from '@/lib/supabaseAuth';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { emitDiscoveryEvent } from '@/lib/discovery/events';
 
-/* ─── Types ─────────────────────────────────────────────── */
+/* â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export interface MatchResult {
   drepId: string;
@@ -48,6 +49,7 @@ export interface QuickMatchState {
   answers: QuickMatchAnswers;
   isComplete: boolean;
   isSubmitting: boolean;
+  isSecondaryLoading: boolean;
   error: string | null;
   drepResult: QuickMatchResponse | null;
   spoResult: QuickMatchResponse | null;
@@ -60,14 +62,52 @@ export interface UseQuickMatchOptions {
 
 type MatchType = 'drep' | 'spo';
 
-/* ─── Hook ──────────────────────────────────────────────── */
+interface QuickMatchMutationResult {
+  finalAnswers: QuickMatchAnswers;
+  drepData: QuickMatchResponse;
+}
+
+function buildDeferredSpoResult(drepData: QuickMatchResponse): QuickMatchResponse {
+  return {
+    matches: [],
+    nearMisses: [],
+    userAlignments: drepData.userAlignments,
+    personalityLabel: drepData.personalityLabel,
+    identityColor: drepData.identityColor,
+    confidenceBreakdown: drepData.confidenceBreakdown,
+  };
+}
+
+async function fetchQuickMatch(
+  finalAnswers: QuickMatchAnswers,
+  type: MatchType,
+  signal: AbortSignal,
+): Promise<QuickMatchResponse> {
+  const res = await fetch('/api/governance/quick-match', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      treasury: finalAnswers.treasury,
+      protocol: finalAnswers.protocol,
+      transparency: finalAnswers.transparency,
+      decentralization: finalAnswers.decentralization,
+      match_type: type,
+    }),
+    signal,
+  });
+
+  if (!res.ok) throw new Error(`Server error: ${res.status}`);
+  return res.json() as Promise<QuickMatchResponse>;
+}
+
+/* â”€â”€â”€ Hook â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export function useQuickMatch(options?: UseQuickMatchOptions) {
   const [answers, setAnswersState] = useState<QuickMatchAnswers>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drepResult, setDrepResult] = useState<QuickMatchResponse | null>(null);
   const [spoResult, setSpoResult] = useState<QuickMatchResponse | null>(null);
+  const [isSecondaryLoading, setIsSecondaryLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const isComplete = Boolean(
@@ -78,102 +118,118 @@ export function useQuickMatch(options?: UseQuickMatchOptions) {
     setAnswersState((prev) => ({ ...prev, [question]: answer }));
   }, []);
 
-  const submit = useCallback(
-    async (overrideAnswers?: QuickMatchAnswers) => {
-      const finalAnswers = overrideAnswers ?? answers;
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
-      // Require at least the original 3 questions for backward compatibility
+  const mutation = useMutation<QuickMatchMutationResult, Error, QuickMatchAnswers>({
+    mutationFn: async (finalAnswers) => {
       if (!finalAnswers.treasury || !finalAnswers.protocol || !finalAnswers.transparency) {
-        setError('Please answer all required questions.');
-        return;
+        throw new Error('Please answer all required questions.');
       }
 
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
-      setIsSubmitting(true);
-      setError(null);
+      const drepData = await fetchQuickMatch(finalAnswers, 'drep', controller.signal);
 
-      const fetchOne = async (type: MatchType) => {
-        const res = await fetch('/api/governance/quick-match', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            treasury: finalAnswers.treasury,
-            protocol: finalAnswers.protocol,
-            transparency: finalAnswers.transparency,
-            decentralization: finalAnswers.decentralization,
-            match_type: type,
-          }),
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error(`Server error: ${res.status}`);
-        return res.json() as Promise<QuickMatchResponse>;
-      };
-
-      try {
-        const [drepData, spoData] = await Promise.all([fetchOne('drep'), fetchOne('spo')]);
-        setDrepResult(drepData);
-        setSpoResult(spoData);
-        emitDiscoveryEvent('match_completed');
-
-        // Funnel tracking
-        trackFunnel(FUNNEL_EVENTS.MATCH_COMPLETED, {
-          personality: drepData.personalityLabel,
-          drep_matches: drepData.matches.length,
-          spo_matches: spoData.matches.length,
-        });
-        trackFunnel(FUNNEL_EVENTS.MATCH_RESULT_VIEWED, {
-          top_match_score: drepData.matches[0]?.matchScore ?? 0,
-        });
-
-        // Mark quick match as completed for authenticated users
-        const token = getStoredSession();
-        if (token) {
-          fetch('/api/governance/quick-match/mark-completed', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-          }).catch(() => {});
-        }
-
-        // Persist match profile
-        const answersRecord: Record<string, string> = {};
-        for (const [k, v] of Object.entries(finalAnswers)) {
-          if (v) answersRecord[k] = v;
-        }
-        saveMatchProfile({
-          userAlignments: drepData.userAlignments,
-          personalityLabel: drepData.personalityLabel,
-          identityColor: drepData.identityColor,
-          matchType: 'drep',
-          answers: answersRecord,
-          timestamp: Date.now(),
-        } satisfies StoredMatchProfile);
-
-        options?.onComplete?.(drepData, spoData);
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name === 'AbortError') return;
-        setError(err instanceof Error ? err.message : 'Something went wrong');
-      } finally {
-        setIsSubmitting(false);
-      }
+      return { finalAnswers, drepData };
     },
-    [answers, options],
+    onMutate: () => {
+      setError(null);
+      setDrepResult(null);
+      setSpoResult(null);
+      setIsSecondaryLoading(false);
+    },
+    onSuccess: ({ finalAnswers, drepData }) => {
+      setDrepResult(drepData);
+      emitDiscoveryEvent('match_completed');
+
+      trackFunnel(FUNNEL_EVENTS.MATCH_COMPLETED, {
+        personality: drepData.personalityLabel,
+        drep_matches: drepData.matches.length,
+      });
+      trackFunnel(FUNNEL_EVENTS.MATCH_RESULT_VIEWED, {
+        top_match_score: drepData.matches[0]?.matchScore ?? 0,
+      });
+
+      const token = getStoredSession();
+      if (token) {
+        fetch('/api/governance/quick-match/mark-completed', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {});
+      }
+
+      const answersRecord: Record<string, string> = {};
+      for (const [key, value] of Object.entries(finalAnswers)) {
+        if (value) answersRecord[key] = value;
+      }
+
+      saveMatchProfile({
+        userAlignments: drepData.userAlignments,
+        personalityLabel: drepData.personalityLabel,
+        identityColor: drepData.identityColor,
+        matchType: 'drep',
+        answers: answersRecord,
+        timestamp: Date.now(),
+      } satisfies StoredMatchProfile);
+
+      const deferredSpoResult = buildDeferredSpoResult(drepData);
+      options?.onComplete?.(drepData, deferredSpoResult);
+
+      const controller = abortRef.current;
+      if (!controller) return;
+
+      setIsSecondaryLoading(true);
+      void fetchQuickMatch(finalAnswers, 'spo', controller.signal)
+        .then((spoData) => {
+          if (controller.signal.aborted || abortRef.current !== controller) return;
+          setSpoResult(spoData);
+        })
+        .catch((caught) => {
+          const nextError = caught instanceof Error ? caught : null;
+          if (nextError?.name === 'AbortError') return;
+          if (abortRef.current !== controller) return;
+          setSpoResult(deferredSpoResult);
+        })
+        .finally(() => {
+          if (abortRef.current === controller && !controller.signal.aborted) {
+            setIsSecondaryLoading(false);
+          }
+        });
+    },
+    onError: (err) => {
+      if (err.name === 'AbortError') return;
+      setError(err.message || 'Something went wrong');
+    },
+  });
+
+  const submit = useCallback(
+    async (overrideAnswers?: QuickMatchAnswers) => {
+      await mutation.mutateAsync(overrideAnswers ?? answers).catch(() => {});
+    },
+    [answers, mutation],
   );
 
   const reset = useCallback(() => {
+    abortRef.current?.abort();
+    mutation.reset();
     setAnswersState({});
-    setIsSubmitting(false);
     setError(null);
     setDrepResult(null);
     setSpoResult(null);
-  }, []);
+    setIsSecondaryLoading(false);
+  }, [mutation]);
 
   const state: QuickMatchState = {
     answers,
     isComplete,
-    isSubmitting,
+    isSubmitting: mutation.isPending,
+    isSecondaryLoading,
     error,
     drepResult,
     spoResult,

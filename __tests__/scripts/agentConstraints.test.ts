@@ -7,12 +7,12 @@ import { getRouteRenderPolicy } from '@/scripts/lib/routeRenderPolicy.mjs';
 
 describe('route render policy contract', () => {
   it('classifies the main route families explicitly', () => {
-    expect(getRouteRenderPolicy('app/page.tsx')?.mode).toBe('public-cache');
+    expect(getRouteRenderPolicy('app/page.tsx')?.mode).toBe('public-dynamic-exception');
+    expect(getRouteRenderPolicy('app/match/page.tsx')?.mode).toBe('public-dynamic-exception');
     expect(getRouteRenderPolicy('app/drep/[drepId]/page.tsx')?.mode).toBe(
       'public-dynamic-exception',
     );
     expect(getRouteRenderPolicy('app/workspace/page.tsx')?.mode).toBe('app-dynamic');
-    // The root shell is request-bound while it carries locale and CSP nonce.
     expect(getRouteRenderPolicy('app/layout.tsx')?.mode).toBe('public-dynamic-exception');
   });
 
@@ -20,15 +20,15 @@ describe('route render policy contract', () => {
     const content =
       "import { getProposalByKey } from '@/lib/data';\nexport default async function Page() {}";
 
-    expect(validateRouteRenderContract('app/page.tsx', content)).toEqual([]);
+    expect(validateRouteRenderContract('app/governance/page.tsx', content)).toEqual([]);
   });
 
   it('rejects request-scoped runtime reads in public-cache routes', () => {
     const content =
       "import { headers } from 'next/headers';\nexport default async function Page() { return (await headers()).get('x-test'); }";
 
-    expect(validateRouteRenderContract('app/page.tsx', content)).toEqual([
-      'app/page.tsx: classified as public-cache in scripts/lib/routeRenderPolicy.mjs but touches request-scoped APIs, direct Supabase/Redis clients, or raw env access.',
+    expect(validateRouteRenderContract('app/governance/page.tsx', content)).toEqual([
+      'app/governance/page.tsx: classified as public-cache in scripts/lib/routeRenderPolicy.mjs but touches request-scoped APIs, direct Supabase/Redis clients, or raw env access.',
     ]);
   });
 
@@ -36,8 +36,8 @@ describe('route render policy contract', () => {
     const content =
       "import { getProposalByKey } from '@/lib/data';\nexport default async function Page() {}";
 
-    expect(validateRouteRenderContract('app/proposal/[txHash]/[index]/page.tsx', content)).toEqual([
-      'app/proposal/[txHash]/[index]/page.tsx: classified as public-dynamic-exception in scripts/lib/routeRenderPolicy.mjs and touches cached/request-scoped runtime data, so it must export "export const dynamic = \'force-dynamic\'".',
+    expect(validateRouteRenderContract('app/page.tsx', content)).toEqual([
+      'app/page.tsx: classified as public-dynamic-exception in scripts/lib/routeRenderPolicy.mjs and touches cached/request-scoped runtime data, so it must export "export const dynamic = \'force-dynamic\'".',
     ]);
   });
 
@@ -51,10 +51,8 @@ describe('route render policy contract', () => {
       '}',
     ].join('\n');
 
-    expect(
-      analyzeRouteRenderContract('app/proposal/[txHash]/[index]/page.tsx', content),
-    ).toMatchObject({
-      relativePath: 'app/proposal/[txHash]/[index]/page.tsx',
+    expect(analyzeRouteRenderContract('app/page.tsx', content)).toMatchObject({
+      relativePath: 'app/page.tsx',
       hasDynamicExport: true,
       usesCachedData: true,
       usesRequestScopedRuntime: true,

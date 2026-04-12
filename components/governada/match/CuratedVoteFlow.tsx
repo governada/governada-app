@@ -32,8 +32,9 @@ import {
 } from '@/lib/matching/confidence';
 import { usePostHog } from 'posthog-js/react';
 import { getProposalTheme } from '@/components/governada/proposals/proposal-theme';
+import { HOMEPAGE_MATCH_PATH } from '@/lib/matching/routes';
 
-/* ─── Types ────────────────────────────────────────────── */
+/* â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 interface DimensionScores {
   treasuryConservative: number;
@@ -74,7 +75,7 @@ interface VoteResult {
   userVote: string;
 }
 
-/* ─── Constants ────────────────────────────────────────── */
+/* â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const TYPE_COLORS: Record<string, string> = {
   InfoAction: '#3b82f6',
@@ -104,7 +105,7 @@ const DIMENSION_COLORS: Record<keyof DimensionScores, string> = {
   transparency: '#3b82f6',
 };
 
-/* ─── Helpers ──────────────────────────────────────────── */
+/* â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function getTopDimensions(
   dims: DimensionScores,
@@ -130,7 +131,7 @@ function formatDrepVote(vote: string): { label: string; color: string } {
   }
 }
 
-/* ─── Component ────────────────────────────────────────── */
+/* â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export function CuratedVoteFlow() {
   const posthog = usePostHog();
@@ -280,7 +281,7 @@ export function CuratedVoteFlow() {
     return { agreed, disagreed, total };
   }, [votedMap, proposals]);
 
-  /* ─── Loading / Error / Empty states ──────────────────── */
+  /* â”€â”€â”€ Loading / Error / Empty states â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
   if (isLoading) {
     return (
@@ -300,7 +301,7 @@ export function CuratedVoteFlow() {
           <p className="font-medium">Could not load proposals</p>
           <p className="text-sm text-muted-foreground">Please try again later.</p>
           <Button asChild variant="outline">
-            <Link href="/match">Back to Match</Link>
+            <Link href={HOMEPAGE_MATCH_PATH}>Back to Match</Link>
           </Button>
         </div>
       </div>
@@ -321,7 +322,7 @@ export function CuratedVoteFlow() {
           </p>
           <div className="flex gap-2 justify-center">
             <Button asChild>
-              <Link href="/match">View Match Results</Link>
+              <Link href={HOMEPAGE_MATCH_PATH}>View Match Results</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/governance/proposals">Browse All Proposals</Link>
@@ -332,7 +333,7 @@ export function CuratedVoteFlow() {
     );
   }
 
-  /* ─── Session complete ────────────────────────────────── */
+  /* â”€â”€â”€ Session complete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
   if (showComplete) {
     return (
@@ -399,7 +400,7 @@ export function CuratedVoteFlow() {
               Vote on More
             </Button>
             <Button asChild>
-              <Link href="/match">
+              <Link href={HOMEPAGE_MATCH_PATH}>
                 View Updated Matches
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -410,7 +411,7 @@ export function CuratedVoteFlow() {
     );
   }
 
-  /* ─── Main voting flow ────────────────────────────────── */
+  /* â”€â”€â”€ Main voting flow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
   const key = currentProposal ? `${currentProposal.txHash}-${currentProposal.index}` : '';
   const voteResult = votedMap.get(key);
@@ -437,7 +438,7 @@ export function CuratedVoteFlow() {
         <div className="mx-auto max-w-2xl px-4 py-3 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <Link
-              href="/match"
+              href={HOMEPAGE_MATCH_PATH}
               className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
@@ -524,7 +525,7 @@ export function CuratedVoteFlow() {
                   </div>
                 )}
 
-                {/* Why this matters — governance dimensions */}
+                {/* Why this matters â€” governance dimensions */}
                 {topDimensions.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {topDimensions.map((dim) => (
@@ -657,7 +658,7 @@ export function CuratedVoteFlow() {
   );
 }
 
-/* ─── Vote Reveal ──────────────────────────────────────── */
+/* â”€â”€â”€ Vote Reveal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function VoteReveal({
   result,
@@ -713,7 +714,7 @@ function VoteReveal({
             <span className={cn('font-semibold', drepVote.color)}>{drepVote.label}</span>
             {agreedWithDrep != null && (
               <span className="ml-1.5 text-xs opacity-80">
-                {agreedWithDrep ? '— you agree' : '— you differ'}
+                {agreedWithDrep ? 'â€” you agree' : 'â€” you differ'}
               </span>
             )}
           </span>

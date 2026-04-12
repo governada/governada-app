@@ -219,7 +219,7 @@ function SenecaOrbAndThread({
 }
 
 function derivePageContext(pathname: string): string | undefined {
-  if (pathname === '/' || pathname === '/match') return 'governance';
+  if (pathname === '/') return 'governance';
   if (pathname.startsWith('/proposal/')) return 'proposals';
   if (pathname.startsWith('/drep/')) return 'dreps';
   if (pathname.startsWith('/pool/') || pathname.startsWith('/spo/')) return 'spos';
@@ -236,7 +236,7 @@ function derivePageContext(pathname: string): string | undefined {
 export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const isHomepage = pathname === '/' || pathname === '/match';
+  const isHomepage = pathname === '/';
   const isStudioMode =
     pathname === '/workspace/review' ||
     /^\/workspace\/(author|editor|amendment)\/[^/]+/.test(pathname);

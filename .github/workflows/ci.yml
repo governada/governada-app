@@ -123,7 +123,7 @@ jobs:
           "
 
   build:
-    needs: [checks, test]
+    needs: [install, checks, test]
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
@@ -184,7 +184,7 @@ jobs:
 
   browser-smoke:
     if: github.event_name == 'pull_request'
-    needs: build
+    needs: [install, build]
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
@@ -243,7 +243,7 @@ jobs:
           retention-days: 7
 
   e2e-critical:
-    needs: build
+    needs: [install, build]
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co

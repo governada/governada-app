@@ -3,6 +3,28 @@ const path = require('node:path');
 
 const { repoRoot, runCommand } = require('./lib/runtime');
 
+function parseArgs(argv) {
+  const options = {
+    strict: false,
+  };
+
+  for (const arg of argv) {
+    if (arg === '--strict') {
+      options.strict = true;
+      continue;
+    }
+
+    if (arg === '--help' || arg === '-h') {
+      console.log('Usage: node scripts/session-doctor.js [--strict]');
+      process.exit(0);
+    }
+
+    throw new Error(`Unknown option: ${arg}`);
+  }
+
+  return options;
+}
+
 function runOrEmpty(command, args, cwd = repoRoot) {
   const result = runCommand(command, args, { cwd });
   return result.status === 0 ? result.stdout.trimEnd() : '';
@@ -12,13 +34,13 @@ function getTopLevel() {
   return runOrEmpty('git', ['rev-parse', '--show-toplevel']);
 }
 
-function getBranch() {
-  const branch = runOrEmpty('git', ['branch', '--show-current']);
+function getBranch(cwd = repoRoot) {
+  const branch = runOrEmpty('git', ['branch', '--show-current'], cwd);
   return branch || '(detached)';
 }
 
-function getStatusLines() {
-  const status = runOrEmpty('git', ['status', '--short']);
+function getStatusLines(cwd = repoRoot) {
+  const status = runOrEmpty('git', ['status', '--short'], cwd);
   return status ? status.split(/\r?\n/).filter(Boolean) : [];
 }
 
@@ -48,10 +70,12 @@ function parseWorktrees() {
         worktree.branch = '(detached)';
       }
     }
+
     if (worktree.path) {
       worktrees.push(worktree);
     }
   }
+
   return worktrees;
 }
 
@@ -75,15 +99,96 @@ function printSection(title, lines) {
   }
 }
 
+function isSharedCheckout(topLevel) {
+  const gitDir = runOrEmpty('git', ['rev-parse', '--path-format=absolute', '--git-dir'], topLevel);
+  const commonDir = runOrEmpty(
+    'git',
+    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+    topLevel,
+  );
+
+  if (!gitDir || !commonDir) {
+    return false;
+  }
+
+  return path.resolve(gitDir) === path.resolve(commonDir);
+}
+
+function hasGoneUpstream(branch) {
+  if (!branch || branch === '(detached)') {
+    return false;
+  }
+
+  const details = runOrEmpty('git', ['branch', '-vv', '--list', branch]);
+  return details.includes(': gone]');
+}
+
+function getWorktreeDiagnostics(worktrees, topLevel) {
+  const resolvedTopLevel = path.resolve(topLevel);
+
+  return worktrees.map((worktree) => {
+    const statusLines = getStatusLines(worktree.path);
+    const resolvedPath = path.resolve(worktree.path);
+
+    return {
+      ...worktree,
+      isCurrent: resolvedPath === resolvedTopLevel,
+      dirtyCount: statusLines.length,
+      goneUpstream: hasGoneUpstream(worktree.branch),
+    };
+  });
+}
+
 function main() {
+  const options = parseArgs(process.argv.slice(2));
   const topLevel = getTopLevel() || repoRoot;
   const branch = getBranch();
   const statusLines = getStatusLines();
   const stashLines = getStashLines();
   const worktrees = parseWorktrees();
+  const sharedCheckout = isSharedCheckout(topLevel);
+  const checkoutLabel = sharedCheckout ? 'shared checkout' : 'worktree';
+  const worktreeDiagnostics = getWorktreeDiagnostics(worktrees, topLevel);
+  const dirtyWorktrees = worktreeDiagnostics.filter(
+    (worktree) => worktree.dirtyCount > 0 && !worktree.isCurrent,
+  );
+  const goneUpstreamWorktrees = worktreeDiagnostics.filter((worktree) => worktree.goneUpstream);
+  const blockingIssues = [];
+  const advisories = [];
+
+  if (sharedCheckout && !['main', 'master'].includes(branch)) {
+    blockingIssues.push(`Shared checkout should stay on main/master. Current branch: ${branch}.`);
+  }
+
+  if (statusLines.length > 0) {
+    blockingIssues.push(
+      `${sharedCheckout ? 'Shared checkout' : 'Current worktree'} has ${statusLines.length} local change(s).`,
+    );
+  }
+
+  if (stashLines.length > 0) {
+    blockingIssues.push(`Repo has ${stashLines.length} stash(es).`);
+  }
+
+  if (dirtyWorktrees.length > 0) {
+    blockingIssues.push(`Repo has ${dirtyWorktrees.length} other dirty worktree(s).`);
+  }
+
+  if (goneUpstreamWorktrees.length > 0) {
+    blockingIssues.push(
+      `${goneUpstreamWorktrees.length} worktree(s) track an upstream branch that is gone.`,
+    );
+  }
+
+  if (worktrees.length > 5) {
+    advisories.push(
+      `Repo has ${worktrees.length} worktrees open. Prune merged or abandoned worktrees before opening more.`,
+    );
+  }
 
   console.log('=== Session Doctor ===');
   console.log(`Repo: ${topLevel}`);
+  console.log(`Checkout: ${checkoutLabel}`);
   console.log(`Branch: ${branch}`);
   console.log(
     `Status: ${statusLines.length === 0 ? 'clean' : `dirty (${statusLines.length} changes)`}`,
@@ -112,12 +217,51 @@ function main() {
   );
   console.log('');
 
+  printSection(
+    'Dirty worktrees',
+    dirtyWorktrees.map(
+      (worktree) => `${worktree.branch} -> ${worktree.path} (${worktree.dirtyCount} changes)`,
+    ),
+  );
+  console.log('');
+
+  printSection(
+    'Gone upstream worktrees',
+    goneUpstreamWorktrees.map((worktree) => `${worktree.branch} -> ${worktree.path}`),
+  );
+  console.log('');
+
   printSection('Session files', [
     fileLabel('.cursor/tasks/lessons.md'),
     fileLabel('.cursor/tasks/todo.md'),
   ]);
+  console.log('');
+
+  if (blockingIssues.length > 0) {
+    printSection(options.strict ? 'Blocking issues' : 'Warnings', blockingIssues);
+    console.log('');
+  }
+
+  if (advisories.length > 0) {
+    printSection('Advisories', advisories);
+    console.log('');
+  }
+
+  if (options.strict) {
+    if (blockingIssues.length > 0) {
+      console.error(`STRICT FAILED: ${blockingIssues.length} hygiene issue(s) found.`);
+      process.exit(1);
+    }
+
+    console.log('STRICT OK: local hygiene checks passed.');
+  }
 }
 
 if (require.main === module) {
-  main();
+  try {
+    main();
+  } catch (error) {
+    console.error(error.message || String(error));
+    process.exit(1);
+  }
 }

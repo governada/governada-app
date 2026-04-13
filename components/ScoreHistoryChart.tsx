@@ -9,7 +9,7 @@ import { TrendingUp } from 'lucide-react';
 import { useChartDimensions } from '@/lib/charts/useChartDimensions';
 import { GlowFilter, AreaGradient } from '@/lib/charts/GlowDefs';
 import { chartTheme } from '@/lib/charts/theme';
-import type { ScoreSnapshot } from '@/lib/data';
+import type { ScoreSnapshot } from '@/lib/dreps/profileStats';
 import { getScoreAttribution, type DayAttribution } from '@/utils/attribution';
 
 interface ScoreHistoryChartProps {

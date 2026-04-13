@@ -29,7 +29,7 @@ Backend intelligence engine. Do not modify unless fixing bugs or extending.
 - [x] SPO 6D alignment, SPO matching | `lib/alignment/`, `lib/matching/`
 - [x] CC Transparency Index | `lib/scoring/ccTransparency.ts`
 - [x] Daily snapshots: drep_score_history, alignment_snapshots, ghi_snapshots, decentralization_snapshots, spo_score_snapshots, spo_alignment_snapshots
-- [x] 57 Inngest sync functions | `inngest/functions/`
+- [x] 59 Inngest sync functions | `inngest/functions/`
 - [x] 75+ database tables
 - verify: `GET /api/v1/drep-scores`, `GET /api/v1/spo-scores`, `POST /api/governance/quick-match` return data
 

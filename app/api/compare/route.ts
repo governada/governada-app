@@ -10,12 +10,11 @@ import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import {
   getDRepById,
   getVotesByDRepId,
-  getScoreHistory,
   getProposalsByIds,
   getRationalesByVoteTxHashes,
   type DRepVoteRow,
-  type ScoreSnapshot,
 } from '@/lib/data';
+import { getScoreHistory, type ScoreSnapshot } from '@/lib/dreps/profileStats';
 import { computeOverallAlignment, getPrecomputedBreakdown } from '@/lib/alignment';
 import type { EnrichedDRep } from '@/lib/koios';
 import type { UserPrefKey } from '@/types/drep';

@@ -5,6 +5,8 @@ Provider-agnostic instructions for autonomous agents working in this repo. Treat
 ## Core Rules
 
 - Feature work happens in a fresh worktree. The shared `governada-app` checkout stays on `main`. Hotfixes are the only exception. Read-only inspection on `main` is fine; the first mutating step must happen only after the agent has created a worktree.
+- Post-review hardening goes through `docs/strategy/context/architecture-review/`. Do not start a parallel cleanup track elsewhere in the repo.
+- `lib/data.ts` and `lib/intelligence/context.ts` are extraction-only hotspots. Move logic out of them; do not make them the default home for new business logic.
 - Search before creating. Extend existing components, hooks, routes, and utilities unless extension is genuinely infeasible.
 - Prefer elegant, durable solutions over expedient shortcuts. Do not default to intentionally minimal stopgaps when a cleaner fix is clear and practical within scope. Optimize for long-term maintainability, performance, scalability, and reduced rework.
 - Non-trivial bugs require root-cause analysis before fixing. Do not patch symptoms first.
@@ -30,8 +32,10 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 5. Read only the minimal context needed. Use the strategy registry and manifest before diving into the full vision docs.
 6. Make the most elegant change that cleanly solves the actual problem within scope. Do not choose a shortcut or merely minimal patch when a more coherent fix is clear and practical.
 7. Run `npm run agent:validate` and the relevant local verification for the scope.
+8. Put shared reads into domain-owned modules, keep route handlers thin, and keep Inngest functions thin. New shared logic should not default back into generic catch-all files.
 8. Communicate impact explicitly in updates, handoffs, and reviews: what changed, why it matters, which surfaces or constraints it affects, and any real tradeoffs or risks.
 9. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, and `Impact` sections.
+10. PRs that cross domain boundaries must include an explicit ownership note naming the seam extended and why that seam is correct.
 10. Before merging, run `npm run pre-merge-check -- <PR#>`.
 11. After merge, verify deploy health and smoke tests with `npm run deploy:verify`.
 

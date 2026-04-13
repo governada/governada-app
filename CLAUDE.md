@@ -17,6 +17,7 @@ Build failures or production bugs if violated:
 - **`force-dynamic`** on any `page.tsx`/`route.ts` touching Supabase/env vars. Railway build has no env vars.
 - **Register Inngest functions** in `app/api/inngest/route.ts` -- same commit as the function file.
 - **Database-first reads** via `lib/data.ts`. No direct Koios calls from pages/components.
+- **Hotspot freeze:** `lib/data.ts` and `lib/intelligence/context.ts` are extraction-only. New shared business logic must land in domain modules first; those hotspot files may compose, re-export, or shed code, but should not become the default home for more logic.
 - **TanStack Query** for client fetches. Never raw `fetch` + `useState` + `useEffect`.
 - **`gen:types` after migrations.** Commit updated `types/database.ts`.
 - **Supabase MCP for migrations**, never the CLI.
@@ -30,10 +31,12 @@ Build failures or production bugs if violated:
 - **The burden of proof is on change.** Prove why the change is necessary. "It could be better" is not sufficient.
 - **Existing code is the starting point.** Search before creating. See `.claude/rules/build-on-existing.md`.
 - **Elegant beats expedient.** Prefer the cleanest durable solution that fits the scope. Do not default to shortcut fixes or intentionally minimal patches when a more coherent design is clear. Optimize for maintainability, performance, scalability, and reduced rework.
+- **Stay on the paved road.** Shared reads belong in domain-owned modules, route handlers should stay thin, and Inngest functions should stay orchestration-only whenever the scope makes that possible.
 - **Root causes, not symptoms.** Trace the full cause chain. Use `/diagnose` for non-trivial bugs. Infrastructure fixes > process fixes.
 - **Done means done.** Edge cases handled, error/loading/empty states designed, mobile verified, feature gated if risky, tested against real user journeys.
 - **Less is more.** 3 robust features beats 7 fragile ones. Defer rather than ship half-baked.
 - **Always explain impact.** In updates, reviews, and PRs, state what changed, why it matters, what behavior or system boundaries it affects, and any real tradeoffs or risks.
+- **Name the seam.** Cross-domain PRs must explain which seam they extended and why that seam is the right ownership boundary.
 - **Pushback is valuable.** Honest friction over compliant speed.
 - **Improve, don't replace.** Extend what exists; build from scratch only when explicitly requested.
 
@@ -187,6 +190,7 @@ Legacy `scripts/*.sh` files are compatibility shims. Canonical desktop-agent aut
 | Feature registry (what exists & where)    | `docs/strategy/context/product-registry.md`        | ~200  |
 | Feature domain detail (8 domains)         | `docs/strategy/context/registry/<domain>.md`       | ~100  |
 | Build status / audit checklist            | `docs/strategy/context/build-manifest.md`          | ~250  |
+| Post-review hardening rules               | `docs/strategy/context/architecture-review/maturity-hardening.md` | ~80   |
 | Navigation architecture spec              | `docs/strategy/context/navigation-architecture.md` | ~530  |
 | UX constraints (per-page JTBD)            | `docs/strategy/context/ux-constraints.md`          | ~220  |
 | Persona quick reference                   | `docs/strategy/context/persona-quick-ref.md`       | ~80   |

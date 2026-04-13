@@ -8,6 +8,9 @@ const mockResolveApiKeyFromRequest = vi.fn();
 
 vi.mock('@/lib/data', () => ({
   getDRepById: (id: string) => mockGetDRepById(id),
+}));
+
+vi.mock('@/lib/dreps/profileStats', () => ({
   getScoreHistory: (id: string) => mockGetScoreHistory(id),
 }));
 

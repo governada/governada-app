@@ -5,6 +5,7 @@
 **Active deep dive:** None
 **Canonical worktree:** `C:\Users\dalto\governada\governada-app\.claude\worktrees\platform-architecture-review-series`
 **Canonical branch:** `feature/platform-architecture-review-series`
+**Post-series operating rules:** `maturity-hardening.md`
 
 ## Objective
 
@@ -74,6 +75,7 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-07 | Treat root-layout nonce and locale handling as the real DD05 cache-policy blocker, and remove only redundant page-level dynamic exports meanwhile | The route audit showed that redirect shells and homepage wrappers were easy cleanup, but broad caching work still depends on whether `app/layout.tsx` can stop forcing the whole tree dynamic                        |
 | 2026-04-09 | Move app-only workflow providers behind nested layouts instead of keeping them in the shared public shell                                         | The cache-policy follow-up needed a real provider boundary so public pages stop inheriting density and shortcut concerns that only matter on authenticated or workflow-heavy routes                                  |
 | 2026-04-09 | Move public CSP onto static headers and keep nonce-based CSP only on app/private prefixes                                                         | Cacheable public routes should not inherit request-scoped nonce requirements, but private/workflow routes still need strict CSP                                                                                      |
+| 2026-04-12 | Keep post-review hardening inside the architecture-review program and freeze the highest-risk shared hotspots as extraction-only                  | The review series is complete; the next failure mode is ad hoc cleanup drift and new logic flowing back into the same large files the review already identified as change-locality risks                           |
 
 ## Progress Log
 
@@ -142,3 +144,4 @@ Strengthen the app for real-world global use by reviewing the platform in the or
 | 2026-04-08 | Removed the root `next-themes` bootstrap from `app/layout.tsx`, keeping the main shell dark-first while narrowing the remaining DD05 cache-policy work to the public/app shell split and locale/CSP ownership.                                                                                                                                                             |
 | 2026-04-09 | Moved `ModeProvider`, `ShortcutProvider`, and `ShortcutOverlay` behind `components/governada/AppShellProviders.tsx`, with app/private layouts opting in explicitly so the remaining DD05 seam is locale/CSP ownership rather than public-shell workflow plumbing.                                                                                                          |
 | 2026-04-09 | Closed the DD05 locale/CSP seam by making the root document shell static/default-locale, scoping nonce CSP to app/private prefixes in the proxy, and verifying the split with Chromium CSP coverage.                                                                                                                                                                       |
+| 2026-04-12 | Added `maturity-hardening.md`, tightened PR ownership-note expectations, pulled docs drift into the repo validator path, and started the next `lib/data.ts` extraction wave with a dedicated DRep profile-stats seam.                                                                                                                                                  |

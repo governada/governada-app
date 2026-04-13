@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  analyzePrTemplateContract,
+  validatePrTemplateContract,
   analyzeRouteRenderContract,
   validateRouteRenderContract,
 } from '@/scripts/lib/agentConstraints.mjs';
@@ -23,6 +25,15 @@ describe('route render policy contract', () => {
     expect(validateRouteRenderContract('app/governance/page.tsx', content)).toEqual([]);
   });
 
+  it('treats extracted domain read seams as cached data for route policy checks', () => {
+    const content =
+      "import { getScoreHistory } from '@/lib/dreps/profileStats';\nexport default async function Page() {}";
+
+    expect(validateRouteRenderContract('app/page.tsx', content)).toEqual([
+      'app/page.tsx: classified as public-dynamic-exception in scripts/lib/routeRenderPolicy.mjs and touches cached/request-scoped runtime data, so it must export "export const dynamic = \'force-dynamic\'".',
+    ]);
+  });
+
   it('rejects request-scoped runtime reads in public-cache routes', () => {
     const content =
       "import { headers } from 'next/headers';\nexport default async function Page() { return (await headers()).get('x-test'); }";
@@ -44,7 +55,7 @@ describe('route render policy contract', () => {
   it('tracks the route analysis flags used by the top-level validator', () => {
     const content = [
       "import { cookies } from 'next/headers';",
-      "import { getVotesByProposal } from '@/lib/data';",
+      "import { getScoreHistory } from '@/lib/dreps/profileStats';",
       "export const dynamic = 'force-dynamic';",
       'export default async function Page() {',
       "  return (await cookies()).get('x-test')?.value ?? null;",
@@ -57,5 +68,58 @@ describe('route render policy contract', () => {
       usesCachedData: true,
       usesRequestScopedRuntime: true,
     });
+  });
+});
+
+describe('PR template contract', () => {
+  it('accepts the required ownership note fields and workflow gate', () => {
+    const template = [
+      '## Summary',
+      '',
+      '## Existing Code Audit',
+      '',
+      '## Ownership Note',
+      '',
+      '- **Seam extended**:',
+      '- **Why this seam**:',
+      '- **Hotspot touch**:',
+    ].join('\n');
+    const workflow = 'const requiredSections = ["## Summary", "## Ownership Note"];';
+
+    expect(analyzePrTemplateContract(template, workflow)).toMatchObject({
+      hasOwnershipSection: true,
+      hasOwnershipSeamField: true,
+      hasOwnershipReasonField: true,
+      hasHotspotTouchField: true,
+      workflowRequiresOwnershipSection: true,
+    });
+    expect(
+      validatePrTemplateContract(
+        '.github/PULL_REQUEST_TEMPLATE.md',
+        template,
+        '.github/workflows/pr-template.yml',
+        workflow,
+      ),
+    ).toEqual([]);
+  });
+
+  it('rejects missing ownership-note requirements', () => {
+    const template = ['## Summary', '', '## Existing Code Audit'].join('\n');
+    const workflow = 'const requiredSections = ["## Summary"];';
+
+    expect(
+      validatePrTemplateContract(
+        '.github/PULL_REQUEST_TEMPLATE.md',
+        template,
+        '.github/workflows/pr-template.yml',
+        workflow,
+      ),
+    ).toEqual([
+      '.github/PULL_REQUEST_TEMPLATE.md: missing required "## Ownership Note" section.',
+      '.github/PULL_REQUEST_TEMPLATE.md: missing "**Seam extended**:" field in the ownership note.',
+      '.github/PULL_REQUEST_TEMPLATE.md: missing "**Why this seam**:" field in the ownership note.',
+      '.github/PULL_REQUEST_TEMPLATE.md: missing "**Hotspot touch**:" field in the ownership note.',
+      '.github/workflows/pr-template.yml: PR template validation must require the "## Ownership Note" section.',
+    ]);
   });
 });

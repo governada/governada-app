@@ -15,6 +15,7 @@ jobs:
             const requiredSections = [
               "## Summary",
               "## Existing Code Audit",
+              "## Ownership Note",
               "## Robustness",
               "## Impact",
             ];

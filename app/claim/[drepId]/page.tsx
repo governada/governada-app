@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getDRepById, isDRepClaimed } from '@/lib/data';
+import { getDRepById } from '@/lib/data';
+import { isDRepClaimed } from '@/lib/dreps/profileStats';
 import { getDRepPrimaryName } from '@/utils/display';
 import { BASE_URL } from '@/lib/constants';
 import { ClaimPageClient } from './ClaimPageClient';

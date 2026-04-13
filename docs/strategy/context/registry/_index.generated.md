@@ -13,7 +13,12 @@
 - `/admin/pipeline`
 - `/admin/preview`
 - `/admin/quality`
+- `/admin/systems/evidence`
+- `/admin/systems/history`
+- `/admin/systems/incidents`
+- `/admin/systems/launch`
 - `/admin/systems`
+- `/admin/systems/queue`
 - `/admin/users`
 - `/claim/[drepId]`
 - `/committee/[ccHotId]`
@@ -67,11 +72,13 @@
 - `/`
 - `/pool/[poolId]`
 - `/preview`
+- `/privacy`
 - `/proposal/[txHash]/[index]`
 - `/pulse/history`
 - `/pulse`
 - `/pulse/report/[epoch]`
 - `/share/epoch/[epoch]`
+- `/terms`
 - `/workspace/amendment/[draftId]`
 - `/workspace/author/[draftId]/debrief`
 - `/workspace/author/[draftId]/monitor`
@@ -182,10 +189,12 @@
 - `useRegisterReviewCommands.ts`
 - `useResearchAssistant.ts`
 - `useReviewableDrafts.ts`
+- `useReviewDecisionFlow.ts`
 - `useReviewerCache.ts`
 - `useReviewQueue.ts`
 - `useReviewSession.ts`
 - `useReviewTemplate.ts`
+- `useReviewWorkspaceController.ts`
 - `useRevision.ts`
 - `useRevisionNotifications.ts`
 - `useScrollDirection.ts`
@@ -216,37 +225,40 @@
 
 ## Lib Directories
 
-- `admin/` (5 files)
+- `admin/` (14 files)
 - `ai/` (11 files)
 - `alignment/` (12 files)
 - `api/` (10 files)
 - `cc/` (9 files)
 - `charts/` (5 files)
 - `citizen/` (1 files)
-- `constellation/` (5 files)
+- `constellation/` (7 files)
 - `constitution/` (4 files)
 - `crossChain/` (1 files)
 - `discovery/` (4 files)
+- `dreps/` (1 files)
 - `embeddings/` (7 files)
 - `engagement/` (1 files)
 - `entity/` (1 files)
 - `ghi/` (6 files)
 - `globe/` (19 files)
-- `governance/` (1 files)
+- `governance/` (10 files)
 - `homepage/` (1 files)
-- `i18n/` (3 files)
+- `i18n/` (4 files)
 - `identity/` (1 files)
-- `intelligence/` (15 files)
-- `matching/` (9 files)
+- `intelligence/` (16 files)
+- `matching/` (10 files)
 - `nav/` (1 files)
+- `navigation/` (5 files)
 - `notifications/` (1 files)
 - `observatory/` (3 files)
 - `preview/` (0 files)
-- `reconciliation/` (3 files)
-- `scoring/` (25 files)
+- `reconciliation/` (4 files)
+- `scoring/` (29 files)
+- `security/` (1 files)
 - `spotlight/` (1 files)
-- `sync/` (7 files)
-- `workspace/` (21 files)
+- `sync/` (8 files)
+- `workspace/` (24 files)
 
 ## Lib Standalone Files
 
@@ -271,6 +283,7 @@
 - `data.ts`
 - `delegation.ts`
 - `delegationMilestones.ts`
+- `drep-votes.ts`
 - `drepIdentity.ts`
 - `drepUpdate.ts`
 - `editorialHeadline.ts`
@@ -279,6 +292,7 @@
 - `entityConnections.ts`
 - `env.ts`
 - `featureFlags.ts`
+- `founderNotifications.ts`
 - `funnel.ts`
 - `ghi.ts`
 - `glossary.ts`
@@ -287,6 +301,7 @@
 - `governanceFootprint.ts`
 - `governanceLevels.ts`
 - `governanceRings.ts`
+- `governanceThresholds.ts`
 - `governanceTuner.ts`
 - `haptics.ts`
 - `inngest.ts`
@@ -304,6 +319,7 @@
 - `og-utils.tsx`
 - `passagePrediction.ts`
 - `passport.ts`
+- `persistence.ts`
 - `posthog-server.ts`
 - `posthog.ts`
 - `preview.ts`
@@ -322,6 +338,7 @@
 - `redis.ts`
 - `representationMatch.ts`
 - `retry.ts`
+- `runtimeMetadata.ts`
 - `sentry-cron.ts`
 - `share.ts`
 - `shortcuts.ts`
@@ -332,11 +349,13 @@
 - `supabase.ts`
 - `supabaseAuth.ts`
 - `sync-utils.ts`
+- `syncPolicy.ts`
 - `treasury-categories.ts`
 - `treasury.ts`
 - `trustSignals.ts`
 - `utils.ts`
 - `viewTransitions.ts`
+- `vote-rationales.ts`
 - `voteImpact.ts`
 - `voteProjection.ts`
 - `voting.ts`
@@ -366,6 +385,7 @@
 
 - `ActionQueueCard.tsx`
 - `AdminViewAsPicker.tsx`
+- `AppShellProviders.tsx`
 - `CompassSigil.tsx`
 - `DepthPickerDropdown.tsx`
 - `DepthPromptModal.tsx`
@@ -380,6 +400,7 @@
 - `HeaderBreadcrumbs.tsx`
 - `HeaderSenecaInput.tsx`
 - `LanguagePicker.tsx`
+- `LegalLinks.tsx`
 - `MatchResultOverlay.tsx`
 - `MobilePeekSheet.tsx`
 - `MyGovClient.tsx`
@@ -423,6 +444,7 @@
 - `generate-governance-wrapped.ts`
 - `generate-proposal-briefs.ts`
 - `generate-state-of-governance.ts`
+- `generate-systems-review-draft.ts`
 - `generate-user-embedding.ts`
 - `generate-weekly-digest.ts`
 - `generateAiContent.ts`
@@ -432,6 +454,7 @@
 - `precompute-engagement-signals.ts`
 - `precompute-proposal-intelligence.ts`
 - `reconcile-data.ts`
+- `run-systems-automation-sweep.ts`
 - `score-ai-quality.ts`
 - `score-proposers.ts`
 - `snapshot-citizen-rings.ts`
@@ -456,5 +479,5 @@
 
 ---
 
-Checksum: `2b1d24120da3291d93000b248a8edc82f0ecfdd9289e320ad54836c245207772`
-Generated: 2026-04-03T03:38:02Z
+Checksum: `14078c2f529230c9e0786f49bae83e45e04fc307e54aace4208607f8458f3d76`
+Generated: 2026-04-13T02:37:28Z

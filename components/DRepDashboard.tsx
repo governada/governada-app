@@ -22,7 +22,7 @@ import {
   PenLine,
 } from 'lucide-react';
 import { VoteRecord } from '@/types/drep';
-import { type ScoreSnapshot } from '@/lib/data';
+import { type ScoreSnapshot } from '@/lib/dreps/profileStats';
 import {
   type Recommendation,
   generateRecommendations,

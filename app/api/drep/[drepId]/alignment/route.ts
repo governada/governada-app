@@ -15,7 +15,8 @@ import { z } from 'zod';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { createClient } from '@/lib/supabase';
 import { cached } from '@/lib/redis';
-import { getDRepById, getVotesByDRepId, getDRepDelegationTrend } from '@/lib/data';
+import { getDRepById, getVotesByDRepId } from '@/lib/data';
+import { getDRepDelegationTrend } from '@/lib/dreps/profileStats';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 import {
   computeProposalAlignment,

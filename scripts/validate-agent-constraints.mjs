@@ -1,9 +1,12 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { validateRouteRenderContract } from './lib/agentConstraints.mjs';
+import { validatePrTemplateContract, validateRouteRenderContract } from './lib/agentConstraints.mjs';
 
 const root = process.cwd();
 const errors = [];
+const require = createRequire(import.meta.url);
+const { collectResults: collectDocsDoctorResults } = require('./docs-doctor.js');
 
 function walk(dir) {
   const entries = readdirSync(dir, { withFileTypes: true });
@@ -111,6 +114,9 @@ function validateRequiredFiles() {
     path.join(root, '.claude', 'settings.json'),
     path.join(root, 'app', 'api', 'inngest', 'route.ts'),
     path.join(root, 'inngest', 'functions'),
+    path.join(root, '.github', 'PULL_REQUEST_TEMPLATE.md'),
+    path.join(root, '.github', 'workflows', 'pr-template.yml'),
+    path.join(root, 'docs', 'strategy', 'context', 'architecture-review', 'maturity-hardening.md'),
   ];
 
   for (const target of required) {
@@ -122,11 +128,37 @@ function validateRequiredFiles() {
   }
 }
 
+function validatePullRequestTemplate() {
+  const templatePath = path.join(root, '.github', 'PULL_REQUEST_TEMPLATE.md');
+  const workflowPath = path.join(root, '.github', 'workflows', 'pr-template.yml');
+  const templateContent = readFileSync(templatePath, 'utf8');
+  const workflowContent = readFileSync(workflowPath, 'utf8');
+
+  errors.push(
+    ...validatePrTemplateContract(
+      '.github/PULL_REQUEST_TEMPLATE.md',
+      templateContent,
+      '.github/workflows/pr-template.yml',
+      workflowContent,
+    ),
+  );
+}
+
+function validateDocsDiscipline() {
+  for (const result of collectDocsDoctorResults()) {
+    if (!result.ok) {
+      errors.push(`docs-doctor: ${result.label}: ${result.detail}`);
+    }
+  }
+}
+
 validateRequiredFiles();
 
 if (errors.length === 0) {
   validateRouteRenderPolicy();
   validateInngestRegistration();
+  validatePullRequestTemplate();
+  validateDocsDiscipline();
 }
 
 if (errors.length > 0) {

@@ -114,15 +114,17 @@ import {
   getVotesByDRepId,
   getProposalsByIds,
   getRationalesByVoteTxHashes,
-  getScoreHistory,
-  getDRepPercentile,
-  getDRepRank,
-  getDRepDelegationTrend,
-  getSocialLinkChecks,
-  isDRepClaimed,
   getOpenProposalsForDRep,
   getEndorsementCount,
 } from '@/lib/data';
+import {
+  getDRepDelegationTrend,
+  getDRepPercentile,
+  getDRepRank,
+  getScoreHistory,
+  getSocialLinkChecks,
+  isDRepClaimed,
+} from '@/lib/dreps/profileStats';
 import { createClient } from '@/lib/supabase';
 import { BASE_URL } from '@/lib/constants';
 import { Suspense } from 'react';

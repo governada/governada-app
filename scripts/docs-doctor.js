@@ -126,7 +126,7 @@ function checkRegistryIndex(results) {
   }
 }
 
-function main() {
+function collectResults() {
   const results = [];
 
   const inngestFunctionCount = listFilesRecursive(
@@ -175,6 +175,12 @@ function main() {
   checkManifestFreshness(results);
   checkRegistryIndex(results);
 
+  return results;
+}
+
+function main() {
+  const results = collectResults();
+
   console.log('=== Docs Doctor ===');
   console.log('');
   for (const result of results) {
@@ -195,3 +201,7 @@ function main() {
 if (require.main === module) {
   main();
 }
+
+module.exports = {
+  collectResults,
+};

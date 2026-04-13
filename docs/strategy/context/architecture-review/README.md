@@ -12,6 +12,7 @@ This folder is the durable operating record for the platform architecture review
 
 - `series-index.md`: master sequence, current status, decisions, cross-cutting risks, progress log.
 - `execution-backlog.md`: PR-sized chunks using the repo's work plan format.
+- `maturity-hardening.md`: post-series paved-road rules, hotspot freeze list, and current maturity targets.
 - `deep-dive-XX-*.md`: one document per architecture area with evidence, findings, and a handoff block.
 
 ## Operating Rules
@@ -21,6 +22,7 @@ This folder is the durable operating record for the platform architecture review
 3. Promote validated findings into `execution-backlog.md` as soon as they become actionable.
 4. Keep the "Next agent starts here" section current in every active deep-dive file.
 5. Treat these docs as operational state, not polished marketing copy.
+6. Do not start a second cleanup or hardening program outside this folder. Post-review hardening continues through `execution-backlog.md` and `maturity-hardening.md`.
 
 ## Deep Dive Statuses
 

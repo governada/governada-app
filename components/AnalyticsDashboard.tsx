@@ -8,7 +8,7 @@ import { TrendingUp, TrendingDown, Activity, Target, BarChart3, Users } from 'lu
 import { useChartDimensions } from '@/lib/charts/useChartDimensions';
 import { GlowFilter, AreaGradient } from '@/lib/charts/GlowDefs';
 import { chartTheme, CHART_PALETTE, VOTE_CHART_COLORS } from '@/lib/charts/theme';
-import type { ScoreSnapshot } from '@/lib/data';
+import type { ScoreSnapshot } from '@/lib/dreps/profileStats';
 
 interface PillarData {
   effectiveParticipation: number;

@@ -10,10 +10,8 @@ import {
   getVotesByDRepId,
   getProposalsByIds,
   getRationalesByVoteTxHashes,
-  getScoreHistory,
-  getSocialLinkChecks,
-  getDRepPercentile,
 } from '@/lib/data';
+import { getDRepPercentile, getScoreHistory, getSocialLinkChecks } from '@/lib/dreps/profileStats';
 import { getProposalDisplayTitle } from '@/utils/display';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 

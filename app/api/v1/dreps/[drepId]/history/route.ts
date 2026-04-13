@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { withApiHandler } from '@/lib/api/handler';
 import { apiSuccess, apiError } from '@/lib/api/response';
-import { getDRepById, getScoreHistory } from '@/lib/data';
+import { getDRepById } from '@/lib/data';
+import { getScoreHistory } from '@/lib/dreps/profileStats';
 import type { ApiContext } from '@/lib/api/handler';
 
 async function handler(request: NextRequest, ctx: ApiContext, params?: Record<string, string>) {

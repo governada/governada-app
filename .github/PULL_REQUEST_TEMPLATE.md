@@ -8,6 +8,12 @@
 - **Found**:
 - **Decision**:
 
+## Ownership Note
+
+- **Seam extended**:
+- **Why this seam**:
+- **Hotspot touch**:
+
 ## Robustness
 
 - [ ] Error states handled

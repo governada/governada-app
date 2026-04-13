@@ -6,6 +6,48 @@
 2. Sequence infrastructure before consumers.
 3. Convert only validated findings into execution chunks.
 4. Expand this backlog as each deep dive stabilizes.
+5. Post-review hardening continues here; do not start a parallel cleanup backlog elsewhere in the repo.
+
+## Chunk 42: Codify Post-Review Maturity Guardrails
+
+**Priority:** P0
+**Effort:** S
+**Audit dimension(s):** Architecture and Code Health, Testing and Code Quality, Product Completeness vs. Vision
+**Expected score impact:** Architecture and Code Health: reduce drift back into high-gravity files and ad hoc cleanup streams
+**Depends on:** Chunk 41
+**PR group:** V
+**Implementation status:** Completed in this worktree
+
+### Context
+
+The architecture-review series is complete, but the repo still needs an explicit post-review operating mode so agents do not restart cleanup from scratch or route new logic back into the same hotspot files.
+
+### Scope
+
+- Add a post-series maturity-hardening guide inside the architecture-review folder.
+- Freeze the highest-risk shared hotspots as extraction-only by policy.
+- Require an explicit PR ownership note for seam selection.
+- Pull docs drift into the default repo validation path.
+
+### Verification
+
+- The architecture-review folder contains a durable post-series hardening guide.
+- PR templates require an ownership note that names the seam extended and why.
+- `npm run agent:validate` fails when docs drift or PR-template guardrails drift.
+
+### Progress So Far
+
+- Added `docs/strategy/context/architecture-review/maturity-hardening.md` as the post-series operating guide.
+- Updated the architecture-review README, series index, and execution backlog so hardening continues through this folder instead of a second cleanup stream.
+- Updated the repo PR template and PR-template workflow to require an explicit ownership note.
+- Pulled docs-doctor results into `npm run agent:validate` so docs drift is part of the repo contract, not just a manual reminder.
+
+### Files to Read First
+
+- `docs/strategy/context/architecture-review/maturity-hardening.md`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `.github/workflows/pr-template.yml`
+- `scripts/validate-agent-constraints.mjs`
 
 ## Chunk 0: Review Series Scaffold
 

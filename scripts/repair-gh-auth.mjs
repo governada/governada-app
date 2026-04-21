@@ -55,7 +55,10 @@ commandOutput('gh', ['auth', 'setup-git', '--hostname', 'github.com'], { cwd: re
 log(`GitHub auth: ready as ${EXPECTED_USER}.`);
 
 const currentRemote = tryCommand('git', ['remote', 'get-url', 'origin']);
-if (currentRemote && (currentRemote !== CANONICAL_REMOTE || embeddedCredentialRemote(currentRemote))) {
+if (
+  currentRemote &&
+  (currentRemote !== CANONICAL_REMOTE || embeddedCredentialRemote(currentRemote))
+) {
   commandOutput('git', ['remote', 'set-url', 'origin', CANONICAL_REMOTE], { cwd: repoRoot });
   log(`GitHub remote: set origin to ${CANONICAL_REMOTE}.`);
 }

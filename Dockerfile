@@ -5,7 +5,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# Upgrade bundled npm (10.x) to 11.x so `npm ci` accepts lockfiles
+# produced by dependabot, which uses npm 11 and omits nested optional-peer
+# entries that npm 10 rejects. Matches the bump already applied in
+# .github/workflows/ci.yml's install job (#896).
+RUN npm install -g npm@11 && npm ci
 
 # ── Build ──
 FROM base AS builder

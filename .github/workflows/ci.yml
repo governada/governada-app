@@ -41,6 +41,12 @@ jobs:
         with:
           node-version: ${{ env.CI_NODE_VERSION }}
           cache: npm
+      # Upgrade bundled npm (10.x) to 11.x so `npm ci` accepts lockfiles
+      # produced by dependabot, which uses npm 11 and omits certain nested
+      # optional-peer entries that npm 10 demands. Keeps dependabot updates
+      # from repeatedly breaking main's install step.
+      - name: Upgrade npm to 11
+        run: npm install -g npm@11
       - name: Compute node_modules cache key
         id: node_modules_cache_key
         run: |

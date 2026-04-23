@@ -91,13 +91,16 @@ PR_BODY*.md
 .bundle-baseline.json
 
 # Agent artifacts (machine-specific, not for git)
+.agents/
 .claude/perf-snapshots/
 .claude/infra-snapshots/
+.claude/scheduled_tasks.lock
 .claude/worktrees/
 /.gh-cache/
 /.codex-*
 /.codex-next-start.*
 /.tmp-*
+docs/governada-context.md
 
 # Founder-only docs (not for agents/repo)
 docs/strategy/operations-guide.md

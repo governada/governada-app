@@ -1,6 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { validateRouteRenderContract } from './lib/agentConstraints.mjs';
+import {
+  validateInngestServeMethods,
+  validateRouteRenderContract,
+} from './lib/agentConstraints.mjs';
 
 const root = process.cwd();
 const errors = [];
@@ -104,6 +107,10 @@ function validateInngestRegistration() {
       );
     }
   }
+
+  errors.push(
+    ...validateInngestServeMethods('app/api/inngest/route.ts', routeContent),
+  );
 }
 
 function validateRequiredFiles() {

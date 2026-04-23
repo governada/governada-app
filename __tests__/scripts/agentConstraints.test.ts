@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   analyzeRouteRenderContract,
+  validateInngestServeMethods,
   validateRouteRenderContract,
 } from '@/scripts/lib/agentConstraints.mjs';
 import { getRouteRenderPolicy } from '@/scripts/lib/routeRenderPolicy.mjs';
@@ -57,5 +58,30 @@ describe('route render policy contract', () => {
       usesCachedData: true,
       usesRequestScopedRuntime: true,
     });
+  });
+});
+
+describe('Inngest serve method contract', () => {
+  it('allows the required Inngest serve methods', () => {
+    const content = "export const { GET, POST, PUT } = serve({ client: inngest, functions: [] });";
+
+    expect(validateInngestServeMethods('app/api/inngest/route.ts', content)).toEqual([]);
+  });
+
+  it('rejects unsupported Inngest serve method exports', () => {
+    const content = [
+      'export const {',
+      '  GET,',
+      '  POST,',
+      '  PUT,',
+      '  PATCH,',
+      '  OPTIONS: OPTIONSHandler,',
+      '  DELETE,',
+      '} = serve({ client: inngest, functions: [] });',
+    ].join('\n');
+
+    expect(validateInngestServeMethods('app/api/inngest/route.ts', content)).toEqual([
+      'app/api/inngest/route.ts: Inngest serve() must only export GET, POST, and PUT. Remove unsupported method export(s): PATCH, OPTIONS, DELETE.',
+    ]);
   });
 });

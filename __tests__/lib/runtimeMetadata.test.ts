@@ -38,6 +38,10 @@ describe('getRuntimeRelease', () => {
   });
 
   it('ignores legacy Vercel runtime metadata', () => {
+    for (const key of ['GITHUB_ACTIONS', 'GITHUB_SHA', 'SOURCE_VERSION', 'COMMIT_SHA']) {
+      vi.stubEnv(key, '');
+    }
+
     vi.stubEnv('VERCEL', '1');
     vi.stubEnv('VERCEL_ENV', 'production');
     vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'ABCDEF123456');

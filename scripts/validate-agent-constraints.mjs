@@ -108,9 +108,7 @@ function validateInngestRegistration() {
     }
   }
 
-  errors.push(
-    ...validateInngestServeMethods('app/api/inngest/route.ts', routeContent),
-  );
+  errors.push(...validateInngestServeMethods('app/api/inngest/route.ts', routeContent));
 }
 
 function validateRequiredFiles() {

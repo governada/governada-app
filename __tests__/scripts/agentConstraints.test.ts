@@ -63,7 +63,7 @@ describe('route render policy contract', () => {
 
 describe('Inngest serve method contract', () => {
   it('allows the required Inngest serve methods', () => {
-    const content = "export const { GET, POST, PUT } = serve({ client: inngest, functions: [] });";
+    const content = 'export const { GET, POST, PUT } = serve({ client: inngest, functions: [] });';
 
     expect(validateInngestServeMethods('app/api/inngest/route.ts', content)).toEqual([]);
   });

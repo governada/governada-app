@@ -1,12 +1,11 @@
 export interface RuntimeRelease {
   commit_sha: string | null;
   source: string | null;
-  platform: 'railway' | 'vercel' | 'github' | 'unknown';
+  platform: 'railway' | 'github' | 'unknown';
 }
 
 const COMMIT_SHA_KEYS = [
   'RAILWAY_GIT_COMMIT_SHA',
-  'VERCEL_GIT_COMMIT_SHA',
   'GITHUB_SHA',
   'SOURCE_VERSION',
   'COMMIT_SHA',
@@ -20,10 +19,6 @@ function normalizeCommitSha(value: string | undefined): string | null {
 function detectPlatform(): RuntimeRelease['platform'] {
   if (process.env.RAILWAY_ENVIRONMENT_ID || process.env.RAILWAY_PROJECT_ID) {
     return 'railway';
-  }
-
-  if (process.env.VERCEL || process.env.VERCEL_ENV) {
-    return 'vercel';
   }
 
   if (process.env.GITHUB_ACTIONS) {

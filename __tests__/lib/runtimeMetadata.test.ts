@@ -22,9 +22,6 @@ describe('getRuntimeRelease', () => {
       'RAILWAY_ENVIRONMENT_ID',
       'RAILWAY_PROJECT_ID',
       'RAILWAY_GIT_COMMIT_SHA',
-      'VERCEL',
-      'VERCEL_ENV',
-      'VERCEL_GIT_COMMIT_SHA',
       'GITHUB_ACTIONS',
       'GITHUB_SHA',
       'SOURCE_VERSION',
@@ -32,6 +29,22 @@ describe('getRuntimeRelease', () => {
     ]) {
       vi.stubEnv(key, '');
     }
+
+    expect(getRuntimeRelease()).toEqual({
+      commit_sha: null,
+      source: null,
+      platform: 'unknown',
+    });
+  });
+
+  it('ignores legacy Vercel runtime metadata', () => {
+    for (const key of ['GITHUB_ACTIONS', 'GITHUB_SHA', 'SOURCE_VERSION', 'COMMIT_SHA']) {
+      vi.stubEnv(key, '');
+    }
+
+    vi.stubEnv('VERCEL', '1');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'ABCDEF123456');
 
     expect(getRuntimeRelease()).toEqual({
       commit_sha: null,

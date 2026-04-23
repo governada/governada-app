@@ -1,7 +1,7 @@
 name: CI
 
 env:
-  CI_NODE_VERSION: '20'
+  CI_NODE_VERSION: '24'
 
 on:
   workflow_dispatch:

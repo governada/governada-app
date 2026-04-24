@@ -90,6 +90,63 @@ Additional stale directory: `.claude/worktrees/auth-cookie-cleanup` is not regis
 - Replace `.env.local` worktree copying with a 1Password-backed local injection/reference path.
 - Add a capability registry entry for LM Studio as installed but inactive/unproven; keep Ollama, Open WebUI, and Hammerspoon marked unavailable until installed and tested.
 
-## Ready Prompt For Phase 0B
+## Copy/Paste Prompt For Next Agent
 
-You are taking over Phase 0B: Brain, Retrieval, and Control-Plane Reliability for the Mac Agent Operating System initiative. Start by reading `/Users/tim/dev/governada/governada-app/docs/operations/mac-agent-os-phase-0a-handoff.md` and the roadmap/control-plane docs it references. Do not broaden into provider parity or model collaboration. Your first job is to decide or document durability/versioning for `governada-brain` and the retrieval projects, add executable retrieval/control-plane doctors where practical, and reconcile BlueCargo retrieval policy drift without merging domain indexes or changing secret flow.
+Use this prompt verbatim to start Phase 0B with a fresh agent:
+
+```text
+You are taking over Phase 0B: Brain, Retrieval, and Control-Plane Reliability for the Mac Agent Operating System initiative.
+
+Start by reading:
+- /Users/tim/dev/governada/governada-app/docs/operations/mac-agent-os-phase-0a-handoff.md
+- /Users/tim/dev/governada/governada-brain/agents/system/roadmap.md
+- /Users/tim/dev/governada/governada-brain/agents/system/system-overview.md
+- /Users/tim/dev/governada/governada-brain/agents/system/agent-operating-model.md
+- /Users/tim/dev/governada/governada-brain/agents/system/tooling-matrix.md
+- /Users/tim/dev/governada/governada-brain/agents/system/data-boundaries.md
+- /Users/tim/dev/governada/governada-brain/agents/build-system/autonomy-policy.md
+- /Users/tim/dev/governada/governada-app/AGENTS.md
+
+Do not broaden into provider parity, model collaboration, desktop automation, source-of-truth vault writeback, or broader roadmap phases.
+
+Phase 0B goal:
+Make the brain, retrieval, and control-plane layer reliable enough that future agents can trust the doctors and handoff packets before doing deeper implementation.
+
+Use the Phase 0A handoff as primary current-state evidence. Refresh reality where it is cheap and important, especially for drift-prone checks.
+
+Required first checks:
+- npm run session:guard
+- npm run session:doctor
+- npm run docs:doctor
+- npm run gh:auth-status
+- Governada retrieval wrapper/index status
+- BlueCargo retrieval wrapper/index status
+- Git/versioning status for governada-brain, governada-retrieval, and bluecargo-retrieval
+- Drift between roadmap, current-state, milestones, retrieval-policy, tooling-matrix, data-boundaries, autonomy-policy, and BlueCargo agent context
+
+Boundaries:
+- Do not initialize Git in governada-brain or retrieval projects without Tim's explicit approval.
+- Do not move, delete, or cloud-sync vault or retrieval files without approval.
+- Do not merge Governada and BlueCargo retrieval indexes.
+- Do not change .env.local or secret flow in this phase unless Tim explicitly approves the exact design.
+- Treat BlueCargo retrieval as local-only until docs and policy say otherwise.
+
+Recommended work slices:
+1. Decide with Tim whether governada-brain, governada-retrieval, and bluecargo-retrieval should be Git-versioned now or have accepted local-loss risk documented.
+2. Add a retrieval/control-plane doctor that reports wrapper availability, PATH exposure, index timestamp, chunk count, vault files newer than index, and policy drift.
+3. Reconcile BlueCargo retrieval policy drift across retrieval-policy.md, autonomy-policy.md, bluecargo-context.md, retrieval-interfaces.md, and tooling-matrix.md.
+4. Update durable ops notes and/or roadmap current reality after checks and fixes.
+
+Before implementing, output:
+- Research Performed
+- Current Local Reality
+- Blockers
+- Advisories
+- Drift Found
+- Assumptions Closed
+- Open Questions For Tim
+- Proposed Phase 0B Work Slices
+- Validation Plan
+
+At the end, produce a handoff packet for Phase 0.5 or the next Phase 0B slice. The handoff must include a section titled "Copy/Paste Prompt For Next Agent" with a literal fenced prompt Tim can paste into a fresh agent.
+```

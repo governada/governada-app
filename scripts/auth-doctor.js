@@ -27,7 +27,7 @@ function fail(failures, message) {
 }
 
 function hasDesktopIpcFailure(detail) {
-  return /couldn'?t connect to the 1Password desktop app|connect to the 1Password desktop app|desktop app/i.test(
+  return /couldn'?t connect to the 1Password desktop app|connect to the 1Password desktop app|desktop app|authorization timeout/i.test(
     detail,
   );
 }
@@ -73,7 +73,10 @@ function main() {
   }
 
   if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
-    warn('raw GitHub token env is present; repo automation should prefer the 1Password reference');
+    fail(
+      failures,
+      'raw GitHub token env is present; remove GH_TOKEN/GITHUB_TOKEN so this diagnostic proves the repo-scoped 1Password lane',
+    );
   } else {
     pass('raw GitHub token env is not present');
   }

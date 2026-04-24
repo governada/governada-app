@@ -1,10 +1,5 @@
 const { runGh } = require('./lib/runtime');
-
-function redactSensitiveText(value) {
-  return value
-    .replace(/github_pat_[A-Za-z0-9_]+/g, 'github_pat_[redacted]')
-    .replace(/\bgh[pousr]_[A-Za-z0-9_]+\b/g, '[redacted-gh-token]');
-}
+const { redactSensitiveText } = require('./lib/gh-auth');
 
 function writeFailure(result) {
   const detail = redactSensitiveText(result.stderr || result.stdout || '').trim();

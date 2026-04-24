@@ -4,7 +4,7 @@ const OP_READ_TIMEOUT_MS = 15000;
 
 function redactSensitiveText(value) {
   return value
-    .replace(/op:\/\/[^\s'"]+/g, 'op://[redacted]')
+    .replace(/op:\/\/[^\r\n'"]+/g, 'op://[redacted]')
     .replace(/github_pat_[A-Za-z0-9_]+/g, 'github_pat_[redacted]')
     .replace(/\bgh[pousr]_[A-Za-z0-9_]+\b/g, '[redacted-gh-token]');
 }
@@ -65,7 +65,7 @@ function withGhTokenFromOnePassword(env, cwd) {
   const mergedEnv = { ...env };
   const tokenRef = mergedEnv.GH_TOKEN_OP_REF || mergedEnv.GITHUB_TOKEN_OP_REF;
 
-  if (!tokenRef || mergedEnv.GH_TOKEN || mergedEnv.GITHUB_TOKEN) {
+  if (!tokenRef) {
     return { env: mergedEnv };
   }
 
@@ -74,6 +74,7 @@ function withGhTokenFromOnePassword(env, cwd) {
     return { env: mergedEnv, error: result.error };
   }
 
+  delete mergedEnv.GITHUB_TOKEN;
   mergedEnv.GH_TOKEN = result.token;
   return { env: mergedEnv };
 }

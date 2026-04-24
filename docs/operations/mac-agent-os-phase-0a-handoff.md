@@ -60,7 +60,7 @@ Additional stale directory: `.claude/worktrees/auth-cookie-cleanup` is not regis
 ## Phase 0A Fixes Applied
 
 - `scripts/gh-auth-status.js` now verifies GitHub API auth and repo access without calling `gh auth status`, avoiding token-like output.
-- `scripts/lib/gh-auth.js` now bounds `op read`, redacts token-like strings and `op://...` references from auth failures, and names desktop IPC/authorization timeout as the likely blocked lane.
+- `scripts/lib/gh-auth.js` now bounds `op read`, redacts token-like strings and `op://...` references from auth failures, names desktop IPC/authorization timeout as the likely blocked lane, and prefers the configured 1Password reference over ambient raw GitHub token env.
 - `npm run auth:doctor` now reports the repo-pinned Governada GitHub lane, verifies the 1Password reference without printing it, classifies Codex sandbox desktop-IPC failure explicitly, and only runs child `gh` checks after the 1Password lane is ready.
 - `scripts/repair-gh-auth.mjs` no longer points agents at `gh auth login`; it directs them back through `auth:doctor` and the repo-scoped 1Password lane.
 - `scripts/session-doctor.js` now reports orphaned `.claude/worktrees/*` directories as advisories.
@@ -82,12 +82,30 @@ Additional stale directory: `.claude/worktrees/auth-cookie-cleanup` is not regis
 
 - `npm run docs:doctor`: pass after manifest and registry refresh.
 - `npm run registry:index:check`: pass.
-- `npm run gh:auth-status`: earlier Phase 0A run passed after the token-like `gh auth status` output was removed. Current PR #901 closeout runs from Codex, including a sandbox-escalated retry, block on 1Password desktop IPC / authorization timeout and now emit a deterministic redacted error.
+- `npm run gh:auth-status`: no longer emits token-like `gh auth status` output. In current Codex runs it can still block on 1Password desktop IPC / authorization timeout, including after sandbox escalation, and emits a deterministic redacted error.
 - `npm run auth:doctor`: diagnostic block in the Codex sandbox because 1Password desktop IPC is unavailable from this process, then skips child `gh` checks. Output does not print raw tokens or the full `op://...` reference. This is the PR #901 auth-runtime finding to carry into Phase 0B.
 - `npm run session:doctor`: pass as a diagnostic command; reports the current dirty Phase 0A worktree, 14 registered worktrees, and one orphaned `.claude/worktrees` directory.
 - Final strict `npm run session:guard`: pass after committing the auth-runtime closeout; worktree clean, no stashes, no dirty or gone-upstream registered worktrees. Advisories remain for 14 open worktrees and one orphaned `.claude/worktrees` directory.
 - `npm run agent:validate`: pass.
 - `npm run format:check`: pass after formatting this handoff note.
+
+## Review Gate v0
+
+- Review gate tier: foundational auth/runtime/harness work. Minimum one independent review; preferred two perspectives when available.
+- Reviewers requested: fresh read-only Codex code/runtime reviewer, plus fresh read-only policy/boundary reviewer as the Claude Code fallback because managed Claude review is not wired in this session.
+- Prompts/focus used: code/runtime review focused on auth-runtime regressions, token/reference leakage, sandbox/escalation behavior, GitHub wrapper correctness, and Phase 0A scope creep. Policy/boundary review focused on policy consistency, auth-boundary correctness, Governada/BlueCargo isolation, Phase 0A vs Phase 0B scope, and handoff quality.
+- Review result summary: initial merge posture was blocked because both reviews found important auth-diagnostic gaps and the handoff lacked an explicit review-gate record.
+- Findings fixed:
+  - Raw token env could satisfy or distort `auth:doctor`; `auth:doctor` now blocks when `GH_TOKEN` or `GITHUB_TOKEN` is present.
+  - `gh:auth-status` could report a 1Password reference while `runGh` used an ambient raw token; the shared auth helper now resolves the configured 1Password reference whenever present and overrides ambient raw token env for child `gh`.
+  - `op://...` reference redaction stopped at whitespace; the shared redactor now covers references with spaces up to quotes or line breaks.
+  - `auth:doctor` classified authorization timeout less specifically than the shared helper; it now treats authorization timeout as the desktop IPC lane.
+  - Review Gate v0 metadata was missing from the handoff; this section records the tier, reviewers, prompts, findings, deferments, and merge posture.
+- Validation after fixes: `node --check` passed for the changed auth scripts; redactor smoke test removed full `op://...`, GitHub PAT, and `gh*` token-shaped strings; raw-token `auth:doctor` simulation blocked; `docs:doctor` and `agent:validate` passed. `gh:auth-status` remains blocked in the current Codex run by the documented 1Password desktop IPC / authorization timeout lane.
+- Findings deferred:
+  - Managed Claude Code Review is not confirmed wired; Phase 0B / Phase 0.5 should add review tools to the capability registry before making managed review automatic.
+  - The Codex-to-1Password desktop IPC blocker is not solved in Phase 0A; it is documented as the durable Phase 0B auth-runtime design problem.
+- Safe to merge: code/runtime and policy Review Gate v0 findings are fixed, but hold merge until the final review-gate commit is pushed, CI passes, and Tim explicitly accepts the documented Phase 0B auth-runtime deferment if local `pre-merge-check`/merge wrappers still block on desktop IPC. Do not merge through a bypassed auth path.
 
 ## Phase 0B Recommended Scope
 

@@ -38,4 +38,14 @@ HEARTBEAT_URL_SCORING=op://<vault>/<item>/heartbeat-url-scoring
 HEARTBEAT_URL_ALIGNMENT=op://<vault>/<item>/heartbeat-url-alignment
 HEARTBEAT_URL_FRESHNESS_GUARD=op://<vault>/<item>/heartbeat-url-freshness-guard
 HEARTBEAT_URL_EPOCH_SUMMARY=op://<vault>/<item>/heartbeat-url-epoch-summary
+
+# Optional Phase 0B autonomous github.read pilot.
+# Use only after Tim approves the GitHub App and 1Password service-account setup.
+# The IDs are non-secret. The private key and service account token must remain
+# in the narrow automation vault and must not be pasted.
+# OP_SERVICE_ACCOUNT_TOKEN must not live in this file; provide it through an
+# approved secure runtime environment or mount before running github:read-doctor.
+GOVERNADA_GITHUB_APP_ID=123456
+GOVERNADA_GITHUB_APP_INSTALLATION_ID=12345678
+GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF=op://<automation-vault>/<github-app-item>/private-key
 ```

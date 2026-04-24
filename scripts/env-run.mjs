@@ -138,7 +138,9 @@ function main() {
 
   const forbiddenKeys = getForbiddenGithubReferenceKeys(refsPath);
   if (forbiddenKeys.length > 0) {
-    fail(`${ENV_REFS_FILE} must not define GH_TOKEN_OP_REF or GITHUB_TOKEN_OP_REF`);
+    fail(
+      `${ENV_REFS_FILE} must not define GH_TOKEN_OP_REF, GITHUB_TOKEN_OP_REF, or OP_SERVICE_ACCOUNT_TOKEN`,
+    );
   }
 
   const entries = parseEnvEntries(refsPath);

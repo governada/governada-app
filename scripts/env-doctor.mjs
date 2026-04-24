@@ -135,10 +135,10 @@ function main() {
     if (forbiddenKeys.length > 0) {
       block(
         blockers,
-        `${ENV_REFS_FILE} contains GitHub token reference key(s); keep GH_TOKEN_OP_REF/GITHUB_TOKEN_OP_REF outside op-run style injection`,
+        `${ENV_REFS_FILE} contains auth runtime key(s); keep GH_TOKEN_OP_REF/GITHUB_TOKEN_OP_REF/OP_SERVICE_ACCOUNT_TOKEN outside op-run style injection`,
       );
     } else {
-      ok(`${ENV_REFS_FILE} does not define GitHub token reference keys`);
+      ok(`${ENV_REFS_FILE} does not define auth runtime reference keys`);
     }
 
     const entries = parseEnvEntries(envRefsPath);

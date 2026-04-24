@@ -7,11 +7,17 @@ import { commandOutput } from './runtime.mjs';
 export const ENV_REFS_FILE = '.env.local.refs';
 export const ENV_LOCAL_FILE = '.env.local';
 export const ENV_REFS_EXAMPLE = path.join('docs', 'examples', 'env-local-refs.example.md');
-export const GITHUB_REFERENCE_KEYS = new Set(['GH_TOKEN_OP_REF', 'GITHUB_TOKEN_OP_REF']);
+export const GITHUB_REFERENCE_KEYS = new Set([
+  'GH_TOKEN_OP_REF',
+  'GITHUB_TOKEN_OP_REF',
+  'OP_SERVICE_ACCOUNT_TOKEN',
+]);
 export const RAW_GITHUB_TOKEN_KEYS = new Set(['GH_TOKEN', 'GITHUB_TOKEN']);
 export const OP_READ_TIMEOUT_MS = 15000;
 export const LITERAL_ENV_ALLOWLIST = new Set([
   'DEV_MOCK_AUTH',
+  'GOVERNADA_GITHUB_APP_ID',
+  'GOVERNADA_GITHUB_APP_INSTALLATION_ID',
   'NODE_ENV',
   'NEXT_PUBLIC_KOIOS_BASE_URL',
   'NEXT_PUBLIC_POSTHOG_HOST',

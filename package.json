@@ -24,6 +24,7 @@
     "notify": "node scripts/notify.js",
     "uptime-check": "node scripts/uptime-check.js",
     "gh:auth-status": "node scripts/gh-auth-status.js",
+    "auth:doctor": "node scripts/auth-doctor.js",
     "auth:repair": "node scripts/repair-gh-auth.mjs",
     "git:stage": "node scripts/git-stage.js",
     "git:commit": "node scripts/git-commit.js",

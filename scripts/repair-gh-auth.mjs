@@ -45,7 +45,7 @@ const currentUser = tryGh(['api', 'user', '--jq', '.login']);
 
 if (!currentUser) {
   console.error(
-    'GitHub auth is not ready. Set GH_TOKEN_OP_REF to a 1Password token reference or run gh auth login, then re-run this script.',
+    'GitHub auth is not ready. Set GH_TOKEN_OP_REF to a 1Password token reference and run `npm run auth:doctor`.',
   );
   process.exit(1);
 }
@@ -56,7 +56,7 @@ if (currentUser !== EXPECTED_USER) {
     ghOutput(['auth', 'switch', '--user', EXPECTED_USER], { cwd: repoRoot });
   } catch {
     console.error(
-      `Could not switch to ${EXPECTED_USER}. Run 'gh auth login' or 'gh auth switch --user ${EXPECTED_USER}' manually.`,
+      `Could not switch to ${EXPECTED_USER}. Run \`npm run auth:doctor\` and repair the repo-scoped 1Password lane before retrying.`,
     );
     process.exit(1);
   }

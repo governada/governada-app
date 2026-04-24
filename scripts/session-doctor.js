@@ -85,6 +85,44 @@ function parseWorktrees() {
   return worktrees;
 }
 
+function getSharedCheckoutRoot(topLevel) {
+  const commonDir = runOrEmpty(
+    'git',
+    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+    topLevel,
+  );
+
+  return commonDir ? path.dirname(commonDir) : topLevel;
+}
+
+function getOrphanedWorktreeDirectories(worktrees, topLevel) {
+  const sharedRoot = getSharedCheckoutRoot(topLevel);
+  const worktreesRoot = path.join(sharedRoot, '.claude', 'worktrees');
+  if (!fs.existsSync(worktreesRoot)) {
+    return [];
+  }
+
+  const registeredPaths = new Set(worktrees.map((worktree) => path.resolve(worktree.path)));
+
+  return fs
+    .readdirSync(worktreesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(worktreesRoot, entry.name))
+    .filter((worktreePath) => !registeredPaths.has(path.resolve(worktreePath)))
+    .map((worktreePath) => {
+      const gitPointerPath = path.join(worktreePath, '.git');
+      const gitStatus = runCommand('git', ['-C', worktreePath, 'status', '--short'], {
+        cwd: repoRoot,
+      });
+      const reason =
+        fs.existsSync(gitPointerPath) && gitStatus.status !== 0
+          ? 'not registered; git metadata is broken or points outside this checkout'
+          : 'not registered by git worktree list';
+
+      return { path: worktreePath, reason };
+    });
+}
+
 function existsMaybe(relativePath) {
   return fs.existsSync(path.join(repoRoot, relativePath));
 }
@@ -156,6 +194,7 @@ function main() {
   const sharedCheckout = isSharedCheckout(topLevel);
   const checkoutLabel = sharedCheckout ? 'shared checkout' : 'worktree';
   const worktreeDiagnostics = getWorktreeDiagnostics(worktrees, topLevel);
+  const orphanedWorktreeDirectories = getOrphanedWorktreeDirectories(worktrees, topLevel);
   const dirtyWorktrees = worktreeDiagnostics.filter(
     (worktree) => worktree.dirtyCount > 0 && !worktree.isCurrent,
   );
@@ -196,6 +235,12 @@ function main() {
   if (worktrees.length > 5) {
     advisories.push(
       `Repo has ${worktrees.length} worktrees open. Prune merged or abandoned worktrees before opening more.`,
+    );
+  }
+
+  if (orphanedWorktreeDirectories.length > 0) {
+    advisories.push(
+      `Repo has ${orphanedWorktreeDirectories.length} orphaned .claude/worktrees director${orphanedWorktreeDirectories.length === 1 ? 'y' : 'ies'}. Confirm ownership before deleting.`,
     );
   }
 
@@ -242,6 +287,12 @@ function main() {
   printSection(
     'Gone upstream worktrees',
     goneUpstreamWorktrees.map((worktree) => `${worktree.branch} -> ${worktree.path}`),
+  );
+  console.log('');
+
+  printSection(
+    'Orphaned worktree directories',
+    orphanedWorktreeDirectories.map((worktree) => `${worktree.path} (${worktree.reason})`),
   );
   console.log('');
 

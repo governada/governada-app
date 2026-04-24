@@ -1,4 +1,4 @@
-import { commandOutput, getScriptContext, ghJson, requireArg } from './lib/runtime.mjs';
+import { commandOutput, getScriptContext, ghJson, ghOutput, requireArg } from './lib/runtime.mjs';
 
 const prNumber = Number.parseInt(
   requireArg(process.argv.slice(2), 0, 'pre-merge-check.mjs <pr-number>'),
@@ -77,7 +77,7 @@ if (mergeStateStatus === 'BEHIND') {
   process.exit(1);
 }
 
-const prStatus = commandOutput('gh', ['pr', 'checks', `${prNumber}`, '--repo', repo], {
+const prStatus = ghOutput(['pr', 'checks', `${prNumber}`, '--repo', repo], {
   allowFailure: true,
   cwd: repoRoot,
 });

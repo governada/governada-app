@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { sendNotification } = require('./notify.js');
-const { loadLocalEnv, repoRoot, runCommand, runGhJson, sleep } = require('./lib/runtime');
+const { loadLocalEnv, repoRoot, runCommand, runGh, runGhJson, sleep } = require('./lib/runtime');
 
 loadLocalEnv();
 
@@ -79,24 +79,20 @@ async function createRevertPr(currentSha, currentMessage) {
       throw new Error((pushResult.stderr || pushResult.stdout || 'git push failed').trim());
     }
 
-    const createPr = runCommand(
-      'gh',
-      [
-        'pr',
-        'create',
-        '--repo',
-        repo,
-        '--title',
-        `revert: rollback ${shortSha(currentSha)} (${currentMessage})`,
-        '--body',
-        `Automated rollback of ${shortSha(currentSha)} due to production failure.\n\nOriginal: ${currentMessage}`,
-        '--head',
-        branchName,
-        '--base',
-        'main',
-      ],
-      { cwd: worktreePath },
-    );
+    const createPr = runGh([
+      'pr',
+      'create',
+      '--repo',
+      repo,
+      '--title',
+      `revert: rollback ${shortSha(currentSha)} (${currentMessage})`,
+      '--body',
+      `Automated rollback of ${shortSha(currentSha)} due to production failure.\n\nOriginal: ${currentMessage}`,
+      '--head',
+      branchName,
+      '--base',
+      'main',
+    ]);
 
     if (createPr.status !== 0) {
       throw new Error((createPr.stderr || createPr.stdout || 'gh pr create failed').trim());
@@ -208,7 +204,7 @@ async function main() {
       .filter(Boolean)
       .join('\n');
 
-    const issueResult = runCommand('gh', [
+    const issueResult = runGh([
       'issue',
       'create',
       '--repo',

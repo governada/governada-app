@@ -112,13 +112,15 @@ function main() {
   const refsPath = findFirstExisting(getEnvRefsCandidates(repoRoot));
   const envLocalPath = findFirstExisting(getEnvLocalCandidates(repoRoot));
 
+  if (envLocalPath && isLocalFile(repoRoot, envLocalPath)) {
+    const rawEnvLocalTokenKeys = getRawGitHubTokenKeys(envLocalPath);
+    if (rawEnvLocalTokenKeys.length > 0) {
+      fail(`${ENV_LOCAL_FILE} must not define GH_TOKEN or GITHUB_TOKEN`);
+    }
+  }
+
   if (!refsPath) {
     if (envLocalPath && isLocalFile(repoRoot, envLocalPath)) {
-      const rawEnvLocalTokenKeys = getRawGitHubTokenKeys(envLocalPath);
-      if (rawEnvLocalTokenKeys.length > 0) {
-        fail(`${ENV_LOCAL_FILE} must not define GH_TOKEN or GITHUB_TOKEN`);
-      }
-
       console.error(
         `${ENV_REFS_FILE}: absent; running command directly so existing ${ENV_LOCAL_FILE} fallback behavior can apply.`,
       );

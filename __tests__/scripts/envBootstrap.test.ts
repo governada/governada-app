@@ -80,6 +80,9 @@ describe('env bootstrap guardrails', () => {
   });
 
   it('strips inherited raw GitHub tokens from env:run child commands', () => {
+    const cwd = createRepoTempDir();
+    writeFileSync(path.join(cwd, '.env.local'), 'NODE_ENV=test\n');
+
     const result = spawnSync(
       'node',
       [
@@ -89,7 +92,7 @@ describe('env bootstrap guardrails', () => {
         "process.stdout.write(process.env.GH_TOKEN ? 'raw-token-present' : 'raw-token-stripped')",
       ],
       {
-        cwd: repoRoot,
+        cwd,
         encoding: 'utf8',
         env: {
           ...process.env,
@@ -125,6 +128,30 @@ describe('env bootstrap guardrails', () => {
     expect(result.stdout).not.toContain('should-not-run');
   });
 
+  it('blocks raw GitHub tokens in local .env.local even when .env.local.refs exists', () => {
+    const cwd = createRepoTempDir();
+    writeFileSync(path.join(cwd, '.env.local'), 'GITHUB_TOKEN=dummy-token\n');
+    writeFileSync(path.join(cwd, '.env.local.refs'), 'NODE_ENV=test\n');
+
+    const result = spawnSync(
+      'node',
+      [path.join(repoRoot, 'scripts/env-run.mjs'), 'node', '-e', "console.log('should-not-run')"],
+      {
+        cwd,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          GH_TOKEN: '',
+          GITHUB_TOKEN: '',
+        },
+      },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('.env.local must not define GH_TOKEN or GITHUB_TOKEN');
+    expect(result.stdout).not.toContain('should-not-run');
+  });
+
   it('keeps worktree setup from copying plaintext .env.local files', () => {
     const newWorktree = readFileSync(path.join(repoRoot, 'scripts/new-worktree.mjs'), 'utf8');
     const syncWorktree = readFileSync(path.join(repoRoot, 'scripts/sync-worktree.mjs'), 'utf8');
@@ -139,5 +166,32 @@ describe('env bootstrap guardrails', () => {
 
     expect(cjsRuntime).not.toContain("sharedRoot ? path.join(sharedRoot, '.env.local')");
     expect(esmRuntime).not.toContain("sharedRoot ? path.join(sharedRoot, '.env.local')");
+  });
+
+  it('keeps direct gh shellouts inside auth-wrapping runtime helpers only', () => {
+    const directGhPatterns = [
+      /runCommand\(['"]gh['"]/u,
+      /commandOutput\(['"]gh['"]/u,
+      /spawnSync\(['"]gh['"]/u,
+      /execFileSync\(['"]gh['"]/u,
+    ];
+    const checkedFiles = [
+      'scripts/pre-merge-check.mjs',
+      'scripts/rollback.js',
+      'scripts/rollback.mjs',
+      'scripts/lib/runtime.js',
+      'scripts/lib/runtime.mjs',
+    ];
+
+    for (const relativePath of checkedFiles) {
+      const content = readFileSync(path.join(repoRoot, relativePath), 'utf8');
+      const violations = directGhPatterns.filter((pattern) => pattern.test(content));
+
+      if (relativePath.includes('runtime.')) {
+        expect(violations).toHaveLength(1);
+      } else {
+        expect(violations, relativePath).toHaveLength(0);
+      }
+    }
   });
 });

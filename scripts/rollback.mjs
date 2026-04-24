@@ -6,6 +6,8 @@ import {
   commandOutput,
   fetchWithTimeout,
   getScriptContext,
+  ghJson,
+  ghOutput,
   normalizeBaseUrl,
 } from './lib/runtime.mjs';
 
@@ -46,7 +48,7 @@ async function fetchHealth() {
 }
 
 function ghApi(pathname) {
-  return JSON.parse(commandOutput('gh', ['api', pathname], { cwd: repoRoot }));
+  return ghJson(['api', pathname], { cwd: repoRoot });
 }
 
 function notify(alertType, title, details) {
@@ -96,8 +98,7 @@ function createRollbackPr(currentSha, currentMessage) {
       '- **Scope**: main branch revert only.',
     ].join('\n');
 
-    const prUrl = commandOutput(
-      'gh',
+    const prUrl = ghOutput(
       [
         'pr',
         'create',
@@ -140,8 +141,7 @@ function createIncidentIssue({ currentShortSha, currentMessage, currentHealth, r
     '- [ ] Investigate root cause and land a forward fix before re-deploying.',
   ].join('\n');
 
-  return commandOutput(
-    'gh',
+  return ghOutput(
     [
       'issue',
       'create',

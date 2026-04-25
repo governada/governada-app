@@ -277,39 +277,6 @@ async function verifyNonMutatingWriteLaneAccess(token, blockers) {
     return;
   }
   pass('pull request read works with write-capable token');
-
-  const issueComments = await githubApiRequest({
-    path: `/repos/${EXPECTED_REPO}/issues/comments?per_page=1`,
-    token,
-  });
-  if (!issueComments.ok) {
-    block(
-      blockers,
-      githubApiErrorMessage(issueComments, `issue comment read failed for ${EXPECTED_REPO}`),
-    );
-    return;
-  }
-  pass('issue comment read works with write-capable token');
-
-  const actions = await githubApiRequest({
-    path: `/repos/${EXPECTED_REPO}/actions/runs?per_page=1`,
-    token,
-  });
-  if (!actions.ok) {
-    block(blockers, githubApiErrorMessage(actions, `Actions read failed for ${EXPECTED_REPO}`));
-    return;
-  }
-  pass('Actions workflow-run read works with write-capable token');
-
-  const checkRuns = await githubApiRequest({
-    path: `/repos/${EXPECTED_REPO}/commits/main/check-runs?per_page=1`,
-    token,
-  });
-  if (!checkRuns.ok) {
-    block(blockers, githubApiErrorMessage(checkRuns, `check-run read failed for ${EXPECTED_REPO}`));
-    return;
-  }
-  pass('check-run read works with write-capable token');
 }
 
 main().catch((error) => {

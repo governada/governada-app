@@ -20,10 +20,6 @@ export const EXPECTED_RETURNED_READ_PERMISSIONS = Object.freeze({
   metadata: 'read',
 });
 export const EXPECTED_WRITE_PR_PERMISSIONS = Object.freeze({
-  actions: 'read',
-  checks: 'read',
-  contents: 'write',
-  issues: 'write',
   pull_requests: 'write',
 });
 export const EXPECTED_RETURNED_WRITE_PR_PERMISSIONS = Object.freeze({
@@ -57,10 +53,7 @@ export function redactSensitiveText(
   }
 
   return redacted
-    .replace(
-      /-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/g,
-      '[redacted-pem-block]',
-    )
+    .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/g, '[redacted-pem-block]')
     .replace(/op:\/\/[^\r\n'"]+/g, 'op://[redacted]')
     .replace(/github_pat_[A-Za-z0-9_]+/g, 'github_pat_[redacted]')
     .replace(/\bghs_[A-Za-z0-9_]+\b/g, '[redacted-gh-installation-token]')

@@ -712,7 +712,7 @@ async function syncMetadataArchiveIncremental(
     const proposalsWithMeta = await fetchAll(() => {
       let query = supabase
         .from('proposals')
-        .select('tx_hash, proposal_index, meta_url, meta_hash, meta_json, updated_at')
+        .select('tx_hash, proposal_index, meta_json, updated_at')
         .not('meta_json', 'is', null)
         .order('updated_at', { ascending: true });
 
@@ -732,8 +732,8 @@ async function syncMetadataArchiveIncremental(
           return {
             entity_type: 'proposal' as const,
             entity_id: `${proposal.tx_hash}#${proposal.proposal_index}`,
-            meta_url: proposal.meta_url,
-            meta_hash: proposal.meta_hash,
+            meta_url: null,
+            meta_hash: null,
             meta_json: proposal.meta_json,
             cip_standard: 'CIP-108' as const,
             fetch_status: 'success' as const,

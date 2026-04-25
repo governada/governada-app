@@ -48,6 +48,48 @@ function stripUrls(text: string): string {
 
 type SupabaseClient = ReturnType<typeof getSupabaseAdmin>;
 
+async function updateRowsByKey(
+  supabase: SupabaseClient,
+  table: string,
+  rows: Array<Record<string, unknown>>,
+  keys: string | string[],
+  label: string,
+): Promise<{ success: number; errors: number }> {
+  let success = 0;
+  let errors = 0;
+  const keyList = Array.isArray(keys) ? keys : [keys];
+
+  for (const row of rows) {
+    const missingKey = keyList.find((key) => row[key] === null || row[key] === undefined);
+    if (missingKey) {
+      errors++;
+      log.error(`[Sync] ${label} update skipped`, { error: `missing ${missingKey}` });
+      continue;
+    }
+
+    const updates = { ...row };
+    for (const key of keyList) delete updates[key];
+
+    let query = supabase.from(table).update(updates);
+    for (const key of keyList) {
+      query = query.eq(key, row[key]);
+    }
+
+    const { error } = await query;
+    if (error) {
+      errors++;
+      log.error(`[Sync] ${label} update error`, { error: error.message });
+    } else {
+      success++;
+    }
+  }
+
+  if (rows.length > 1) {
+    log.info(`[Sync] ${label} updates complete`, { success, errors });
+  }
+  return { success, errors };
+}
+
 // ── Operation 1: Rationale pipeline ──────────────────────────────────────────
 
 export async function runRationalePipeline(supabase: SupabaseClient) {
@@ -196,13 +238,14 @@ async function runAiSummaries(supabase: SupabaseClient) {
     }
   }
   if (proposalUpdates.length > 0) {
-    await batchUpsert(
+    const result = await updateRowsByKey(
       supabase,
       'proposals',
       proposalUpdates,
-      'tx_hash,proposal_index',
+      ['tx_hash', 'proposal_index'],
       'AI proposal summary',
     );
+    proposalSummaries = result.success;
   }
 
   const { data: unsumRationales } = await supabase
@@ -253,13 +296,14 @@ async function runAiSummaries(supabase: SupabaseClient) {
       }
     }
     if (rationaleUpdates.length > 0) {
-      await batchUpsert(
+      const result = await updateRowsByKey(
         supabase,
         'vote_rationales',
         rationaleUpdates,
         'vote_tx_hash',
         'AI rationale summary',
       );
+      rationaleSummaries = result.success;
     }
   }
 
@@ -422,9 +466,15 @@ async function runVotePowerBackfill(supabase: SupabaseClient) {
           power_source: 'exact',
         }),
       );
-      exactCount += exactUpdates.length;
       if (exactUpdates.length > 0) {
-        await batchUpsert(supabase, 'drep_votes', exactUpdates, 'vote_tx_hash', 'Power exact');
+        const result = await updateRowsByKey(
+          supabase,
+          'drep_votes',
+          exactUpdates,
+          'vote_tx_hash',
+          'Power exact',
+        );
+        exactCount += result.success;
       }
 
       const { data: remaining } = await supabase
@@ -448,9 +498,15 @@ async function runVotePowerBackfill(supabase: SupabaseClient) {
           };
         },
       );
-      nearestCount += nearestUpdates.length;
       if (nearestUpdates.length > 0) {
-        await batchUpsert(supabase, 'drep_votes', nearestUpdates, 'vote_tx_hash', 'Power nearest');
+        const result = await updateRowsByKey(
+          supabase,
+          'drep_votes',
+          nearestUpdates,
+          'vote_tx_hash',
+          'Power nearest',
+        );
+        nearestCount += result.success;
       }
     } catch (err) {
       log.warn('[SlowSync] Power backfill error', {
@@ -525,7 +581,13 @@ async function runRationaleHashVerification(supabase: SupabaseClient) {
     }
   }
   if (hashUpdates.length > 0) {
-    await batchUpsert(supabase, 'vote_rationales', hashUpdates, 'vote_tx_hash', 'Rationale hash');
+    await updateRowsByKey(
+      supabase,
+      'vote_rationales',
+      hashUpdates,
+      'vote_tx_hash',
+      'Rationale hash',
+    );
   }
 
   log.info('[SlowSync] Rationale hash verification', { verified, mismatch: failed });
@@ -588,7 +650,7 @@ async function runDRepMetadataHashVerification(supabase: SupabaseClient) {
     }
   }
   if (metaHashUpdates.length > 0) {
-    await batchUpsert(supabase, 'dreps', metaHashUpdates, 'id', 'DRep metadata hash');
+    await updateRowsByKey(supabase, 'dreps', metaHashUpdates, 'id', 'DRep metadata hash');
   }
 
   const noAnchor = metaHashUpdates.length - verified - failed;

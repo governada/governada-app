@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EXPECTED_READ_PERMISSIONS,
+  EXPECTED_RETURNED_READ_PERMISSIONS,
   EXPECTED_REPO_NAME,
   buildInstallationTokenRequestBody,
   createGithubAppJwt,
@@ -51,7 +52,7 @@ describe('github read doctor guardrails', () => {
 
   it('rejects extra or elevated installation-token permissions', () => {
     const failures = githubReadPermissionFailures({
-      ...EXPECTED_READ_PERMISSIONS,
+      ...EXPECTED_RETURNED_READ_PERMISSIONS,
       contents: 'write',
       administration: 'write',
     });
@@ -62,10 +63,17 @@ describe('github read doctor guardrails', () => {
     ]);
     expect(
       summarizeGithubReadPermissions({
-        ...EXPECTED_READ_PERMISSIONS,
+        ...EXPECTED_RETURNED_READ_PERMISSIONS,
         administration: 'write',
       }),
     ).toContain('administration=write (unexpected permission)');
+  });
+
+  it('accepts GitHub metadata read as an implicit returned installation-token permission', () => {
+    expect(githubReadPermissionFailures(EXPECTED_RETURNED_READ_PERMISSIONS)).toEqual([]);
+    expect(summarizeGithubReadPermissions(EXPECTED_RETURNED_READ_PERMISSIONS)).toContain(
+      'metadata=read (expected read)',
+    );
   });
 
   it('creates a short-lived GitHub App JWT without embedding secret material in claims', () => {

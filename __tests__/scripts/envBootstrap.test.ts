@@ -103,6 +103,7 @@ describe('env bootstrap guardrails', () => {
   it('strips inherited raw GitHub tokens from env:run child commands', () => {
     const cwd = createRepoTempDir();
     writeFileSync(path.join(cwd, '.env.local'), 'NODE_ENV=test\n');
+    writeFileSync(path.join(cwd, '.env.local.refs'), 'NODE_ENV=test\n');
 
     const result = spawnSync(
       'node',

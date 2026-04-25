@@ -15,6 +15,10 @@ export const EXPECTED_READ_PERMISSIONS = Object.freeze({
   contents: 'read',
   pull_requests: 'read',
 });
+export const EXPECTED_RETURNED_READ_PERMISSIONS = Object.freeze({
+  ...EXPECTED_READ_PERMISSIONS,
+  metadata: 'read',
+});
 
 export const GITHUB_READ_ENV_KEYS = Object.freeze({
   appId: 'GOVERNADA_GITHUB_APP_ID',
@@ -100,18 +104,18 @@ export function buildInstallationTokenRequestBody(repoName = EXPECTED_REPO_NAME)
 }
 
 export function githubReadPermissionFailures(permissions = {}) {
-  const expectedKeys = new Set(Object.keys(EXPECTED_READ_PERMISSIONS));
+  const expectedKeys = new Set(Object.keys(EXPECTED_RETURNED_READ_PERMISSIONS));
   const failures = [];
 
   for (const [key, value] of Object.entries(permissions)) {
     if (!expectedKeys.has(key)) {
       failures.push(`${key}=${value} (unexpected permission)`);
-    } else if (value !== EXPECTED_READ_PERMISSIONS[key]) {
-      failures.push(`${key}=${value} (expected ${EXPECTED_READ_PERMISSIONS[key]})`);
+    } else if (value !== EXPECTED_RETURNED_READ_PERMISSIONS[key]) {
+      failures.push(`${key}=${value} (expected ${EXPECTED_RETURNED_READ_PERMISSIONS[key]})`);
     }
   }
 
-  for (const [key, expected] of Object.entries(EXPECTED_READ_PERMISSIONS)) {
+  for (const [key, expected] of Object.entries(EXPECTED_RETURNED_READ_PERMISSIONS)) {
     if (permissions[key] === undefined) {
       failures.push(`${key}=missing (expected ${expected})`);
     }
@@ -121,12 +125,12 @@ export function githubReadPermissionFailures(permissions = {}) {
 }
 
 export function summarizeGithubReadPermissions(permissions = {}) {
-  const expected = Object.entries(EXPECTED_READ_PERMISSIONS).map(
+  const expected = Object.entries(EXPECTED_RETURNED_READ_PERMISSIONS).map(
     ([key, expectedPermission]) =>
       `${key}=${permissions[key] || 'missing'} (expected ${expectedPermission})`,
   );
   const unexpected = Object.entries(permissions)
-    .filter(([key]) => !Object.hasOwn(EXPECTED_READ_PERMISSIONS, key))
+    .filter(([key]) => !Object.hasOwn(EXPECTED_RETURNED_READ_PERMISSIONS, key))
     .map(([key, value]) => `${key}=${value} (unexpected permission)`);
 
   return [...expected, ...unexpected].join(', ');

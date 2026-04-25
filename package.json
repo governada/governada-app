@@ -49,6 +49,7 @@
     "session:guard": "node scripts/session-doctor.js --strict",
     "worktree:new": "node scripts/new-worktree.mjs",
     "worktree:sync": "node scripts/sync-worktree.mjs",
+    "inngest:doctor": "tsx scripts/inngest-doctor.ts",
     "inngest:register": "node scripts/register-inngest.js",
     "deploy:verify": "tsx scripts/deploy-verify.ts",
     "health:ready": "node scripts/health-check.js --path /api/health/ready --compact",

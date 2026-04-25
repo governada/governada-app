@@ -25,6 +25,7 @@
     "uptime-check": "node scripts/uptime-check.js",
     "gh:auth-status": "node scripts/gh-auth-status.js",
     "auth:doctor": "node scripts/auth-doctor.js",
+    "github:read-doctor": "node scripts/github-read-doctor.mjs",
     "auth:repair": "node scripts/repair-gh-auth.mjs",
     "env:doctor": "node scripts/env-doctor.mjs",
     "env:run": "node scripts/env-run.mjs",

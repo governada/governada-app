@@ -45,12 +45,17 @@ describe('env bootstrap guardrails', () => {
     const refsPath = path.join(dir, '.env.local.refs');
     writeFileSync(
       refsPath,
-      ['GH_TOKEN_OP_REF=op://Governada/item/token', 'GITHUB_TOKEN_OP_REF=op://x/y/z'].join('\n'),
+      [
+        'GH_TOKEN_OP_REF=op://Governada/item/token',
+        'GITHUB_TOKEN_OP_REF=op://x/y/z',
+        'OP_SERVICE_ACCOUNT_TOKEN=op://x/y/service-account-token',
+      ].join('\n'),
     );
 
     expect(getForbiddenGithubReferenceKeys(refsPath)).toEqual([
       'GH_TOKEN_OP_REF',
       'GITHUB_TOKEN_OP_REF',
+      'OP_SERVICE_ACCOUNT_TOKEN',
     ]);
   });
 
@@ -70,6 +75,22 @@ describe('env bootstrap guardrails', () => {
     expect(forbiddenLiteralEntries(parseEnvEntries(refsPath))).toEqual([
       { key: 'DATABASE_URL', value: 'postgres://example' },
     ]);
+  });
+
+  it('allows non-secret GitHub App ids while keeping autonomous secrets as op refs', () => {
+    const dir = createTempDir();
+    const refsPath = path.join(dir, '.env.local.refs');
+    writeFileSync(
+      refsPath,
+      [
+        'GOVERNADA_GITHUB_APP_ID=12345',
+        'GOVERNADA_GITHUB_APP_INSTALLATION_ID=67890',
+        'GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF=op://Governada-Automation/app/private-key',
+      ].join('\n'),
+    );
+
+    expect(forbiddenLiteralEntries(parseEnvEntries(refsPath))).toEqual([]);
+    expect(getForbiddenGithubReferenceKeys(refsPath)).toEqual([]);
   });
 
   it('rejects raw GitHub token env in repo GitHub wrappers', () => {

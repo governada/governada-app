@@ -27,6 +27,7 @@
     "auth:doctor": "node scripts/auth-doctor.js",
     "github:read-doctor": "node scripts/github-read-doctor.mjs",
     "github:write-doctor": "node scripts/github-write-doctor.mjs",
+    "github:runtime-doctor": "node scripts/github-runtime-doctor.mjs",
     "github:pr-write": "node scripts/github-pr-write.mjs",
     "auth:repair": "node scripts/repair-gh-auth.mjs",
     "env:doctor": "node scripts/env-doctor.mjs",

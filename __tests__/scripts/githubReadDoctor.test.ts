@@ -8,8 +8,11 @@ import {
   EXPECTED_RETURNED_WRITE_PR_PERMISSIONS,
   EXPECTED_REPO_NAME,
   EXPECTED_WRITE_PR_PERMISSIONS,
+  GITHUB_READ_ENV_KEYS,
+  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS,
   buildInstallationTokenRequestBody,
   createGithubAppJwt,
+  evaluateGithubServiceAccountRuntime,
   getGithubReadLaneConfig,
   githubApiRequest,
   githubReadPermissionFailures,
@@ -35,6 +38,112 @@ describe('github read doctor guardrails', () => {
       'GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF',
       'OP_SERVICE_ACCOUNT_TOKEN',
     ]);
+  });
+
+  it('blocks live service-account use when rotation metadata is missing', () => {
+    const runtime = evaluateGithubServiceAccountRuntime(
+      {
+        NODE_ENV: 'test',
+        [GITHUB_READ_ENV_KEYS.serviceAccountToken]: 'ops_example.service-account-token',
+      },
+      new Date('2026-04-25T12:00:00Z'),
+    );
+
+    expect(runtime.tokenPresent).toBe(true);
+    expect(runtime.blockers).toEqual([
+      'GOVERNADA_OP_SERVICE_ACCOUNT_EXPIRES_AT is missing; record non-secret service-account rotation metadata before live GitHub App use',
+      'GOVERNADA_OP_SERVICE_ACCOUNT_ROTATE_AFTER is missing; record non-secret service-account rotation metadata before live GitHub App use',
+    ]);
+  });
+
+  it('allows absent service-account token with advisory-only rotation metadata gaps', () => {
+    const runtime = evaluateGithubServiceAccountRuntime(
+      { NODE_ENV: 'test' },
+      new Date('2026-04-25T12:00:00Z'),
+    );
+
+    expect(runtime.tokenPresent).toBe(false);
+    expect(runtime.blockers).toEqual([]);
+    expect(runtime.advisories).toEqual([
+      'GOVERNADA_OP_SERVICE_ACCOUNT_EXPIRES_AT is missing; record non-secret service-account rotation metadata',
+      'GOVERNADA_OP_SERVICE_ACCOUNT_ROTATE_AFTER is missing; record non-secret service-account rotation metadata',
+    ]);
+  });
+
+  it('advises when the service-account rotation window is open but token is not expired', () => {
+    const runtime = evaluateGithubServiceAccountRuntime(
+      {
+        NODE_ENV: 'test',
+        [GITHUB_READ_ENV_KEYS.serviceAccountToken]: 'ops_example.service-account-token',
+        [GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt]: '2026-05-01T00:00:00Z',
+        [GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter]: '2026-04-24T00:00:00Z',
+      },
+      new Date('2026-04-25T12:00:00Z'),
+    );
+
+    expect(runtime.blockers).toEqual([]);
+    expect(runtime.advisories).toEqual([
+      'service-account token rotation window opened at 2026-04-24T00:00:00.000Z; prepare human-executed rotation',
+    ]);
+  });
+
+  it('blocks expired or near-expiry service-account metadata during live use', () => {
+    const expired = evaluateGithubServiceAccountRuntime(
+      {
+        NODE_ENV: 'test',
+        [GITHUB_READ_ENV_KEYS.serviceAccountToken]: 'ops_example.service-account-token',
+        [GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt]: '2026-04-25T11:59:59Z',
+        [GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter]: '2026-04-18T00:00:00Z',
+      },
+      new Date('2026-04-25T12:00:00Z'),
+    );
+    const nearExpiry = evaluateGithubServiceAccountRuntime(
+      {
+        NODE_ENV: 'test',
+        [GITHUB_READ_ENV_KEYS.serviceAccountToken]: 'ops_example.service-account-token',
+        [GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt]: '2026-04-26T11:00:00Z',
+        [GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter]: '2026-04-18T00:00:00Z',
+      },
+      new Date('2026-04-25T12:00:00Z'),
+    );
+
+    expect(expired.blockers).toContain(
+      'service-account token metadata says token expired at 2026-04-25T11:59:59.000Z',
+    );
+    expect(nearExpiry.blockers).toContain(
+      'service-account token expires within 24 hours at 2026-04-26T11:00:00.000Z; rotate before live GitHub App use',
+    );
+  });
+
+  it('rejects ambiguous or impossible service-account metadata dates', () => {
+    const ambiguous = evaluateGithubServiceAccountRuntime(
+      {
+        NODE_ENV: 'test',
+        [GITHUB_READ_ENV_KEYS.serviceAccountToken]: 'ops_example.service-account-token',
+        [GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt]: '2026-05-25T00:00:00',
+        [GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter]: '2026-05-18',
+      },
+      new Date('2026-04-25T12:00:00Z'),
+    );
+    const impossible = evaluateGithubServiceAccountRuntime(
+      {
+        NODE_ENV: 'test',
+        [GITHUB_READ_ENV_KEYS.serviceAccountToken]: 'ops_example.service-account-token',
+        [GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt]: '2026-02-31',
+        [GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter]: '2026-02-30T00:00:00Z',
+      },
+      new Date('2026-04-25T12:00:00Z'),
+    );
+
+    expect(ambiguous.blockers).toContain(
+      'GOVERNADA_OP_SERVICE_ACCOUNT_EXPIRES_AT must be YYYY-MM-DD or a timezone-qualified ISO timestamp',
+    );
+    expect(impossible.blockers).toContain(
+      'GOVERNADA_OP_SERVICE_ACCOUNT_EXPIRES_AT must contain a real calendar date',
+    );
+    expect(impossible.blockers).toContain(
+      'GOVERNADA_OP_SERVICE_ACCOUNT_ROTATE_AFTER must contain a real calendar date',
+    );
   });
 
   it('rejects inherited raw GitHub token env for the autonomous lane', () => {

@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 
 import {
+  findEnvLocalKeyDefinitions,
   findFirstExisting,
   getEnvRefsCandidates,
   getForbiddenGithubReferenceKeys,
@@ -9,7 +10,11 @@ import {
 import {
   EXPECTED_REPO,
   EXPECTED_REPO_NAME,
+  FORBIDDEN_GITHUB_APP_LOCAL_ENV_KEYS,
+  GITHUB_APP_LOCAL_ENV_KEYS,
   GITHUB_READ_ENV_KEYS,
+  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS,
+  evaluateGithubServiceAccountRuntime,
   getGithubReadLaneConfig,
   githubApiErrorMessage,
   githubApiRequest,
@@ -31,10 +36,17 @@ const GITHUB_READ_REF_KEYS = new Set([
   GITHUB_READ_ENV_KEYS.appId,
   GITHUB_READ_ENV_KEYS.installationId,
   GITHUB_READ_ENV_KEYS.privateKeyRef,
+  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt,
+  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter,
 ]);
 
 function pass(message) {
   console.log(`OK: ${message}`);
+}
+
+function advisory(advisories, message) {
+  advisories.push(message);
+  console.log(`ADVISORY: ${message}`);
 }
 
 function block(blockers, message) {
@@ -44,13 +56,13 @@ function block(blockers, message) {
 
 async function main() {
   const blockers = [];
+  const advisories = [];
   const { repoRoot } = getScriptContext(import.meta.url);
-  const envLocalPath = loadLocalEnv(import.meta.url, [
-    'GOVERNADA_GITHUB_APP_*',
-    'OP_*',
-    'GH_TOKEN',
-    'GITHUB_TOKEN',
-  ]);
+  const forbiddenEnvLocalDefinitions = findEnvLocalKeyDefinitions(
+    repoRoot,
+    FORBIDDEN_GITHUB_APP_LOCAL_ENV_KEYS,
+  );
+  loadLocalEnv(import.meta.url, GITHUB_APP_LOCAL_ENV_KEYS);
   const refsPath = loadGithubReadReferenceEnv(repoRoot);
 
   const context = getContext();
@@ -78,10 +90,10 @@ async function main() {
     }
   }
 
-  if (envLocalPath && envLocalDefines(envLocalPath, GITHUB_READ_ENV_KEYS.serviceAccountToken)) {
+  if (forbiddenEnvLocalDefinitions.length > 0) {
     block(
       blockers,
-      `${GITHUB_READ_ENV_KEYS.serviceAccountToken} must not be defined in plaintext .env.local`,
+      `.env.local must not define ${describeEnvLocalDefinitions(forbiddenEnvLocalDefinitions)} for the autonomous read lane`,
     );
   }
 
@@ -131,6 +143,19 @@ async function main() {
     pass(`${GITHUB_READ_ENV_KEYS.privateKeyRef} is an op:// reference`);
   } else if (config.privateKeyRef) {
     block(blockers, `${GITHUB_READ_ENV_KEYS.privateKeyRef} must be an op:// reference`);
+  }
+
+  const runtime = evaluateGithubServiceAccountRuntime(env);
+  if (config.serviceAccountTokenPresent) {
+    for (const message of runtime.passes) {
+      pass(message);
+    }
+    for (const message of runtime.advisories) {
+      advisory(advisories, message);
+    }
+    for (const message of runtime.blockers) {
+      block(blockers, message);
+    }
   }
 
   if (blockers.length > 0) {
@@ -214,11 +239,16 @@ async function main() {
   }
 
   console.log('');
+  if (advisories.length > 0) {
+    console.log(`GitHub read doctor result: OK_WITH_ADVISORIES (${advisories.length})`);
+    return;
+  }
+
   console.log('GitHub read doctor result: OK');
 }
 
-function envLocalDefines(filePath, key) {
-  return parseEnvEntries(filePath).some((entry) => entry.key === key);
+function describeEnvLocalDefinitions(definitions) {
+  return definitions.map((definition) => `${definition.key} (${definition.filePath})`).join(', ');
 }
 
 function loadGithubReadReferenceEnv(repoRoot) {

@@ -5,6 +5,9 @@ const OP_READ_TIMEOUT_MS = 15000;
 const DEFAULT_GITHUB_API_VERSION = '2022-11-28';
 const GITHUB_API_BASE_URL = 'https://api.github.com';
 const RAW_GITHUB_TOKEN_KEYS = ['GH_TOKEN', 'GITHUB_TOKEN'];
+const ISO_DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/u;
+const ISO_TIMESTAMP_WITH_TIMEZONE_RE =
+  /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 
 export const EXPECTED_REPO = 'governada/app';
 export const EXPECTED_OWNER = 'governada';
@@ -33,6 +36,26 @@ export const GITHUB_READ_ENV_KEYS = Object.freeze({
   privateKeyRef: 'GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF',
   serviceAccountToken: 'OP_SERVICE_ACCOUNT_TOKEN',
 });
+export const GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS = Object.freeze({
+  expiresAt: 'GOVERNADA_OP_SERVICE_ACCOUNT_EXPIRES_AT',
+  rotateAfter: 'GOVERNADA_OP_SERVICE_ACCOUNT_ROTATE_AFTER',
+});
+export const FORBIDDEN_GITHUB_APP_LOCAL_ENV_KEYS = Object.freeze([
+  GITHUB_READ_ENV_KEYS.serviceAccountToken,
+  'GH_TOKEN',
+  'GITHUB_TOKEN',
+  'OP_CONNECT_HOST',
+  'OP_CONNECT_TOKEN',
+]);
+export const GITHUB_APP_LOCAL_ENV_KEYS = Object.freeze([
+  GITHUB_READ_ENV_KEYS.appId,
+  GITHUB_READ_ENV_KEYS.installationId,
+  GITHUB_READ_ENV_KEYS.privateKeyRef,
+  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt,
+  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter,
+]);
+
+const SERVICE_ACCOUNT_EXPIRY_BLOCKER_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -67,6 +90,8 @@ export function getGithubReadLaneConfig(env = process.env) {
     appId: env[GITHUB_READ_ENV_KEYS.appId] || '',
     installationId: env[GITHUB_READ_ENV_KEYS.installationId] || '',
     privateKeyRef: env[GITHUB_READ_ENV_KEYS.privateKeyRef] || '',
+    serviceAccountExpiresAt: env[GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt] || '',
+    serviceAccountRotateAfter: env[GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter] || '',
     serviceAccountTokenPresent: Boolean(env[GITHUB_READ_ENV_KEYS.serviceAccountToken]),
     rawGithubTokenKeys: RAW_GITHUB_TOKEN_KEYS.filter((key) => Boolean(env[key])),
     opConnectKeys: ['OP_CONNECT_HOST', 'OP_CONNECT_TOKEN'].filter((key) => Boolean(env[key])),
@@ -102,6 +127,120 @@ export function missingGithubReadLaneKeys(config) {
 
 export function isValidOpReference(value) {
   return /^op:\/\/[^/\s]+\/[^/\s]+\/[^/\s]+/.test(value);
+}
+
+export function evaluateGithubServiceAccountRuntime(env = process.env, now = new Date()) {
+  const blockers = [];
+  const advisories = [];
+  const passes = [];
+  const tokenPresent = Boolean(env[GITHUB_READ_ENV_KEYS.serviceAccountToken]);
+  const expiresAtValue = env[GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt] || '';
+  const rotateAfterValue = env[GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter] || '';
+  const nowMs = now.getTime();
+
+  if (tokenPresent) {
+    passes.push('service-account token is present only in process env');
+  } else {
+    passes.push('service-account token is not present in this process');
+  }
+
+  const expiresAt = parseRuntimeDate(
+    expiresAtValue,
+    GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt,
+    tokenPresent,
+    blockers,
+    advisories,
+  );
+  const rotateAfter = parseRuntimeDate(
+    rotateAfterValue,
+    GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter,
+    tokenPresent,
+    blockers,
+    advisories,
+  );
+
+  if (expiresAt) {
+    const expiresInMs = expiresAt.getTime() - nowMs;
+    if (expiresInMs <= 0) {
+      blockers.push(
+        `service-account token metadata says token expired at ${expiresAt.toISOString()}`,
+      );
+    } else if (tokenPresent && expiresInMs <= SERVICE_ACCOUNT_EXPIRY_BLOCKER_WINDOW_MS) {
+      blockers.push(
+        `service-account token expires within 24 hours at ${expiresAt.toISOString()}; rotate before live GitHub App use`,
+      );
+    } else {
+      passes.push(`service-account token expiry metadata is ${expiresAt.toISOString()}`);
+    }
+  }
+
+  if (rotateAfter && expiresAt && rotateAfter.getTime() > expiresAt.getTime()) {
+    blockers.push(
+      `${GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter} must be on or before ${GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt}`,
+    );
+  } else if (rotateAfter) {
+    if (rotateAfter.getTime() <= nowMs) {
+      advisories.push(
+        `service-account token rotation window opened at ${rotateAfter.toISOString()}; prepare human-executed rotation`,
+      );
+    } else {
+      passes.push(`service-account token rotation window opens at ${rotateAfter.toISOString()}`);
+    }
+  }
+
+  return {
+    advisories,
+    blockers,
+    expiresAt: expiresAt?.toISOString() || '',
+    passes,
+    rotateAfter: rotateAfter?.toISOString() || '',
+    tokenPresent,
+  };
+}
+
+function parseRuntimeDate(value, key, tokenPresent, blockers, advisories) {
+  if (!value) {
+    const message = `${key} is missing; record non-secret service-account rotation metadata`;
+    if (tokenPresent) {
+      blockers.push(`${message} before live GitHub App use`);
+    } else {
+      advisories.push(message);
+    }
+    return null;
+  }
+
+  const dateOnlyMatch = value.match(ISO_DATE_ONLY_RE);
+  const timestampMatch = value.match(ISO_TIMESTAMP_WITH_TIMEZONE_RE);
+  if (!dateOnlyMatch && !timestampMatch) {
+    blockers.push(`${key} must be YYYY-MM-DD or a timezone-qualified ISO timestamp`);
+    return null;
+  }
+
+  const match = dateOnlyMatch || timestampMatch;
+  if (!isValidDateParts(match[1], match[2], match[3])) {
+    blockers.push(`${key} must contain a real calendar date`);
+    return null;
+  }
+
+  const normalized = dateOnlyMatch ? `${value}T00:00:00Z` : value;
+  const timestamp = Date.parse(normalized);
+  if (!Number.isFinite(timestamp)) {
+    blockers.push(`${key} must be YYYY-MM-DD or a timezone-qualified ISO timestamp`);
+    return null;
+  }
+
+  return new Date(timestamp);
+}
+
+function isValidDateParts(yearValue, monthValue, dayValue) {
+  const year = Number(yearValue);
+  const month = Number(monthValue);
+  const day = Number(dayValue);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  );
 }
 
 /**

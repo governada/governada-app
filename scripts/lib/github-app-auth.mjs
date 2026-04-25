@@ -20,10 +20,6 @@ export const EXPECTED_RETURNED_READ_PERMISSIONS = Object.freeze({
   metadata: 'read',
 });
 export const EXPECTED_WRITE_PR_PERMISSIONS = Object.freeze({
-  actions: 'read',
-  checks: 'read',
-  contents: 'write',
-  issues: 'write',
   pull_requests: 'write',
 });
 export const EXPECTED_RETURNED_WRITE_PR_PERMISSIONS = Object.freeze({
@@ -57,10 +53,7 @@ export function redactSensitiveText(
   }
 
   return redacted
-    .replace(
-      /-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/g,
-      '[redacted-pem-block]',
-    )
+    .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/g, '[redacted-pem-block]')
     .replace(/op:\/\/[^\r\n'"]+/g, 'op://[redacted]')
     .replace(/github_pat_[A-Za-z0-9_]+/g, 'github_pat_[redacted]')
     .replace(/\bghs_[A-Za-z0-9_]+\b/g, '[redacted-gh-installation-token]')
@@ -288,6 +281,54 @@ export async function githubApiRequest({
   }
 }
 
+export async function githubGraphqlRequest({ query, variables = {}, token, timeoutMs = 15000 }) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`${GITHUB_API_BASE_URL}/graphql`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'governada-agent-auth-doctor',
+        'X-GitHub-Api-Version': DEFAULT_GITHUB_API_VERSION,
+      },
+      body: JSON.stringify({ query, variables }),
+      signal: controller.signal,
+    });
+
+    const text = await response.text();
+    let data = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { message: text };
+      }
+    }
+
+    return {
+      ok: response.ok && !data?.errors?.length,
+      status: response.status,
+      data,
+    };
+  } catch (error) {
+    const errorName = error?.name || 'Error';
+    const errorMessage = error?.message ? `: ${error.message}` : '';
+    return {
+      ok: false,
+      status: 0,
+      data: {
+        message: redactSensitiveText(`${errorName}${errorMessage}`),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function mintInstallationToken({
   appId,
   installationId,
@@ -336,7 +377,15 @@ export async function mintInstallationToken({
 }
 
 export function githubApiErrorMessage(response, prefix) {
-  const detail = response.data?.message ? `: ${response.data.message}` : '';
+  const graphQlErrors = response.data?.errors
+    ?.map((error) => error?.message)
+    .filter(Boolean)
+    .join('; ');
+  const detail = response.data?.message
+    ? `: ${response.data.message}`
+    : graphQlErrors
+      ? `: ${graphQlErrors}`
+      : '';
   return redactSensitiveText(`${prefix} (${response.status})${detail}`);
 }
 

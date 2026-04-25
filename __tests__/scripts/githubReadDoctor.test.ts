@@ -65,10 +65,6 @@ describe('github read doctor guardrails', () => {
     expect(body.repositories).toEqual([EXPECTED_REPO_NAME]);
     expect(body.permissions).toEqual(EXPECTED_WRITE_PR_PERMISSIONS);
     expect(body.permissions).toEqual({
-      actions: 'read',
-      checks: 'read',
-      contents: 'write',
-      issues: 'write',
       pull_requests: 'write',
     });
     expect(body.permissions).not.toHaveProperty('administration');
@@ -119,18 +115,15 @@ describe('github read doctor guardrails', () => {
     });
 
     expect(failures).toEqual([
-      'checks=write (expected read)',
+      'checks=write (unexpected permission)',
       'administration=write (unexpected permission)',
     ]);
     expect(
       githubWritePrPermissionFailures({
-        actions: 'read',
-        checks: 'read',
-        contents: 'write',
         pull_requests: 'write',
         metadata: 'read',
       }),
-    ).toEqual(['issues=missing (expected write)']);
+    ).toEqual([]);
   });
 
   it('creates a short-lived GitHub App JWT without embedding secret material in claims', () => {

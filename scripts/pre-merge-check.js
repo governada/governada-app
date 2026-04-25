@@ -13,7 +13,7 @@ if (!Number.isInteger(prNumber) || prNumber <= 0) {
   process.exit(1);
 }
 
-const repo = 'governada/governada-app';
+const repo = 'governada/app';
 const baseBranch = 'main';
 
 async function main() {

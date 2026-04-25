@@ -435,7 +435,7 @@ function PillarBreakdown({ data }: { data: ProfileData }) {
         />
       </div>
       <a
-        href="https://github.com/governada/governada-app/discussions"
+        href="https://github.com/governada/app/discussions"
         target="_blank"
         rel="noopener noreferrer"
         className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline"

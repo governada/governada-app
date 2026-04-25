@@ -4,9 +4,9 @@ const { redactSensitiveText } = require('./lib/gh-auth');
 const { loadLocalEnv, repoRoot, runGh } = require('./lib/runtime');
 const { getContext } = require('./set-gh-context');
 
-const EXPECTED_REPO = 'governada/governada-app';
+const EXPECTED_REPO = 'governada/app';
 const EXPECTED_OP_ACCOUNT = 'my.1password.com';
-const EXPECTED_GH_USER = 'governada';
+const EXPECTED_GH_USER = 'tim-governada';
 const OP_READ_TIMEOUT_MS = 15000;
 
 function detailFrom(result) {

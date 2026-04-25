@@ -1108,7 +1108,7 @@ export default function MethodologyPage() {
             incorrect, we want to hear from you.
           </p>
           <a
-            href="https://github.com/governada/governada-app/discussions"
+            href="https://github.com/governada/app/discussions"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"

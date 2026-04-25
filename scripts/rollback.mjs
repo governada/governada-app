@@ -11,7 +11,7 @@ import {
   normalizeBaseUrl,
 } from './lib/runtime.mjs';
 
-const REPO = 'governada/governada-app';
+const REPO = 'governada/app';
 const PROD_URL = 'https://governada.io';
 const HEALTH_ENDPOINT = '/api/health';
 

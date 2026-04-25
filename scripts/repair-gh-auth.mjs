@@ -2,8 +2,8 @@
 
 import { commandOutput, getScriptContext, ghOutput } from './lib/runtime.mjs';
 
-const EXPECTED_USER = 'governada';
-const CANONICAL_REMOTE = 'git@github-governada:governada/governada-app.git';
+const EXPECTED_USER = 'tim-governada';
+const CANONICAL_REMOTE = 'git@github-governada:governada/app.git';
 const { repoRoot } = getScriptContext(import.meta.url);
 
 function log(message) {

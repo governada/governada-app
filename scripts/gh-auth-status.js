@@ -26,7 +26,7 @@ function main() {
     console.log('GitHub token source: 1Password reference');
   }
 
-  const repo = process.env.GH_REPO || 'governada/governada-app';
+  const repo = process.env.GH_REPO || 'governada/app';
   const repoCheck = runGh(['api', `repos/${repo}`, '--jq', '.full_name']);
   if (repoCheck.status !== 0) {
     console.error(`Repo access: FAILED (${repo})`);

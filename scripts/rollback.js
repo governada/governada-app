@@ -10,7 +10,7 @@ const args = process.argv.slice(2);
 const revertCommit = args.includes('--revert-commit');
 const force = args.includes('--force');
 
-const repo = 'governada/governada-app';
+const repo = 'governada/app';
 const prodUrl = 'https://governada.io';
 const healthEndpoint = '/api/health';
 const maxWaitSeconds = 300;

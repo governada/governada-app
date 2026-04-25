@@ -4,7 +4,7 @@ const prNumber = Number.parseInt(
   requireArg(process.argv.slice(2), 0, 'pre-merge-check.mjs <pr-number>'),
   10,
 );
-const repo = 'governada/governada-app';
+const repo = 'governada/app';
 const baseBranch = 'main';
 const { repoRoot } = getScriptContext(import.meta.url);
 

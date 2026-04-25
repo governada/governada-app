@@ -50,7 +50,7 @@ function parseArgs(argv) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  const repo = process.env.GH_REPO || 'governada/governada-app';
+  const repo = process.env.GH_REPO || 'governada/app';
   const request = [
     'api',
     `repos/${repo}/pulls/${args.prNumber}/merge`,

@@ -814,7 +814,7 @@ Above ceiling    → cap 95 (never 100)`}</pre>
           This methodology is open for public review. If you identify a flaw, gaming vector, or
           bias, please{' '}
           <Link
-            href="https://github.com/governada/governada-app/issues"
+            href="https://github.com/governada/app/issues"
             className="text-cyan-400 hover:underline"
             target="_blank"
           >

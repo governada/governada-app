@@ -6,9 +6,9 @@ const DEFAULT_GITHUB_API_VERSION = '2022-11-28';
 const GITHUB_API_BASE_URL = 'https://api.github.com';
 const RAW_GITHUB_TOKEN_KEYS = ['GH_TOKEN', 'GITHUB_TOKEN'];
 
-export const EXPECTED_REPO = 'governada/governada-app';
+export const EXPECTED_REPO = 'governada/app';
 export const EXPECTED_OWNER = 'governada';
-export const EXPECTED_REPO_NAME = 'governada-app';
+export const EXPECTED_REPO_NAME = 'app';
 export const EXPECTED_READ_PERMISSIONS = Object.freeze({
   actions: 'read',
   checks: 'read',

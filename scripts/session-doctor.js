@@ -3,7 +3,7 @@ const path = require('node:path');
 
 const { repoRoot, runCommand } = require('./lib/runtime');
 
-const EXPECTED_ORIGIN_REMOTE = 'git@github-governada:governada/governada-app.git';
+const EXPECTED_ORIGIN_REMOTE = 'git@github-governada:governada/app.git';
 
 function parseArgs(argv) {
   const options = {

@@ -6,7 +6,7 @@ restartPolicyType = "ALWAYS"
 
 # Required Railway env vars (set via Railway dashboard):
 #   ACCESS_TOKEN   - GitHub PAT with repo scope (governada account)
-#   REPO_URL       - https://github.com/governada/governada-app
+#   REPO_URL       - https://github.com/governada/app
 #   RUNNER_NAME    - governada-railway-1
 #   RUNNER_SCOPE   - repo
 #   LABELS         - self-hosted,linux,x64

@@ -102,8 +102,14 @@ describe('env bootstrap guardrails', () => {
 
   it('strips inherited raw GitHub tokens from env:run child commands', () => {
     const cwd = createRepoTempDir();
+    const fakeBin = createTempDir('governada-env-bootstrap-bin-');
     writeFileSync(path.join(cwd, '.env.local'), 'NODE_ENV=test\n');
     writeFileSync(path.join(cwd, '.env.local.refs'), 'NODE_ENV=test\n');
+    writeFileSync(
+      path.join(fakeBin, 'op'),
+      '#!/bin/sh\nif [ "$1" = "--version" ]; then echo "2.34.0"; exit 0; fi\nexit 1\n',
+      { mode: 0o755 },
+    );
 
     const result = spawnSync(
       'node',
@@ -119,6 +125,7 @@ describe('env bootstrap guardrails', () => {
         env: {
           ...process.env,
           GH_TOKEN: 'dummy-token',
+          PATH: `${fakeBin}${path.delimiter}${process.env.PATH || ''}`,
         },
       },
     );

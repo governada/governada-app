@@ -18,6 +18,8 @@ export const LITERAL_ENV_ALLOWLIST = new Set([
   'DEV_MOCK_AUTH',
   'GOVERNADA_GITHUB_APP_ID',
   'GOVERNADA_GITHUB_APP_INSTALLATION_ID',
+  'GOVERNADA_OP_SERVICE_ACCOUNT_EXPIRES_AT',
+  'GOVERNADA_OP_SERVICE_ACCOUNT_ROTATE_AFTER',
   'NODE_ENV',
   'NEXT_PUBLIC_KOIOS_BASE_URL',
   'NEXT_PUBLIC_POSTHOG_HOST',
@@ -104,7 +106,54 @@ export function findRepoRootForPath(repoRoot, filePath) {
 }
 
 export function parseEnvKeys(filePath) {
-  return parseEnvEntries(filePath).map((entry) => entry.key);
+  return parseEnvKeyDefinitions(filePath).map((entry) => entry.key);
+}
+
+export function parseEnvKeyDefinitions(filePath) {
+  const keys = [];
+  const contents = readFileSync(filePath, 'utf8');
+
+  for (const rawLine of contents.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+
+    const normalizedLine = line.startsWith('export ') ? line.slice(7).trimStart() : line;
+    const separatorIndex = normalizedLine.indexOf('=');
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = normalizedLine.slice(0, separatorIndex).trim();
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/u.test(key)) {
+      keys.push({ key });
+    }
+  }
+
+  return keys;
+}
+
+export function findEnvLocalKeyDefinitions(repoRoot, keys, cwd = process.cwd()) {
+  const keySet = new Set(keys);
+  const definitions = [];
+
+  for (const filePath of getEnvLocalCandidates(repoRoot, cwd)) {
+    if (!existsSync(filePath)) {
+      continue;
+    }
+
+    for (const entry of parseEnvKeyDefinitions(filePath)) {
+      if (keySet.has(entry.key)) {
+        definitions.push({
+          filePath,
+          key: entry.key,
+        });
+      }
+    }
+  }
+
+  return definitions;
 }
 
 export function parseEnvEntries(filePath) {

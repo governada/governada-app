@@ -6,7 +6,7 @@ const {
   renderContent,
   stripFooter,
 } = require('./generate-registry-index.js');
-const { repoRoot } = require('./lib/runtime');
+const { repoRoot, runCommand } = require('./lib/runtime');
 
 const manifestPath = path.join(repoRoot, 'docs', 'strategy', 'context', 'build-manifest.md');
 const visionPath = path.join(repoRoot, 'docs', 'strategy', 'ultimate-vision.md');
@@ -91,14 +91,17 @@ function checkManifestFreshness(results) {
     return;
   }
 
-  const manifestMtime = fs.statSync(manifestPath).mtimeMs;
-  const visionMtime = fs.statSync(visionPath).mtimeMs;
+  const gitFreshness = getGitFreshness(manifestPath, visionPath);
+  const manifestMtime = gitFreshness?.manifestTime ?? fs.statSync(manifestPath).mtimeMs;
+  const visionMtime = gitFreshness?.visionTime ?? fs.statSync(visionPath).mtimeMs;
   if (manifestMtime >= visionMtime) {
     record(
       results,
       true,
       'Manifest freshness',
-      'build-manifest.md is up to date with ultimate-vision.md',
+      gitFreshness
+        ? 'build-manifest.md is up to date with ultimate-vision.md by Git history'
+        : 'build-manifest.md is up to date with ultimate-vision.md',
     );
   } else {
     record(
@@ -108,6 +111,38 @@ function checkManifestFreshness(results) {
       'build-manifest.md is older than ultimate-vision.md',
     );
   }
+}
+
+function getGitFreshness(manifest, vision) {
+  const relativeManifest = path.relative(repoRoot, manifest);
+  const relativeVision = path.relative(repoRoot, vision);
+  const dirty = runCommand(
+    'git',
+    ['status', '--porcelain', '--', relativeManifest, relativeVision],
+    {
+      cwd: repoRoot,
+    },
+  );
+
+  if (dirty.status !== 0 || dirty.stdout.trim()) {
+    return null;
+  }
+
+  const manifestTime = getGitFileTimestamp(relativeManifest);
+  const visionTime = getGitFileTimestamp(relativeVision);
+  if (manifestTime == null || visionTime == null) {
+    return null;
+  }
+
+  return { manifestTime, visionTime };
+}
+
+function getGitFileTimestamp(relativePath) {
+  const result = runCommand('git', ['log', '-1', '--format=%ct', '--', relativePath], {
+    cwd: repoRoot,
+  });
+  const timestamp = Number.parseInt(result.stdout.trim(), 10);
+  return result.status === 0 && Number.isFinite(timestamp) ? timestamp * 1000 : null;
 }
 
 function checkRegistryIndex(results) {

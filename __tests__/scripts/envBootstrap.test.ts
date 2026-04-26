@@ -7,6 +7,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  findEnvLocalKeyDefinitions,
   forbiddenLiteralEntries,
   getForbiddenGithubReferenceKeys,
   parseEnvEntries,
@@ -85,6 +86,8 @@ describe('env bootstrap guardrails', () => {
       [
         'GOVERNADA_GITHUB_APP_ID=12345',
         'GOVERNADA_GITHUB_APP_INSTALLATION_ID=67890',
+        'GOVERNADA_OP_SERVICE_ACCOUNT_EXPIRES_AT=2026-05-25T00:00:00Z',
+        'GOVERNADA_OP_SERVICE_ACCOUNT_ROTATE_AFTER=2026-05-18T00:00:00Z',
         'GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF=op://Governada-Automation/app/private-key',
       ].join('\n'),
     );
@@ -181,12 +184,59 @@ describe('env bootstrap guardrails', () => {
     expect(result.stdout).not.toContain('should-not-run');
   });
 
+  it('finds forbidden local env keys without returning their values', () => {
+    const cwd = createRepoTempDir();
+    writeFileSync(
+      path.join(cwd, '.env.local'),
+      [
+        'OP_SERVICE_ACCOUNT_TOKEN=ops_should-not-return',
+        'GH_TOKEN=ghp_should-not-return',
+        'GOVERNADA_GITHUB_APP_ID=12345',
+      ].join('\n'),
+    );
+
+    const definitions = findEnvLocalKeyDefinitions(
+      repoRoot,
+      ['OP_SERVICE_ACCOUNT_TOKEN', 'GH_TOKEN'],
+      cwd,
+    );
+
+    expect(definitions).toContainEqual({
+      filePath: path.join(cwd, '.env.local'),
+      key: 'OP_SERVICE_ACCOUNT_TOKEN',
+    });
+    expect(definitions).toContainEqual({ filePath: path.join(cwd, '.env.local'), key: 'GH_TOKEN' });
+    expect(JSON.stringify(definitions)).not.toContain('should-not-return');
+  });
+
   it('keeps worktree setup from copying plaintext .env.local files', () => {
     const newWorktree = readFileSync(path.join(repoRoot, 'scripts/new-worktree.mjs'), 'utf8');
     const syncWorktree = readFileSync(path.join(repoRoot, 'scripts/sync-worktree.mjs'), 'utf8');
 
     expect(newWorktree).not.toContain('copyFileSync');
     expect(syncWorktree).not.toContain('copyFileSync');
+  });
+
+  it('keeps GitHub App wrappers on exact local-env keys instead of broad prefixes', () => {
+    const checkedFiles = [
+      'scripts/github-read-doctor.mjs',
+      'scripts/github-runtime-doctor.mjs',
+      'scripts/github-runtime-broker.mjs',
+      'scripts/github-ship-doctor.mjs',
+      'scripts/github-write-doctor.mjs',
+      'scripts/github-pr-write.mjs',
+      'scripts/github-merge-doctor.mjs',
+      'scripts/github-merge.mjs',
+    ];
+
+    for (const relativePath of checkedFiles) {
+      const content = readFileSync(path.join(repoRoot, relativePath), 'utf8');
+
+      expect(content).toContain('GITHUB_APP_LOCAL_ENV_KEYS');
+      expect(content).not.toContain("'GOVERNADA_GITHUB_APP_*'");
+      expect(content).not.toContain("'GOVERNADA_OP_SERVICE_ACCOUNT_*'");
+      expect(content).not.toContain("'OP_*'");
+    }
   });
 
   it('does not load shared-checkout .env.local from runtime helpers', () => {

@@ -39,13 +39,17 @@ HEARTBEAT_URL_ALIGNMENT=op://<vault>/<item>/heartbeat-url-alignment
 HEARTBEAT_URL_FRESHNESS_GUARD=op://<vault>/<item>/heartbeat-url-freshness-guard
 HEARTBEAT_URL_EPOCH_SUMMARY=op://<vault>/<item>/heartbeat-url-epoch-summary
 
-# Optional Phase 0B autonomous github.read pilot.
+# Optional Phase 0B autonomous GitHub App lane.
 # Use only after Tim approves the GitHub App and 1Password service-account setup.
-# The IDs are non-secret. The private key and service account token must remain
-# in the narrow automation vault and must not be pasted.
-# OP_SERVICE_ACCOUNT_TOKEN must not live in this file; provide it through an
-# approved secure runtime environment or mount before running github:read-doctor.
+# The IDs and rotation timestamps are non-secret. The private key and service
+# account token must remain in the narrow automation vault and must not be pasted.
+# OP_SERVICE_ACCOUNT_TOKEN must not live in this file. Preferred live use is
+# Tim starting `npm run github:runtime-broker` from Terminal with that token in
+# process env; agents then call repo-local wrappers without receiving the token.
+# Direct token-bearing doctors/wrappers remain human-present fallback only.
 GOVERNADA_GITHUB_APP_ID=123456
 GOVERNADA_GITHUB_APP_INSTALLATION_ID=12345678
 GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF=op://<automation-vault>/<github-app-item>/private-key
+GOVERNADA_OP_SERVICE_ACCOUNT_EXPIRES_AT=2026-05-25T00:00:00Z
+GOVERNADA_OP_SERVICE_ACCOUNT_ROTATE_AFTER=2026-05-18T00:00:00Z
 ```

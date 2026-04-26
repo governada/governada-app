@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 
 import {
+  findEnvLocalKeyDefinitions,
   findFirstExisting,
   getEnvRefsCandidates,
   getForbiddenGithubReferenceKeys,
@@ -8,20 +9,26 @@ import {
 } from './lib/env-bootstrap.mjs';
 import {
   EXPECTED_REPO,
-  EXPECTED_WRITE_PR_PERMISSIONS,
+  EXPECTED_SHIP_PR_PERMISSIONS,
+  FORBIDDEN_GITHUB_APP_LOCAL_ENV_KEYS,
+  GITHUB_APP_LOCAL_ENV_KEYS,
+  GITHUB_OPERATION_CLASSES,
   GITHUB_READ_ENV_KEYS,
+  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS,
+  evaluateGithubServiceAccountRuntime,
   getGithubReadLaneConfig,
   githubApiErrorMessage,
   githubApiRequest,
   githubGraphqlRequest,
-  githubWritePrPermissionFailures,
+  githubShipPrPermissionFailures,
   isValidOpReference,
   mintInstallationToken,
   readPrivateKeyFromOnePassword,
   redactSensitiveText,
-  summarizeGithubWritePrPermissions,
+  summarizeGithubShipPrPermissions,
   verifyGithubAppOwner,
 } from './lib/github-app-auth.mjs';
+import { callGithubBroker, isGithubBrokerAvailable } from './lib/github-broker-client.mjs';
 import {
   assertAllowedGithubPrWritePlan,
   buildGithubPrWritePlan,
@@ -39,6 +46,8 @@ const GITHUB_WRITE_REF_KEYS = new Set([
   GITHUB_READ_ENV_KEYS.appId,
   GITHUB_READ_ENV_KEYS.installationId,
   GITHUB_READ_ENV_KEYS.privateKeyRef,
+  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt,
+  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter,
 ]);
 
 function pass(message) {
@@ -70,7 +79,7 @@ async function main() {
 
   console.log('GitHub PR write: Governada autonomous GitHub App lane');
   console.log('Capability: github.app.installation.governada.pilot');
-  console.log('Operation class: github.write.pr');
+  console.log(`Operation class: ${GITHUB_OPERATION_CLASSES.shipPr}`);
   console.log(
     `Mutation policy: ${plan.execute ? 'execute explicitly requested' : 'dry-run only; no repository write endpoint is called'}`,
   );
@@ -78,12 +87,11 @@ async function main() {
   console.log(`Planned request: ${plan.method} ${plan.path}`);
   console.log(`Planned payload: ${JSON.stringify(redactGithubPrWritePlan(plan).body)}`);
 
-  const envLocalPath = loadLocalEnv(import.meta.url, [
-    'GOVERNADA_GITHUB_APP_*',
-    'OP_*',
-    'GH_TOKEN',
-    'GITHUB_TOKEN',
-  ]);
+  const forbiddenEnvLocalDefinitions = findEnvLocalKeyDefinitions(
+    repoRoot,
+    FORBIDDEN_GITHUB_APP_LOCAL_ENV_KEYS,
+  );
+  loadLocalEnv(import.meta.url, GITHUB_APP_LOCAL_ENV_KEYS);
   const refsPath = loadGithubWriteReferenceEnv(repoRoot);
 
   const context = getContext();
@@ -95,7 +103,7 @@ async function main() {
 
   if (refsPath) {
     pass(
-      '.env.local.refs was inspected for github.write.pr reference metadata without resolving values',
+      `.env.local.refs was inspected for ${GITHUB_OPERATION_CLASSES.shipPr} reference metadata without resolving values`,
     );
 
     const forbiddenRefsKeys = getForbiddenGithubReferenceKeys(refsPath);
@@ -107,10 +115,10 @@ async function main() {
     }
   }
 
-  if (envLocalPath && envLocalDefines(envLocalPath, GITHUB_READ_ENV_KEYS.serviceAccountToken)) {
+  if (forbiddenEnvLocalDefinitions.length > 0) {
     block(
       blockers,
-      `${GITHUB_READ_ENV_KEYS.serviceAccountToken} must not be defined in plaintext .env.local`,
+      `.env.local must not define ${describeEnvLocalDefinitions(forbiddenEnvLocalDefinitions)} for the autonomous write lane`,
     );
   }
 
@@ -132,7 +140,7 @@ async function main() {
   if (config.rawGithubTokenKeys.length > 0) {
     block(
       blockers,
-      `raw ${config.rawGithubTokenKeys.join('/')} env is present; autonomous github.write.pr must not use human or raw GitHub tokens`,
+      `raw ${config.rawGithubTokenKeys.join('/')} env is present; autonomous ${GITHUB_OPERATION_CLASSES.shipPr} must not use human or raw GitHub tokens`,
     );
   } else {
     pass('raw GitHub token env is not present');
@@ -153,9 +161,28 @@ async function main() {
     block(blockers, `${GITHUB_READ_ENV_KEYS.privateKeyRef} must be an op:// reference`);
   }
 
+  const runtime = evaluateGithubServiceAccountRuntime(env);
+  const brokerAvailable = isGithubBrokerAvailable(repoRoot, env);
+  if (brokerAvailable) {
+    pass(
+      'GitHub runtime broker socket is available; agent process does not need service-account token',
+    );
+  }
+  if (plan.execute && config.serviceAccountTokenPresent) {
+    for (const message of runtime.passes) {
+      pass(message);
+    }
+    for (const message of runtime.advisories) {
+      advisory(advisories, message);
+    }
+    for (const message of runtime.blockers) {
+      block(blockers, message);
+    }
+  }
+
   advisory(
     advisories,
-    'This wrapper is limited to draft PR creation, title/body update on draft PRs, or marking draft PRs ready for review; comments, branch pushes, merge, deploy, production mutation, and secret changes remain approval-gated.',
+    'This wrapper is limited to draft PR creation, title/body update on draft PRs, or marking draft PRs ready for review; merge, deploy mutation, production sync, secret changes, billing/admin, branch protection, and credential rotation remain separately gated.',
   );
 
   if (!plan.execute) {
@@ -170,18 +197,27 @@ async function main() {
     return;
   }
 
-  if (config.missingKeys.length > 0) {
+  const missingKeys = brokerAvailable
+    ? config.missingKeys.filter((key) => key !== GITHUB_READ_ENV_KEYS.serviceAccountToken)
+    : config.missingKeys;
+  if (missingKeys.length > 0) {
     block(
       blockers,
-      `autonomous github.write.pr lane is not configured; missing ${config.missingKeys.join(', ')}`,
+      `autonomous ${GITHUB_OPERATION_CLASSES.shipPr} lane is not configured; missing ${missingKeys.join(', ')}`,
     );
   } else {
-    pass('all autonomous github.write.pr configuration keys are present');
+    pass(`all autonomous ${GITHUB_OPERATION_CLASSES.shipPr} configuration keys are present`);
   }
 
   if (blockers.length > 0) {
     writeResult('BLOCKED', blockers, advisories);
     process.exit(1);
+  }
+
+  if (brokerAvailable) {
+    await executeGithubPrWritePlanWithBroker(plan, repoRoot, env, blockers);
+    writeResult(blockers.length > 0 ? 'BLOCKED' : 'OK', blockers, advisories);
+    process.exit(blockers.length > 0 ? 1 : 0);
   }
 
   const tokenResult = await mintWritePrToken({ config, env, repoRoot, blockers });
@@ -219,7 +255,7 @@ async function mintWritePrToken({ blockers, config, env, repoRoot }) {
   const mintResult = await mintInstallationToken({
     appId: config.appId,
     installationId: config.installationId,
-    permissions: EXPECTED_WRITE_PR_PERMISSIONS,
+    permissions: EXPECTED_SHIP_PR_PERMISSIONS,
     privateKey: privateKeyResult.privateKey,
   });
   if (mintResult.error) {
@@ -227,7 +263,7 @@ async function mintWritePrToken({ blockers, config, env, repoRoot }) {
     return {};
   }
 
-  pass('minted short-lived GitHub App installation token for github.write.pr');
+  pass(`minted short-lived GitHub App installation token for ${GITHUB_OPERATION_CLASSES.shipPr}`);
   if (mintResult.expiresAt) {
     pass(`installation token includes expiry ${mintResult.expiresAt}`);
   }
@@ -242,15 +278,15 @@ async function mintWritePrToken({ blockers, config, env, repoRoot }) {
     );
   }
 
-  const permissionFailures = githubWritePrPermissionFailures(mintResult.permissions);
+  const permissionFailures = githubShipPrPermissionFailures(mintResult.permissions);
   if (permissionFailures.length === 0) {
     pass(
-      `installation token permissions satisfy github.write.pr: ${summarizeGithubWritePrPermissions(mintResult.permissions)}`,
+      `installation token permissions satisfy ${GITHUB_OPERATION_CLASSES.shipPr}: ${summarizeGithubShipPrPermissions(mintResult.permissions)}`,
     );
   } else {
     block(
       blockers,
-      `installation token permissions do not satisfy github.write.pr: ${summarizeGithubWritePrPermissions(mintResult.permissions)}`,
+      `installation token permissions do not satisfy ${GITHUB_OPERATION_CLASSES.shipPr}: ${summarizeGithubShipPrPermissions(mintResult.permissions)}`,
     );
   }
 
@@ -302,6 +338,55 @@ async function executeGithubPrWritePlan(plan, token, blockers) {
   }
 
   pass(`updated PR #${response.data?.number || plan.prNumber}`);
+}
+
+async function executeGithubPrWritePlanWithBroker(plan, repoRoot, env, blockers) {
+  if (plan.operation === 'ready') {
+    await executeReadyPullRequestPlanWithBroker(plan, repoRoot, env, blockers);
+    return;
+  }
+
+  if (plan.operation === 'update') {
+    const existingPull = await githubBrokerApiRequest({
+      env,
+      path: plan.path,
+      repoRoot,
+    });
+
+    if (!existingPull.ok) {
+      block(blockers, githubApiErrorMessage(existingPull, 'target PR read failed before update'));
+      return;
+    }
+
+    if (existingPull.data?.draft !== true) {
+      block(blockers, `target PR #${plan.prNumber} is not a draft; live update is not allowed`);
+      return;
+    }
+
+    pass(`target PR #${plan.prNumber} is draft; live update may proceed`);
+  }
+
+  const response = await githubBrokerApiRequest({
+    body: plan.body,
+    env,
+    method: plan.method,
+    path: plan.path,
+    repoRoot,
+  });
+
+  if (!response.ok) {
+    block(blockers, githubApiErrorMessage(response, `${plan.operation} PR request failed`));
+    return;
+  }
+
+  if (plan.operation === 'create') {
+    pass(
+      `created draft PR #${response.data?.number || 'unknown'} through broker: ${response.data?.html_url || 'url unavailable'}`,
+    );
+    return;
+  }
+
+  pass(`updated PR #${response.data?.number || plan.prNumber} through broker`);
 }
 
 async function executeReadyPullRequestPlan(plan, token, blockers) {
@@ -357,6 +442,82 @@ async function executeReadyPullRequestPlan(plan, token, blockers) {
   );
 }
 
+async function executeReadyPullRequestPlanWithBroker(plan, repoRoot, env, blockers) {
+  const existingPull = await githubBrokerApiRequest({
+    env,
+    path: `/repos/${EXPECTED_REPO}/pulls/${plan.prNumber}`,
+    repoRoot,
+  });
+
+  if (!existingPull.ok) {
+    block(blockers, githubApiErrorMessage(existingPull, 'target PR read failed before ready'));
+    return;
+  }
+
+  if (existingPull.data?.state !== 'open') {
+    block(blockers, `target PR #${plan.prNumber} is not open; ready transition is not allowed`);
+    return;
+  }
+
+  if (existingPull.data?.draft !== true) {
+    pass(`target PR #${plan.prNumber} is already ready for review`);
+    return;
+  }
+
+  if (!existingPull.data?.node_id) {
+    block(blockers, `target PR #${plan.prNumber} did not include a GraphQL node ID`);
+    return;
+  }
+
+  const response = await callGithubBroker({
+    env,
+    repoRoot,
+    request: {
+      graphQlMutation: 'markPullRequestReadyForReview',
+      kind: 'github-api',
+      method: 'POST',
+      operationClass: GITHUB_OPERATION_CLASSES.shipPr,
+      path: '/graphql',
+      query: `mutation MarkPullRequestReadyForReview($pullRequestId: ID!) {
+        markPullRequestReadyForReview(input: {pullRequestId: $pullRequestId}) {
+          pullRequest {
+            number
+            isDraft
+            url
+          }
+        }
+      }`,
+      variables: {
+        pullRequestId: existingPull.data.node_id,
+      },
+    },
+  });
+
+  if (!response.ok) {
+    block(blockers, githubApiErrorMessage(response, 'mark PR ready request failed'));
+    return;
+  }
+
+  const pullRequest = response.data?.data?.markPullRequestReadyForReview?.pullRequest;
+  pass(
+    `marked PR #${pullRequest?.number || plan.prNumber} ready for review through broker: ${pullRequest?.url || existingPull.data.html_url || 'url unavailable'}`,
+  );
+}
+
+async function githubBrokerApiRequest({ body = undefined, env, method = 'GET', path, repoRoot }) {
+  return callGithubBroker({
+    env,
+    repoRoot,
+    request: {
+      body,
+      kind: 'github-api',
+      method,
+      operationClass: GITHUB_OPERATION_CLASSES.shipPr,
+      path,
+    },
+  });
+}
+
 function writeResult(status, blockers, advisories) {
   console.log('');
   if (status === 'DRY_RUN') {
@@ -382,8 +543,8 @@ function writeResult(status, blockers, advisories) {
   console.log('GitHub PR write result: OK');
 }
 
-function envLocalDefines(filePath, key) {
-  return parseEnvEntries(filePath).some((entry) => entry.key === key);
+function describeEnvLocalDefinitions(definitions) {
+  return definitions.map((definition) => `${definition.key} (${definition.filePath})`).join(', ');
 }
 
 function loadGithubWriteReferenceEnv(repoRoot) {

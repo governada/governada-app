@@ -626,7 +626,9 @@ export function githubApiErrorMessage(response, prefix) {
     ? `: ${response.data.message}`
     : graphQlErrors
       ? `: ${graphQlErrors}`
-      : '';
+      : response.error
+        ? `: ${response.error}`
+        : '';
   return redactSensitiveText(`${prefix} (${response.status})${detail}`);
 }
 

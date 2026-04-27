@@ -36,7 +36,10 @@ import {
   attachBrokerSocketErrorHandler,
   sendBrokerSocketResponse,
 } from './lib/github-broker-socket.mjs';
-import { githubBrokerSocketPath } from './lib/github-broker-client.mjs';
+import {
+  GITHUB_BROKER_REQUEST_TIMEOUT_MS,
+  githubBrokerSocketPath,
+} from './lib/github-broker-client.mjs';
 import { parseGithubMergeApproval } from './lib/github-merge-approval.mjs';
 import { evaluateGithubChecksForMerge, evaluatePullRequestForMerge } from './lib/github-merge.mjs';
 import { evaluatePullRequestForClose, parseGithubPrCloseApproval } from './lib/github-pr-close.mjs';
@@ -53,6 +56,7 @@ const GITHUB_BROKER_REF_KEYS = new Set([
   GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt,
   GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter,
 ]);
+const GITHUB_BROKER_SOCKET_TIMEOUT_MS = GITHUB_BROKER_REQUEST_TIMEOUT_MS + 5000;
 
 function pass(message) {
   console.log(`OK: ${message}`);
@@ -104,7 +108,7 @@ async function main() {
   };
   const server = net.createServer((socket) => {
     activeSockets.add(socket);
-    socket.setTimeout(10000, () => socket.destroy());
+    socket.setTimeout(GITHUB_BROKER_SOCKET_TIMEOUT_MS, () => socket.destroy());
     socket.on('close', () => activeSockets.delete(socket));
     handleBrokerSocket({ context, env, repoRoot, shutdown, socket }).catch((error) => {
       socket.end(

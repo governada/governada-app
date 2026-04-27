@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -64,7 +64,17 @@ afterEach(() => {
 
 describe('github runtime doctor CLI', () => {
   it('keeps broker request timeout long enough for token minting and GitHub probes', () => {
+    const brokerSource = readFileSync(
+      path.join(repoRoot, 'scripts/github-runtime-broker.mjs'),
+      'utf8',
+    );
+
     expect(GITHUB_BROKER_REQUEST_TIMEOUT_MS).toBeGreaterThanOrEqual(60000);
+    expect(brokerSource).toContain(
+      'const GITHUB_BROKER_SOCKET_TIMEOUT_MS = GITHUB_BROKER_REQUEST_TIMEOUT_MS + 5000',
+    );
+    expect(brokerSource).toContain('socket.setTimeout(GITHUB_BROKER_SOCKET_TIMEOUT_MS');
+    expect(brokerSource).not.toContain('socket.setTimeout(10000');
   });
 
   it('uses a repo-runtime broker socket path instead of caller-controlled temp dirs', () => {

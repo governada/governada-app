@@ -304,6 +304,71 @@ describe('github merge wrapper guardrails', () => {
     );
   });
 
+  it('uses the newest check run for repeated check names', () => {
+    const staleFailureThenPass = evaluateGithubChecksForMerge({
+      checkRuns: [
+        {
+          completed_at: '2026-04-27T21:00:41Z',
+          conclusion: 'success',
+          id: 3,
+          name: 'validate-pr-body',
+          status: 'completed',
+        },
+        {
+          completed_at: '2026-04-26T20:13:11Z',
+          conclusion: 'failure',
+          id: 2,
+          name: 'validate-pr-body',
+          status: 'completed',
+        },
+        {
+          completed_at: '2026-04-26T20:13:09Z',
+          conclusion: 'failure',
+          id: 1,
+          name: 'validate-pr-body',
+          status: 'completed',
+        },
+        {
+          completed_at: '2026-04-26T20:15:14Z',
+          conclusion: 'success',
+          id: 4,
+          name: 'test',
+          status: 'completed',
+        },
+      ],
+      combinedStatus: {
+        state: 'pending',
+        statuses: [],
+      },
+    });
+    const newerFailure = evaluateGithubChecksForMerge({
+      checkRuns: [
+        {
+          completed_at: '2026-04-27T21:00:41Z',
+          conclusion: 'failure',
+          id: 3,
+          name: 'validate-pr-body',
+          status: 'completed',
+        },
+        {
+          completed_at: '2026-04-26T20:13:11Z',
+          conclusion: 'success',
+          id: 2,
+          name: 'validate-pr-body',
+          status: 'completed',
+        },
+      ],
+      combinedStatus: {
+        state: 'pending',
+        statuses: [],
+      },
+    });
+
+    expect(staleFailureThenPass.blockers).toEqual([]);
+    expect(staleFailureThenPass.passes).toEqual(['2 check/status result(s) are green']);
+    expect(newerFailure.blockers).toContain('check run "validate-pr-body" concluded failure');
+  });
+
   it('keeps post-merge behavior on read-only deploy verification', () => {
     const source = readFileSync(path.join(repoRoot, 'scripts/github-merge.mjs'), 'utf8');
 

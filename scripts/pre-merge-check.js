@@ -1,4 +1,5 @@
 const { checkErrorRate } = require('./check-error-rate.js');
+const { evaluateGithubChecks } = require('./lib/github-check-evaluation.cjs');
 const { repoRoot, runGh, runGhJson } = require('./lib/runtime');
 
 const prNumberArg = process.argv[2];
@@ -15,7 +16,6 @@ if (!Number.isInteger(prNumber) || prNumber <= 0) {
 
 const repo = 'governada/app';
 const baseBranch = 'main';
-const successfulCheckConclusions = new Set(['success', 'neutral', 'skipped']);
 
 async function main() {
   console.log(`Checking merge safety for PR #${prNumber}...`);
@@ -253,49 +253,16 @@ function blockIfMergeStateRequiresAction(prView) {
 }
 
 function evaluateCheckFailures({ checkRuns, combinedStatus }) {
-  const failures = [];
   const runs = Array.isArray(checkRuns?.check_runs) ? checkRuns.check_runs : [];
-  const statuses = Array.isArray(combinedStatus?.statuses) ? combinedStatus.statuses : [];
   const totalCount = Number.isFinite(Number(checkRuns?.total_count))
     ? Number(checkRuns.total_count)
     : runs.length;
 
-  if (totalCount > runs.length) {
-    failures.push(`check runs response is truncated (${runs.length}/${totalCount})`);
-  }
-
-  for (const run of runs) {
-    if (run.status !== 'completed') {
-      failures.push(`check run "${run.name || run.id || 'unknown'}" is ${run.status || 'unknown'}`);
-      continue;
-    }
-
-    if (!successfulCheckConclusions.has(run.conclusion)) {
-      failures.push(
-        `check run "${run.name || run.id || 'unknown'}" concluded ${run.conclusion || 'unknown'}`,
-      );
-    }
-  }
-
-  for (const status of statuses) {
-    if (status.state !== 'success') {
-      failures.push(
-        `commit status "${status.context || status.id || 'unknown'}" is ${
-          status.state || 'unknown'
-        }`,
-      );
-    }
-  }
-
-  if (statuses.length > 0 && combinedStatus?.state && combinedStatus.state !== 'success') {
-    failures.push(`combined commit status is ${combinedStatus.state}`);
-  }
-
-  if (runs.length === 0 && statuses.length === 0) {
-    failures.push('no check runs or commit statuses were found');
-  }
-
-  return failures;
+  return evaluateGithubChecks({
+    checkRuns: runs,
+    checkRunsTotalCount: totalCount,
+    combinedStatus,
+  }).blockers;
 }
 
 main().catch((error) => {

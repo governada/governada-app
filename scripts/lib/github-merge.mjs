@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 import { EXPECTED_REPO } from './github-app-auth.mjs';
@@ -6,8 +7,8 @@ import { GITHUB_MERGE_CONFIRMATION, parseGithubMergeApproval } from './github-me
 
 const FULL_SHA_RE = /^[a-f0-9]{40}$/iu;
 const ALLOWED_MERGE_METHODS = new Set(['merge', 'rebase', 'squash']);
-const SUCCESSFUL_CHECK_CONCLUSIONS = new Set(['success', 'neutral', 'skipped']);
 const BLOCKING_MERGE_STATES = new Set(['behind', 'blocked', 'dirty', 'draft', 'unknown']);
+const { evaluateGithubChecks } = createRequire(import.meta.url)('./github-check-evaluation.cjs');
 
 export function parseGithubMergeArgs(argv) {
   if (argv.includes('--help') || argv.includes('-h')) {
@@ -218,55 +219,21 @@ export function evaluatePullRequestForMerge(pullRequest, expectedHead, repo = EX
 }
 
 export function evaluateGithubChecksForMerge({ checkRuns, combinedStatus, ...options }) {
-  const blockers = [];
-  const passes = [];
-  const runs = Array.isArray(checkRuns) ? checkRuns : [];
-  const statuses = Array.isArray(combinedStatus?.statuses) ? combinedStatus.statuses : [];
-  const totalCount = Number.isFinite(Number(options.checkRunsTotalCount))
-    ? Number(options.checkRunsTotalCount)
-    : runs.length;
+  const result = evaluateGithubChecks({
+    checkRuns,
+    checkRunsTotalCount: options.checkRunsTotalCount,
+    combinedStatus,
+    missingMessage: 'no check runs or commit statuses were found for the expected head',
+  });
 
-  if (totalCount > runs.length) {
-    blockers.push(
-      `check runs response is truncated (${runs.length}/${totalCount}); paginate before merge`,
-    );
-  }
-
-  for (const run of runs) {
-    if (run.status !== 'completed') {
-      blockers.push(`check run "${run.name || run.id || 'unknown'}" is ${run.status || 'unknown'}`);
-      continue;
-    }
-
-    if (!SUCCESSFUL_CHECK_CONCLUSIONS.has(run.conclusion)) {
-      blockers.push(
-        `check run "${run.name || run.id || 'unknown'}" concluded ${run.conclusion || 'unknown'}`,
-      );
-    }
-  }
-
-  for (const status of statuses) {
-    if (status.state !== 'success') {
-      blockers.push(
-        `commit status "${status.context || status.id || 'unknown'}" is ${status.state || 'unknown'}`,
-      );
-    }
-  }
-
-  if (statuses.length > 0 && combinedStatus?.state && combinedStatus.state !== 'success') {
-    blockers.push(`combined commit status is ${combinedStatus.state}`);
-  }
-
-  if (runs.length === 0 && statuses.length === 0) {
-    blockers.push('no check runs or commit statuses were found for the expected head');
-  }
-
-  if (blockers.length === 0) {
-    const checkCount = runs.length + statuses.length;
-    passes.push(`${checkCount} check/status result(s) are green`);
-  }
-
-  return { blockers, passes };
+  return {
+    blockers: result.blockers.map((blocker) =>
+      blocker.startsWith('check runs response is truncated')
+        ? `${blocker}; paginate before merge`
+        : blocker,
+    ),
+    passes: result.passes,
+  };
 }
 
 export function hasReviewGateRecord(body) {

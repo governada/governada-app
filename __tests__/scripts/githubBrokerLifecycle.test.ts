@@ -13,8 +13,11 @@ import {
   GITHUB_BROKER_INSTALL_CONFIRMATION,
   GITHUB_BROKER_TOKEN_OP_REF_KEY,
   buildBrokerLaunchAgentPlist,
+  canRebuildKeychainCacheHelper,
+  extractCodeSignatureIdentifier,
   findClangCliPath,
   getBrokerServicePaths,
+  isStableKeychainHelperIdentifier,
   isSafeServiceAccountTokenOpRef,
 } from '@/scripts/lib/github-broker-service.mjs';
 
@@ -185,6 +188,68 @@ describe('github broker lifecycle CLI', () => {
     expect(brokerSource).toContain('attachBrokerSocketErrorHandler(socket)');
     expect(brokerSource).toContain('sendBrokerSocketResponse({');
     expect(brokerSource).not.toContain('socket.end(`${JSON.stringify(publicResponse)}');
+  });
+
+  it('keeps broker startup promptless and timeout-bounded', () => {
+    const runnerSource = readFileSync(
+      path.join(repoRoot, 'scripts/github-broker-service-runner.mjs'),
+      'utf8',
+    );
+    const serviceSource = readFileSync(
+      path.join(repoRoot, 'scripts/lib/github-broker-service.mjs'),
+      'utf8',
+    );
+    const lifecycleSource = readFileSync(
+      path.join(repoRoot, 'scripts/github-broker-lifecycle.mjs'),
+      'utf8',
+    );
+
+    expect(runnerSource).toContain('const helper = ensureKeychainCacheHelper(process.env);');
+    expect(runnerSource).not.toContain(
+      'ensureKeychainCacheHelper(process.env, { forceBuild: true })',
+    );
+    expect(runnerSource).toContain('BROKER_HELPER_START_TIMEOUT_MS');
+    expect(runnerSource).toContain('GitHub broker Keychain helper did not start the broker');
+    expect(runnerSource).toContain('broker startup no longer rebuilds the helper');
+    expect(runnerSource).toContain('getGithubBrokerStatus({ repoRoot })');
+    expect(runnerSource).toContain("child.kill('SIGTERM')");
+    expect(runnerSource).toContain("child.kill('SIGKILL')");
+    expect(serviceSource).toContain('human-present setup step to rebuild it before broker start');
+    expect(serviceSource).not.toContain('token-bearing cache/start paths will rebuild it');
+    expect(serviceSource).toContain('const SERVICE_START_TIMEOUT_MS = 30000');
+    expect(serviceSource).toContain('const LAUNCHCTL_TIMEOUT_MS =');
+    expect(serviceSource).toContain('timeout: LAUNCHCTL_TIMEOUT_MS');
+    expect(serviceSource).toContain('timed out after ${LAUNCHCTL_TIMEOUT_MS}ms');
+    expect(serviceSource).toContain(
+      'const tempHelperPath = path.join(tempBuildDir, path.basename(helperPath));',
+    );
+    expect(serviceSource).toContain('github-keychain-cache-build');
+    expect(serviceSource).not.toContain('`${helperPath}.${process.pid}.${Date.now()}.tmp`');
+    expect(lifecycleSource).toContain(
+      'cache-token rebuilds it during the human-present setup step',
+    );
+    expect(lifecycleSource).not.toContain('service start rebuild it before token-bearing use');
+  });
+
+  it('detects unstable Keychain helper signing identities', () => {
+    expect(
+      extractCodeSignatureIdentifier(
+        'Executable=/tmp/github-keychain-cache\nIdentifier=github-keychain-cache\nFormat=Mach-O',
+      ),
+    ).toBe('github-keychain-cache');
+    expect(
+      extractCodeSignatureIdentifier(
+        'Executable=/tmp/github-keychain-cache.50558.1777311587731.tmp\nIdentifier=github-keychain-cache.50558.1777311587731.tmp\nFormat=Mach-O',
+      ),
+    ).toBe('github-keychain-cache.50558.1777311587731.tmp');
+    expect(isStableKeychainHelperIdentifier('github-keychain-cache')).toBe(true);
+    expect(isStableKeychainHelperIdentifier('github-keychain-cache.50558.1777311587731.tmp')).toBe(
+      false,
+    );
+    expect(canRebuildKeychainCacheHelper({ exists: true, ok: false, rebuildable: true })).toBe(
+      true,
+    );
+    expect(canRebuildKeychainCacheHelper({ exists: true, ok: false })).toBe(false);
   });
 
   it('requires explicit acknowledgement before installing a temporary worktree service', () => {

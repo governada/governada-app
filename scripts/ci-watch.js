@@ -1,4 +1,4 @@
-const { runCommand, runGhJson, sleep } = require('./lib/runtime');
+const { runCommand, runGhJson, repoRoot, sleep } = require('./lib/runtime');
 
 function parseArgs(argv) {
   const args = { branch: '' };
@@ -37,6 +37,94 @@ function summarize(run) {
   return `${workflow}: ${status}${conclusion}${title}`;
 }
 
+async function buildRunLister() {
+  if (process.env.GOVERNADA_CI_WATCH_USE_GH === '1') {
+    return {
+      listRuns: listRunsThroughGh,
+      source: 'GitHub CLI',
+    };
+  }
+
+  try {
+    const [
+      { EXPECTED_REPO, GITHUB_OPERATION_CLASSES, githubApiErrorMessage },
+      { callGithubBroker },
+      { ensureGithubBrokerRunning },
+    ] = await Promise.all([
+      import('./lib/github-app-auth.mjs'),
+      import('./lib/github-broker-client.mjs'),
+      import('./lib/github-broker-service.mjs'),
+    ]);
+
+    const ensureResult = await ensureGithubBrokerRunning({ repoRoot });
+    if (!ensureResult.ok) {
+      throw new Error((ensureResult.blockers || []).join('; ') || 'broker ensure failed');
+    }
+
+    return {
+      listRuns: async (branch) => {
+        const response = await callGithubBroker({
+          repoRoot,
+          request: {
+            kind: 'github-api',
+            method: 'GET',
+            operationClass: GITHUB_OPERATION_CLASSES.read,
+            path: `/repos/${EXPECTED_REPO}/actions/runs?branch=${encodeURIComponent(
+              branch,
+            )}&per_page=10`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(githubApiErrorMessage(response, 'Actions workflow-run read failed'));
+        }
+
+        return (response.data?.workflow_runs || []).map(mapBrokerWorkflowRun);
+      },
+      source: 'GitHub runtime broker',
+    };
+  } catch (brokerError) {
+    const brokerMessage = brokerError instanceof Error ? brokerError.message : String(brokerError);
+    try {
+      listRunsThroughGh('__governada_auth_probe__');
+      console.log(`ADVISORY: GitHub runtime broker unavailable; falling back to GitHub CLI.`);
+      return {
+        listRuns: listRunsThroughGh,
+        source: 'GitHub CLI',
+      };
+    } catch (ghError) {
+      const ghMessage = ghError instanceof Error ? ghError.message : String(ghError);
+      throw new Error(
+        `GitHub runtime broker unavailable (${brokerMessage}); GitHub CLI fallback unavailable (${ghMessage})`,
+      );
+    }
+  }
+}
+
+function listRunsThroughGh(branch) {
+  return runGhJson([
+    'run',
+    'list',
+    '--branch',
+    branch,
+    '--limit',
+    '10',
+    '--json',
+    'databaseId,status,conclusion,workflowName,displayTitle,url',
+  ]);
+}
+
+function mapBrokerWorkflowRun(run) {
+  return {
+    conclusion: run.conclusion || '',
+    databaseId: run.id,
+    displayTitle: run.display_title || '',
+    status: run.status || '',
+    url: run.html_url || '',
+    workflowName: run.name || '',
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const branch = args.branch || currentBranch();
@@ -47,21 +135,14 @@ async function main() {
   }
 
   console.log(`Watching latest CI run for branch ${branch}...`);
+  const { listRuns, source } = await buildRunLister();
+  console.log(`CI auth source: ${source}`);
 
   let lastSummary = '';
   let seenRunId = '';
 
   while (true) {
-    const runs = runGhJson([
-      'run',
-      'list',
-      '--branch',
-      branch,
-      '--limit',
-      '10',
-      '--json',
-      'databaseId,status,conclusion,workflowName,displayTitle,url',
-    ]);
+    const runs = await listRuns(branch);
 
     const run = selectRun(runs);
     if (!run) {

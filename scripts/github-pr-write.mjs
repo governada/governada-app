@@ -33,6 +33,7 @@ import { ensureGithubBrokerRunning } from './lib/github-broker-service.mjs';
 import {
   assertAllowedGithubPrWritePlan,
   buildGithubPrWritePlan,
+  isCompletedReviewGateBodyOnlyUpdate,
   parseGithubPrWriteArgs,
   printGithubPrWriteUsage,
   redactGithubPrWritePlan,
@@ -199,7 +200,7 @@ async function main() {
 
   advisory(
     advisories,
-    'This wrapper is limited to draft PR creation, title/body update on draft PRs, or marking draft PRs ready for review; merge, deploy mutation, production sync, secret changes, billing/admin, branch protection, and credential rotation remain separately gated.',
+    'This wrapper is limited to draft PR creation, title/body update on draft PRs, completed Review Gate v0 body-only updates on ready PRs, or marking draft PRs ready for review; merge, deploy mutation, production sync, secret changes, billing/admin, branch protection, and credential rotation remain separately gated.',
   );
 
   if (!plan.execute) {
@@ -327,12 +328,17 @@ async function executeGithubPrWritePlan(plan, token, blockers) {
       return;
     }
 
-    if (existingPull.data?.draft !== true) {
+    const allowReadyReviewGateUpdate = isCompletedReviewGateBodyOnlyUpdate(plan, existingPull.data);
+    if (existingPull.data?.draft !== true && !allowReadyReviewGateUpdate) {
       block(blockers, `target PR #${plan.prNumber} is not a draft; live update is not allowed`);
       return;
     }
 
-    pass(`target PR #${plan.prNumber} is draft; live update may proceed`);
+    pass(
+      allowReadyReviewGateUpdate
+        ? `target PR #${plan.prNumber} is ready; completed Review Gate body update may proceed`
+        : `target PR #${plan.prNumber} is draft; live update may proceed`,
+    );
   }
 
   const response = await githubApiRequest({
@@ -375,12 +381,17 @@ async function executeGithubPrWritePlanWithBroker(plan, repoRoot, env, blockers)
       return;
     }
 
-    if (existingPull.data?.draft !== true) {
+    const allowReadyReviewGateUpdate = isCompletedReviewGateBodyOnlyUpdate(plan, existingPull.data);
+    if (existingPull.data?.draft !== true && !allowReadyReviewGateUpdate) {
       block(blockers, `target PR #${plan.prNumber} is not a draft; live update is not allowed`);
       return;
     }
 
-    pass(`target PR #${plan.prNumber} is draft; live update may proceed`);
+    pass(
+      allowReadyReviewGateUpdate
+        ? `target PR #${plan.prNumber} is ready; completed Review Gate body update may proceed`
+        : `target PR #${plan.prNumber} is draft; live update may proceed`,
+    );
   }
 
   const response = await githubBrokerApiRequest({

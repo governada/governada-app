@@ -1,6 +1,7 @@
 ---
 paths:
   - 'scripts/**'
+  - '.agents/skills/ship/**'
   - '.claude/skills/ship/**'
   - '.claude/commands/ship*'
   - '.claude/commands/hotfix*'
@@ -8,33 +9,35 @@ paths:
 
 # Deploy Configuration
 
-**Current deploy target: production**
+**Current deploy target: production, protected by chat-approved merge**
 
-Modes:
+Current mode:
 
-- `production` — PRs merge to main automatically. Railway auto-deploys. Full autonomous pipeline.
-- `staging` — PRs created and CI verified, but NOT merged. User reviews and approves merge manually.
+- Agents may autonomously prepare branches, PRs, checks, and deploy verification evidence.
+- PRs do not merge unattended. Tim approves the exact `github.merge` action in chat with PR number and expected head SHA.
+- Railway auto-deploys after the protected main merge.
+- `npm run github:merge` performs the merge and synchronous production deploy verification.
 
-To switch to staging mode for post-launch: change "production" above to "staging".
+Future staging/preview mode should add pre-merge preview verification without weakening the Phase 0B merge approval gate.
 
-## Post-Launch Checklist (switch to staging when ready)
+## Future Staging/Preview Checklist
 
-When the app officially launches, switch the deploy target to `staging` and:
+When the app officially launches or the agent roadmap reaches preview-environment maturity:
 
-1. All PRs require human review before merge
-2. Preview environments smoke-test before merge (`.github/workflows/preview.yml`)
-3. Post-deploy verification runs automatically (`.github/workflows/post-deploy.yml`)
-4. High-risk changes use `/ship-careful` (flag-gated canary rollout)
+1. Preview environments smoke-test before merge (`.github/workflows/preview.yml`).
+2. Post-deploy verification remains automatic (`.github/workflows/post-deploy.yml`).
+3. High-risk changes use `/ship-careful` for flag-gated canary planning.
+4. Branch protection/rulesets encode required checks instead of relying on convention.
 
 ## Rollback Procedure
 
 If production breaks after a deploy:
 
-1. Run `npm run rollback` — auto-detects broken state, reverts, verifies health
-2. With git revert: `npm run rollback -- --revert-commit`
-3. Manual: Railway dashboard → Deployments → Redeploy previous
+1. Treat it as a human-present incident.
+2. Run `npm run rollback -- --dry-run` for diagnosis.
+3. Run `npm run rollback -- --revert-commit` only to prepare a revert PR through the protected-main flow.
+4. Immediate Railway rollback to a previous successful deployment is a deploy mutation and requires Tim's explicit approval/action.
 
 ## Error Rate Gate
 
-Pre-merge check now includes Sentry error rate validation (`npm run check:error-rate`).
-If production error rate exceeds 200 errors/hour, merges are blocked until the rate stabilizes.
+Pre-merge check includes Sentry error rate validation (`npm run check:error-rate`). If production error rate exceeds the configured threshold, merges are blocked until the rate stabilizes.

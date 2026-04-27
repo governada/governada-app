@@ -1,73 +1,48 @@
-Execute a flag-gated canary deployment for high-risk changes. This wraps the normal /ship pipeline but adds gradual rollout via feature flags.
+# Ship Careful
 
-Use this instead of /ship when the change touches: scoring models, matching engine, delegation flow, wallet interactions, data migrations, or any user-facing behavioral change that could break trust.
+Plan and execute a flag-gated canary rollout for high-risk changes. This wraps the canonical ship path from `AGENTS.md` and `.agents/skills/ship/SKILL.md`, then adds explicit approval gates for production feature-flag mutations.
 
-## Pre-flight
+Use this instead of `/ship` when the change touches scoring models, matching, delegation, wallet interactions, data migrations, or any user-facing behavior that could break trust.
 
-1. **Identify the feature flag**: The change MUST already be behind a feature flag (via `getFeatureFlag()` / `<FeatureGate>`). If not, add one first.
-2. **Verify flag exists**: Check `lib/featureFlags.ts` for the flag name. If missing, add it with `defaultValue: false`.
-3. **Confirm flag is OFF in production**: `curl -s https://governada.io/api/admin/feature-flags | python3 -c "import json,sys; flags=json.load(sys.stdin); print([f for f in flags if f['key']=='YOUR_FLAG'])"` — value should be `false`.
+## Pre-Flight
 
-## Deploy (normal /ship pipeline)
+1. Identify the feature flag. The change must already be behind a flag such as `getFeatureFlag()` or `<FeatureGate>`. If not, add one first.
+2. Verify the flag exists in `lib/featureFlags.ts` with a safe default.
+3. Confirm the flag is OFF in production through an approved read-only status command or dashboard view. Do not run production data writes while planning.
 
-4. Run the full `/ship` sequence (preflight → commit → PR → CI → merge → deploy → verify health).
-5. The feature ships to production but is invisible (flag is OFF).
+## Deploy
+
+1. Run the canonical ship sequence: verify, commit, brokered publish, PR-write, CI, pre-merge checks, Tim-approved `github:merge`, synchronous deploy verification.
+2. Confirm the feature shipped to production but remains hidden while the flag is OFF.
 
 ## Canary Rollout
 
-6. **Enable for founder only**: Update the flag in Supabase to target the founder's wallet address:
-   ```sql
-   UPDATE feature_flags SET value = true, wallets = '["stake1...FOUNDER_ADDRESS"]' WHERE key = 'YOUR_FLAG';
-   ```
-7. **Verify as founder**: Navigate to the affected pages on governada.io. Check Sentry for new errors.
-8. **Wait 1 hour**: Monitor Sentry error rate. If no new errors related to the change, proceed.
+For each rollout stage, propose the exact flag mutation, expected blast radius, verification plan, and rollback action. Pause for explicit approval before applying any production flag mutation.
 
-9. **Enable for 10% of users**: Remove wallet targeting, set percentage rollout:
-   ```sql
-   UPDATE feature_flags SET wallets = NULL, rollout_percentage = 10 WHERE key = 'YOUR_FLAG';
-   ```
-10. **Monitor for 24 hours**: Check:
-    - Sentry: `npm run sentry:check` or check dashboard for new errors
-    - PostHog: `npm run posthog:check <relevant_event>` for engagement metrics
-    - Health: `npm run smoke-test`
+1. Founder-only.
+2. 10 percent of users.
+3. 50 percent of users.
+4. 100 percent of users.
 
-11. **Ramp to 50%**: If metrics are stable:
-    ```sql
-    UPDATE feature_flags SET rollout_percentage = 50 WHERE key = 'YOUR_FLAG';
-    ```
-12. **Monitor for 24 hours again.**
+After each stage, verify the affected pages, Sentry, PostHog where relevant, and `npm run smoke-test`.
 
-13. **Full rollout (100%)**: If still stable:
-
-    ```sql
-    UPDATE feature_flags SET rollout_percentage = 100 WHERE key = 'YOUR_FLAG';
-    ```
-
-14. **Clean up**: After 1 week at 100% with no issues, remove the feature flag:
-    - Remove `<FeatureGate>` wrapper and `getFeatureFlag()` calls from code
-    - Delete the flag row from Supabase
-    - Ship cleanup via normal `/ship`
-
-## Emergency Rollback
+## Emergency Flag Rollback
 
 At any stage, if issues are detected:
 
-```sql
-UPDATE feature_flags SET value = false, wallets = NULL, rollout_percentage = NULL WHERE key = 'YOUR_FLAG';
-```
+1. Propose the exact flag-disable mutation and impact.
+2. Ask Tim for explicit approval unless Tim has already approved that exact rollback action in the current incident.
+3. Apply only through an approved tool path.
+4. Verify the feature is hidden and health checks pass.
 
-This instantly hides the feature from all users. No redeploy needed.
+## Cleanup
+
+After one week at 100 percent with no issues:
+
+1. Remove `<FeatureGate>` wrappers and `getFeatureFlag()` calls from code.
+2. Propose deleting the production flag row only with explicit approval.
+3. Ship cleanup through the canonical ship path.
 
 ## Notification
 
-After each rollout stage, notify via:
-
-```bash
-npm run notify -- "info" "Canary: YOUR_FLAG at X%" "Metrics stable. Next ramp in 24h."
-```
-
-If rolling back:
-
-```bash
-npm run notify -- "deploy_blocked" "Canary rollback: YOUR_FLAG" "Disabled flag due to [reason]. Feature hidden from all users."
-```
+Use `npm run notify -- "info" ...` for rollout-stage notices and `npm run notify -- "deploy_blocked" ...` for rollback/blocker notices when notifications are configured.

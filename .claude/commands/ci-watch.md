@@ -1,29 +1,27 @@
-Monitor CI and verify deployment. Optimized for minimal context consumption.
+Monitor CI and deployment verification through the repo wrappers. Optimized for minimal context consumption.
 
-## Branch CI (before merge)
+## Branch CI
 
-Use `npm run ci:watch` — it carries the repo-scoped GH context and prints only status changes:
+Use `npm run ci:watch`. It carries the repo-scoped GitHub context and prints only status changes:
 
-`npm run ci:watch`
+```bash
+npm run ci:watch
+```
 
 If CI failed, read only the tail of failed logs:
 
-`npm run ci:failed`
+```bash
+npm run ci:failed
+```
 
-Branch protection requires: `build` (which depends on `checks` + `test`).
-Max 3 retries before escalating.
+Branch protection requires `build`, which depends on checks and tests. Max 3 fix attempts before escalating with the exact failure.
 
 ## Post-Merge Verification
 
-**Always use the deploy-verifier subagent in background.** Do NOT block on this:
+The normal Phase 0B merge path is `npm run github:merge`, which runs synchronous `deploy:verify` after a successful merge. Do not replace that with a background deploy-verifier flow.
 
-```
-Agent(subagent_type="deploy-verifier", run_in_background=true,
-  prompt="PR #N merged. Run npm run deploy:verify. If Inngest functions changed, run npm run deploy:verify -- --register-inngest")
-```
-
-The unified `smoke-test --quiet` subsumes health checks, response time assertions, and data integrity validation. Only failures are printed.
+Use `npm run deploy:verify -- --expected-sha=<merge-sha>` only when verifying an already-merged deployment outside the merge wrapper.
 
 The `post-deploy.yml` GitHub Action also runs automatically as a second safety net.
 
-If deploy-verifier reports failure: `npm run rollback`
+If production verification fails, treat it as a human-present incident. Run `npm run rollback -- --dry-run` for diagnosis and use `npm run rollback -- --revert-commit` only to prepare a revert PR. Immediate Railway rollback requires explicit approval/action.

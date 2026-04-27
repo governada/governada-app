@@ -10,9 +10,9 @@ paths:
 - **Always start from fresh origin/main.** For worktrees, prefer `npm run worktree:new -- <name>` so feature branches land in `.claude/worktrees/<name>` inside the repo sandbox. Raw git is `git worktree add .claude/worktrees/<name> -b feat/<name> origin/main`. Never develop on a stale or leftover branch. The sync-worktree hook auto-fast-forwards local main, but always specify `origin/main` as the start point.
 - **Use one Codex project root.** Open Codex on the shared repo root and keep worktrees under `.claude/worktrees/`. Do not open separate Codex projects from individual worktree folders for this repo.
 - **If the sandbox blocks a mutating Git command, escalate with an approved prefix.** On Codex Desktop, `workspace-write` can still reject `git` writes or `node -> git` wrappers with `EPERM` / access denied. Rerun with `sandbox_permissions=require_escalated` using an already-approved prefix instead of asking the user first.
-- **Clean up after yourself.** When a worktree session is complete and the PR is merged, remove the worktree.
-- **Delete local branches after merge.** `gh pr merge --squash --delete-branch` only deletes the remote branch. Follow up with `git branch -d <branch>` locally. Use `-D` if squash-merged.
-- **Prune remotes at session start.** Run `git fetch --prune` to remove stale remote tracking refs.
+- **Clean up after yourself.** When a worktree session is complete and the PR is merged, remove the worktree through repo cleanup/session tooling when possible.
+- **Delete local branches after merge.** The brokered merge lane can delete the remote branch, but local worktree branches still need cleanup. Prefer `npm run session:guard`, `npm run cleanup`, and `npm run cleanup:clean` for inventory before deleting anything.
+- **Prune remotes at session start.** Prefer `npm run worktree:sync` or repo cleanup tooling when resuming work; use raw `git fetch --prune` only when the wrapper does not cover the need.
 - **Drop stashes after merge.** Don't let stashes accumulate from merged branches.
 - **Verify branch freshness.** If resuming work, check `git log --oneline origin/main..HEAD` -- if >10 commits behind, rebase first.
 
@@ -23,7 +23,7 @@ paths:
 
 ## PR Impact Summary
 
-Every PR must include an **## Impact** section (what changed, user-facing Y/N, risk level, scope). See `/ship` skill for the full template. After creating the PR, print a boxed recap in conversation: PR number, title, what changed, user-facing detail, risk, scope, URL.
+Every feature PR must include `Summary`, `Existing Code Audit`, `Robustness`, `Impact`, `Brain Freshness`, and `Review Gate v0` sections. See `.agents/skills/ship/SKILL.md` for the full template. After creating the PR, print a concise recap in conversation: PR number, title, what changed, user-facing detail, risk, scope, URL, head SHA, and brain freshness status.
 
 ## Documentation Formatting
 
@@ -45,23 +45,15 @@ Every PR must include an **## Impact** section (what changed, user-facing Y/N, r
 
 **NEVER** stream `gh pr checks --watch` in the foreground — it polls every 10 seconds and dumps the full status table each time, consuming thousands of tokens with no new information.
 
-Set `run_in_background: true` on the Bash call. When the notification arrives, take a single snapshot:
-
-```bash
-gh pr checks <N>  # single snapshot of final status
-```
+Use `npm run ci:watch` for branch CI. It carries repo-scoped auth context, prints status changes, and avoids noisy raw `gh` polling.
 
 If CI fails: `npm run ci:failed`
 
 ## Deploy Verification
 
-**ALWAYS** run the `deploy-verifier` subagent in the background after merge. Do NOT wait for its result before continuing other work or responding to the user.
+The normal `github:merge` wrapper runs synchronous `deploy:verify` after merge. Do not spawn background deploy-verifier flows for routine Phase 0B shipping.
 
-```
-Agent(subagent_type="deploy-verifier", run_in_background=true, ...)
-```
-
-Report the result in 1-2 sentences when the notification arrives. Do not dump the full output.
+Use `npm run deploy:verify -- --expected-sha=<merge-sha>` when verifying a deployment outside the merge wrapper. Report the result in 1-2 sentences and include whether production verification passed.
 
 ## Research & File Reading
 

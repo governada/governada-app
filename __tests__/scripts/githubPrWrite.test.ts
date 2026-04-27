@@ -8,6 +8,7 @@ import {
   GITHUB_WRITE_PR_CONFIRMATION,
   assertAllowedGithubPrWritePlan,
   buildGithubPrWritePlan,
+  isCompletedReviewGateBodyOnlyUpdate,
   parseGithubPrWriteArgs,
   redactGithubPrWritePlan,
 } from '@/scripts/lib/github-pr-write.mjs';
@@ -20,8 +21,8 @@ function tempRepoRoot() {
   return root;
 }
 
-function writeBody(root: string, relativePath = 'pr-body.md') {
-  writeFileSync(path.join(root, relativePath), 'PR body text\n', 'utf8');
+function writeBody(root: string, relativePath = 'pr-body.md', content = 'PR body text\n') {
+  writeFileSync(path.join(root, relativePath), content, 'utf8');
   return relativePath;
 }
 
@@ -252,5 +253,51 @@ describe('github PR write wrapper guardrails', () => {
 
     const redacted = redactGithubPrWritePlan(buildGithubPrWritePlan(args, root));
     expect(redacted.body.body).toBe('[body text: 13 chars]');
+  });
+
+  it('allows only completed Review Gate body updates on ready PRs', () => {
+    const root = tempRepoRoot();
+    const completedBodyFile = writeBody(
+      root,
+      'completed-review.md',
+      '## Review Gate v0\n\n- **Review tier**: L2\n- **Status**: Completed and passed.\n- **Findings**: No blocking findings.\n',
+    );
+    const completedPlan = buildGithubPrWritePlan(
+      parseGithubPrWriteArgs(['update', '--pr', '917', '--body-file', completedBodyFile]),
+      root,
+    );
+
+    expect(
+      isCompletedReviewGateBodyOnlyUpdate(completedPlan, { draft: false, state: 'open' }),
+    ).toBe(true);
+
+    const titlePlan = buildGithubPrWritePlan(
+      parseGithubPrWriteArgs([
+        'update',
+        '--pr',
+        '917',
+        '--title',
+        'Updated title',
+        '--body-file',
+        completedBodyFile,
+      ]),
+      root,
+    );
+    expect(isCompletedReviewGateBodyOnlyUpdate(titlePlan, { draft: false, state: 'open' })).toBe(
+      false,
+    );
+
+    const pendingBodyFile = writeBody(
+      root,
+      'pending-review.md',
+      '## Review Gate v0\n\n- **Review tier**: L2\n- **Findings**: Review Gate v0 still needs to run before merge.\n',
+    );
+    const pendingPlan = buildGithubPrWritePlan(
+      parseGithubPrWriteArgs(['update', '--pr', '917', '--body-file', pendingBodyFile]),
+      root,
+    );
+    expect(isCompletedReviewGateBodyOnlyUpdate(pendingPlan, { draft: false, state: 'open' })).toBe(
+      false,
+    );
   });
 });

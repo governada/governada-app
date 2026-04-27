@@ -1,72 +1,75 @@
-All code changes compile clean. Execute the full deploy pipeline autonomously. Do NOT pause between steps.
+# Ship
+
+Use `AGENTS.md` and `.agents/skills/ship/SKILL.md` as the canonical workflow. This command is a Claude adapter, not a second source of truth.
+
+Execute routine reads, edits, checks, commits, branch publication, PR preparation, and CI monitoring autonomously. Pause only for explicit approval gates such as merge, production mutations, secret/admin changes, or scope expansion.
 
 ## Sequence
 
-1. **Preflight**: `npm run preflight:quick *>&1 | Select-Object -Last 5` — fix ALL failures. Uses `test:changed` for speed; CI runs full suite.
-2. **Auth check**: `npm run gh:auth-status` — must show `tim-governada` and `Repo context: governada/app`
-3. **Branch check**: `git branch --show-current` — must NOT be main for features
-4. **Force-dynamic audit**: Any new `app/` file importing `@/lib/supabase` or `@/lib/data` needs `export const dynamic = 'force-dynamic'`
-5. **Stage + commit**: `git add <specific-files>` → review with `git diff --cached --name-only` → commit
-6. **Push**: `git push -u origin HEAD`
-7. **PR**: `gh pr create -R governada/app --title "feat: description" --body-file PR_BODY.md --base main` → delete PR_BODY.md. PR body MUST include these sections (per AGENTS.md hygiene rules + build-on-existing):
+1. `npm run session:guard`
+2. Run relevant local verification, including `npm run agent:validate`
+3. Apply the brain freshness rule from `AGENTS.md`
+4. Stage only intended files, review the staged diff, and commit
+5. `npm run github:runtime-doctor` when runtime state is uncertain
+6. `npm run github:ship-doctor`
+7. Publish through the brokered lane:
 
-   ```markdown
-   ## Summary
-
-   [1-3 bullet points]
-
-   ## Existing Code Audit
-
-   - **Searched for**: [concepts/patterns you looked for]
-   - **Found**: [existing implementations, or "nothing similar"]
-   - **Decision**: [extended existing / created new because ...]
-
-   ## Robustness
-
-   - [ ] Error states handled
-   - [ ] Loading states meaningful
-   - [ ] Empty states guide users
-   - [ ] Edge cases considered
-   - [ ] Mobile verified (if UI)
-
-   ## Impact
-
-   - **What changed**: [1-2 sentences]
-   - **User-facing**: Yes/No + detail
-   - **Risk**: Low/Medium/High + rationale
-   - **Scope**: Files/modules touched
+   ```bash
+   npm run github:ship -- publish --head <branch> --execute --confirm github.ship.pr
    ```
 
-8. **CI**: Wait for CI with minimal context consumption: `npm run ci:watch`
-   If fails, see [CI Failure Recovery](#ci-failure-recovery) below (max 3 retries)
-9. **Pre-merge check**: `npm run pre-merge-check -- <PR#>` — includes Sentry error rate gate
-10. **Ready PR**: If the PR is draft, run `npm run pr:ready -- <PR#>`
-11. **Merge**: `npm run pr:merge -- <PR#>`
-12. **Migrations**: If migrations needed, test on Supabase branch first (see `.claude/rules/migration-safety.md`), then apply via Supabase MCP `apply_migration` → `npm run gen:types`
-13. **Post-merge verification** (background — do NOT block):
-    ```
-    Agent(subagent_type="deploy-verifier", run_in_background=true,
-      prompt="PR #N merged. Run: npm run deploy:verify. If Inngest functions changed, run: npm run deploy:verify -- --register-inngest")
-    ```
-    Continue immediately to step 13 without waiting.
-14. **Update tracking docs**: If this PR adds features, fixes scoring, changes counts:
-    - Update `docs/strategy/context/build-manifest.md` — check off items, add new `[x]` entries with PR #
-    - Update `AGENTS.md` if counts changed
-    - Commit doc updates as follow-up on main
-15. **Cleanup**: Switch to main, pull, delete local branch (`git branch -d <branch>`), drop stashes
-16. **Report**: Print PR Impact Recap. Note that deploy verification is running in background.
+   Use direct `git push` only as a documented fallback when the brokered lane cannot support the change class.
 
-**IMPORTANT: For high-risk changes (scoring, matching, delegation, data migrations), use `/ship-careful` instead.**
+8. Create, update, or ready the PR through `npm run github:pr-write`, not direct GitHub CLI PR creation or `pr:ready`
+9. `npm run ci:watch`
+10. `npm run pre-merge-check -- <PR#>`
+11. `npm run github:merge-doctor -- --pr <PR#> --expected-head <40-char-sha>`
+12. Pause for Tim's exact chat approval:
 
-**When the deploy-verifier subagent completes, check its result. If it failed, run `npm run rollback` immediately.**
+    ```text
+    I approve github.merge for governada/app PR #<PR#> if CI checks are green and the head SHA remains unchanged at <40-char-sha>.
+    ```
+
+13. Merge only through:
+
+    ```bash
+    npm run github:merge -- --pr <PR#> --expected-head <40-char-sha> --execute --confirm github.merge --approval-file <approval-file>
+    ```
+
+14. Let `github:merge` complete synchronous deploy verification. Run extra `deploy:verify`, `smoke-test`, or route checks only when the change warrants extra evidence.
+15. `npm run session:guard`
+16. Report final status only after verification passes or a named blocker remains.
+
+## PR Body
+
+PR body MUST include these sections:
+
+```markdown
+## Summary
+
+## Existing Code Audit
+
+## Robustness
+
+## Impact
+
+## Brain Freshness
+
+## Review Gate v0
+```
+
+The Review Gate v0 section must record the review tier, completed status, and findings/resolution. Run the review while the PR is still draft when practical. Do not ready a PR for merge with Review Gate wording that says the independent review is pending or still needs to run. If review completes after the PR is already ready, `github:pr-write update` allows only a body-only completed Review Gate v0 update.
+
+**IMPORTANT:** For high-risk changes, use `/ship-careful` to plan the rollout and approval gates, then return to this canonical ship path.
 
 ## Rollback
 
 If smoke test or health check fails after merge:
 
-1. Run `npm run rollback` — auto-detects, reverts, verifies, creates issue
-2. With git revert: `npm run rollback -- --revert-commit`
-3. Notify: script auto-sends Discord/Telegram alert
+1. Treat it as a human-present incident.
+2. Run `npm run rollback -- --dry-run` for diagnosis.
+3. Use `npm run rollback -- --revert-commit` only to prepare a revert PR.
+4. Immediate Railway rollback is a platform mutation and requires Tim's explicit approval/action.
 
 ## CI Failure Recovery
 
@@ -74,18 +77,21 @@ When CI fails:
 
 `npm run ci:failed`
 
-| Failure        | Fix                                                                |
-| -------------- | ------------------------------------------------------------------ |
-| **format**     | `npx prettier --write <file>`, commit, push                        |
-| **lint**       | Read error, fix code, commit, push                                 |
-| **type-check** | Read error, fix types, commit, push                                |
-| **test**       | `npx vitest run <test-file>` locally, fix, commit, push            |
-| **build**      | Usually missing `force-dynamic`. Check error, add it, commit, push |
+| Failure        | Fix                                                                     |
+| -------------- | ----------------------------------------------------------------------- |
+| **format**     | `npx prettier --write <file>`, commit, republish                        |
+| **lint**       | Read error, fix code, commit, republish                                 |
+| **type-check** | Read error, fix types, commit, republish                                |
+| **test**       | `npx vitest run <test-file>` locally, fix, commit, republish            |
+| **build**      | Usually missing `force-dynamic`. Check error, add it, commit, republish |
 
 After fixing, run these as separate commands:
-`git add <files>`
-`git commit -m "fix: resolve CI failure"`
-`git push`
-CI re-runs automatically. Re-watch with `npm run ci:watch`.
+
+```bash
+git add <files>
+git commit -m "fix: resolve CI failure"
+npm run github:ship -- publish --head <branch> --execute --confirm github.ship.pr
+npm run ci:watch
+```
 
 If stuck after 3 attempts, escalate to the user with the exact error message.

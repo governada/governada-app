@@ -90,8 +90,12 @@ PR_BODY*.md
 # Bundle baseline (machine-specific)
 .bundle-baseline.json
 
-# Agent artifacts (machine-specific, not for git)
-.agents/
+# Agent artifacts
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/ship/
+!.agents/skills/ship/SKILL.md
 .claude/perf-snapshots/
 .claude/infra-snapshots/
 .claude/scheduled_tasks.lock

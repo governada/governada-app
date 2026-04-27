@@ -45,7 +45,7 @@
     "pr:merge": "node scripts/pr-merge.js",
     "ci:watch": "node scripts/ci-watch.js",
     "ci:failed": "node scripts/ci-failed.js",
-    "rollback": "node scripts/rollback.js",
+    "rollback": "node scripts/rollback.mjs",
     "cleanup": "node scripts/cleanup.js",
     "cleanup:clean": "node scripts/cleanup.js --clean",
     "cleanup:clean-all": "node scripts/cleanup.js --clean-all",

@@ -474,20 +474,20 @@ Verify existing workspace features still work:
 
 ## Phase 4: Autonomous Ship
 
-1. `npm run preflight`
-2. Stage files, commit (conventional: `feat: governance workspace v2 — AI-powered proposal editor with agent, feedback, revision review`)
-3. `git push -u origin HEAD`
-4. `gh pr create`
-5. Poll CI until green, fix failures
-6. `bash scripts/pre-merge-check.sh <PR#>`
-7. Squash merge
-8. Apply migrations via Supabase MCP
-9. `npm run gen:types` if needed
-10. Monitor Railway deploy (~5 min)
-11. `PUT https://governada.io/api/inngest` (register new Inngest function)
-12. Verify endpoints on `governada.io`
-13. `npm run smoke-test`
-14. Clean up branches
+Use the canonical governed ship path from `AGENTS.md` and `.agents/skills/ship/SKILL.md`.
+
+1. Run relevant local verification, including `npm run agent:validate`.
+2. Stage files and commit with a conventional message.
+3. Publish through `npm run github:ship`.
+4. Create/update/ready the PR through `npm run github:pr-write`.
+5. Poll CI with `npm run ci:watch` until green; fix failures and republish through `github:ship`.
+6. Run `npm run pre-merge-check -- <PR#>`.
+7. Run `npm run github:merge-doctor -- --pr <PR#> --expected-head <sha>`.
+8. Pause for Tim's exact `github.merge` chat approval.
+9. Merge only through `npm run github:merge`.
+10. Let the merge wrapper complete synchronous production deploy verification.
+11. Apply migrations, Inngest registration, production flag changes, or Railway deploy mutations only through explicit approval gates.
+12. Clean up branches/worktrees after `npm run session:guard` is clean.
 
 ---
 

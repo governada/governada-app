@@ -2,6 +2,7 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
 import { EXPECTED_REPO } from './github-app-auth.mjs';
+import { hasReviewGateRecord } from './github-merge.mjs';
 
 export const GITHUB_WRITE_PR_CONFIRMATION = 'github.write.pr';
 export const GITHUB_WRITE_PR_OPERATIONS = new Set(['create', 'ready', 'update']);
@@ -228,7 +229,18 @@ export function printGithubPrWriteUsage() {
   npm run github:pr-write -- update --pr <number> [--title <title>] [--body-file <path>] [--execute --confirm ${GITHUB_WRITE_PR_CONFIRMATION}]
   npm run github:pr-write -- ready --pr <number> [--execute --confirm ${GITHUB_WRITE_PR_CONFIRMATION}]
 
-Dry-run is the default. Live mode is limited to draft PR creation, title/body update on draft PRs, or marking a draft PR ready for review.`);
+Dry-run is the default. Live mode is limited to draft PR creation, title/body update on draft PRs, completed Review Gate v0 body-only updates on ready PRs, or marking a draft PR ready for review.`);
+}
+
+export function isCompletedReviewGateBodyOnlyUpdate(plan, pullRequest) {
+  return (
+    plan.operation === 'update' &&
+    pullRequest?.state === 'open' &&
+    pullRequest?.draft !== true &&
+    typeof plan.body?.body === 'string' &&
+    Object.keys(plan.body).length === 1 &&
+    hasReviewGateRecord(plan.body.body)
+  );
 }
 
 function assertPresent(value, message) {

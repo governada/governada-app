@@ -10,6 +10,7 @@ Provider-agnostic instructions for autonomous agents working in this repo. Treat
 - Non-trivial bugs require root-cause analysis before fixing. Do not patch symptoms first.
 - `.env.local` points at production services. Never perform write-heavy syncs, backfills, or destructive data operations without explicit approval.
 - Risky user-facing work should be feature-flagged.
+- Governada product feature work is not done until `/Users/tim/dev/governada/governada-brain` reflects what actually shipped. Search for an existing feature or initiative note before implementation and update or create durable feature memory before closeout.
 - Do not duplicate these rules into provider-specific files. If a provider adapter needs repo policy, point it back here and keep executable behavior in `package.json` scripts or small adapter hooks.
 
 ## Hard Constraints
@@ -32,9 +33,10 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 6. Make the most elegant change that cleanly solves the actual problem within scope. Do not choose a shortcut or merely minimal patch when a more coherent fix is clear and practical.
 7. Run `npm run agent:validate` and the relevant local verification for the scope.
 8. Communicate impact explicitly in updates, handoffs, and reviews: what changed, why it matters, which surfaces or constraints it affects, and any real tradeoffs or risks.
-9. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, and `Impact` sections.
-10. Before merging, run `npm run pre-merge-check -- <PR#>`.
-11. After merge, verify deploy health and smoke tests with `npm run deploy:verify`.
+9. For product feature work, update the relevant brain feature note under `/Users/tim/dev/governada/governada-brain/governada/features/` or initiative note under `/Users/tim/dev/governada/governada-brain/governada/initiatives/`. If no note exists and the feature is shaped enough to name, create one from the brain template. Tiny follow-up PRs should update the existing feature note rather than create duplicates.
+10. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, `Impact`, and `Brain Freshness` sections.
+11. Before merging, run `npm run pre-merge-check -- <PR#>`.
+12. After merge, verify deploy health and smoke tests with `npm run deploy:verify`.
 
 ## Autonomy Boundary
 
@@ -44,6 +46,20 @@ Routine reads, edits, local verification, git hygiene, and PR preparation should
 - Scope expansion beyond the request
 - Architectural forks with materially different tradeoffs
 - Secrets, credential rotation, or external account changes
+
+## Brain Freshness
+
+Use the Obsidian brain for product context, feature lifecycle memory, durable decisions, and future-agent assumptions. Use the app repo for source code and code-shipping docs.
+
+- Product feature work must search `/Users/tim/dev/governada/governada-brain/governada/features/` and `/Users/tim/dev/governada/governada-brain/governada/initiatives/` before planning or implementation.
+- Every real product feature should have a feature note. The note should record product intent, strategic fit, surfaces, current behavior, intended behavior, acceptance criteria, implementation notes, verification, shipped history, and open follow-ups.
+- New feature or meaningful behavior change: create or update the feature note before closeout.
+- Small follow-up to an existing feature: update the existing feature note with shipped history, verification, or open gaps.
+- Bug fix: update the feature note when the bug changes expected behavior, exposes a durable product/architecture lesson, or affects a critical journey.
+- Refactor/test-only work: a feature note is optional only when behavior and future-agent assumptions are unchanged; say why at closeout.
+- Update `/Users/tim/dev/governada/governada-brain/governada/roadmap.md` only when phase coverage, sequencing, or strategic status changes.
+- Add or update a note under `/Users/tim/dev/governada/governada-brain/decisions/` when a durable product, architecture, monetization, identity, or sequencing choice is made.
+- Final responses must include `Brain freshness: updated <files>` or `Brain freshness: not needed because <reason>`.
 
 ## Codex Desktop Sandbox
 

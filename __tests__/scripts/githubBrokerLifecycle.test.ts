@@ -176,6 +176,17 @@ describe('github broker lifecycle CLI', () => {
     expect(runnerSource).not.toContain('TMPDIR');
   });
 
+  it('routes broker response writes through the guarded socket helper', () => {
+    const brokerSource = readFileSync(
+      path.join(repoRoot, 'scripts/github-runtime-broker.mjs'),
+      'utf8',
+    );
+
+    expect(brokerSource).toContain('attachBrokerSocketErrorHandler(socket)');
+    expect(brokerSource).toContain('sendBrokerSocketResponse({');
+    expect(brokerSource).not.toContain('socket.end(`${JSON.stringify(publicResponse)}');
+  });
+
   it('requires explicit acknowledgement before installing a temporary worktree service', () => {
     if (getCheckoutKind(repoRoot) !== 'worktree') {
       return;

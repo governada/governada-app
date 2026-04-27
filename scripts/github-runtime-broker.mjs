@@ -32,6 +32,10 @@ import {
   verifyGithubAppOwner,
 } from './lib/github-app-auth.mjs';
 import { assertGithubBrokerRequestAllowed } from './lib/github-broker-policy.mjs';
+import {
+  attachBrokerSocketErrorHandler,
+  sendBrokerSocketResponse,
+} from './lib/github-broker-socket.mjs';
 import { githubBrokerSocketPath } from './lib/github-broker-client.mjs';
 import { parseGithubMergeApproval } from './lib/github-merge-approval.mjs';
 import { evaluateGithubChecksForMerge, evaluatePullRequestForMerge } from './lib/github-merge.mjs';
@@ -252,6 +256,7 @@ async function handleBrokerSocket({ context, env, repoRoot, shutdown, socket }) 
   socket.setEncoding('utf8');
   let requestText = '';
   let handled = false;
+  attachBrokerSocketErrorHandler(socket);
 
   socket.on('data', async (chunk) => {
     requestText += chunk;
@@ -264,19 +269,24 @@ async function handleBrokerSocket({ context, env, repoRoot, shutdown, socket }) 
       const request = JSON.parse(requestText.trim());
       const response = await handleBrokerRequest({ context, env, repoRoot, request });
       const { shutdown: shouldShutdown, ...publicResponse } = response;
-      socket.end(`${JSON.stringify(publicResponse)}\n`, () => {
-        if (shouldShutdown) {
-          shutdown();
-        }
+      sendBrokerSocketResponse({
+        onSettled: () => {
+          if (shouldShutdown) {
+            shutdown();
+          }
+        },
+        response: publicResponse,
+        socket,
       });
     } catch (error) {
-      socket.end(
-        `${JSON.stringify({
+      sendBrokerSocketResponse({
+        response: {
           error: redactSensitiveText(error?.message || String(error)),
           ok: false,
           status: 0,
-        })}\n`,
-      );
+        },
+        socket,
+      });
     }
   });
 }

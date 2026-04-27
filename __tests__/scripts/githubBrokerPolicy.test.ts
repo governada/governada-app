@@ -5,6 +5,7 @@ import { assertGithubBrokerRequestAllowed } from '@/scripts/lib/github-broker-po
 
 const SHA = '1234567890abcdef1234567890abcdef12345678';
 const approvalText = `I approve github.merge for governada/app PR #913 if checks are green and the head SHA ${SHA} is unchanged.`;
+const closeApprovalText = `I approve github.pr.close for governada/app PR #891 at expected head ${SHA}.`;
 
 describe('github runtime broker policy', () => {
   it('allows bounded ship PR requests and branch ref updates without force', () => {
@@ -129,6 +130,77 @@ describe('github runtime broker policy', () => {
         path: '/repos/governada/app/deployments',
       }),
     ).toThrow('github.merge broker request is not allowed');
+  });
+
+  it('allows PR close only through a state=closed patch with approval proof', () => {
+    expect(() =>
+      assertGithubBrokerRequestAllowed({
+        body: {
+          state: 'closed',
+        },
+        kind: 'github-api',
+        method: 'PATCH',
+        operationClass: GITHUB_OPERATION_CLASSES.prClose,
+        path: '/repos/governada/app/pulls/891',
+        prCloseApproval: {
+          approvalText: closeApprovalText,
+          expectedHead: SHA,
+          prNumber: 891,
+        },
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      assertGithubBrokerRequestAllowed({
+        body: {
+          state: 'open',
+        },
+        kind: 'github-api',
+        method: 'PATCH',
+        operationClass: GITHUB_OPERATION_CLASSES.prClose,
+        path: '/repos/governada/app/pulls/891',
+        prCloseApproval: {
+          approvalText: closeApprovalText,
+          expectedHead: SHA,
+          prNumber: 891,
+        },
+      }),
+    ).toThrow('github.pr.close may only set state=closed');
+
+    expect(() =>
+      assertGithubBrokerRequestAllowed({
+        body: {
+          body: 'nope',
+          state: 'closed',
+        },
+        kind: 'github-api',
+        method: 'PATCH',
+        operationClass: GITHUB_OPERATION_CLASSES.prClose,
+        path: '/repos/governada/app/pulls/891',
+        prCloseApproval: {
+          approvalText: closeApprovalText,
+          expectedHead: SHA,
+          prNumber: 891,
+        },
+      }),
+    ).toThrow('github.pr.close may only set state=closed');
+
+    expect(() =>
+      assertGithubBrokerRequestAllowed({
+        body: {
+          state: 'closed',
+        },
+        kind: 'github-api',
+        method: 'PATCH',
+        operationClass: GITHUB_OPERATION_CLASSES.prClose,
+        path: '/repos/governada/app/pulls/891',
+        prCloseApproval: {
+          approvalText: closeApprovalText,
+          expectedHead: SHA,
+          prNumber: 887,
+        },
+      }),
+    ).toThrow('github.pr.close broker request must include matching PR approval proof');
   });
 
   it('rejects token-like payloads and requests outside governada/app', () => {

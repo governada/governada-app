@@ -29,6 +29,13 @@ export const EXPECTED_RETURNED_WRITE_PR_PERMISSIONS = Object.freeze({
   ...EXPECTED_WRITE_PR_PERMISSIONS,
   metadata: 'read',
 });
+export const EXPECTED_PR_CLOSE_PERMISSIONS = Object.freeze({
+  pull_requests: 'write',
+});
+export const EXPECTED_RETURNED_PR_CLOSE_PERMISSIONS = Object.freeze({
+  ...EXPECTED_PR_CLOSE_PERMISSIONS,
+  metadata: 'read',
+});
 export const EXPECTED_SHIP_PR_PERMISSIONS = Object.freeze({
   actions: 'read',
   checks: 'read',
@@ -52,6 +59,7 @@ export const EXPECTED_RETURNED_MERGE_PERMISSIONS = Object.freeze({
 export const GITHUB_OPERATION_CLASSES = Object.freeze({
   read: 'github.read',
   writePr: 'github.write.pr',
+  prClose: 'github.pr.close',
   shipPr: 'github.ship.pr',
   merge: 'github.merge',
 });
@@ -332,6 +340,14 @@ export function summarizeGithubWritePrPermissions(permissions = {}) {
   return summarizeGithubPermissions(permissions, EXPECTED_RETURNED_WRITE_PR_PERMISSIONS);
 }
 
+export function githubPrClosePermissionFailures(permissions = {}) {
+  return githubPermissionFailures(permissions, EXPECTED_RETURNED_PR_CLOSE_PERMISSIONS);
+}
+
+export function summarizeGithubPrClosePermissions(permissions = {}) {
+  return summarizeGithubPermissions(permissions, EXPECTED_RETURNED_PR_CLOSE_PERMISSIONS);
+}
+
 export function githubShipPrPermissionFailures(permissions = {}) {
   return githubPermissionFailures(permissions, EXPECTED_RETURNED_SHIP_PR_PERMISSIONS);
 }
@@ -357,6 +373,10 @@ export function githubPermissionsForOperationClass(operationClass) {
     return EXPECTED_WRITE_PR_PERMISSIONS;
   }
 
+  if (operationClass === GITHUB_OPERATION_CLASSES.prClose) {
+    return EXPECTED_PR_CLOSE_PERMISSIONS;
+  }
+
   if (operationClass === GITHUB_OPERATION_CLASSES.shipPr) {
     return EXPECTED_SHIP_PR_PERMISSIONS;
   }
@@ -377,6 +397,10 @@ export function githubPermissionFailuresForOperationClass(operationClass, permis
     return githubWritePrPermissionFailures(permissions);
   }
 
+  if (operationClass === GITHUB_OPERATION_CLASSES.prClose) {
+    return githubPrClosePermissionFailures(permissions);
+  }
+
   if (operationClass === GITHUB_OPERATION_CLASSES.shipPr) {
     return githubShipPrPermissionFailures(permissions);
   }
@@ -395,6 +419,10 @@ export function summarizeGithubPermissionsForOperationClass(operationClass, perm
 
   if (operationClass === GITHUB_OPERATION_CLASSES.writePr) {
     return summarizeGithubWritePrPermissions(permissions);
+  }
+
+  if (operationClass === GITHUB_OPERATION_CLASSES.prClose) {
+    return summarizeGithubPrClosePermissions(permissions);
   }
 
   if (operationClass === GITHUB_OPERATION_CLASSES.shipPr) {

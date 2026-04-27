@@ -35,6 +35,7 @@ import { assertGithubBrokerRequestAllowed } from './lib/github-broker-policy.mjs
 import { githubBrokerSocketPath } from './lib/github-broker-client.mjs';
 import { parseGithubMergeApproval } from './lib/github-merge-approval.mjs';
 import { evaluateGithubChecksForMerge, evaluatePullRequestForMerge } from './lib/github-merge.mjs';
+import { evaluatePullRequestForClose, parseGithubPrCloseApproval } from './lib/github-pr-close.mjs';
 import { getScriptContext, loadLocalEnv } from './lib/runtime.mjs';
 
 const require = createRequire(import.meta.url);
@@ -122,6 +123,7 @@ async function main() {
     console.log(
       `Operation classes: ${[
         GITHUB_OPERATION_CLASSES.read,
+        GITHUB_OPERATION_CLASSES.prClose,
         GITHUB_OPERATION_CLASSES.shipPr,
         GITHUB_OPERATION_CLASSES.merge,
       ].join(', ')}`,
@@ -298,6 +300,7 @@ async function handleBrokerRequest({ env, repoRoot, request }) {
       supportedOperationClasses: [
         GITHUB_OPERATION_CLASSES.read,
         GITHUB_OPERATION_CLASSES.writePr,
+        GITHUB_OPERATION_CLASSES.prClose,
         GITHUB_OPERATION_CLASSES.shipPr,
         GITHUB_OPERATION_CLASSES.merge,
       ],
@@ -388,6 +391,20 @@ async function handleBrokerRequest({ env, repoRoot, request }) {
     }
   }
 
+  if (isPrCloseExecutionRequest(request)) {
+    const closeGate = await verifyBrokerPrCloseGate({
+      request,
+      token: mintResult.token,
+    });
+    if (closeGate.error) {
+      return {
+        error: closeGate.error,
+        ok: false,
+        status: closeGate.status || 0,
+      };
+    }
+  }
+
   const response =
     request.path === '/graphql'
       ? await githubGraphqlRequest({
@@ -409,12 +426,55 @@ async function handleBrokerRequest({ env, repoRoot, request }) {
   };
 }
 
+function isPrCloseExecutionRequest(request) {
+  return (
+    request?.operationClass === GITHUB_OPERATION_CLASSES.prClose &&
+    String(request?.method || '').toUpperCase() === 'PATCH' &&
+    /^\/repos\/governada\/app\/pulls\/[1-9]\d*$/u.test(String(request?.path || ''))
+  );
+}
+
 function isMergeExecutionRequest(request) {
   return (
     request?.operationClass === GITHUB_OPERATION_CLASSES.merge &&
     String(request?.method || '').toUpperCase() === 'PUT' &&
     /^\/repos\/governada\/app\/pulls\/[1-9]\d*\/merge$/u.test(String(request?.path || ''))
   );
+}
+
+async function verifyBrokerPrCloseGate({ request, token }) {
+  const prNumber = Number(String(request.path).match(/\/pulls\/([1-9]\d*)$/u)?.[1] || 0);
+  const expectedHead = String(request.prCloseApproval?.expectedHead || '');
+  const approval = parseGithubPrCloseApproval({
+    expectedHead,
+    prNumber,
+    text: request.prCloseApproval?.approvalText || '',
+  });
+  if (!approval.ok) {
+    return {
+      error: `PR close approval is not current or specific: ${approval.reasons.join('; ')}`,
+    };
+  }
+
+  const pull = await githubApiRequest({
+    path: `/repos/${EXPECTED_REPO}/pulls/${prNumber}`,
+    token,
+  });
+  if (!pull.ok) {
+    return {
+      error: githubApiErrorMessage(pull, `PR #${prNumber} read failed`),
+      status: pull.status,
+    };
+  }
+
+  const prEvaluation = evaluatePullRequestForClose(pull.data, expectedHead);
+  if (prEvaluation.blockers.length > 0) {
+    return {
+      error: `PR close gate failed: ${prEvaluation.blockers.join('; ')}`,
+    };
+  }
+
+  return {};
 }
 
 async function verifyBrokerMergeGate({ request, token }) {

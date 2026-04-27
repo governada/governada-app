@@ -1,4 +1,5 @@
 import { EXPECTED_REPO, GITHUB_OPERATION_CLASSES } from './github-app-auth.mjs';
+import { assertPrCloseBody, parseGithubPrCloseApproval } from './github-pr-close.mjs';
 import { formatSecretScanFindings, scanGitHubShipContentForSecrets } from './secret-scan.mjs';
 
 const REPO_PREFIX = `/repos/${EXPECTED_REPO}`;
@@ -44,6 +45,11 @@ export function assertGithubBrokerRequestAllowed(request) {
     operationClass === GITHUB_OPERATION_CLASSES.shipPr
   ) {
     assertShipPrRequestAllowed(method, path, request);
+    return;
+  }
+
+  if (operationClass === GITHUB_OPERATION_CLASSES.prClose) {
+    assertPrCloseRequestAllowed(method, path, request);
     return;
   }
 
@@ -130,6 +136,23 @@ function assertShipPrRequestAllowed(method, path, request) {
   throw new Error(`github.ship.pr broker request is not allowed: ${method} ${path}`);
 }
 
+function assertPrCloseRequestAllowed(method, path, request) {
+  if (
+    method === 'GET' &&
+    (path === REPO_PREFIX || PULL_PATH_RE.test(path) || PULL_NUMBER_PATH_RE.test(path))
+  ) {
+    return;
+  }
+
+  if (method === 'PATCH' && PULL_NUMBER_PATH_RE.test(path)) {
+    assertPrCloseBody(request.body || {});
+    assertPrCloseProof(request, path);
+    return;
+  }
+
+  throw new Error(`github.pr.close broker request is not allowed: ${method} ${path}`);
+}
+
 function assertMergeRequestAllowed(method, path, request) {
   if (
     method === 'GET' &&
@@ -193,6 +216,29 @@ function assertAllowedBranchName(branch, label) {
     branch.startsWith('-')
   ) {
     throw new Error(`github.ship.pr ${label} must be same-repository codex/* or feat/*`);
+  }
+}
+
+function assertPrCloseProof(request, requestPath) {
+  const prNumber = Number(requestPath.match(/\/pulls\/([1-9]\d*)$/u)?.[1] || 0);
+  const proof = request?.prCloseApproval || {};
+  const expectedHead = String(proof.expectedHead || '');
+
+  if (!FULL_SHA_RE.test(expectedHead)) {
+    throw new Error('github.pr.close broker request must pin a 40-character expected head SHA');
+  }
+
+  if (Number(proof.prNumber) !== prNumber) {
+    throw new Error('github.pr.close broker request must include matching PR approval proof');
+  }
+
+  const approval = parseGithubPrCloseApproval({
+    expectedHead,
+    prNumber,
+    text: proof.approvalText || '',
+  });
+  if (!approval.ok) {
+    throw new Error('github.pr.close broker request must include prompt approval text');
   }
 }
 

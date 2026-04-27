@@ -232,16 +232,20 @@ async function runDoctor({ repoRoot }) {
 
   const helper = inspectKeychainCacheHelper();
   if (helper.ok && !helper.stale) {
-    ok(`Keychain helper is present at ${helper.path || keychainHelperPath}`);
+    ok(
+      `Keychain helper is present at ${helper.path || keychainHelperPath}${
+        helper.signatureIdentifier ? ` with signing identifier ${helper.signatureIdentifier}` : ''
+      }`,
+    );
   } else if (helper.ok && helper.stale) {
     advisories.push('Keychain helper is older than its source');
     advisory(
-      `Keychain helper is older than its source; cache-token and service start rebuild it before token-bearing use`,
+      `Keychain helper is older than its source; cache-token rebuilds it during the human-present setup step before token-bearing broker start`,
     );
   } else if (!helper.exists) {
     advisories.push('Keychain helper has not been built yet');
     advisory(
-      `Keychain helper has not been built yet; cache-token and service start build it before token-bearing use`,
+      `Keychain helper has not been built yet; cache-token builds it during the human-present setup step before token-bearing broker start`,
     );
   } else {
     blockers.push(helper.error || 'Keychain helper is not usable');
@@ -409,7 +413,7 @@ function runInstall({ parsed, repoRoot }) {
   }
 
   ok(
-    'Keychain helper source and compiler are available; token-bearing cache/start paths force-build the helper before use',
+    'Keychain helper source and compiler are available; cache-token force-builds the helper during the human-present setup step before broker start',
   );
 
   const nodePath = findNodeForBrokerService();

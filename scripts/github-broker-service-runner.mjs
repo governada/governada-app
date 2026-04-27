@@ -11,6 +11,7 @@ import {
   GITHUB_BROKER_TOKEN_OP_REF_KEY,
   ensureKeychainCacheHelper,
   getBrokerServicePaths,
+  getGithubBrokerStatus,
   getGithubBrokerTokenCacheStatus,
   isSafeServiceAccountTokenOpRef,
   readGithubBrokerRefs,
@@ -29,6 +30,10 @@ function ok(message) {
 function block(message) {
   console.error(`BLOCKED: ${redactSensitiveText(message)}`);
 }
+
+const BROKER_HELPER_START_TIMEOUT_MS = 20000;
+const BROKER_HELPER_START_POLL_MS = 250;
+const BROKER_HELPER_FORCE_KILL_GRACE_MS = 2000;
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -66,11 +71,11 @@ async function main() {
     process.exit(1);
   }
 
-  const helper = ensureKeychainCacheHelper(process.env, { forceBuild: true });
+  const helper = ensureKeychainCacheHelper(process.env);
   if (!helper.ok) {
     block(
       helper.error ||
-        `macOS Keychain helper could not be built; refresh the runtime cache with npm run github:broker -- cache-token --confirm ${GITHUB_BROKER_CACHE_TOKEN_CONFIRMATION}`,
+        `macOS Keychain helper is not ready for promptless broker start; refresh the runtime cache with npm run github:broker -- cache-token --confirm ${GITHUB_BROKER_CACHE_TOKEN_CONFIRMATION}`,
     );
     process.exit(1);
   }
@@ -112,6 +117,7 @@ async function main() {
       stdio: 'inherit',
     },
   );
+  const startup = watchBrokerStartup({ child, repoRoot });
 
   const forwardSignal = (signal) => {
     child.kill(signal);
@@ -120,12 +126,81 @@ async function main() {
   process.on('SIGTERM', () => forwardSignal('SIGTERM'));
 
   child.on('exit', (code, signal) => {
+    startup.settle();
+    if (startup.timedOut()) {
+      process.exit(1);
+    }
+
     if (signal) {
       process.kill(process.pid, signal);
       return;
     }
     process.exit(code ?? 0);
   });
+}
+
+function watchBrokerStartup({ child, repoRoot }) {
+  let forceKillTimer = null;
+  let pollTimer = null;
+  let settled = false;
+  let timedOut = false;
+  let timeoutTimer = null;
+
+  const settle = () => {
+    settled = true;
+    clearInterval(pollTimer);
+    clearTimeout(timeoutTimer);
+    if (forceKillTimer) {
+      clearTimeout(forceKillTimer);
+    }
+  };
+
+  const terminateHungChild = () => {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      return;
+    }
+
+    child.kill('SIGTERM');
+    forceKillTimer = setTimeout(() => {
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill('SIGKILL');
+      }
+    }, BROKER_HELPER_FORCE_KILL_GRACE_MS);
+    forceKillTimer.unref?.();
+  };
+
+  pollTimer = setInterval(async () => {
+    if (settled) {
+      return;
+    }
+
+    try {
+      const status = await getGithubBrokerStatus({ repoRoot });
+      if (status.running) {
+        ok('GitHub runtime broker socket became healthy');
+        settle();
+      }
+    } catch {
+      // Keep polling until the explicit timeout; startup diagnostics stay non-secret.
+    }
+  }, BROKER_HELPER_START_POLL_MS);
+
+  timeoutTimer = setTimeout(() => {
+    if (settled) {
+      return;
+    }
+
+    timedOut = true;
+    block(
+      `GitHub broker Keychain helper did not start the broker within ${BROKER_HELPER_START_TIMEOUT_MS}ms. If a macOS Keychain prompt is visible, approve it once and retry. If prompts repeat, run npm run github:broker -- cache-token --confirm ${GITHUB_BROKER_CACHE_TOKEN_CONFIRMATION} as a human-present setup step; broker startup no longer rebuilds the helper.`,
+    );
+    terminateHungChild();
+  }, BROKER_HELPER_START_TIMEOUT_MS);
+
+  return {
+    settle,
+    timedOut: () => timedOut,
+  };
 }
 
 function parseArgs(argv) {

@@ -37,9 +37,10 @@ export const GITHUB_BROKER_KEYCHAIN_LABEL =
   'Governada GitHub broker service-account token runtime cache';
 export const EXPECTED_OP_ACCOUNT = 'my.1password.com';
 
-const SERVICE_START_TIMEOUT_MS = 90000;
+const SERVICE_START_TIMEOUT_MS = 30000;
 const SERVICE_ENSURE_LOCK_WAIT_MS = 30000;
 const SERVICE_ENSURE_LOCK_STALE_MS = 120000;
+const LAUNCHCTL_TIMEOUT_MS = 15000;
 const FIXED_RUNTIME_PATH = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin';
 const LAUNCHCTL_PATH = '/bin/launchctl';
 const SECURITY_PATH = '/usr/bin/security';
@@ -210,6 +211,12 @@ export function findClangCliPath() {
   return candidates.find((candidate) => existsSync(candidate)) || '';
 }
 
+export function findCodeSignCliPath() {
+  const candidates = ['/usr/bin/codesign'];
+
+  return candidates.find((candidate) => existsSync(candidate)) || '';
+}
+
 export function getKeychainCacheCSourcePath() {
   return path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -227,6 +234,60 @@ export function getKeychainCacheHelperPath() {
     'runtime',
     'github-keychain-cache',
   );
+}
+
+export function extractCodeSignatureIdentifier(output = '') {
+  const match = output.match(/^Identifier=(.+)$/mu);
+  return match?.[1]?.trim() || '';
+}
+
+export function isStableKeychainHelperIdentifier(identifier = '') {
+  return identifier === path.basename(getKeychainCacheHelperPath());
+}
+
+export function canRebuildKeychainCacheHelper(status = {}) {
+  return status.exists === false || Boolean(status.ok) || Boolean(status.rebuildable);
+}
+
+function inspectHelperCodeSignatureIdentifier(helperPath, env = process.env) {
+  const codesignPath = findCodeSignCliPath();
+  if (!codesignPath) {
+    return {
+      identifier: '',
+      ok: true,
+      skipped: true,
+    };
+  }
+
+  const result = spawnSync(codesignPath, ['-dv', '--verbose=4', helperPath], {
+    encoding: 'utf8',
+    env: sanitizedCompilerEnv(env),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 10000,
+  });
+
+  if (result.status !== 0) {
+    const output = redactSensitiveText(`${result.stdout || ''}${result.stderr || ''}`.trim());
+    return {
+      error: output || `codesign helper inspection failed with status ${result.status}`,
+      identifier: '',
+      ok: false,
+    };
+  }
+
+  const identifier = extractCodeSignatureIdentifier(`${result.stdout || ''}${result.stderr || ''}`);
+  if (!identifier) {
+    return {
+      error: 'codesign helper inspection did not report an executable identifier',
+      identifier: '',
+      ok: false,
+    };
+  }
+
+  return {
+    identifier,
+    ok: true,
+  };
 }
 
 export function ensureKeychainCacheHelper(env = process.env, { forceBuild = false } = {}) {
@@ -254,7 +315,7 @@ export function ensureKeychainCacheHelper(env = process.env, { forceBuild = fals
       error:
         inspection.error ||
         (inspection.stale
-          ? `Keychain cache helper is older than its source at ${sourcePath}; token-bearing cache/start paths will rebuild it`
+          ? `Keychain cache helper is older than its source at ${sourcePath}; run npm run github:broker -- cache-token --confirm ${GITHUB_BROKER_CACHE_TOKEN_CONFIRMATION} once as a human-present setup step to rebuild it before broker start`
           : `Keychain cache helper is not built at ${helperPath}`),
       ok: false,
       path: helperPath,
@@ -272,7 +333,7 @@ export function ensureKeychainCacheHelper(env = process.env, { forceBuild = fals
   }
 
   const helperStatus = inspection;
-  if (helperStatus.exists && !helperStatus.ok) {
+  if (!canRebuildKeychainCacheHelper(helperStatus)) {
     return {
       error: helperStatus.error,
       ok: false,
@@ -280,8 +341,14 @@ export function ensureKeychainCacheHelper(env = process.env, { forceBuild = fals
     };
   }
 
-  mkdirSync(path.dirname(helperPath), { mode: 0o700, recursive: true });
-  const tempHelperPath = `${helperPath}.${process.pid}.${Date.now()}.tmp`;
+  const helperDir = path.dirname(helperPath);
+  mkdirSync(helperDir, { mode: 0o700, recursive: true });
+  const tempBuildDir = path.join(
+    helperDir,
+    `.github-keychain-cache-build-${process.pid}-${Date.now()}`,
+  );
+  mkdirSync(tempBuildDir, { mode: 0o700 });
+  const tempHelperPath = path.join(tempBuildDir, path.basename(helperPath));
   const brokerScriptPath = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     '..',
@@ -311,6 +378,7 @@ export function ensureKeychainCacheHelper(env = process.env, { forceBuild = fals
 
   if (result.status !== 0) {
     const output = redactSensitiveText(`${result.stdout || ''}${result.stderr || ''}`.trim());
+    rmSync(tempBuildDir, { force: true, recursive: true });
     return {
       error: output || `Keychain cache helper compile failed with status ${result.status}`,
       ok: false,
@@ -318,8 +386,12 @@ export function ensureKeychainCacheHelper(env = process.env, { forceBuild = fals
     };
   }
 
-  chmodSync(tempHelperPath, 0o700);
-  renameSync(tempHelperPath, helperPath);
+  try {
+    chmodSync(tempHelperPath, 0o700);
+    renameSync(tempHelperPath, helperPath);
+  } finally {
+    rmSync(tempBuildDir, { force: true, recursive: true });
+  }
   return {
     built: true,
     ok: true,
@@ -402,10 +474,33 @@ function existingKeychainHelperStatus(helperPath) {
     };
   }
 
+  const signature = inspectHelperCodeSignatureIdentifier(helperPath);
+  if (!signature.ok) {
+    return {
+      error: signature.error,
+      exists: true,
+      mtimeMs: stat.mtimeMs,
+      ok: false,
+    };
+  }
+
+  if (signature.identifier && !isStableKeychainHelperIdentifier(signature.identifier)) {
+    return {
+      error: `Keychain cache helper was built with unstable signing identifier ${signature.identifier}; run npm run github:broker -- cache-token --confirm ${GITHUB_BROKER_CACHE_TOKEN_CONFIRMATION} once as a human-present setup step to rebuild it with the stable github-keychain-cache identity`,
+      exists: true,
+      mtimeMs: stat.mtimeMs,
+      ok: false,
+      rebuildable: true,
+      signatureIdentifier: signature.identifier,
+    };
+  }
+
   return {
     exists: true,
     mtimeMs: stat.mtimeMs,
     ok: true,
+    signatureIdentifier: signature.identifier,
+    signatureSkipped: Boolean(signature.skipped),
   };
 }
 
@@ -913,8 +1008,20 @@ export function runLaunchctl(args, { allowAlreadyBootstrapped = false, env = pro
     encoding: 'utf8',
     env: sanitizedLaunchctlEnv(env),
     stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: LAUNCHCTL_TIMEOUT_MS,
   });
   const output = redactSensitiveText(`${result.stdout || ''}${result.stderr || ''}`.trim());
+  if (result.error) {
+    return {
+      ok: false,
+      output:
+        output ||
+        (result.error.code === 'ETIMEDOUT'
+          ? `launchctl ${args.join(' ')} timed out after ${LAUNCHCTL_TIMEOUT_MS}ms; broker service may be waiting on macOS login, LaunchAgent, or Keychain state`
+          : `launchctl ${args.join(' ')} failed: ${result.error.message}`),
+    };
+  }
+
   if (result.status === 0) {
     return { ok: true, output };
   }

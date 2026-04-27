@@ -5,6 +5,8 @@ import path from 'node:path';
 import { getSharedCheckoutRoot } from './env-bootstrap.mjs';
 import { redactSensitiveText } from './github-app-auth.mjs';
 
+export const GITHUB_BROKER_REQUEST_TIMEOUT_MS = 60000;
+
 export function githubBrokerSocketPath(repoRoot, _env = process.env) {
   return defaultGithubBrokerSocketPath(repoRoot);
 }
@@ -25,7 +27,12 @@ export function isGithubBrokerAvailable(repoRoot, env = process.env) {
   return existsSync(githubBrokerSocketPath(repoRoot, env));
 }
 
-export function callGithubBroker({ env = process.env, repoRoot, request, timeoutMs = 15000 }) {
+export function callGithubBroker({
+  env = process.env,
+  repoRoot,
+  request,
+  timeoutMs = GITHUB_BROKER_REQUEST_TIMEOUT_MS,
+}) {
   const socketPath = githubBrokerSocketPath(repoRoot, env);
 
   return new Promise((resolve, reject) => {

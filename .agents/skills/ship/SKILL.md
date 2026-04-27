@@ -66,6 +66,8 @@ Feature PRs must include:
 ## Review Gate v0
 ```
 
+The Review Gate v0 section must record the review tier, completed status, and findings/resolution. Do not ready a PR for merge with Review Gate wording that says the independent review is pending or still needs to run.
+
 ## Production Mutation Boundaries
 
 - Supabase migrations, production data writes, secret changes, credential rotation, Railway deploy mutations, branch protection/admin changes, billing/admin changes, and GitHub App permission changes require explicit approval.

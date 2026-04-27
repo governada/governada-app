@@ -58,6 +58,8 @@ PR body MUST include these sections:
 ## Review Gate v0
 ```
 
+The Review Gate v0 section must record the review tier, completed status, and findings/resolution. Do not ready a PR for merge with Review Gate wording that says the independent review is pending or still needs to run.
+
 **IMPORTANT:** For high-risk changes, use `/ship-careful` to plan the rollout and approval gates, then return to this canonical ship path.
 
 ## Rollback

@@ -65,6 +65,7 @@ function createRollbackPr(currentSha, currentMessage) {
   const worktreePath = path.join(tempRoot, 'repo');
 
   try {
+    commandOutput('git', ['fetch', 'origin', 'main'], { cwd: repoRoot });
     commandOutput('git', ['worktree', 'add', '-b', branchName, worktreePath, 'origin/main'], {
       cwd: repoRoot,
     });
@@ -104,6 +105,7 @@ function createRollbackPr(currentSha, currentMessage) {
       '## Review Gate v0',
       '',
       '- **Review tier**: L2',
+      '- **Status**: Completed emergency revert generation review; protected merge checks and Tim approval still apply.',
       '- **Findings**: Emergency rollback PR generated from the current main head; merge still requires the protected `github.merge` path and Tim approval.',
     ].join('\n');
 

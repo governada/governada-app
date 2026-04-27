@@ -202,7 +202,7 @@ describe('github merge wrapper guardrails', () => {
       `PR #913 head SHA is ffffffffffffffffffffffffffffffffffffffff, expected ${SHA}`,
       'merge lane must not operate on main as the PR head branch',
       'PR #913 mergeable_state is behind',
-      'PR #913 body does not record Review Gate v0',
+      'PR #913 body does not record completed Review Gate v0',
     ]);
   });
 
@@ -228,7 +228,7 @@ describe('github merge wrapper guardrails', () => {
     );
 
     expect(evaluation.blockers).toEqual([]);
-    expect(evaluation.passes).toContain('PR #913 records Review Gate v0');
+    expect(evaluation.passes).toContain('PR #913 records completed Review Gate v0');
   });
 
   it('blocks PRs while GitHub mergeability is still unknown', () => {
@@ -324,6 +324,16 @@ describe('github merge wrapper guardrails', () => {
       true,
     );
     expect(hasReviewGateRecord('Review Gate v0\nNo tier here')).toBe(false);
+    expect(
+      hasReviewGateRecord(
+        '## Review Gate v0\n\n- **Review tier**: L2\n- **Findings**: Independent Review Gate v0 should still run before merge.',
+      ),
+    ).toBe(false);
+    expect(
+      hasReviewGateRecord(
+        '## Review Gate v0\n\n- **Review tier**: L2\n- **Findings**: Review Gate v0 still needs to run before merge.',
+      ),
+    ).toBe(false);
     expect(redactGithubMergePlan(plan)).toMatchObject({
       body: {
         merge_method: 'squash',

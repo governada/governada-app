@@ -56,10 +56,13 @@ describe('agent ship workflow guardrails', () => {
   it('routes rollback and legacy deploy verify through safe current entrypoints', () => {
     const packageJson = JSON.parse(read('package.json')) as { scripts: Record<string, string> };
     const rollbackJs = read('scripts/rollback.js');
+    const rollbackMjs = read('scripts/rollback.mjs');
     const deployVerifyJs = read('scripts/deploy-verify.js');
 
     expect(packageJson.scripts.rollback).toBe('node scripts/rollback.mjs');
     expect(rollbackJs).toContain('rollback.mjs');
+    expect(rollbackMjs).toContain("['fetch', 'origin', 'main']");
+    expect(rollbackMjs).toContain('Completed emergency revert generation review');
     expect(deployVerifyJs).toContain('npm');
     expect(deployVerifyJs).toContain('deploy:verify');
     expect(deployVerifyJs).toContain('no longer supports --register-inngest');

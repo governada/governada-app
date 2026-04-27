@@ -209,9 +209,9 @@ export function evaluatePullRequestForMerge(pullRequest, expectedHead, repo = EX
   }
 
   if (hasReviewGateRecord(pullRequest?.body || '')) {
-    passes.push(`PR #${prNumber} records Review Gate v0`);
+    passes.push(`PR #${prNumber} records completed Review Gate v0`);
   } else {
-    blockers.push(`PR #${prNumber} body does not record Review Gate v0`);
+    blockers.push(`PR #${prNumber} body does not record completed Review Gate v0`);
   }
 
   return { blockers, passes };
@@ -271,11 +271,22 @@ export function evaluateGithubChecksForMerge({ checkRuns, combinedStatus, ...opt
 
 export function hasReviewGateRecord(body) {
   const text = String(body || '').toLowerCase();
-  return (
+  const hasRequiredShape =
     text.includes('review gate') &&
     (/\breview tier\b/u.test(text) || /\btier\s*:?\s*l[0-4]\b/u.test(text)) &&
-    /\bfindings?\b/u.test(text)
-  );
+    /\bfindings?\b/u.test(text);
+
+  if (!hasRequiredShape) {
+    return false;
+  }
+
+  return ![
+    /\breview gate\b[\s\S]{0,240}\bshould still run\b/u,
+    /\breview gate\b[\s\S]{0,240}\b(still|needs?|must|should|will)\s+(run|be run|complete|be completed)\b/u,
+    /\breview gate\b[\s\S]{0,240}\bstill\s+needs?\s+to\s+(run|be run|complete|be completed)\b/u,
+    /\breview gate\b[\s\S]{0,240}\b(pending|not run|not yet run|todo)\b/u,
+    /\bindependent review\b[\s\S]{0,240}\b(pending|not run|not yet run|should still run|needs? to run)\b/u,
+  ].some((pattern) => pattern.test(text));
 }
 
 export function printGithubMergeUsage() {

@@ -143,25 +143,33 @@ export function parseGithubPrCloseApproval({
   prNumber,
   text,
 }) {
-  const lowerText = String(text || '').toLowerCase();
   const reasons = [];
+  const approvalText = String(text || '').trim();
+  const normalizedText = approvalText.replace(/\s+/gu, ' ');
+  const lowerText = normalizedText.toLowerCase();
 
-  if (!lowerText.includes('governada/app')) {
-    reasons.push('approval must name governada/app');
+  if (!approvalText) {
+    reasons.push('approval text is missing');
+    return { ok: false, reasons };
   }
 
-  if (!lowerText.includes(operationClass) && !/\bclose\b/u.test(lowerText)) {
-    reasons.push(`approval must name ${operationClass} or close`);
+  if (!/\bapprov(?:e|ed|ing)\b/u.test(lowerText)) {
+    reasons.push('approval must explicitly approve the operation');
   }
 
-  if (
-    !new RegExp(`(?:pr\\s*#?|#)${Number(prNumber)}\\b`, 'u').test(lowerText) &&
-    !new RegExp(`pull request\\s*#?${Number(prNumber)}\\b`, 'u').test(lowerText)
-  ) {
+  if (!lowerText.includes(operationClass)) {
+    reasons.push(`approval must name ${operationClass}`);
+  }
+
+  if (!lowerText.includes(EXPECTED_REPO)) {
+    reasons.push(`approval must name repo ${EXPECTED_REPO}`);
+  }
+
+  if (!approvalNamesPr(normalizedText, prNumber)) {
     reasons.push(`approval must name PR #${Number(prNumber)}`);
   }
 
-  if (!lowerText.includes(String(expectedHead || '').toLowerCase())) {
+  if (!expectedHead || !lowerText.includes(String(expectedHead).toLowerCase())) {
     reasons.push('approval must include the expected head SHA');
   }
 
@@ -169,6 +177,17 @@ export function parseGithubPrCloseApproval({
     ok: reasons.length === 0,
     reasons,
   };
+}
+
+function approvalNamesPr(text, prNumber) {
+  if (!Number.isInteger(Number(prNumber)) || Number(prNumber) <= 0) {
+    return false;
+  }
+
+  return (
+    new RegExp(`\\bpr\\s*#?\\s*${Number(prNumber)}\\b`, 'iu').test(text) ||
+    new RegExp(`\\bpull request\\s*#?\\s*${Number(prNumber)}\\b`, 'iu').test(text)
+  );
 }
 
 export function evaluatePullRequestForClose(pullRequest, expectedHead, repo = EXPECTED_REPO) {
@@ -214,6 +233,40 @@ export function evaluatePullRequestForClose(pullRequest, expectedHead, repo = EX
 
   if (pullRequest?.head?.ref === 'main') {
     blockers.push('github.pr.close must not operate on main as the PR head branch');
+  }
+
+  return { blockers, passes };
+}
+
+export function evaluateGithubPrCloseBrokerStatus(status, repo = EXPECTED_REPO) {
+  const blockers = [];
+  const passes = [];
+  const supportedOperationClasses = Array.isArray(status?.supportedOperationClasses)
+    ? status.supportedOperationClasses
+    : [];
+
+  if (status?.running === true) {
+    passes.push('GitHub runtime broker is running');
+  } else {
+    blockers.push(
+      `GitHub runtime broker is not running${status?.error ? `: ${status.error}` : ''}`,
+    );
+  }
+
+  if (status?.repo === repo) {
+    passes.push(`GitHub runtime broker is scoped to ${repo}`);
+  } else {
+    blockers.push(
+      `GitHub runtime broker is scoped to ${status?.repo || 'unknown'}, expected ${repo}`,
+    );
+  }
+
+  if (supportedOperationClasses.includes(GITHUB_OPERATION_CLASSES.prClose)) {
+    passes.push(`GitHub runtime broker advertises ${GITHUB_OPERATION_CLASSES.prClose}`);
+  } else {
+    blockers.push(
+      `GitHub runtime broker does not advertise ${GITHUB_OPERATION_CLASSES.prClose}; refresh the broker from current shared main before live PR close`,
+    );
   }
 
   return { blockers, passes };

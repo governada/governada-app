@@ -8,6 +8,7 @@ import {
   GITHUB_PR_CLOSE_CONFIRMATION,
   assertAllowedGithubPrClosePlan,
   buildGithubPrClosePlan,
+  evaluateGithubPrCloseBrokerStatus,
   evaluatePullRequestForClose,
   parseGithubPrCloseApproval,
   parseGithubPrCloseArgs,
@@ -116,6 +117,15 @@ describe('github PR close wrapper guardrails', () => {
     });
     expect(staleApproval.ok).toBe(false);
     expect(staleApproval.reasons).toContain('approval must name PR #891');
+
+    const vagueApproval = parseGithubPrCloseApproval({
+      expectedHead: SHA,
+      prNumber: 891,
+      text: `Please close governada/app PR #891 at expected head ${SHA}.`,
+    });
+    expect(vagueApproval.ok).toBe(false);
+    expect(vagueApproval.reasons).toContain('approval must explicitly approve the operation');
+    expect(vagueApproval.reasons).toContain('approval must name github.pr.close');
   });
 
   it('allows approval text to come from a repo-local file', () => {
@@ -216,5 +226,24 @@ describe('github PR close wrapper guardrails', () => {
       operation: 'close',
       path: '/repos/governada/app/pulls/891',
     });
+  });
+
+  it('requires the live broker to advertise github.pr.close before close execution', () => {
+    const currentBroker = evaluateGithubPrCloseBrokerStatus({
+      repo: 'governada/app',
+      running: true,
+      supportedOperationClasses: ['github.read', 'github.pr.close'],
+    });
+    expect(currentBroker.blockers).toEqual([]);
+    expect(currentBroker.passes).toContain('GitHub runtime broker advertises github.pr.close');
+
+    const staleBroker = evaluateGithubPrCloseBrokerStatus({
+      repo: 'governada/app',
+      running: true,
+      supportedOperationClasses: ['github.read', 'github.ship.pr', 'github.merge'],
+    });
+    expect(staleBroker.blockers).toContain(
+      'GitHub runtime broker does not advertise github.pr.close; refresh the broker from current shared main before live PR close',
+    );
   });
 });

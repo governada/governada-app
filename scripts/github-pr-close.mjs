@@ -28,10 +28,11 @@ import {
   verifyGithubAppOwner,
 } from './lib/github-app-auth.mjs';
 import { callGithubBroker, isGithubBrokerAvailable } from './lib/github-broker-client.mjs';
-import { ensureGithubBrokerRunning } from './lib/github-broker-service.mjs';
+import { ensureGithubBrokerRunning, getGithubBrokerStatus } from './lib/github-broker-service.mjs';
 import {
   assertAllowedGithubPrClosePlan,
   buildGithubPrClosePlan,
+  evaluateGithubPrCloseBrokerStatus,
   evaluatePullRequestForClose,
   parseGithubPrCloseArgs,
   printGithubPrCloseUsage,
@@ -189,6 +190,13 @@ async function main() {
     pass(
       'GitHub runtime broker socket is available; agent process does not need service-account token',
     );
+    await verifyGithubPrCloseBrokerFreshness({
+      advisories,
+      blockers,
+      env,
+      enforce: plan.execute,
+      repoRoot,
+    });
   } else if (!config.serviceAccountTokenPresent) {
     block(
       blockers,
@@ -343,6 +351,29 @@ async function verifyGithubPrClosePlanWithBroker(plan, repoRoot, env, blockers) 
   }
   for (const message of prEvaluation.blockers) {
     block(blockers, message);
+  }
+}
+
+async function verifyGithubPrCloseBrokerFreshness({
+  advisories,
+  blockers,
+  enforce,
+  env,
+  repoRoot,
+}) {
+  const status = await getGithubBrokerStatus({ env, repoRoot });
+  const evaluation = evaluateGithubPrCloseBrokerStatus(status);
+
+  for (const message of evaluation.passes) {
+    pass(message);
+  }
+
+  for (const message of evaluation.blockers) {
+    if (enforce) {
+      block(blockers, message);
+    } else {
+      advisory(advisories, `live close freshness: ${message}`);
+    }
   }
 }
 

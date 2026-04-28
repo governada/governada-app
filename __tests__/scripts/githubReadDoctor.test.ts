@@ -1,4 +1,6 @@
 import { generateKeyPairSync } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -371,6 +373,26 @@ describe('github read doctor guardrails', () => {
     );
 
     expect(redacted).toBe('op stderr echoed [redacted-sensitive-value] during failure');
+  });
+
+  it('uses non-interactive op read flags for GitHub App private key reads', () => {
+    const source = readFileSync(
+      path.join(process.cwd(), 'scripts/lib/github-app-auth.mjs'),
+      'utf8',
+    );
+
+    expect(source).toContain("['read', privateKeyRef, '--no-newline', '--force']");
+  });
+
+  it('keeps the broker private key cache process-local', () => {
+    const source = readFileSync(
+      path.join(process.cwd(), 'scripts/github-runtime-broker.mjs'),
+      'utf8',
+    );
+
+    expect(source).toContain('let privateKeyCache = null');
+    expect(source).toContain('readCachedPrivateKeyFromOnePassword');
+    expect(source).not.toContain('writeFileSync(privateKey');
   });
 
   it('rejects GitHub Apps owned outside the expected Governada org', async () => {

@@ -57,6 +57,7 @@ const GITHUB_BROKER_REF_KEYS = new Set([
   GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter,
 ]);
 const GITHUB_BROKER_SOCKET_TIMEOUT_MS = GITHUB_BROKER_REQUEST_TIMEOUT_MS + 5000;
+let privateKeyCache = null;
 
 function pass(message) {
   console.log(`OK: ${message}`);
@@ -328,10 +329,10 @@ async function handleBrokerRequest({ env, repoRoot, request }) {
   assertGithubBrokerRequestAllowed(request);
 
   const operationClass = request.operationClass;
-  const privateKeyResult = readPrivateKeyFromOnePassword({
-    privateKeyRef: env[GITHUB_READ_ENV_KEYS.privateKeyRef],
+  const privateKeyResult = readCachedPrivateKeyFromOnePassword({
     env,
-    cwd: repoRoot,
+    privateKeyRef: env[GITHUB_READ_ENV_KEYS.privateKeyRef],
+    repoRoot,
   });
   if (privateKeyResult.error) {
     return {
@@ -438,6 +439,27 @@ async function handleBrokerRequest({ env, repoRoot, request }) {
     ok: response.ok,
     status: response.status,
   };
+}
+
+function readCachedPrivateKeyFromOnePassword({ env, privateKeyRef, repoRoot }) {
+  if (privateKeyCache?.privateKeyRef === privateKeyRef && privateKeyCache.privateKey) {
+    return { privateKey: privateKeyCache.privateKey };
+  }
+
+  const privateKeyResult = readPrivateKeyFromOnePassword({
+    privateKeyRef,
+    env,
+    cwd: repoRoot,
+  });
+
+  if (!privateKeyResult.error) {
+    privateKeyCache = {
+      privateKey: privateKeyResult.privateKey,
+      privateKeyRef,
+    };
+  }
+
+  return privateKeyResult;
 }
 
 function isPrCloseExecutionRequest(request) {

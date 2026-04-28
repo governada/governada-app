@@ -457,7 +457,7 @@ export function createGithubAppJwt({ appId, privateKey, now = Math.floor(Date.no
 }
 
 export function readPrivateKeyFromOnePassword({ privateKeyRef, env, cwd }) {
-  const result = spawnSync('op', ['read', privateKeyRef], {
+  const result = spawnSync('op', ['read', privateKeyRef, '--no-newline', '--force'], {
     cwd,
     encoding: 'utf8',
     env,

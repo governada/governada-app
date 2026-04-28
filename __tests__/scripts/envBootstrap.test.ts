@@ -256,7 +256,7 @@ describe('env bootstrap guardrails', () => {
 
   it('keeps GitHub App wrappers on exact local-env keys instead of broad prefixes', () => {
     const checkedFiles = [
-      'scripts/github-read-doctor.mjs',
+      'scripts/github-read-doctor-app.mjs',
       'scripts/github-runtime-doctor.mjs',
       'scripts/github-runtime-broker.mjs',
       'scripts/github-ship-doctor.mjs',

@@ -38,6 +38,30 @@ function decodeJwtPart(value: string) {
 }
 
 describe('github read doctor guardrails', () => {
+  it('routes the app wrapper through the stable agent-runtime host with explicit legacy fallback', () => {
+    const packageJson = JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+    const wrapper = readFileSync(
+      path.join(process.cwd(), 'scripts/github-read-doctor.mjs'),
+      'utf8',
+    );
+
+    expect(packageJson.scripts['github:read-doctor']).toBe('node scripts/github-read-doctor.mjs');
+    expect(packageJson.scripts['github:read-doctor:legacy']).toBe(
+      'node scripts/github-read-doctor.mjs --legacy',
+    );
+    expect(wrapper).toContain('/Users/tim/dev/agent-runtime/bin/agent-runtime');
+    expect(wrapper).toContain("'github'");
+    expect(wrapper).toContain("'doctor'");
+    expect(wrapper).toContain("'--domain'");
+    expect(wrapper).toContain("'governada'");
+    expect(wrapper).toContain("'--operation'");
+    expect(wrapper).toContain("'github.read'");
+    expect(wrapper).toContain('github-read-doctor-app.mjs');
+    expect(wrapper).toContain('Compatibility fallback');
+    expect(wrapper).not.toContain('readPrivateKeyFromOnePassword');
+    expect(wrapper).not.toContain('mintInstallationToken');
+  });
+
   it('classifies the autonomous lane as missing until all required inputs are present', () => {
     const config = getGithubReadLaneConfig({ NODE_ENV: 'test' });
 

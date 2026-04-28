@@ -27,6 +27,7 @@
     "gh:token-cache": "node scripts/gh-token-cache.mjs",
     "auth:doctor": "node scripts/auth-doctor.js",
     "github:read-doctor": "node scripts/github-read-doctor.mjs",
+    "github:read-doctor:legacy": "node scripts/github-read-doctor.mjs --legacy",
     "github:write-doctor": "node scripts/github-write-doctor.mjs",
     "github:runtime-doctor": "node scripts/github-runtime-doctor.mjs",
     "github:runtime-broker": "node scripts/github-runtime-broker.mjs",

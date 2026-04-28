@@ -105,16 +105,20 @@ describe('github broker lifecycle CLI', () => {
     );
   });
 
-  it('keeps the C helper broker child environment allowlisted', () => {
+  it('keeps the C helper token-bearing child environments allowlisted', () => {
     const source = readFileSync(path.join(repoRoot, 'scripts/github-keychain-cache.c'), 'utf8');
 
     expect(source).toContain('append_env_entry(child_env');
-    expect(source).toContain('OP_SERVICE_ACCOUNT_TOKEN=');
+    expect(source).toContain('secret_env_entry("OP_SERVICE_ACCOUNT_TOKEN"');
+    expect(source).toContain('secret_env_entry("GH_TOKEN"');
+    expect(source).toContain('strcmp(command, "run-gh")');
+    expect(source).toContain('find_gh_path');
     expect(source).not.toContain('child_env[index++] = environ');
     expect(source).not.toContain('NODE_OPTIONS');
     expect(source).not.toContain('DYLD_');
     expect(source).not.toContain('TMPDIR');
     expect(source).not.toContain('GOVERNADA_GITHUB_BROKER_SOCKET');
+    expect(source).not.toContain('strcmp(command, "read")');
     expect(source).not.toContain('strcmp(command, "status")');
     expect(source).not.toContain('strcmp(command, "delete")');
     expect(source).toContain('NULL, NULL, &item');

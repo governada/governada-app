@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const { getContext } = require('../set-gh-context.js');
 const { withGhTokenFromOnePassword } = require('./gh-auth.js');
+const { runGhWithCachedToken } = require('./gh-token-cache.js');
 
 function findRepoRoot(startDir) {
   let current = startDir;
@@ -154,14 +155,25 @@ export function ghOutput(args, options = {}) {
   loadLocalEnv(import.meta.url);
   const context = getContext();
   const { GH_HOST: _ghHost, ...ghEnvContext } = context;
-  const auth = withGhTokenFromOnePassword(
-    {
-      ...process.env,
-      ...ghEnvContext,
-      ...(options.env || {}),
-    },
-    options.cwd || process.cwd(),
-  );
+  const runtimeEnv = {
+    ...process.env,
+    ...ghEnvContext,
+    ...(options.env || {}),
+  };
+  const cached = runGhWithCachedToken(args, {
+    cwd: options.cwd || process.cwd(),
+    env: runtimeEnv,
+  });
+  if (cached.usedCache) {
+    if (cached.result.status !== 0) {
+      const detail = (cached.result.stderr || cached.result.stdout || '').trim();
+      throw new Error(detail || 'cached gh command failed.');
+    }
+
+    return (cached.result.stdout || '').trim();
+  }
+
+  const auth = withGhTokenFromOnePassword(runtimeEnv, options.cwd || process.cwd());
 
   if (auth.error) {
     throw new Error(auth.error);

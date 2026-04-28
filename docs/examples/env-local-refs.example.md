@@ -3,7 +3,9 @@
 Copy the environment block to an ignored `.env.local.refs` file for local use.
 Keep GitHub CLI token reference variables out of this file:
 `GH_TOKEN_OP_REF` and `GITHUB_TOKEN_OP_REF` must remain unresolved references
-for the repo's GitHub wrappers.
+for the repo's GitHub wrappers. Human-present setup can cache that reference
+with `npm run gh:token-cache -- cache-token --confirm gh.runtime.cache-token`;
+the source of truth remains 1Password.
 Also keep raw GitHub token variables out of this file: `GH_TOKEN` and
 `GITHUB_TOKEN`.
 

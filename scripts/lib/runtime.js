@@ -4,6 +4,7 @@ const { spawnSync } = require('node:child_process');
 
 const { getContext } = require('../set-gh-context.js');
 const { withGhTokenFromOnePassword } = require('./gh-auth');
+const { runGhWithCachedToken } = require('./gh-token-cache');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 
@@ -149,13 +150,19 @@ function runGh(args) {
   loadLocalEnv();
   const context = getContext();
   const { GH_HOST: _ghHost, ...ghEnvContext } = context;
-  const auth = withGhTokenFromOnePassword(
-    {
-      ...process.env,
-      ...ghEnvContext,
-    },
-    repoRoot,
-  );
+  const runtimeEnv = {
+    ...process.env,
+    ...ghEnvContext,
+  };
+  const cached = runGhWithCachedToken(args, {
+    cwd: repoRoot,
+    env: runtimeEnv,
+  });
+  if (cached.usedCache) {
+    return cached.result;
+  }
+
+  const auth = withGhTokenFromOnePassword(runtimeEnv, repoRoot);
 
   if (auth.error) {
     return {

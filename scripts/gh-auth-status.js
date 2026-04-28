@@ -1,5 +1,6 @@
 const { runGh } = require('./lib/runtime');
 const { redactSensitiveText } = require('./lib/gh-auth');
+const { getHumanGithubTokenCacheStatus } = require('./lib/gh-token-cache');
 
 function writeFailure(result) {
   const detail = redactSensitiveText(result.stderr || result.stdout || '').trim();
@@ -22,7 +23,10 @@ function main() {
     console.log(`Active GitHub user: ${login}`);
   }
 
-  if (process.env.GH_TOKEN_OP_REF || process.env.GITHUB_TOKEN_OP_REF) {
+  const tokenCache = getHumanGithubTokenCacheStatus(process.env);
+  if (tokenCache.present) {
+    console.log('GitHub token source: macOS Keychain runtime cache');
+  } else if (process.env.GH_TOKEN_OP_REF || process.env.GITHUB_TOKEN_OP_REF) {
     console.log('GitHub token source: 1Password reference');
   }
 

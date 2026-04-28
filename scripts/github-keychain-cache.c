@@ -68,7 +68,7 @@ static char *read_stdin_token(void) {
 
   if (length == 0) {
     free(buffer);
-    fail("refusing to cache an empty service-account token", 65);
+    fail("refusing to cache an empty token", 65);
   }
 
   return buffer;
@@ -154,20 +154,20 @@ static const char *safe_home_dir(void) {
   return env_value("HOME");
 }
 
-static char *token_env_entry(const void *password, UInt32 password_len) {
-  const char *prefix = "OP_SERVICE_ACCOUNT_TOKEN=";
-  size_t prefix_len = strlen(prefix);
-  char *entry = malloc(prefix_len + password_len + 1);
+static char *secret_env_entry(const char *key, const void *password, UInt32 password_len) {
+  size_t key_len = strlen(key);
+  char *entry = malloc(key_len + password_len + 2);
   if (!entry) {
     fail("could not allocate token environment entry", 70);
   }
-  memcpy(entry, prefix, prefix_len);
-  memcpy(entry + prefix_len, password, password_len);
-  entry[prefix_len + password_len] = '\0';
+  memcpy(entry, key, key_len);
+  entry[key_len] = '=';
+  memcpy(entry + key_len + 1, password, password_len);
+  entry[key_len + password_len + 1] = '\0';
   return entry;
 }
 
-static char **environment_with_token(const void *password, UInt32 password_len) {
+static char **environment_with_broker_token(const void *password, UInt32 password_len) {
   const size_t capacity = 24;
   char **child_env = calloc(capacity, sizeof(char *));
   if (!child_env) {
@@ -192,7 +192,30 @@ static char **environment_with_token(const void *password, UInt32 password_len) 
                    env_value("GOVERNADA_OP_SERVICE_ACCOUNT_EXPIRES_AT"));
   append_env_entry(child_env, capacity, &index, "GOVERNADA_OP_SERVICE_ACCOUNT_ROTATE_AFTER",
                    env_value("GOVERNADA_OP_SERVICE_ACCOUNT_ROTATE_AFTER"));
-  child_env[index++] = token_env_entry(password, password_len);
+  child_env[index++] = secret_env_entry("OP_SERVICE_ACCOUNT_TOKEN", password, password_len);
+  child_env[index] = NULL;
+  return child_env;
+}
+
+static char **environment_with_github_token(const void *password, UInt32 password_len) {
+  const size_t capacity = 16;
+  char **child_env = calloc(capacity, sizeof(char *));
+  if (!child_env) {
+    fail("could not allocate child environment", 70);
+  }
+
+  size_t index = 0;
+  append_env_entry(child_env, capacity, &index, "PATH",
+                   "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin");
+  append_env_entry(child_env, capacity, &index, "HOME", safe_home_dir());
+  append_env_entry(child_env, capacity, &index, "USER", env_value("USER"));
+  append_env_entry(child_env, capacity, &index, "LOGNAME", env_value("LOGNAME"));
+  append_env_entry(child_env, capacity, &index, "LANG", env_value("LANG"));
+  append_env_entry(child_env, capacity, &index, "LC_ALL", env_value("LC_ALL"));
+  append_env_entry(child_env, capacity, &index, "GH_CONFIG_DIR", env_value("GH_CONFIG_DIR"));
+  append_env_entry(child_env, capacity, &index, "GH_HOST", env_value("GH_HOST"));
+  append_env_entry(child_env, capacity, &index, "GH_REPO", env_value("GH_REPO"));
+  child_env[index++] = secret_env_entry("GH_TOKEN", password, password_len);
   child_env[index] = NULL;
   return child_env;
 }
@@ -268,9 +291,27 @@ static const char *find_node_path(void) {
   return NULL;
 }
 
+static const char *find_gh_path(void) {
+  const char *candidates[] = {
+      "/opt/homebrew/bin/gh",
+      "/usr/local/bin/gh",
+      "/usr/bin/gh",
+      NULL,
+  };
+
+  for (int index = 0; candidates[index]; index++) {
+    if (access(candidates[index], X_OK) == 0) {
+      return candidates[index];
+    }
+  }
+
+  fail("allowlisted GitHub CLI executable was not found", 70);
+  return NULL;
+}
+
 int main(int argc, char **argv) {
   if (argc < 4) {
-    fail("usage: github-keychain-cache <write|run-broker> <account> <service> [args...]",
+    fail("usage: github-keychain-cache <write|run-broker|run-gh> <account> <service> [args...]",
          64);
   }
 
@@ -291,13 +332,42 @@ int main(int argc, char **argv) {
     void *password = NULL;
     read_keychain_password(keychain, service, service_len, account, account_len, &password_len,
                            &password);
-    char **child_env = environment_with_token(password, password_len);
+    char **child_env = environment_with_broker_token(password, password_len);
     const char *node_path = find_node_path();
     char *broker_script = broker_script_from_compiled_path();
     char *child_argv[] = {(char *)node_path, broker_script, NULL};
     SecKeychainItemFreeContent(NULL, password);
     CFRelease(keychain);
     execve(node_path, child_argv, child_env);
+    fprintf(stderr, "execve failed: %s\n", strerror(errno));
+    return 70;
+  }
+
+  if (strcmp(command, "run-gh") == 0) {
+    if (argc < 5) {
+      fail("usage: github-keychain-cache run-gh <account> <service> <gh-args...>", 64);
+    }
+
+    UInt32 password_len = 0;
+    void *password = NULL;
+    read_keychain_password(keychain, service, service_len, account, account_len, &password_len,
+                           &password);
+    char **child_env = environment_with_github_token(password, password_len);
+    const char *gh_path = find_gh_path();
+    char **child_argv = calloc((size_t)argc - 2, sizeof(char *));
+    if (!child_argv) {
+      SecKeychainItemFreeContent(NULL, password);
+      CFRelease(keychain);
+      fail("could not allocate gh child argv", 70);
+    }
+    child_argv[0] = (char *)gh_path;
+    for (int index = 4; index < argc; index++) {
+      child_argv[index - 3] = argv[index];
+    }
+    child_argv[argc - 3] = NULL;
+    SecKeychainItemFreeContent(NULL, password);
+    CFRelease(keychain);
+    execve(gh_path, child_argv, child_env);
     fprintf(stderr, "execve failed: %s\n", strerror(errno));
     return 70;
   }

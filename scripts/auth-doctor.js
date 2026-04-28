@@ -1,6 +1,12 @@
 const { spawnSync } = require('node:child_process');
 
 const { redactSensitiveText } = require('./lib/gh-auth');
+const {
+  HUMAN_GITHUB_TOKEN_CACHE_CONFIRMATION,
+  getHumanGithubTokenCacheStatus,
+  resolveHumanGithubTokenRefFallback,
+  runGhWithCachedToken,
+} = require('./lib/gh-token-cache');
 const { loadLocalEnv, repoRoot, runGh } = require('./lib/runtime');
 const { getContext } = require('./set-gh-context');
 
@@ -32,6 +38,23 @@ function hasDesktopIpcFailure(detail) {
   );
 }
 
+function runExpectedGh(args, { env, useCachedLane }) {
+  if (!useCachedLane) {
+    return runGh(args);
+  }
+
+  const cached = runGhWithCachedToken(args, { env });
+  if (!cached.usedCache) {
+    return {
+      status: 1,
+      stdout: '',
+      stderr: `${cached.reason || 'human GitHub token runtime cache is not usable'}\n`,
+    };
+  }
+
+  return cached.result;
+}
+
 function main() {
   const failures = [];
   loadLocalEnv();
@@ -41,6 +64,7 @@ function main() {
     ...process.env,
     ...context,
   };
+  resolveHumanGithubTokenRefFallback(env, { repoRoot });
 
   console.log('Auth doctor: Governada GitHub lane');
 
@@ -59,12 +83,12 @@ function main() {
     );
   }
 
-  const tokenRefVar = process.env.GH_TOKEN_OP_REF
+  const tokenRefVar = env.GH_TOKEN_OP_REF
     ? 'GH_TOKEN_OP_REF'
-    : process.env.GITHUB_TOKEN_OP_REF
+    : env.GITHUB_TOKEN_OP_REF
       ? 'GITHUB_TOKEN_OP_REF'
       : '';
-  const tokenRef = process.env.GH_TOKEN_OP_REF || process.env.GITHUB_TOKEN_OP_REF || '';
+  const tokenRef = env.GH_TOKEN_OP_REF || env.GITHUB_TOKEN_OP_REF || '';
 
   if (tokenRefVar) {
     pass(`${tokenRefVar} is present`);
@@ -98,8 +122,22 @@ function main() {
     pass(`1Password CLI is available (${opVersion.stdout.trim() || 'version unknown'})`);
   }
 
-  let desktopLaneReady = false;
-  if (tokenRef) {
+  let ghLaneReady = false;
+  let useCachedLane = false;
+  const tokenCache = getHumanGithubTokenCacheStatus(env);
+  if (tokenCache.present) {
+    useCachedLane = true;
+    ghLaneReady = true;
+    pass('human GitHub token runtime cache is present in macOS Keychain');
+  } else if (tokenCache.error) {
+    fail(failures, `human GitHub token runtime cache could not be inspected: ${tokenCache.error}`);
+  } else {
+    warn(
+      `human GitHub token runtime cache is missing; run npm run gh:token-cache -- cache-token --confirm ${HUMAN_GITHUB_TOKEN_CACHE_CONFIRMATION} once with human approval`,
+    );
+  }
+
+  if (!useCachedLane && tokenRef) {
     const opRead = spawnSync('op', ['read', tokenRef, '--no-newline', '--force'], {
       cwd: repoRoot,
       encoding: 'utf8',
@@ -115,7 +153,7 @@ function main() {
         '1Password desktop IPC timed out from this process; if `op read` works outside Codex, rerun the repo wrapper with approved sandbox escalation rather than changing auth models',
       );
     } else if (opRead.status === 0 && opRead.stdout.trim()) {
-      desktopLaneReady = true;
+      ghLaneReady = true;
       pass('1Password desktop lane can resolve the GitHub token reference');
     } else if (hasDesktopIpcFailure(detail)) {
       fail(
@@ -132,8 +170,8 @@ function main() {
     }
   }
 
-  if (desktopLaneReady) {
-    const user = runGh(['api', 'user', '--jq', '.login']);
+  if (ghLaneReady) {
+    const user = runExpectedGh(['api', 'user', '--jq', '.login'], { env, useCachedLane });
     if (user.status !== 0) {
       const detail = detailFrom(user);
       fail(failures, `child gh API auth failed${detail ? `: ${detail}` : ''}`);
@@ -149,7 +187,10 @@ function main() {
       }
     }
 
-    const repo = runGh(['api', `repos/${EXPECTED_REPO}`, '--jq', '.full_name']);
+    const repo = runExpectedGh(['api', `repos/${EXPECTED_REPO}`, '--jq', '.full_name'], {
+      env,
+      useCachedLane,
+    });
     if (repo.status !== 0) {
       const detail = detailFrom(repo);
       fail(failures, `repo access failed for ${EXPECTED_REPO}${detail ? `: ${detail}` : ''}`);
@@ -157,9 +198,7 @@ function main() {
       pass(`repo access works for ${repo.stdout.trim() || EXPECTED_REPO}`);
     }
   } else {
-    warn(
-      'skipping child gh and repo access checks because the 1Password desktop lane is not ready',
-    );
+    warn('skipping child gh and repo access checks because no GitHub token lane is ready');
   }
 
   if (failures.length > 0) {

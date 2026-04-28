@@ -24,6 +24,7 @@
     "notify": "node scripts/notify.js",
     "uptime-check": "node scripts/uptime-check.js",
     "gh:auth-status": "node scripts/gh-auth-status.js",
+    "gh:token-cache": "node scripts/gh-token-cache.mjs",
     "auth:doctor": "node scripts/auth-doctor.js",
     "github:read-doctor": "node scripts/github-read-doctor.mjs",
     "github:write-doctor": "node scripts/github-write-doctor.mjs",

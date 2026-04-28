@@ -114,6 +114,32 @@ describe('env bootstrap guardrails', () => {
     expect(doctorSource).toContain("['read', tokenRef, '--no-newline', '--force']");
   });
 
+  it('prefers the human GitHub token Keychain cache before direct 1Password reads', () => {
+    const cjsRuntime = readFileSync(path.join(repoRoot, 'scripts/lib/runtime.js'), 'utf8');
+    const esmRuntime = readFileSync(path.join(repoRoot, 'scripts/lib/runtime.mjs'), 'utf8');
+    const cacheCli = readFileSync(path.join(repoRoot, 'scripts/gh-token-cache.mjs'), 'utf8');
+    const cacheLib = readFileSync(path.join(repoRoot, 'scripts/lib/gh-token-cache.js'), 'utf8');
+    const packageJson = readFileSync(path.join(repoRoot, 'package.json'), 'utf8');
+
+    expect(packageJson).toContain('"gh:token-cache": "node scripts/gh-token-cache.mjs"');
+    expect(cjsRuntime).toContain('runGhWithCachedToken(args');
+    expect(esmRuntime).toContain('runGhWithCachedToken(args');
+    expect(cjsRuntime.indexOf('runGhWithCachedToken(args')).toBeLessThan(
+      cjsRuntime.indexOf('withGhTokenFromOnePassword('),
+    );
+    expect(esmRuntime.indexOf('runGhWithCachedToken(args')).toBeLessThan(
+      esmRuntime.indexOf('withGhTokenFromOnePassword('),
+    );
+    expect(cacheCli).toContain('--confirm ${HUMAN_GITHUB_TOKEN_CACHE_CONFIRMATION}');
+    expect(cacheCli).toContain(
+      "['read', tokenRef, '--account', EXPECTED_OP_ACCOUNT, '--no-newline', '--force']",
+    );
+    expect(cacheLib).toContain("'find-generic-password'");
+    expect(cacheLib).not.toContain("'-w'");
+    expect(cacheCli).not.toContain('console.log(token');
+    expect(cacheCli).not.toContain('console.error(token');
+  });
+
   it('strips inherited raw GitHub tokens from env:run child commands', () => {
     const cwd = createRepoTempDir();
     const fakeBin = createTempDir('governada-env-bootstrap-bin-');

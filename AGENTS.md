@@ -42,6 +42,7 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 15. Before merging, run `npm run pre-merge-check -- <PR#>` and `npm run github:merge-doctor -- --pr <PR#> --expected-head <sha>`.
 16. Merge only after Tim gives the exact chat approval for `github.merge` naming `governada/app`, the PR number, and the expected head SHA.
 17. Execute merges through `npm run github:merge -- --pr <PR#> --expected-head <sha> --execute --confirm github.merge`. The wrapper performs synchronous post-merge deploy verification; run `npm run deploy:verify` separately only when extra verification is needed.
+18. When shipping/auth state is ambiguous, run `npm run ship:doctor` before diagnosing. It separates local Git refs, direct Git SSH, repo GitHub API auth, the existing app-local broker path, and the stable agent-runtime host path; do not infer one lane's health from another.
 
 ## Repo Vs Vault
 

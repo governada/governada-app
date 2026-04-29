@@ -264,7 +264,7 @@ describe('env bootstrap guardrails', () => {
       'scripts/github-pr-write.mjs',
       'scripts/github-pr-close-doctor-app.mjs',
       'scripts/github-pr-close.mjs',
-      'scripts/github-merge-doctor.mjs',
+      'scripts/github-merge-doctor-app.mjs',
       'scripts/github-merge.mjs',
     ];
 

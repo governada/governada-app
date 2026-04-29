@@ -137,13 +137,14 @@ export async function generateScenario(
   await cleanupExistingScenario(supabase, cohortId, result);
 
   // 3. Fetch real proposals for content
-  const { data: proposals, error: proposalError } = await supabase
+  const { data: proposalRows, error: proposalError } = await supabase
     .from('proposals')
     .select('*')
     .not('title', 'is', null)
     .not('abstract', 'is', null)
     .order('block_time', { ascending: false })
     .limit(50);
+  const proposals = proposalRows as ProposalRow[] | null;
 
   if (proposalError || !proposals || proposals.length === 0) {
     result.errors.push(

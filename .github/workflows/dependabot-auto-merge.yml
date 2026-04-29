@@ -19,12 +19,13 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Auto-approve patch and minor updates
+      - name: Record approval posture for patch and minor updates
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'
-        run: gh pr review "$PR_URL" --approve
+        run: |
+          echo "Skipping GitHub Actions self-approval; repository merge wrappers enforce Review Gate v0 and expected-head checks."
+          echo "PR: $PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge for patch and minor updates
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'

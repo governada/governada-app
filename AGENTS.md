@@ -28,17 +28,20 @@ These constraints are enforced by `npm run agent:validate`. Run it before shippi
 1. If the task is feature work, create a fresh worktree first with `npm run worktree:new -- <name>`. Do not start feature work in the shared checkout.
 2. Start from fresh `origin/main`. When resuming an existing worktree or when session diagnostics show drift/setup gaps, run `npm run worktree:sync`.
 3. Run `npm run session:guard` at the start and end of each local session. Treat a failing guard as a blocker, not a suggestion.
-4. End each local session with exactly one outcome for every change set: committed, intentionally exported, or discarded. Do not leave anonymous stashes or dirty merged worktrees behind.
-5. Read only the minimal context needed. Use the strategy registry and manifest before diving into the full vision docs.
-6. Make the most elegant change that cleanly solves the actual problem within scope. Do not choose a shortcut or merely minimal patch when a more coherent fix is clear and practical.
-7. Run `npm run agent:validate` and the relevant local verification for the scope.
-8. Communicate impact explicitly in updates, handoffs, and reviews: what changed, why it matters, which surfaces or constraints it affects, and any real tradeoffs or risks.
-9. For product feature work, update the relevant brain feature note under `/Users/tim/dev/governada/governada-brain/governada/features/` or initiative note under `/Users/tim/dev/governada/governada-brain/governada/initiatives/`. If no note exists and the feature is shaped enough to name, create one from the brain template. Tiny follow-up PRs should update the existing feature note rather than create duplicates.
-10. Publish committed branch changes through `npm run github:ship` and create/update/ready PRs through `npm run github:pr-write` when the brokered lane supports the change class. Use direct `git push` or raw `gh` only as a documented fallback.
-11. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, `Impact`, `Brain Freshness`, and `Review Gate v0` sections.
-12. Before merging, run `npm run pre-merge-check -- <PR#>` and `npm run github:merge-doctor -- --pr <PR#> --expected-head <sha>`.
-13. Merge only after Tim gives the exact chat approval for `github.merge` naming `governada/app`, the PR number, and the expected head SHA.
-14. Execute merges through `npm run github:merge -- --pr <PR#> --expected-head <sha> --execute --confirm github.merge`. The wrapper performs synchronous post-merge deploy verification; run `npm run deploy:verify` separately only when extra verification is needed.
+4. `session:guard` proves repo/session hygiene only. It does not prove phase closeout, brain freshness, operator queue freshness, retrieval freshness, or Phase 1 readiness.
+5. End each local session with exactly one outcome for every change set: committed, intentionally exported, or discarded. Do not leave anonymous stashes or dirty merged worktrees behind.
+6. Read only the minimal context needed. Use the strategy registry and manifest before diving into the full vision docs.
+7. Make the most elegant change that cleanly solves the actual problem within scope. Do not choose a shortcut or merely minimal patch when a more coherent fix is clear and practical.
+8. Run `npm run agent:validate` and the relevant local verification for the scope.
+9. Communicate impact explicitly in updates, handoffs, and reviews: what changed, why it matters, which surfaces or constraints it affects, and any real tradeoffs or risks.
+10. After PR cleanup, merge, deploy, auth, workflow, control-plane, or multi-step work, final answers must say whether brain/control-plane closeout is still pending and must separate `Safe To Pause Session` from `Safe For Handoff / Phase Closeout`.
+11. Do not imply Phase 0.6 closeout, Phase 1 readiness, or next-agent handoff safety from local repo cleanliness alone.
+12. For product feature work, update the relevant brain feature note under `/Users/tim/dev/governada/governada-brain/governada/features/` or initiative note under `/Users/tim/dev/governada/governada-brain/governada/initiatives/`. If no note exists and the feature is shaped enough to name, create one from the brain template. Tiny follow-up PRs should update the existing feature note rather than create duplicates.
+13. Publish committed branch changes through `npm run github:ship` and create/update/ready PRs through `npm run github:pr-write` when the brokered lane supports the change class. Use direct `git push` or raw `gh` only as a documented fallback.
+14. For feature work, open a PR with `Summary`, `Existing Code Audit`, `Robustness`, `Impact`, `Brain Freshness`, and `Review Gate v0` sections.
+15. Before merging, run `npm run pre-merge-check -- <PR#>` and `npm run github:merge-doctor -- --pr <PR#> --expected-head <sha>`.
+16. Merge only after Tim gives the exact chat approval for `github.merge` naming `governada/app`, the PR number, and the expected head SHA.
+17. Execute merges through `npm run github:merge -- --pr <PR#> --expected-head <sha> --execute --confirm github.merge`. The wrapper performs synchronous post-merge deploy verification; run `npm run deploy:verify` separately only when extra verification is needed.
 
 ## Repo Vs Vault
 

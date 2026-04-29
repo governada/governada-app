@@ -32,6 +32,43 @@ const PROPOSAL_METADATA_ARCHIVE_CURSOR = 'metadata_archive:proposal';
 const RATIONALE_METADATA_ARCHIVE_CURSOR = 'metadata_archive:rationale';
 const DREP_METADATA_FETCH_BATCH_SIZE = 50;
 
+type MetadataArchiveCursorQuery<Row extends Record<string, unknown>> = {
+  not: (column: string, operator: string, value: unknown) => MetadataArchiveCursorQuery<Row>;
+  gt: (column: string, value: string) => MetadataArchiveCursorQuery<Row>;
+  range: (from: number, to: number) => PromiseLike<{ data: Row[] | null; error: unknown }>;
+};
+
+type DRepMetadataCandidate = {
+  id: string;
+  anchor_url: string | null;
+  anchor_hash: string | null;
+  profile_last_changed_at: string | null;
+};
+
+type ProposalMetadataCandidate = {
+  tx_hash: string;
+  proposal_index: number;
+  meta_json: unknown;
+  updated_at: string | null;
+};
+
+type RationaleMetadataCandidate = {
+  vote_tx_hash: string;
+  meta_url: string | null;
+  rationale_text: string | null;
+  fetched_at: string | null;
+};
+
+function applyMetadataArchiveCursor<Row extends Record<string, unknown>>(
+  query: MetadataArchiveCursorQuery<Row>,
+  timestampColumn: string,
+  cursor: string | null,
+): MetadataArchiveCursorQuery<Row> {
+  if (cursor === null) return query;
+
+  return query.not(timestampColumn, 'is', null).gt(timestampColumn, cursor);
+}
+
 // ---------------------------------------------------------------------------
 // 1. DRep Delegator Snapshots
 // ---------------------------------------------------------------------------
@@ -628,22 +665,15 @@ async function syncMetadataArchiveIncremental(
 
     const drepCursor = await getSyncCursorTimestamp(supabase, DREP_METADATA_ARCHIVE_CURSOR);
     const drepCandidates = await fetchAll(() => {
-      let query = supabase
+      const query = supabase
         .from('dreps')
         .select('id, anchor_url, anchor_hash, profile_last_changed_at')
         .not('anchor_url', 'is', null)
-        .order('profile_last_changed_at', { ascending: true });
+        .order('profile_last_changed_at', {
+          ascending: true,
+        }) as unknown as MetadataArchiveCursorQuery<DRepMetadataCandidate>;
 
-      if (drepCursor !== null) {
-        const nonNullProfileChangedAtQuery = query.not(
-          'profile_last_changed_at',
-          'is',
-          null,
-        ) as typeof query;
-        query = nonNullProfileChangedAtQuery.gt('profile_last_changed_at', drepCursor);
-      }
-
-      return query;
+      return applyMetadataArchiveCursor(query, 'profile_last_changed_at', drepCursor);
     });
 
     let maxDrepCursor: string | null = null;
@@ -713,17 +743,15 @@ async function syncMetadataArchiveIncremental(
 
     const proposalCursor = await getSyncCursorTimestamp(supabase, PROPOSAL_METADATA_ARCHIVE_CURSOR);
     const proposalsWithMeta = await fetchAll(() => {
-      let query = supabase
+      const query = supabase
         .from('proposals')
         .select('tx_hash, proposal_index, meta_json, updated_at')
         .not('meta_json', 'is', null)
-        .order('updated_at', { ascending: true });
+        .order('updated_at', {
+          ascending: true,
+        }) as unknown as MetadataArchiveCursorQuery<ProposalMetadataCandidate>;
 
-      if (proposalCursor !== null) {
-        query = query.not('updated_at', 'is', null).gt('updated_at', proposalCursor);
-      }
-
-      return query;
+      return applyMetadataArchiveCursor(query, 'updated_at', proposalCursor);
     });
 
     let maxProposalCursor: string | null = null;
@@ -780,18 +808,16 @@ async function syncMetadataArchiveIncremental(
       RATIONALE_METADATA_ARCHIVE_CURSOR,
     );
     const votesWithRationales = await fetchAll(() => {
-      let query = supabase
+      const query = supabase
         .from('vote_rationales')
         .select('vote_tx_hash, meta_url, rationale_text, fetched_at')
         .not('rationale_text', 'is', null)
         .neq('rationale_text', '')
-        .order('fetched_at', { ascending: true });
+        .order('fetched_at', {
+          ascending: true,
+        }) as unknown as MetadataArchiveCursorQuery<RationaleMetadataCandidate>;
 
-      if (rationaleCursor !== null) {
-        query = query.not('fetched_at', 'is', null).gt('fetched_at', rationaleCursor);
-      }
-
-      return query;
+      return applyMetadataArchiveCursor(query, 'fetched_at', rationaleCursor);
     });
 
     let maxRationaleCursor: string | null = null;

@@ -37,6 +37,7 @@
     "github:pr-close-doctor": "node scripts/github-pr-close-doctor.mjs",
     "github:pr-close-doctor:legacy": "node scripts/github-pr-close-doctor.mjs --legacy",
     "github:merge-doctor": "node scripts/github-merge-doctor.mjs",
+    "github:merge-doctor:legacy": "node scripts/github-merge-doctor.mjs --legacy",
     "github:ship": "node scripts/github-ship.mjs",
     "github:pr-write": "node scripts/github-pr-write.mjs",
     "github:pr-close": "node scripts/github-pr-close.mjs",

@@ -35,6 +35,9 @@ Execute the routine Governada ship loop autonomously until a real approval gate 
 10. Watch CI with `npm run ci:watch`. If it fails, inspect with `npm run ci:failed`, fix, commit, republish, and re-check. Escalate after 3 failed fix attempts.
 11. Run `npm run pre-merge-check -- <PR#>`.
 12. Run `npm run github:merge-doctor -- --pr <PR#> --expected-head <40-char-sha>`.
+    This defaults to the stable `agent-runtime` host for `github.merge` proof;
+    use `npm run github:merge-doctor -- --legacy ...` only as the explicit
+    app-local compatibility fallback.
 13. Pause for Tim's exact chat approval:
 
     ```text

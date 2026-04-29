@@ -39,6 +39,41 @@ afterEach(() => {
 });
 
 describe('github merge wrapper guardrails', () => {
+  it('routes the merge doctor through the stable host while preserving app-local fallback', () => {
+    const packageJson = JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+    const wrapper = readFileSync(path.join(repoRoot, 'scripts/github-merge-doctor.mjs'), 'utf8');
+    const appDoctor = readFileSync(
+      path.join(repoRoot, 'scripts/github-merge-doctor-app.mjs'),
+      'utf8',
+    );
+    const mergeScript = readFileSync(path.join(repoRoot, 'scripts/github-merge.mjs'), 'utf8');
+
+    expect(packageJson.scripts['github:merge-doctor']).toBe('node scripts/github-merge-doctor.mjs');
+    expect(packageJson.scripts['github:merge-doctor:legacy']).toBe(
+      'node scripts/github-merge-doctor.mjs --legacy',
+    );
+    expect(wrapper).toContain('/Users/tim/dev/agent-runtime/bin/agent-runtime');
+    expect(wrapper).toContain("'github'");
+    expect(wrapper).toContain("'doctor'");
+    expect(wrapper).toContain("'--domain'");
+    expect(wrapper).toContain("'governada'");
+    expect(wrapper).toContain("'--operation'");
+    expect(wrapper).toContain("'github.merge'");
+    expect(wrapper).toContain('github-merge-doctor-app.mjs');
+    expect(wrapper).toContain('Compatibility fallback');
+    expect(wrapper).toContain('existing broker-backed github:merge wrapper remains active');
+    expect(wrapper).not.toContain('readPrivateKeyFromOnePassword');
+    expect(wrapper).not.toContain('mintInstallationToken');
+    expect(appDoctor).toContain('readPrivateKeyFromOnePassword');
+    expect(appDoctor).toContain('evaluatePullRequestForMerge');
+    expect(appDoctor).toContain('getGithubBrokerStatus');
+    expect(appDoctor).toContain('verifyNonMutatingMergeLaneAccessWithBroker');
+    expect(appDoctor).toContain('proving legacy fallback through the existing broker');
+    expect(appDoctor).not.toContain('ensureGithubBrokerRunning');
+    expect(mergeScript).toContain('ensureGithubBrokerRunning');
+    expect(mergeScript).toContain('runPostMergeVerification');
+  });
+
   it('requires prompt approval to name repo, PR, operation, head SHA, checks, and unchanged head', () => {
     const approval = parseGithubMergeApproval({
       expectedHead: SHA,

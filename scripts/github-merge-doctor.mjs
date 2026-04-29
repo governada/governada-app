@@ -1,547 +1,119 @@
-import { createRequire } from 'node:module';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-import {
-  findEnvLocalKeyDefinitions,
-  findFirstExisting,
-  getEnvRefsCandidates,
-  getForbiddenGithubReferenceKeys,
-  parseEnvEntries,
-} from './lib/env-bootstrap.mjs';
-import {
-  EXPECTED_MERGE_PERMISSIONS,
-  EXPECTED_REPO,
-  FORBIDDEN_GITHUB_APP_LOCAL_ENV_KEYS,
-  GITHUB_APP_LOCAL_ENV_KEYS,
-  GITHUB_OPERATION_CLASSES,
-  GITHUB_READ_ENV_KEYS,
-  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS,
-  evaluateGithubServiceAccountRuntime,
-  getGithubReadLaneConfig,
-  githubApiErrorMessage,
-  githubApiRequest,
-  githubMergePermissionFailures,
-  isValidOpReference,
-  mintInstallationToken,
-  readPrivateKeyFromOnePassword,
-  redactSensitiveText,
-  summarizeGithubMergePermissions,
-  verifyGithubAppOwner,
-} from './lib/github-app-auth.mjs';
-import { callGithubBroker } from './lib/github-broker-client.mjs';
-import { ensureGithubBrokerRunning } from './lib/github-broker-service.mjs';
-import { evaluateGithubChecksForMerge, evaluatePullRequestForMerge } from './lib/github-merge.mjs';
-import { getScriptContext, loadLocalEnv } from './lib/runtime.mjs';
+import { redactSensitiveText } from './lib/github-app-auth.mjs';
 
-const require = createRequire(import.meta.url);
-const { getContext } = require('./set-gh-context.js');
+const DEFAULT_AGENT_RUNTIME_BIN = '/Users/tim/dev/agent-runtime/bin/agent-runtime';
+const LEGACY_SCRIPT = fileURLToPath(new URL('./github-merge-doctor-app.mjs', import.meta.url));
 
-const EXPECTED_OP_ACCOUNT = 'my.1password.com';
-const GITHUB_MERGE_REF_KEYS = new Set([
-  GITHUB_READ_ENV_KEYS.appId,
-  GITHUB_READ_ENV_KEYS.installationId,
-  GITHUB_READ_ENV_KEYS.privateKeyRef,
-  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.expiresAt,
-  GITHUB_SERVICE_ACCOUNT_RUNTIME_ENV_KEYS.rotateAfter,
-]);
+function usage() {
+  return `Usage:
+  npm run github:merge-doctor
+  npm run github:merge-doctor -- --pr <number> --expected-head <40-char-sha>
+  npm run github:merge-doctor -- --legacy --pr <number> --expected-head <40-char-sha>
 
-function pass(message) {
-  console.log(`OK: ${message}`);
-}
-
-function advisory(advisories, message) {
-  advisories.push(message);
-  console.log(`ADVISORY: ${message}`);
-}
-
-function block(blockers, message) {
-  blockers.push(message);
-  console.log(`BLOCKED: ${message}`);
-}
-
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help) {
-    printUsage();
-    return;
-  }
-
-  const blockers = [];
-  const advisories = [];
-  const { repoRoot } = getScriptContext(import.meta.url);
-  const forbiddenEnvLocalDefinitions = findEnvLocalKeyDefinitions(
-    repoRoot,
-    FORBIDDEN_GITHUB_APP_LOCAL_ENV_KEYS,
-  );
-  loadLocalEnv(import.meta.url, GITHUB_APP_LOCAL_ENV_KEYS);
-  const refsPath = loadGithubMergeReferenceEnv(repoRoot);
-
-  const context = getContext();
-  const env = {
-    ...process.env,
-    ...context,
-  };
-  const config = getGithubReadLaneConfig(env);
-
-  console.log('GitHub merge doctor: Governada autonomous GitHub App lane');
-  console.log('Capability: github.app.installation.governada.pilot');
-  console.log(`Operation class: ${GITHUB_OPERATION_CLASSES.merge}`);
-  console.log('Mutation policy: no merge endpoint is called by this doctor');
-
-  if (refsPath) {
-    pass(
-      `.env.local.refs was inspected for ${GITHUB_OPERATION_CLASSES.merge} reference metadata without resolving values`,
-    );
-
-    const forbiddenRefsKeys = getForbiddenGithubReferenceKeys(refsPath);
-    if (forbiddenRefsKeys.length > 0) {
-      block(
-        blockers,
-        `.env.local.refs must not define ${forbiddenRefsKeys.join(', ')} for the autonomous merge lane`,
-      );
-    }
-  } else {
-    advisory(
-      advisories,
-      '.env.local.refs is absent; merge lane metadata may only come from process env',
-    );
-  }
-
-  if (forbiddenEnvLocalDefinitions.length > 0) {
-    block(
-      blockers,
-      `.env.local must not define ${describeEnvLocalDefinitions(forbiddenEnvLocalDefinitions)} for the autonomous merge lane`,
-    );
-  }
-
-  if (context.GH_REPO === EXPECTED_REPO) {
-    pass(`repo context is pinned to ${EXPECTED_REPO}`);
-  } else {
-    block(blockers, `repo context is ${context.GH_REPO || 'unset'}, expected ${EXPECTED_REPO}`);
-  }
-
-  if (context.OP_ACCOUNT === EXPECTED_OP_ACCOUNT) {
-    pass(`1Password account is pinned to ${EXPECTED_OP_ACCOUNT}`);
-  } else {
-    block(
-      blockers,
-      `1Password account is ${context.OP_ACCOUNT || 'unset'}, expected ${EXPECTED_OP_ACCOUNT}`,
-    );
-  }
-
-  if (config.rawGithubTokenKeys.length > 0) {
-    block(
-      blockers,
-      `raw ${config.rawGithubTokenKeys.join('/')} env is present; autonomous ${GITHUB_OPERATION_CLASSES.merge} must not use human or raw GitHub tokens`,
-    );
-  } else {
-    pass('raw GitHub token env is not present');
-  }
-
-  if (config.opConnectKeys.length > 0) {
-    block(
-      blockers,
-      `${config.opConnectKeys.join('/')} is present; clear 1Password Connect env before proving the service-account lane`,
-    );
-  } else {
-    pass('1Password Connect env is not present');
-  }
-
-  let brokerAvailable = false;
-  if (!config.serviceAccountTokenPresent && blockers.length === 0) {
-    const brokerResult = await ensureGithubBrokerRunning({ env, repoRoot });
-    if (brokerResult.ok) {
-      brokerAvailable = true;
-      pass(
-        brokerResult.started
-          ? 'GitHub runtime broker service was auto-ensured; agent process does not need service-account token'
-          : 'GitHub runtime broker socket is available; agent process does not need service-account token',
-      );
-    } else {
-      block(
-        blockers,
-        `GitHub runtime broker could not be auto-ensured: ${(brokerResult.blockers || []).join('; ')}`,
-      );
-    }
-  }
-
-  const missingKeys = !config.serviceAccountTokenPresent
-    ? config.missingKeys.filter((key) => key !== GITHUB_READ_ENV_KEYS.serviceAccountToken)
-    : config.missingKeys;
-  if (missingKeys.length > 0) {
-    block(
-      blockers,
-      `autonomous ${GITHUB_OPERATION_CLASSES.merge} lane is not configured; missing ${missingKeys.join(', ')}`,
-    );
-  } else {
-    pass(`all autonomous ${GITHUB_OPERATION_CLASSES.merge} configuration keys are present`);
-  }
-
-  if (config.privateKeyRef && isValidOpReference(config.privateKeyRef)) {
-    pass(`${GITHUB_READ_ENV_KEYS.privateKeyRef} is an op:// reference`);
-  } else if (config.privateKeyRef) {
-    block(blockers, `${GITHUB_READ_ENV_KEYS.privateKeyRef} must be an op:// reference`);
-  }
-
-  const runtime = evaluateGithubServiceAccountRuntime(env);
-  if (config.serviceAccountTokenPresent) {
-    for (const message of runtime.passes) {
-      pass(message);
-    }
-    for (const message of runtime.advisories) {
-      advisory(advisories, message);
-    }
-    for (const message of runtime.blockers) {
-      block(blockers, message);
-    }
-  }
-
-  advisory(
-    advisories,
-    'This doctor proves token minting, permission scope, and read probes only; merge execution still requires a current prompt approval naming repo, PR, operation, expected head SHA, green checks, and unchanged head.',
-  );
-
-  if (blockers.length > 0) {
-    writeResult(blockers, advisories);
-    process.exit(1);
-  }
-
-  if (brokerAvailable) {
-    await verifyNonMutatingMergeLaneAccessWithBroker(repoRoot, env, blockers, args);
-    writeResult(blockers, advisories);
-    process.exit(blockers.length > 0 ? 1 : 0);
-  }
-
-  const privateKeyResult = readPrivateKeyFromOnePassword({
-    privateKeyRef: config.privateKeyRef,
-    env,
-    cwd: repoRoot,
-  });
-
-  if (privateKeyResult.error) {
-    block(blockers, privateKeyResult.error);
-  } else {
-    pass('1Password service-account lane resolved the GitHub App private key reference');
-  }
-
-  if (blockers.length === 0) {
-    const appOwnerResult = await verifyGithubAppOwner({
-      appId: config.appId,
-      privateKey: privateKeyResult.privateKey,
-    });
-
-    if (appOwnerResult.error) {
-      block(blockers, appOwnerResult.error);
-    } else {
-      pass(`GitHub App owner is ${appOwnerResult.ownerLogin}`);
-    }
-  }
-
-  if (blockers.length === 0) {
-    const mintResult = await mintInstallationToken({
-      appId: config.appId,
-      installationId: config.installationId,
-      permissions: EXPECTED_MERGE_PERMISSIONS,
-      privateKey: privateKeyResult.privateKey,
-    });
-
-    if (mintResult.error) {
-      block(blockers, mintResult.error);
-    } else {
-      pass(
-        `minted short-lived GitHub App installation token for ${GITHUB_OPERATION_CLASSES.merge} proof`,
-      );
-      if (mintResult.expiresAt) {
-        pass(`installation token includes expiry ${mintResult.expiresAt}`);
-      }
-
-      const repoNames = mintResult.repositories.map((repo) => repo.full_name || repo.name);
-      if (repoNames.length === 1 && repoNames[0] === EXPECTED_REPO) {
-        pass(`installation token is narrowed to ${EXPECTED_REPO}`);
-      } else {
-        block(
-          blockers,
-          `installation token repository set is ${repoNames.join(', ') || 'not returned'}, expected only ${EXPECTED_REPO}`,
-        );
-      }
-
-      const permissionFailures = githubMergePermissionFailures(mintResult.permissions);
-      if (permissionFailures.length === 0) {
-        pass(
-          `installation token permissions satisfy ${GITHUB_OPERATION_CLASSES.merge}: ${summarizeGithubMergePermissions(mintResult.permissions)}`,
-        );
-      } else {
-        block(
-          blockers,
-          `installation token permissions do not satisfy ${GITHUB_OPERATION_CLASSES.merge}: ${summarizeGithubMergePermissions(mintResult.permissions)}`,
-        );
-      }
-
-      if (blockers.length === 0) {
-        await verifyNonMutatingMergeLaneAccess(mintResult.token, blockers, args);
-      }
-    }
-  }
-
-  writeResult(blockers, advisories);
-  process.exit(blockers.length > 0 ? 1 : 0);
+Default mode routes github.merge doctor proof through the stable agent-runtime host.
+--legacy runs the pre-Slice-5d app-local broker-aware doctor as an explicit compatibility fallback.`;
 }
 
 function parseArgs(argv) {
-  if (argv.includes('--help') || argv.includes('-h')) {
-    return { help: true };
-  }
-
-  const args = {
-    expectedHead: '',
-    prNumber: '',
+  const parsed = {
+    doctorArgs: [],
+    help: false,
+    legacy: false,
   };
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const value = argv[index];
-    if (value === '--expected-head') {
-      args.expectedHead = requireNextValue(argv, index, value);
-      index += 1;
-    } else if (value.startsWith('--expected-head=')) {
-      args.expectedHead = value.slice('--expected-head='.length);
-    } else if (value === '--pr') {
-      args.prNumber = requireNextValue(argv, index, value);
-      index += 1;
-    } else if (value.startsWith('--pr=')) {
-      args.prNumber = value.slice('--pr='.length);
+  for (const arg of argv) {
+    if (arg === '--help' || arg === '-h') {
+      parsed.help = true;
+    } else if (arg === '--legacy' || arg === '--compatibility-fallback') {
+      parsed.legacy = true;
     } else {
-      throw new Error(`Unknown argument: ${value}`);
+      parsed.doctorArgs.push(arg);
     }
   }
 
-  if ((args.prNumber && !args.expectedHead) || (!args.prNumber && args.expectedHead)) {
-    throw new Error('--pr and --expected-head must be provided together.');
-  }
-
-  return args;
+  return parsed;
 }
 
-function requireNextValue(argv, index, flag) {
-  const nextValue = argv[index + 1];
-  if (!nextValue || nextValue.startsWith('--')) {
-    throw new Error(`${flag} requires a value.`);
-  }
-  return nextValue;
-}
-
-function printUsage() {
-  console.log(`Usage:
-  npm run github:merge-doctor
-  npm run github:merge-doctor -- --pr <number> --expected-head <40-char-sha>
-
-This doctor never calls the merge endpoint.`);
-}
-
-function writeResult(blockers, advisories) {
-  console.log('');
-  if (blockers.length > 0) {
-    console.log(`GitHub merge doctor result: BLOCKED (${blockers.length})`);
-    return;
-  }
-
-  if (advisories.length > 0) {
-    console.log(`GitHub merge doctor result: PASS_WITH_ADVISORIES (${advisories.length})`);
-    return;
-  }
-
-  console.log('GitHub merge doctor result: OK');
-}
-
-function describeEnvLocalDefinitions(definitions) {
-  return definitions.map((definition) => `${definition.key} (${definition.filePath})`).join(', ');
-}
-
-function loadGithubMergeReferenceEnv(repoRoot) {
-  const refsPath = findFirstExisting(getEnvRefsCandidates(repoRoot));
-  if (!refsPath) {
-    return '';
-  }
-
-  for (const entry of parseEnvEntries(refsPath)) {
-    if (GITHUB_MERGE_REF_KEYS.has(entry.key) && process.env[entry.key] === undefined) {
-      process.env[entry.key] = entry.value;
-    }
-  }
-
-  return refsPath;
-}
-
-async function verifyNonMutatingMergeLaneAccess(token, blockers, args) {
-  const repo = await githubApiRequest({
-    path: `/repos/${EXPECTED_REPO}`,
-    token,
+function runNodeScript(scriptPath, args = []) {
+  return spawnSync(process.execPath, [scriptPath, ...args], {
+    cwd: path.dirname(scriptPath),
+    encoding: 'utf8',
+    env: process.env,
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
-  if (!repo.ok || repo.data?.full_name !== EXPECTED_REPO) {
-    block(blockers, githubApiErrorMessage(repo, `repo read failed for ${EXPECTED_REPO}`));
-    return;
-  }
-  pass(`repo read works for ${EXPECTED_REPO}`);
+}
 
-  const pulls = await githubApiRequest({
-    path: `/repos/${EXPECTED_REPO}/pulls?state=open&per_page=1`,
-    token,
-  });
-  if (!pulls.ok) {
-    block(blockers, githubApiErrorMessage(pulls, `pull request read failed for ${EXPECTED_REPO}`));
-    return;
+function writeOutput(result) {
+  if (result.error) {
+    process.stderr.write(redactSensitiveText(`${result.error.message || String(result.error)}\n`));
   }
-  pass('pull request read works with merge-capable token');
+  if (result.stdout) {
+    process.stdout.write(redactSensitiveText(result.stdout));
+  }
+  if (result.stderr) {
+    process.stderr.write(redactSensitiveText(result.stderr));
+  }
+}
 
-  if (!args.prNumber) {
-    return;
+function runLegacyDoctor(args, note) {
+  console.log('GitHub merge doctor route: app-local compatibility fallback');
+  if (note) {
+    console.log(note);
   }
+  const result = runNodeScript(LEGACY_SCRIPT, args);
+  writeOutput(result);
+  return result.status ?? 1;
+}
 
-  const pull = await githubApiRequest({
-    path: `/repos/${EXPECTED_REPO}/pulls/${args.prNumber}`,
-    token,
-  });
-  if (!pull.ok) {
-    block(blockers, githubApiErrorMessage(pull, `PR #${args.prNumber} read failed`));
-    return;
-  }
-
-  const prEvaluation = evaluatePullRequestForMerge(pull.data, args.expectedHead);
-  for (const message of prEvaluation.passes) {
-    pass(message);
-  }
-  for (const message of prEvaluation.blockers) {
-    block(blockers, message);
+function main() {
+  const parsed = parseArgs(process.argv.slice(2));
+  if (parsed.help) {
+    console.log(usage());
+    return 0;
   }
 
-  const checkRuns = await githubApiRequest({
-    path: `/repos/${EXPECTED_REPO}/commits/${args.expectedHead}/check-runs?per_page=100`,
-    token,
-  });
-  if (!checkRuns.ok) {
-    block(blockers, githubApiErrorMessage(checkRuns, `check-run read failed for ${EXPECTED_REPO}`));
-    return;
-  }
-
-  const combinedStatus = await githubApiRequest({
-    path: `/repos/${EXPECTED_REPO}/commits/${args.expectedHead}/status`,
-    token,
-  });
-  if (!combinedStatus.ok) {
-    block(
-      blockers,
-      githubApiErrorMessage(combinedStatus, `commit status read failed for ${EXPECTED_REPO}`),
+  if (parsed.legacy) {
+    return runLegacyDoctor(
+      parsed.doctorArgs,
+      'Compatibility note: stable-host routing is the default Slice 5d proof path.',
     );
-    return;
   }
 
-  const checkEvaluation = evaluateGithubChecksForMerge({
-    checkRuns: checkRuns.data?.check_runs || [],
-    checkRunsTotalCount: checkRuns.data?.total_count,
-    combinedStatus: combinedStatus.data || {},
-  });
-  for (const message of checkEvaluation.passes) {
-    pass(message);
+  const agentRuntimeBin = DEFAULT_AGENT_RUNTIME_BIN;
+  if (!existsSync(agentRuntimeBin)) {
+    console.error(`BLOCKED: stable agent-runtime command is missing: ${agentRuntimeBin}`);
+    console.error('Compatibility fallback: npm run github:merge-doctor -- --legacy');
+    return 1;
   }
-  for (const message of checkEvaluation.blockers) {
-    block(blockers, message);
-  }
+
+  console.log('GitHub merge doctor route: stable agent-runtime host');
+  console.log(`Stable host command: ${agentRuntimeBin}`);
+  console.log('Operation class: github.merge');
+  console.log('Compatibility fallback: npm run github:merge-doctor -- --legacy');
+  console.log(
+    'Live merge execution: existing broker-backed github:merge wrapper remains active and unchanged',
+  );
+
+  const stableHostResult = runNodeScript(agentRuntimeBin, [
+    'github',
+    'doctor',
+    '--domain',
+    'governada',
+    '--operation',
+    'github.merge',
+    ...parsed.doctorArgs,
+  ]);
+  writeOutput(stableHostResult);
+  return stableHostResult.status ?? 1;
 }
 
-async function verifyNonMutatingMergeLaneAccessWithBroker(repoRoot, env, blockers, args) {
-  const repo = await githubBrokerApiRequest({
-    env,
-    path: `/repos/${EXPECTED_REPO}`,
-    repoRoot,
-  });
-  if (!repo.ok || repo.data?.full_name !== EXPECTED_REPO) {
-    block(blockers, githubApiErrorMessage(repo, `repo read failed for ${EXPECTED_REPO}`));
-    return;
-  }
-  pass(`repo read works for ${EXPECTED_REPO} through broker`);
-
-  const pulls = await githubBrokerApiRequest({
-    env,
-    path: `/repos/${EXPECTED_REPO}/pulls?state=open&per_page=1`,
-    repoRoot,
-  });
-  if (!pulls.ok) {
-    block(blockers, githubApiErrorMessage(pulls, `pull request read failed for ${EXPECTED_REPO}`));
-    return;
-  }
-  pass('pull request read works through broker');
-
-  if (!args.prNumber) {
-    return;
-  }
-
-  const pull = await githubBrokerApiRequest({
-    env,
-    path: `/repos/${EXPECTED_REPO}/pulls/${args.prNumber}`,
-    repoRoot,
-  });
-  if (!pull.ok) {
-    block(blockers, githubApiErrorMessage(pull, `PR #${args.prNumber} read failed`));
-    return;
-  }
-
-  const prEvaluation = evaluatePullRequestForMerge(pull.data, args.expectedHead);
-  for (const message of prEvaluation.passes) {
-    pass(message);
-  }
-  for (const message of prEvaluation.blockers) {
-    block(blockers, message);
-  }
-
-  const checkRuns = await githubBrokerApiRequest({
-    env,
-    path: `/repos/${EXPECTED_REPO}/commits/${args.expectedHead}/check-runs?per_page=100`,
-    repoRoot,
-  });
-  if (!checkRuns.ok) {
-    block(blockers, githubApiErrorMessage(checkRuns, `check-run read failed for ${EXPECTED_REPO}`));
-    return;
-  }
-
-  const combinedStatus = await githubBrokerApiRequest({
-    env,
-    path: `/repos/${EXPECTED_REPO}/commits/${args.expectedHead}/status`,
-    repoRoot,
-  });
-  if (!combinedStatus.ok) {
-    block(
-      blockers,
-      githubApiErrorMessage(combinedStatus, `commit status read failed for ${EXPECTED_REPO}`),
-    );
-    return;
-  }
-
-  const checkEvaluation = evaluateGithubChecksForMerge({
-    checkRuns: checkRuns.data?.check_runs || [],
-    checkRunsTotalCount: checkRuns.data?.total_count,
-    combinedStatus: combinedStatus.data || {},
-  });
-  for (const message of checkEvaluation.passes) {
-    pass(message);
-  }
-  for (const message of checkEvaluation.blockers) {
-    block(blockers, message);
-  }
-}
-
-async function githubBrokerApiRequest({ body = undefined, env, method = 'GET', path, repoRoot }) {
-  return callGithubBroker({
-    env,
-    repoRoot,
-    request: {
-      body,
-      kind: 'github-api',
-      method,
-      operationClass: GITHUB_OPERATION_CLASSES.merge,
-      path,
-    },
-  });
-}
-
-main().catch((error) => {
+try {
+  process.exitCode = main();
+} catch (error) {
   console.error(redactSensitiveText(error?.message || String(error)));
-  process.exit(1);
-});
+  process.exitCode = 1;
+}

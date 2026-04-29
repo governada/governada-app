@@ -4,7 +4,10 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { parseGithubMergeApproval } from '@/scripts/lib/github-merge-approval.mjs';
+import {
+  buildGithubMergeApprovalPrompt,
+  parseGithubMergeApproval,
+} from '@/scripts/lib/github-merge-approval.mjs';
 import {
   assertAllowedGithubMergePlan,
   buildGithubMergePlan,
@@ -75,6 +78,10 @@ describe('github merge wrapper guardrails', () => {
   });
 
   it('requires prompt approval to name repo, PR, operation, head SHA, checks, and unchanged head', () => {
+    expect(buildGithubMergeApprovalPrompt({ expectedHead: SHA, prNumber: 913 })).toBe(
+      `I approve github.merge for governada/app PR #913 if CI checks are green and the head SHA remains unchanged at ${SHA}.`,
+    );
+
     const approval = parseGithubMergeApproval({
       expectedHead: SHA,
       prNumber: 913,
@@ -408,9 +415,19 @@ describe('github merge wrapper guardrails', () => {
     const source = readFileSync(path.join(repoRoot, 'scripts/github-merge.mjs'), 'utf8');
 
     expect(source).toContain("['run', 'deploy:verify', '--', `--expected-sha=${mergeSha}`]");
+    expect(source).toContain('MERGED_VERIFY_TIMEOUT');
+    expect(source).toContain('Follow up with: npm run deploy:verify -- --expected-sha=${mergeSha}');
     expect(source).not.toContain('railway up');
     expect(source).not.toContain('inngest:register');
     expect(source).not.toContain('sync:');
+  });
+
+  it('prints the exact merge approval prompt from the pre-merge check', () => {
+    const source = readFileSync(path.join(repoRoot, 'scripts/pre-merge-check.js'), 'utf8');
+
+    expect(source).toContain('Exact merge approval prompt:');
+    expect(source).toContain('buildGithubMergeApprovalPrompt');
+    expect(source).toContain('getPullRequestHeadSha');
   });
 
   it('recognizes the required Review Gate v0 body shape and redacts merge plans', () => {

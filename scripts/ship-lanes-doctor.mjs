@@ -23,9 +23,12 @@ export function parseArgs(argv) {
   const options = {
     help: false,
     operation: DEFAULT_OPERATION,
+    probeGitRemote: false,
     probeSsh: false,
+    requireDirectGit: false,
     requireDirectSsh: false,
     requireFreshLocalMain: false,
+    sshTimeoutMs: 15000,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -44,11 +47,23 @@ export function parseArgs(argv) {
       index += 1;
     } else if (arg === '--probe-ssh') {
       options.probeSsh = true;
+    } else if (arg === '--probe-git-remote') {
+      options.probeGitRemote = true;
+    } else if (arg === '--require-direct-git') {
+      options.requireDirectGit = true;
+      options.probeGitRemote = true;
     } else if (arg === '--require-direct-ssh') {
       options.requireDirectSsh = true;
       options.probeSsh = true;
     } else if (arg === '--require-fresh-local-main') {
       options.requireFreshLocalMain = true;
+    } else if (arg === '--ssh-timeout-ms') {
+      const timeout = Number(argv[index + 1]);
+      if (!Number.isInteger(timeout) || timeout < 1000 || timeout > 120000) {
+        throw new Error('--ssh-timeout-ms requires an integer from 1000 to 120000');
+      }
+      options.sshTimeoutMs = timeout;
+      index += 1;
     } else {
       throw new Error(`unknown option: ${arg}`);
     }
@@ -62,15 +77,20 @@ export function usage() {
   npm run ship:doctor
   npm run ship:doctor -- --operation github.merge
   npm run ship:doctor -- --probe-ssh
-  npm run ship:doctor -- --require-direct-ssh --require-fresh-local-main
+  npm run ship:doctor -- --probe-git-remote
+  npm run ship:doctor -- --require-direct-ssh --require-direct-git --require-fresh-local-main
 
 Default probes are read-only and non-mutating. Direct SSH signing is skipped
-unless --probe-ssh or --require-direct-ssh is supplied. This doctor separates:
+unless --probe-ssh or --require-direct-ssh is supplied. Direct Git transport is
+probed with time-bounded git ls-remote only when --probe-git-remote or
+--require-direct-git is supplied; it never fetches or writes FETCH_HEAD. This
+doctor separates:
   1. local Git refs and remote configuration
   2. direct Git SSH via github-governada
-  3. repo GitHub API/token auth
-  4. existing app-local broker/runtime path
-  5. stable agent-runtime operation proof path`;
+  3. direct Git remote transport via git ls-remote
+  4. repo GitHub API/token auth
+  5. existing app-local broker/runtime path
+  6. stable agent-runtime operation proof path`;
 }
 
 export function isExpectedMissingTokenFailClosed(output) {
@@ -93,9 +113,12 @@ function run(command, args, options = {}) {
 
   return {
     error: result.error,
-    status: result.status ?? 1,
+    signal: result.signal || '',
+    status: result.status ?? (result.error ? 124 : 1),
     stdout: result.stdout || '',
     stderr: result.stderr || '',
+    timedOut: result.error?.code === 'ETIMEDOUT',
+    timeoutMs: options.timeoutMs || 15000,
   };
 }
 
@@ -155,6 +178,13 @@ function addIssue(collection, message) {
 }
 
 function summarizeCommandStatus(result) {
+  if (result.timedOut) {
+    return `timed out after ${result.timeoutMs}ms`;
+  }
+  if (result.signal) {
+    const detail = firstLine(outputOf(result));
+    return detail ? `signal ${result.signal}: ${detail}` : `signal ${result.signal}`;
+  }
   const detail = firstLine(outputOf(result));
   return detail ? `exit ${result.status}: ${detail}` : `exit ${result.status}`;
 }
@@ -187,6 +217,19 @@ function getGithubGovernadaIdentityAgent() {
   return {
     error: '',
     path: resolveIdentityAgent(rawValue),
+  };
+}
+
+function getDirectSshContext() {
+  const identityAgent = getGithubGovernadaIdentityAgent();
+  return {
+    details: [
+      identityAgent.path
+        ? `configured IdentityAgent: ${identityAgent.path}`
+        : `configured IdentityAgent: ${identityAgent.error || '(not found)'}`,
+    ],
+    env: identityAgent.path ? { SSH_AUTH_SOCK: identityAgent.path } : {},
+    identityAgent,
   };
 }
 
@@ -234,14 +277,12 @@ function inspectLocalGitRefs({ remoteMainSha, blockers, advisories }) {
 }
 
 function inspectDirectSsh({ options, blockers, advisories }) {
-  const identityAgent = getGithubGovernadaIdentityAgent();
-  const sshEnv = identityAgent.path ? { SSH_AUTH_SOCK: identityAgent.path } : {};
+  const sshContext = getDirectSshContext();
+  const sshEnv = sshContext.env;
   const keyList = run('ssh-add', ['-l'], { env: sshEnv });
   const keyListed = keyList.status === 0 && outputOf(keyList).includes('github-governada');
   const details = [
-    identityAgent.path
-      ? `configured IdentityAgent: ${identityAgent.path}`
-      : `configured IdentityAgent: ${identityAgent.error || '(not found)'}`,
+    ...sshContext.details,
     keyListed
       ? 'ssh-add lists a github-governada key'
       : `ssh-add key visibility: ${summarizeCommandStatus(keyList)}`,
@@ -254,8 +295,42 @@ function inspectDirectSsh({ options, blockers, advisories }) {
     return;
   }
 
+  const publicKeyPath = path.join(process.env.HOME || '', '.ssh', 'github-governada.pub');
+  if (!existsSync(publicKeyPath)) {
+    details.push(`ssh-add signing proof skipped; missing ${publicKeyPath}`);
+    addIssue(advisories, 'direct Git SSH public key for signing proof is missing');
+    printLane('Direct Git SSH via github-governada', 'ADVISORY', details);
+    return;
+  }
+
+  const signingProbe = run('ssh-add', ['-T', publicKeyPath], {
+    env: sshEnv,
+    timeoutMs: options.sshTimeoutMs,
+  });
+  const signingPassed = signingProbe.status === 0;
+  details.push(
+    signingPassed
+      ? 'ssh-add -T github-governada.pub signing proof passed'
+      : `ssh-add -T signing proof: ${summarizeCommandStatus(signingProbe)}`,
+  );
+
+  if (!signingPassed) {
+    details.push('ssh -T github-governada skipped because signing proof did not pass');
+    const message = 'direct Git SSH signing failed or timed out';
+    if (options.requireDirectSsh) {
+      addIssue(blockers, message);
+      printLane('Direct Git SSH via github-governada', 'BLOCKED', details);
+      return;
+    }
+
+    addIssue(advisories, message);
+    printLane('Direct Git SSH via github-governada', 'ADVISORY', details);
+    return;
+  }
+
   const probe = run('ssh', ['-o', 'BatchMode=yes', '-T', 'github-governada'], {
-    timeoutMs: 15000,
+    env: sshEnv,
+    timeoutMs: options.sshTimeoutMs,
   });
   const probeOutput = outputOf(probe);
   const authenticated = probeOutput.includes('successfully authenticated');
@@ -277,6 +352,50 @@ function inspectDirectSsh({ options, blockers, advisories }) {
 
   addIssue(advisories, message);
   printLane('Direct Git SSH via github-governada', 'ADVISORY', details);
+}
+
+function inspectDirectGitRemote({ options, blockers, advisories }) {
+  const sshContext = getDirectSshContext();
+  const details = [
+    ...sshContext.details,
+    'probe command: git ls-remote --heads origin main',
+    'probe is read-only and does not write FETCH_HEAD',
+    `timeout: ${options.sshTimeoutMs}ms`,
+  ];
+
+  if (!options.probeGitRemote) {
+    details.push(
+      'direct Git remote probe skipped; pass --probe-git-remote to run time-bounded git ls-remote',
+    );
+    addIssue(advisories, 'direct Git remote transport was not probed');
+    printLane('Direct Git remote transport', 'ADVISORY', details);
+    return;
+  }
+
+  const probe = run('git', ['ls-remote', '--heads', 'origin', 'main'], {
+    env: sshContext.env,
+    timeoutMs: options.sshTimeoutMs,
+  });
+  const output = outputOf(probe);
+  const foundMain = probe.status === 0 && output.includes('refs/heads/main');
+  details.push(
+    foundMain ? 'origin/main is reachable through direct Git SSH' : summarizeCommandStatus(probe),
+  );
+
+  if (foundMain) {
+    printLane('Direct Git remote transport', 'PASS', details);
+    return;
+  }
+
+  const message = 'direct Git remote transport failed or timed out';
+  if (options.requireDirectGit) {
+    addIssue(blockers, message);
+    printLane('Direct Git remote transport', 'BLOCKED', details);
+    return;
+  }
+
+  addIssue(advisories, message);
+  printLane('Direct Git remote transport', 'ADVISORY', details);
 }
 
 function inspectGithubApi({ blockers }) {
@@ -392,6 +511,7 @@ export async function main(argv = process.argv.slice(2)) {
   const { remoteMainSha } = inspectGithubApi({ blockers });
   inspectLocalGitRefs({ remoteMainSha, blockers, advisories });
   inspectDirectSsh({ options, blockers, advisories });
+  inspectDirectGitRemote({ options, blockers, advisories });
   inspectBrokerRuntime({ blockers, advisories });
   inspectStableHost({ options, blockers, advisories });
   enforceFreshnessRequirement({ options, remoteMainSha, blockers });

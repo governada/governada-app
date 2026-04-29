@@ -20,6 +20,7 @@ const baseBranch = 'main';
 async function main() {
   console.log(`Checking merge safety for PR #${prNumber}...`);
   const github = await buildGithubReader();
+  const { buildGithubMergeApprovalPrompt } = await import('./lib/github-merge-approval.mjs');
   console.log(`GitHub auth source: ${github.source}`);
 
   const otherPrs = (await github.listPullRequests())
@@ -62,6 +63,12 @@ async function main() {
   }
 
   console.log(`OK: Safe to merge PR #${prNumber}.`);
+  const expectedHead = getPullRequestHeadSha(prView);
+  if (expectedHead) {
+    console.log('');
+    console.log('Exact merge approval prompt:');
+    console.log(buildGithubMergeApprovalPrompt({ expectedHead, prNumber }));
+  }
 }
 
 async function buildGithubReader() {
@@ -263,6 +270,10 @@ function evaluateCheckFailures({ checkRuns, combinedStatus }) {
     checkRunsTotalCount: totalCount,
     combinedStatus,
   }).blockers;
+}
+
+function getPullRequestHeadSha(prView) {
+  return prView?.head?.sha || prView?.headRefOid || '';
 }
 
 main().catch((error) => {

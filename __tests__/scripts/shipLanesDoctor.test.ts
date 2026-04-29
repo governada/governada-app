@@ -26,6 +26,7 @@ describe('ship lane doctor', () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('local Git refs and remote configuration');
     expect(result.stdout).toContain('direct Git SSH via github-governada');
+    expect(result.stdout).toContain('direct Git remote transport via git ls-remote');
     expect(result.stdout).toContain('repo GitHub API/token auth');
     expect(result.stdout).toContain('existing app-local broker/runtime path');
     expect(result.stdout).toContain('stable agent-runtime operation proof path');
@@ -35,10 +36,33 @@ describe('ship lane doctor', () => {
     const source = readFileSync(path.join(repoRoot, 'scripts/ship-lanes-doctor.mjs'), 'utf8');
 
     expect(source).toContain('--probe-ssh');
+    expect(source).toContain('--probe-git-remote');
+    expect(source).toContain('--require-direct-git');
+    expect(source).toContain('timeoutMs: options.sshTimeoutMs');
     expect(source).toContain('SSH signing probe skipped');
+    expect(source).toContain("ssh-add', ['-T', publicKeyPath]");
+    expect(source).toContain('ssh-add -T github-governada.pub signing proof passed');
+    expect(source).toContain('git ls-remote --heads origin main');
     expect(source).toContain("run('ssh'");
     expect(source).not.toContain("git', ['fetch");
     expect(source).not.toContain("git', ['push");
+  });
+
+  it('parses direct Git remote probes as explicit opt-in checks', async () => {
+    const module = await import(path.join(repoRoot, 'scripts/ship-lanes-doctor.mjs'));
+
+    expect(module.parseArgs(['--probe-git-remote', '--ssh-timeout-ms', '2500'])).toMatchObject({
+      probeGitRemote: true,
+      requireDirectGit: false,
+      sshTimeoutMs: 2500,
+    });
+    expect(module.parseArgs(['--require-direct-git'])).toMatchObject({
+      probeGitRemote: true,
+      requireDirectGit: true,
+    });
+    expect(() => module.parseArgs(['--ssh-timeout-ms', '999'])).toThrow(
+      '--ssh-timeout-ms requires an integer from 1000 to 120000',
+    );
   });
 
   it('classifies missing service-account runtime as expected fail-closed stable-host behavior', async () => {

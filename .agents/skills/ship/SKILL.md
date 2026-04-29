@@ -13,7 +13,9 @@ Execute the routine Governada ship loop autonomously until a real approval gate 
 4. Apply the brain freshness rule from `AGENTS.md`. Feature or meaningful behavior work must update the relevant brain feature, initiative, roadmap, or decision note before closeout.
 5. Stage only intended files, review the staged diff, and commit with a conventional commit message.
 6. Run `npm run github:runtime-doctor` when auth/runtime state is uncertain.
-7. Run `npm run github:ship-doctor`.
+7. Run `npm run github:ship-doctor`. This defaults to the stable `agent-runtime`
+   host for `github.ship.pr` proof; use `npm run github:ship-doctor -- --legacy`
+   only as the explicit app-local compatibility fallback.
 8. Publish the committed branch through the brokered lane:
 
    ```bash

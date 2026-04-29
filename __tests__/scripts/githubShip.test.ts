@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -12,6 +15,31 @@ import {
 } from '@/scripts/lib/secret-scan.mjs';
 
 describe('github ship wrapper guardrails', () => {
+  it('routes the ship doctor through the stable agent-runtime host with explicit legacy fallback', () => {
+    const packageJson = JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+    const wrapper = readFileSync(
+      path.join(process.cwd(), 'scripts/github-ship-doctor.mjs'),
+      'utf8',
+    );
+
+    expect(packageJson.scripts['github:ship-doctor']).toBe('node scripts/github-ship-doctor.mjs');
+    expect(packageJson.scripts['github:ship-doctor:legacy']).toBe(
+      'node scripts/github-ship-doctor.mjs --legacy',
+    );
+    expect(wrapper).toContain('/Users/tim/dev/agent-runtime/bin/agent-runtime');
+    expect(wrapper).toContain("'github'");
+    expect(wrapper).toContain("'doctor'");
+    expect(wrapper).toContain("'--domain'");
+    expect(wrapper).toContain("'governada'");
+    expect(wrapper).toContain("'--operation'");
+    expect(wrapper).toContain("'github.ship.pr'");
+    expect(wrapper).toContain('github-ship-doctor-app.mjs');
+    expect(wrapper).toContain('Compatibility fallback');
+    expect(wrapper).toContain('existing broker-backed github:ship and github:pr-write');
+    expect(wrapper).not.toContain('mintInstallationToken');
+    expect(wrapper).not.toContain('readPrivateKeyFromOnePassword');
+  });
+
   it('builds a dry-run publish plan for allowed branch prefixes', () => {
     const args = parseGithubShipArgs(['publish', '--head', 'codex/example']);
     const plan = buildGithubShipPlan(args);

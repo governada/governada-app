@@ -259,7 +259,7 @@ describe('env bootstrap guardrails', () => {
       'scripts/github-read-doctor-app.mjs',
       'scripts/github-runtime-doctor.mjs',
       'scripts/github-runtime-broker.mjs',
-      'scripts/github-ship-doctor.mjs',
+      'scripts/github-ship-doctor-app.mjs',
       'scripts/github-write-doctor.mjs',
       'scripts/github-pr-write.mjs',
       'scripts/github-pr-close.mjs',

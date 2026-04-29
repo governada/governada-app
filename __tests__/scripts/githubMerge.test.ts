@@ -67,6 +67,8 @@ describe('github merge wrapper guardrails', () => {
     expect(appDoctor).toContain('readPrivateKeyFromOnePassword');
     expect(appDoctor).toContain('evaluatePullRequestForMerge');
     expect(appDoctor).toContain('getGithubBrokerStatus');
+    expect(appDoctor).toContain('verifyNonMutatingMergeLaneAccessWithBroker');
+    expect(appDoctor).toContain('proving legacy fallback through the existing broker');
     expect(appDoctor).not.toContain('ensureGithubBrokerRunning');
     expect(mergeScript).toContain('ensureGithubBrokerRunning');
     expect(mergeScript).toContain('runPostMergeVerification');

@@ -146,6 +146,7 @@ async function main() {
     pass('1Password Connect env is not present');
   }
 
+  let brokerCanProveFallback = false;
   if (!config.serviceAccountTokenPresent && blockers.length === 0) {
     const status = await getGithubBrokerStatus({ env, repoRoot });
     if (status.running === true) {
@@ -160,6 +161,7 @@ async function main() {
       }
       if (status.supportedOperationClasses?.includes(GITHUB_OPERATION_CLASSES.merge)) {
         pass(`GitHub runtime broker advertises ${GITHUB_OPERATION_CLASSES.merge}`);
+        brokerCanProveFallback = status.repo === EXPECTED_REPO;
       } else {
         advisory(
           advisories,
@@ -216,12 +218,26 @@ async function main() {
   }
 
   if (!config.serviceAccountTokenPresent) {
-    advisory(
-      advisories,
-      'No service-account token is present, so the legacy merge doctor stopped before resolving secrets or calling GitHub',
-    );
+    if (brokerCanProveFallback) {
+      pass(
+        'No service-account token is present; proving legacy fallback through the existing broker',
+      );
+      try {
+        await verifyNonMutatingMergeLaneAccessWithBroker(repoRoot, env, blockers, args);
+      } catch (error) {
+        block(
+          blockers,
+          `legacy merge fallback broker proof failed: ${redactSensitiveText(error?.message || String(error))}`,
+        );
+      }
+    } else {
+      advisory(
+        advisories,
+        'No service-account token is present and no scoped merge-capable broker is available, so the legacy merge doctor stopped before resolving secrets or calling GitHub',
+      );
+    }
     writeResult(blockers, advisories);
-    process.exit(0);
+    process.exit(blockers.length > 0 ? 1 : 0);
   }
 
   const privateKeyResult = readPrivateKeyFromOnePassword({

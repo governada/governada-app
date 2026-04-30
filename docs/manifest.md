@@ -2,6 +2,8 @@
 
 Slim shipped/not-shipped checklist consolidated from `docs/archive/strategy-context/build-manifest.md`.
 
+Last auth-harness verification: 2026-04-30.
+
 ## Shipped
 
 ### Foundation Complete

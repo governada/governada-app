@@ -37,6 +37,16 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pre-done.sh --hook-mode"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write",
@@ -53,6 +63,14 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/check-behind-main.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/plan-required.sh --hook-mode"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/brain-freshness-at-pr.sh --hook-mode"
           }
         ]
       }
@@ -68,6 +86,10 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/check-inngest-registration.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/doc-creation-warn.sh --hook-mode"
           }
         ]
       },

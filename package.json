@@ -67,6 +67,8 @@
     "migration:test": "node scripts/test-migration.js",
     "session:doctor": "node scripts/session-doctor.js",
     "session:guard": "node scripts/session-doctor.js --strict",
+    "start-session": "node scripts/start-session.mjs",
+    "peer-review": "node scripts/peer-review.mjs",
     "worktree:new": "node scripts/new-worktree.mjs",
     "worktree:sync": "node scripts/sync-worktree.mjs",
     "inngest:doctor": "tsx scripts/inngest-doctor.ts",

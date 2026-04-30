@@ -2,6 +2,15 @@ import { EXPECTED_REPO } from './github-app-auth.mjs';
 
 export const GITHUB_MERGE_CONFIRMATION = 'github.merge';
 
+export function buildGithubMergeApprovalPrompt({
+  expectedHead,
+  operationClass = GITHUB_MERGE_CONFIRMATION,
+  prNumber,
+  repo = EXPECTED_REPO,
+}) {
+  return `I approve ${operationClass} for ${repo} PR #${prNumber} if CI checks are green and the head SHA remains unchanged at ${expectedHead}.`;
+}
+
 export function parseGithubMergeApproval({
   expectedHead,
   operationClass = GITHUB_MERGE_CONFIRMATION,

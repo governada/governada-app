@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -160,6 +160,15 @@ describe('github PR write wrapper guardrails', () => {
       path: '/graphql',
       prNumber: 912,
     });
+  });
+
+  it('blocks ready transitions until Review Gate v0 is completed', () => {
+    const source = readFileSync(path.join(process.cwd(), 'scripts/github-pr-write.mjs'), 'utf8');
+
+    expect(source).toContain('hasReviewGateRecord');
+    expect(source).toContain(
+      'body does not record completed Review Gate v0; ready transition is not allowed',
+    );
   });
 
   it('rejects unsafe ready endpoint shapes', () => {

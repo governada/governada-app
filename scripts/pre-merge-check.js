@@ -20,6 +20,8 @@ const baseBranch = 'main';
 async function main() {
   console.log(`Checking merge safety for PR #${prNumber}...`);
   const github = await buildGithubReader();
+  const { buildGithubMergeApprovalPrompt } = await import('./lib/github-merge-approval.mjs');
+  const { hasReviewGateRecord } = await import('./lib/github-merge.mjs');
   console.log(`GitHub auth source: ${github.source}`);
 
   const otherPrs = (await github.listPullRequests())
@@ -39,6 +41,7 @@ async function main() {
   blockIfMainCiIsRunning(recentRuns);
 
   const prView = await github.getPullRequest(prNumber);
+  blockIfReviewGateRequiresAction(prView, hasReviewGateRecord);
   blockIfMergeStateRequiresAction(prView);
 
   const checkFailures = await github.getPullRequestCheckFailures(prView);
@@ -62,6 +65,12 @@ async function main() {
   }
 
   console.log(`OK: Safe to merge PR #${prNumber}.`);
+  const expectedHead = getPullRequestHeadSha(prView);
+  if (expectedHead) {
+    console.log('');
+    console.log('Exact merge approval prompt:');
+    console.log(buildGithubMergeApprovalPrompt({ expectedHead, prNumber }));
+  }
 }
 
 async function buildGithubReader() {
@@ -164,15 +173,27 @@ async function buildBrokerReader() {
 function buildGhReader() {
   return {
     getPullRequest() {
-      return runGhJson([
+      const view = runGhJson([
         'pr',
         'view',
         String(prNumber),
         '--repo',
         repo,
         '--json',
-        'headRefOid,mergeStateStatus',
+        [
+          'baseRefName',
+          'baseRepository',
+          'body',
+          'headRefName',
+          'headRefOid',
+          'headRepository',
+          'isDraft',
+          'mergeStateStatus',
+          'number',
+          'state',
+        ].join(','),
       ]);
+      return normalizeGhPullRequest(view);
     },
     getPullRequestCheckFailures() {
       const prChecksResult = runGh(['pr', 'checks', String(prNumber), '--repo', repo]);
@@ -210,6 +231,26 @@ function buildGhReader() {
       ]);
     },
     source: 'GitHub CLI',
+  };
+}
+
+function normalizeGhPullRequest(view) {
+  return {
+    base: {
+      ref: view?.baseRefName || '',
+      repo: { full_name: view?.baseRepository?.nameWithOwner || '' },
+    },
+    body: view?.body || '',
+    draft: view?.isDraft,
+    head: {
+      ref: view?.headRefName || '',
+      repo: { full_name: view?.headRepository?.nameWithOwner || '' },
+      sha: view?.headRefOid || '',
+    },
+    headRefOid: view?.headRefOid || '',
+    mergeStateStatus: view?.mergeStateStatus || '',
+    number: view?.number || prNumber,
+    state: String(view?.state || '').toLowerCase(),
   };
 }
 
@@ -252,6 +293,37 @@ function blockIfMergeStateRequiresAction(prView) {
   }
 }
 
+function blockIfReviewGateRequiresAction(prView, hasReviewGateRecord) {
+  const blockers = [];
+  const draftState =
+    typeof prView?.draft === 'boolean'
+      ? prView.draft
+      : typeof prView?.isDraft === 'boolean'
+        ? prView.isDraft
+        : undefined;
+
+  if (draftState !== false) {
+    blockers.push(`PR #${prNumber} is draft or draft state is unknown`);
+  }
+
+  if (!hasReviewGateRecord(prView?.body || '')) {
+    blockers.push(`PR #${prNumber} body does not record completed Review Gate v0`);
+  }
+
+  if (blockers.length === 0) {
+    return;
+  }
+
+  console.log('');
+  console.log(`BLOCKED: PR #${prNumber} is not ready for merge approval:`);
+  for (const blocker of blockers) {
+    console.log(`  ${blocker}`);
+  }
+  console.log('');
+  console.log('Complete Review Gate v0 and mark the draft PR ready before requesting approval.');
+  process.exit(1);
+}
+
 function evaluateCheckFailures({ checkRuns, combinedStatus }) {
   const runs = Array.isArray(checkRuns?.check_runs) ? checkRuns.check_runs : [];
   const totalCount = Number.isFinite(Number(checkRuns?.total_count))
@@ -263,6 +335,10 @@ function evaluateCheckFailures({ checkRuns, combinedStatus }) {
     checkRunsTotalCount: totalCount,
     combinedStatus,
   }).blockers;
+}
+
+function getPullRequestHeadSha(prView) {
+  return prView?.head?.sha || prView?.headRefOid || '';
 }
 
 main().catch((error) => {

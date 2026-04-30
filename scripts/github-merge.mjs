@@ -240,7 +240,7 @@ async function main() {
 
   if (brokerAvailable) {
     await verifyAndExecuteGithubMergePlanWithBroker(plan, repoRoot, env, blockers);
-    writeResult(blockers.length > 0 ? 'BLOCKED' : 'OK', blockers, advisories);
+    writeResult(statusFromBlockers(blockers), blockers, advisories);
     process.exit(blockers.length > 0 ? 1 : 0);
   }
 
@@ -249,7 +249,7 @@ async function main() {
     await verifyAndExecuteGithubMergePlan(plan, tokenResult.token, repoRoot, blockers);
   }
 
-  writeResult(blockers.length > 0 ? 'BLOCKED' : 'OK', blockers, advisories);
+  writeResult(statusFromBlockers(blockers), blockers, advisories);
   process.exit(blockers.length > 0 ? 1 : 0);
 }
 
@@ -390,7 +390,7 @@ async function verifyAndExecuteGithubMergePlan(plan, token, repoRoot, blockers) 
 
   if (response.data?.sha) {
     pass(`merged PR #${plan.prNumber}: ${response.data.sha}`);
-    runPostMergeVerification({ blockers, mergeSha: response.data.sha, repoRoot });
+    recordPostMergeVerification({ blockers, mergeSha: response.data.sha, repoRoot });
   } else {
     pass(`merged PR #${plan.prNumber}`);
     block(
@@ -482,7 +482,7 @@ async function verifyAndExecuteGithubMergePlanWithBroker(plan, repoRoot, env, bl
 
   if (response.data?.sha) {
     pass(`merged PR #${plan.prNumber} through broker: ${response.data.sha}`);
-    runPostMergeVerification({ blockers, mergeSha: response.data.sha, repoRoot });
+    recordPostMergeVerification({ blockers, mergeSha: response.data.sha, repoRoot });
   } else {
     pass(`merged PR #${plan.prNumber} through broker`);
     block(
@@ -492,7 +492,28 @@ async function verifyAndExecuteGithubMergePlanWithBroker(plan, repoRoot, env, bl
   }
 }
 
-function runPostMergeVerification({ blockers, mergeSha, repoRoot }) {
+function recordPostMergeVerification({ blockers, mergeSha, repoRoot }) {
+  const verification = runPostMergeVerification({ mergeSha, repoRoot });
+  if (verification.ok) {
+    pass(`post-merge deploy verification passed for ${mergeSha}`);
+    return;
+  }
+
+  if (verification.timedOut) {
+    block(
+      blockers,
+      `merge succeeded but post-merge deploy verification timed out for ${mergeSha}; production may still be deploying. Follow up with: npm run deploy:verify -- --expected-sha=${mergeSha}`,
+    );
+    return;
+  }
+
+  block(
+    blockers,
+    `merge succeeded but post-merge deploy verification failed for ${mergeSha}: npm run deploy:verify exited with status ${verification.status}`,
+  );
+}
+
+function runPostMergeVerification({ mergeSha, repoRoot }) {
   console.log(`Post-merge verification: npm run deploy:verify -- --expected-sha=${mergeSha}`);
   const result = spawnSync('npm', ['run', 'deploy:verify', '--', `--expected-sha=${mergeSha}`], {
     cwd: repoRoot,
@@ -507,14 +528,14 @@ function runPostMergeVerification({ blockers, mergeSha, repoRoot }) {
   }
 
   if (result.status === 0) {
-    pass(`post-merge deploy verification passed for ${mergeSha}`);
-    return;
+    return { ok: true, status: 0, timedOut: false };
   }
 
-  block(
-    blockers,
-    `post-merge deploy verification failed for ${mergeSha}: npm run deploy:verify exited with status ${result.status}`,
-  );
+  return {
+    ok: false,
+    status: result.status ?? 124,
+    timedOut: result.error?.code === 'ETIMEDOUT' || result.status === 143,
+  };
 }
 
 async function githubBrokerApiRequest({
@@ -541,6 +562,16 @@ async function githubBrokerApiRequest({
 
 function writeResult(status, blockers, advisories) {
   console.log('');
+  if (status === 'MERGED_VERIFY_TIMEOUT') {
+    console.log(`GitHub merge result: MERGED_VERIFY_TIMEOUT (${blockers.length})`);
+    return;
+  }
+
+  if (status === 'MERGED_VERIFY_FAILED') {
+    console.log(`GitHub merge result: MERGED_VERIFY_FAILED (${blockers.length})`);
+    return;
+  }
+
   if (status === 'DRY_RUN') {
     console.log('GitHub merge result: DRY_RUN');
     return;
@@ -562,6 +593,26 @@ function writeResult(status, blockers, advisories) {
   }
 
   console.log('GitHub merge result: OK');
+}
+
+function statusFromBlockers(blockers) {
+  if (
+    blockers.some((message) =>
+      message.startsWith('merge succeeded but post-merge deploy verification timed out'),
+    )
+  ) {
+    return 'MERGED_VERIFY_TIMEOUT';
+  }
+
+  if (
+    blockers.some((message) =>
+      message.startsWith('merge succeeded but post-merge deploy verification failed'),
+    )
+  ) {
+    return 'MERGED_VERIFY_FAILED';
+  }
+
+  return blockers.length > 0 ? 'BLOCKED' : 'OK';
 }
 
 function describeEnvLocalDefinitions(definitions) {

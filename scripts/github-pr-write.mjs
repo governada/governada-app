@@ -30,6 +30,7 @@ import {
 } from './lib/github-app-auth.mjs';
 import { callGithubBroker, isGithubBrokerAvailable } from './lib/github-broker-client.mjs';
 import { ensureGithubBrokerRunning } from './lib/github-broker-service.mjs';
+import { hasReviewGateRecord } from './lib/github-merge.mjs';
 import {
   assertAllowedGithubPrWritePlan,
   buildGithubPrWritePlan,
@@ -438,6 +439,14 @@ async function executeReadyPullRequestPlan(plan, token, blockers) {
     return;
   }
 
+  if (!hasReviewGateRecord(existingPull.data?.body || '')) {
+    block(
+      blockers,
+      `target PR #${plan.prNumber} body does not record completed Review Gate v0; ready transition is not allowed`,
+    );
+    return;
+  }
+
   if (!existingPull.data?.node_id) {
     block(blockers, `target PR #${plan.prNumber} did not include a GraphQL node ID`);
     return;
@@ -489,6 +498,14 @@ async function executeReadyPullRequestPlanWithBroker(plan, repoRoot, env, blocke
 
   if (existingPull.data?.draft !== true) {
     pass(`target PR #${plan.prNumber} is already ready for review`);
+    return;
+  }
+
+  if (!hasReviewGateRecord(existingPull.data?.body || '')) {
+    block(
+      blockers,
+      `target PR #${plan.prNumber} body does not record completed Review Gate v0; ready transition is not allowed`,
+    );
     return;
   }
 

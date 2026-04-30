@@ -23,7 +23,7 @@ Canonical agent guide for `governada/app`. Provider adapters in `.claude/`, Curs
 - Challenge first, build second: for non-trivial work, write back the concrete request and list 3 unclear things before building.
 - Plan first: before any 3+ file change, fill `docs/templates/feature-plan.md` into `brain/plans/<slug>.md`.
 - Verify before done: run the pre-done hook with URL, screenshot, and grep-similar evidence.
-- Evidence-grounded recommendations: cite files read, commands run, and claims verified.
+- Evidence-grounded recommendations: read the actual repo state before proposing solutions. Cite files read, commands run, and claims verified. Recommendations without an evidence trail are speculative — flag them as such.
 - Edit > create for docs and code; search for the existing home before adding a new one.
 
 ## Production Quality Bar

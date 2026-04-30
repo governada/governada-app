@@ -22,4 +22,5 @@ Why this option is the best fit for the current constraints.
 
 - Upside:
 - Tradeoffs:
+- Reversibility:
 - Follow-ups:

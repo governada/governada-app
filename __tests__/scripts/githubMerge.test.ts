@@ -447,6 +447,7 @@ describe('github merge wrapper guardrails', () => {
       'node scripts/github-merge-ready.mjs --legacy',
     );
     expect(source).toContain('scripts/pre-merge-check.js');
+    expect(source).toContain('OK: Pre-merge checks passed.');
     expect(source).toContain('Approval prompt withheld until merge doctor passes.');
     expect(source).toContain('scripts/github-merge-doctor.mjs');
     expect(source).toContain('writeOutput(stdout, stderr);');

@@ -103,10 +103,9 @@ function extractPreMergeApproval(output) {
 
   return {
     expectedHead: match.groups.expectedHead,
-    sanitizedOutput: output.replace(
-      promptPattern,
-      '\nApproval prompt withheld until merge doctor passes.\n',
-    ),
+    sanitizedOutput: output
+      .replace(/\n?OK: Safe to merge PR #[1-9]\d+\.\n?/giu, '\nOK: Pre-merge checks passed.\n')
+      .replace(promptPattern, '\nApproval prompt withheld until merge doctor passes.\n'),
   };
 }
 

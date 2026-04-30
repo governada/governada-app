@@ -172,6 +172,9 @@ async function main() {
   const runtime = evaluateGithubServiceAccountRuntime(env);
   let brokerAvailable = false;
   if (plan.execute) {
+    console.log(
+      'Live merge approval accepted; checking broker/Keychain readiness now. Approve any macOS or 1Password prompt to continue this same merge.',
+    );
     const ensureResult = await ensureGithubBrokerRunning({ env, repoRoot });
     if (!ensureResult.ok) {
       for (const message of ensureResult.blockers || []) {

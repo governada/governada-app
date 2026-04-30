@@ -125,7 +125,7 @@ export function requireArg(args, index, usage) {
 }
 
 export function commandOutput(command, args, options = {}) {
-  const { allowFailure = false, cwd = process.cwd(), env = process.env } = options;
+  const { allowFailure = false, cwd = process.cwd(), env = process.env, timeoutMs } = options;
 
   try {
     return execFileSync(command, args, {
@@ -133,6 +133,7 @@ export function commandOutput(command, args, options = {}) {
       encoding: 'utf8',
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: timeoutMs,
     }).trim();
   } catch (error) {
     const stdout = error.stdout?.toString?.() ?? '';

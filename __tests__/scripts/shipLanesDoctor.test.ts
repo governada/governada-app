@@ -38,10 +38,10 @@ describe('ship lane doctor', () => {
     expect(source).toContain('--probe-ssh');
     expect(source).toContain('--probe-git-remote');
     expect(source).toContain('--require-direct-git');
-    expect(source).toContain('timeoutMs: options.sshTimeoutMs');
-    expect(source).toContain('SSH signing probe skipped');
-    expect(source).toContain("ssh-add', ['-T', publicKeyPath]");
-    expect(source).toContain('ssh-add -T github-governada.pub signing proof passed');
+    expect(source).toContain('active SSH key/signing/auth probes skipped');
+    expect(source).toContain("run('ssh-add', ['-l'");
+    expect(source).toContain('configured IdentityAgent socket');
+    expect(source).toContain("run('ssh-add', ['-T'");
     expect(source).toContain('git ls-remote --heads origin main');
     expect(source).toContain("run('ssh'");
     expect(source).not.toContain("git', ['fetch");

@@ -7,10 +7,14 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { redactSensitiveText } from './lib/github-app-auth.mjs';
 
 const require = createRequire(import.meta.url);
+const { classifyCommandResult, formatClassification } = require('./lib/auth-failure-classifier.js');
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
 const EXPECTED_REMOTE = 'git@github-governada:governada/app.git';
+const SSH_KEY_VISIBILITY_TIMEOUT_MS = 5000;
+const SSH_SIGNING_PROOF_TIMEOUT_MS = 10000;
+const SSH_AUTH_PROBE_TIMEOUT_MS = 15000;
 const DEFAULT_OPERATION = 'github.merge';
 const ALLOWED_OPERATIONS = new Set([
   'github.read',
@@ -100,6 +104,7 @@ export function isExpectedMissingTokenFailClosed(output) {
 }
 
 function run(command, args, options = {}) {
+  const timeoutMs = options.timeoutMs || 15000;
   const result = spawnSync(command, args, {
     cwd: options.cwd || REPO_ROOT,
     encoding: 'utf8',
@@ -108,7 +113,7 @@ function run(command, args, options = {}) {
       ...(options.env || {}),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: options.timeoutMs || 15000,
+    timeout: timeoutMs,
   });
 
   return {
@@ -117,8 +122,8 @@ function run(command, args, options = {}) {
     status: result.status ?? (result.error ? 124 : 1),
     stdout: result.stdout || '',
     stderr: result.stderr || '',
-    timedOut: result.error?.code === 'ETIMEDOUT',
-    timeoutMs: options.timeoutMs || 15000,
+    timeoutMs,
+    timedOut: result.error?.code === 'ETIMEDOUT' || result.signal === 'SIGTERM',
   };
 }
 
@@ -178,18 +183,26 @@ function addIssue(collection, message) {
 }
 
 function summarizeCommandStatus(result) {
-  if (result.timedOut) {
-    return `timed out after ${result.timeoutMs}ms`;
-  }
-  if (result.signal) {
-    const detail = firstLine(outputOf(result));
-    return detail ? `signal ${result.signal}: ${detail}` : `signal ${result.signal}`;
-  }
   const detail = firstLine(outputOf(result));
-  return detail ? `exit ${result.status}: ${detail}` : `exit ${result.status}`;
+  const classification = classifyCommandResult(result, { timeoutMs: result.timeoutMs });
+  const prefix = result.timedOut
+    ? `timed out after ${result.timeoutMs}ms`
+    : result.signal
+      ? `signal ${result.signal}`
+      : `exit ${result.status}`;
+  if (
+    (result.status !== 0 || result.timedOut || result.signal) &&
+    classification.code !== 'unknown'
+  ) {
+    return detail
+      ? `${prefix}: ${classification.code}: ${detail}`
+      : `${prefix}: ${classification.code}`;
+  }
+
+  return detail ? `${prefix}: ${detail}` : prefix;
 }
 
-function resolveIdentityAgent(value) {
+function resolveSshPath(value) {
   if (!value || value === 'none') {
     return '';
   }
@@ -201,36 +214,62 @@ function resolveIdentityAgent(value) {
   return value;
 }
 
-function getGithubGovernadaIdentityAgent() {
+function getGithubGovernadaSshConfig() {
   const config = run('ssh', ['-G', 'github-governada']);
   if (config.status !== 0) {
     return {
       error: summarizeCommandStatus(config),
-      path: '',
+      identityAgent: '',
+      identityFile: '',
     };
   }
 
-  const line = config.stdout
-    .split(/\r?\n/u)
-    .find((entry) => entry.toLowerCase().startsWith('identityagent '));
-  const rawValue = line ? line.slice('identityagent '.length).trim() : '';
+  const lines = config.stdout.split(/\r?\n/u);
+  const identityAgentLine = lines.find((entry) => entry.toLowerCase().startsWith('identityagent '));
+  const identityFileLines = lines.filter((entry) =>
+    entry.toLowerCase().startsWith('identityfile '),
+  );
+  const preferredIdentityFile =
+    identityFileLines.find((entry) => entry.includes('github-governada')) ||
+    identityFileLines[0] ||
+    '';
+  const rawIdentityAgent = identityAgentLine
+    ? identityAgentLine.slice('identityagent '.length).trim()
+    : '';
+  const rawIdentityFile = preferredIdentityFile
+    ? preferredIdentityFile.slice('identityfile '.length).trim()
+    : '';
   return {
     error: '',
-    path: resolveIdentityAgent(rawValue),
+    identityAgent: resolveSshPath(rawIdentityAgent),
+    identityFile: resolveSshPath(rawIdentityFile),
   };
 }
 
 function getDirectSshContext() {
-  const identityAgent = getGithubGovernadaIdentityAgent();
+  const sshConfig = getGithubGovernadaSshConfig();
   return {
     details: [
-      identityAgent.path
-        ? `configured IdentityAgent: ${identityAgent.path}`
-        : `configured IdentityAgent: ${identityAgent.error || '(not found)'}`,
+      sshConfig.identityAgent
+        ? `configured IdentityAgent: ${sshConfig.identityAgent}`
+        : `configured IdentityAgent: ${sshConfig.error || '(not found)'}`,
+      sshConfig.identityAgent
+        ? `configured IdentityAgent socket: ${existsSync(sshConfig.identityAgent) ? 'exists' : 'missing'}`
+        : '',
+      sshConfig.identityFile
+        ? `configured identity file: ${sshConfig.identityFile}`
+        : 'configured identity file: (not found)',
     ],
-    env: identityAgent.path ? { SSH_AUTH_SOCK: identityAgent.path } : {},
-    identityAgent,
+    env: sshConfig.identityAgent ? { SSH_AUTH_SOCK: sshConfig.identityAgent } : {},
+    sshConfig,
   };
+}
+
+function addFailureClassification(details, result) {
+  const classification = classifyCommandResult(result, { timeoutMs: result.timeoutMs });
+  if (classification.code !== 'unknown') {
+    details.push(`failure class: ${formatClassification(classification)}`);
+  }
 }
 
 function inspectLocalGitRefs({ remoteMainSha, blockers, advisories }) {
@@ -278,72 +317,70 @@ function inspectLocalGitRefs({ remoteMainSha, blockers, advisories }) {
 
 function inspectDirectSsh({ options, blockers, advisories }) {
   const sshContext = getDirectSshContext();
+  const sshConfig = sshContext.sshConfig;
   const sshEnv = sshContext.env;
-  const keyList = run('ssh-add', ['-l'], { env: sshEnv });
-  const keyListed = keyList.status === 0 && outputOf(keyList).includes('github-governada');
-  const details = [
-    ...sshContext.details,
-    keyListed
-      ? 'ssh-add lists a github-governada key'
-      : `ssh-add key visibility: ${summarizeCommandStatus(keyList)}`,
-  ];
+  const details = [...sshContext.details];
 
   if (!options.probeSsh) {
-    details.push('SSH signing probe skipped; pass --probe-ssh to run ssh -T github-governada');
+    details.push(
+      'active SSH key/signing/auth probes skipped; pass --probe-ssh to run ssh-add -l, ssh-add -T, and ssh -T github-governada',
+    );
     addIssue(advisories, 'direct Git SSH signing was not probed');
     printLane('Direct Git SSH via github-governada', 'ADVISORY', details);
     return;
   }
 
-  const publicKeyPath = path.join(process.env.HOME || '', '.ssh', 'github-governada.pub');
-  if (!existsSync(publicKeyPath)) {
-    details.push(`ssh-add signing proof skipped; missing ${publicKeyPath}`);
-    addIssue(advisories, 'direct Git SSH public key for signing proof is missing');
-    printLane('Direct Git SSH via github-governada', 'ADVISORY', details);
-    return;
+  const keyList = run('ssh-add', ['-l'], {
+    env: sshEnv,
+    timeoutMs: SSH_KEY_VISIBILITY_TIMEOUT_MS,
+  });
+  const keyListed = keyList.status === 0 && outputOf(keyList).includes('github-governada');
+  details.push(
+    keyListed
+      ? 'ssh-add lists a github-governada key'
+      : `ssh-add key visibility: ${summarizeCommandStatus(keyList)}`,
+  );
+  if (!keyListed) {
+    addFailureClassification(details, keyList);
   }
 
-  const signingProbe = run('ssh-add', ['-T', publicKeyPath], {
-    env: sshEnv,
-    timeoutMs: options.sshTimeoutMs,
-  });
-  const signingPassed = signingProbe.status === 0;
-  details.push(
-    signingPassed
-      ? 'ssh-add -T github-governada.pub signing proof passed'
-      : `ssh-add -T signing proof: ${summarizeCommandStatus(signingProbe)}`,
-  );
-
-  if (!signingPassed) {
-    details.push('ssh -T github-governada skipped because signing proof did not pass');
-    const message = 'direct Git SSH signing failed or timed out';
-    if (options.requireDirectSsh) {
-      addIssue(blockers, message);
-      printLane('Direct Git SSH via github-governada', 'BLOCKED', details);
-      return;
+  let signingProofPassed = false;
+  if (!sshConfig.identityFile) {
+    details.push('ssh-add -T signing proof skipped: configured identity file not found');
+  } else {
+    const signingProof = run('ssh-add', ['-T', sshConfig.identityFile], {
+      env: sshEnv,
+      timeoutMs: SSH_SIGNING_PROOF_TIMEOUT_MS,
+    });
+    signingProofPassed = signingProof.status === 0;
+    details.push(
+      signingProofPassed
+        ? 'ssh-add -T signing proof succeeded'
+        : `ssh-add -T signing proof: ${summarizeCommandStatus(signingProof)}`,
+    );
+    if (!signingProofPassed) {
+      addFailureClassification(details, signingProof);
     }
-
-    addIssue(advisories, message);
-    printLane('Direct Git SSH via github-governada', 'ADVISORY', details);
-    return;
   }
 
   const probe = run('ssh', ['-o', 'BatchMode=yes', '-T', 'github-governada'], {
-    env: sshEnv,
-    timeoutMs: options.sshTimeoutMs,
+    timeoutMs: SSH_AUTH_PROBE_TIMEOUT_MS,
   });
   const probeOutput = outputOf(probe);
   const authenticated = probeOutput.includes('successfully authenticated');
   details.push(
     authenticated ? 'ssh -T github-governada authenticated' : summarizeCommandStatus(probe),
   );
+  if (!authenticated) {
+    addFailureClassification(details, probe);
+  }
 
-  if (authenticated) {
+  if (signingProofPassed && authenticated) {
     printLane('Direct Git SSH via github-governada', 'PASS', details);
     return;
   }
 
-  const message = 'direct Git SSH signing/authentication failed';
+  const message = 'direct Git SSH signing/authentication failed or was inconclusive';
   if (options.requireDirectSsh) {
     addIssue(blockers, message);
     printLane('Direct Git SSH via github-governada', 'BLOCKED', details);

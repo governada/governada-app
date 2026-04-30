@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 
 import { existsSync, mkdirSync, readFileSync, symlinkSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { ENV_LOCAL_FILE, ENV_REFS_FILE } from './lib/env-bootstrap.mjs';
 import { commandOutput, getScriptContext } from './lib/runtime.mjs';
 
+const require = createRequire(import.meta.url);
+const { classifyAuthFailure, formatClassification } = require('./lib/auth-failure-classifier.js');
+
 const usage = 'npm run worktree:new -- <name> [--branch <branch>] [--no-node-modules-link]';
+const GIT_FETCH_TIMEOUT_MS = 30000;
 
 function parseArgs(argv) {
   const options = {
@@ -69,10 +74,34 @@ function slugify(value) {
 }
 
 function git(args, options = {}) {
-  return commandOutput('git', args, {
-    allowFailure: options.allowFailure ?? false,
-    cwd: options.cwd ?? repoRoot,
-  });
+  try {
+    return commandOutput('git', args, {
+      allowFailure: options.allowFailure ?? false,
+      cwd: options.cwd ?? repoRoot,
+      timeoutMs: options.timeoutMs,
+    });
+  } catch (error) {
+    if (options.timeoutMs || args[0] === 'fetch') {
+      const errorText = [
+        error.stdout?.toString?.() || '',
+        error.stderr?.toString?.() || '',
+        error.message || String(error),
+      ]
+        .filter(Boolean)
+        .join('\n');
+      const classification = classifyAuthFailure(errorText, {
+        timedOut: error.code === 'ETIMEDOUT' || error.signal === 'SIGTERM',
+        timeoutMs: options.timeoutMs,
+        command: `git ${args.join(' ')}`,
+      });
+      if (classification.code !== 'unknown') {
+        console.error(`Failure class: ${formatClassification(classification)}`);
+        throw new Error(`git ${args.join(' ')} failed (${classification.code}).`);
+      }
+    }
+
+    throw error;
+  }
 }
 
 function getLines(value) {
@@ -200,7 +229,7 @@ function main() {
   mkdirSync(worktreesRoot, { recursive: true });
 
   console.log('Fetching origin/main...');
-  git(['fetch', 'origin', 'main']);
+  git(['fetch', 'origin', 'main'], { timeoutMs: GIT_FETCH_TIMEOUT_MS });
 
   const ahead = revCount('origin/main..HEAD');
   if (ahead > 0) {

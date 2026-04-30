@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { existsSync, lstatSync, readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { ENV_LOCAL_FILE, ENV_REFS_FILE } from './lib/env-bootstrap.mjs';
 import { getScriptContext } from './lib/runtime.mjs';
 
+const require = createRequire(import.meta.url);
+const { classifyCommandResult, formatClassification } = require('./lib/auth-failure-classifier.js');
+
+const GIT_NETWORK_TIMEOUT_MS = 30000;
 const { repoRoot } = getScriptContext(import.meta.url);
 const gitEntry = lstatSync(path.join(repoRoot, '.git'));
 const isSharedCheckout = gitEntry.isDirectory();
@@ -21,6 +26,7 @@ function git(args, options = {}) {
       cwd,
       encoding: 'utf8',
       stdio: quiet ? ['ignore', 'ignore', 'pipe'] : ['ignore', 'pipe', 'pipe'],
+      timeout: options.timeoutMs,
     }).trim();
   } catch (error) {
     if (allowFailure) {
@@ -30,6 +36,20 @@ function git(args, options = {}) {
     const stderr = error.stderr?.toString?.().trim();
     if (stderr) {
       console.error(stderr);
+    }
+    const classification = classifyCommandResult(
+      {
+        error,
+        signal: error.signal,
+        stderr: error.stderr,
+        stdout: error.stdout,
+        timedOut: error.code === 'ETIMEDOUT' || error.signal === 'SIGTERM',
+        timeoutMs: options.timeoutMs,
+      },
+      { timeoutMs: options.timeoutMs },
+    );
+    if (classification.code !== 'unknown') {
+      console.error(`Failure class: ${formatClassification(classification)}`);
     }
     throw error;
   }
@@ -193,7 +213,11 @@ function printDirtyBlock(kind) {
 }
 
 console.log(`Syncing ${isSharedCheckout ? 'shared checkout' : 'worktree'} on '${branch}'...`);
-git(['fetch', 'origin', 'main', '--quiet']);
+try {
+  git(['fetch', 'origin', 'main', '--quiet'], { timeoutMs: GIT_NETWORK_TIMEOUT_MS });
+} catch {
+  process.exit(1);
+}
 cleanupCrlfPhantoms();
 
 if (isSharedCheckout) {

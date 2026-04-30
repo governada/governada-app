@@ -1,12 +1,17 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const { repoRoot, runCommand } = require('./lib/runtime');
+const { classifyCommandResult, formatClassification } = require('./lib/auth-failure-classifier');
+const { redactSensitiveText } = require('./lib/gh-auth');
 
 const EXPECTED_ORIGIN_REMOTE = 'git@github-governada:governada/app.git';
+const DIRECT_SSH_TIMEOUT_MS = 5000;
 
 function parseArgs(argv) {
   const options = {
+    probeDirectSsh: false,
     strict: false,
   };
 
@@ -16,8 +21,13 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--probe-direct-ssh') {
+      options.probeDirectSsh = true;
+      continue;
+    }
+
     if (arg === '--help' || arg === '-h') {
-      console.log('Usage: node scripts/session-doctor.js [--strict]');
+      console.log('Usage: node scripts/session-doctor.js [--strict] [--probe-direct-ssh]');
       process.exit(0);
     }
 
@@ -131,6 +141,139 @@ function fileLabel(relativePath) {
   return existsMaybe(relativePath) ? relativePath : `${relativePath} (missing)`;
 }
 
+function resolveSshPath(value) {
+  if (!value || value === 'none') {
+    return '';
+  }
+
+  if (value.startsWith('~/')) {
+    return path.join(process.env.HOME || '', value.slice(2));
+  }
+
+  return value;
+}
+
+function runBounded(command, args, options = {}) {
+  const timeoutMs = options.timeoutMs || DIRECT_SSH_TIMEOUT_MS;
+  const result = spawnSync(command, args, {
+    cwd: options.cwd || repoRoot,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...(options.env || {}),
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: timeoutMs,
+  });
+
+  return {
+    error: result.error,
+    signal: result.signal,
+    status: result.status ?? 1,
+    stdout: result.stdout || '',
+    stderr: result.stderr || '',
+    timedOut: result.error?.code === 'ETIMEDOUT' || result.signal === 'SIGTERM',
+    timeoutMs,
+  };
+}
+
+function outputOf(result) {
+  const output = [result.stdout, result.stderr, result.error?.message || '']
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+  return redactSensitiveText(output);
+}
+
+function firstLine(text) {
+  return (
+    text
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .find(Boolean) || ''
+  );
+}
+
+function summarizeBoundedCommand(result) {
+  const detail = firstLine(outputOf(result));
+  const classification = classifyCommandResult(result, { timeoutMs: result.timeoutMs });
+  const prefix = result.timedOut
+    ? `timed out after ${result.timeoutMs}ms`
+    : `exit ${result.status}`;
+  if ((result.status !== 0 || result.timedOut) && classification.code !== 'unknown') {
+    return detail
+      ? `${prefix}: ${classification.code}: ${detail}`
+      : `${prefix}: ${classification.code}`;
+  }
+
+  return detail ? `${prefix}: ${detail}` : prefix;
+}
+
+function inspectDirectSshFallback({ probeDirectSsh = false } = {}) {
+  const config = runBounded('ssh', ['-G', 'github-governada']);
+  if (config.status !== 0) {
+    const classification = classifyCommandResult(config, { timeoutMs: config.timeoutMs });
+    return {
+      lines: [
+        `ssh config: ${summarizeBoundedCommand(config)}`,
+        `failure class: ${formatClassification(classification)}`,
+      ],
+      advisory: `direct SSH fallback config probe failed (${classification.code})`,
+    };
+  }
+
+  const lines = config.stdout.split(/\r?\n/u);
+  const identityAgentLine = lines.find((line) => line.toLowerCase().startsWith('identityagent '));
+  const identityFileLine =
+    lines.find(
+      (line) => line.toLowerCase().startsWith('identityfile ') && line.includes('github-governada'),
+    ) || lines.find((line) => line.toLowerCase().startsWith('identityfile '));
+  const identityAgent = resolveSshPath(
+    identityAgentLine ? identityAgentLine.slice('identityagent '.length).trim() : '',
+  );
+  const identityFile = resolveSshPath(
+    identityFileLine ? identityFileLine.slice('identityfile '.length).trim() : '',
+  );
+  const detailLines = [
+    identityAgent ? `IdentityAgent: ${identityAgent}` : 'IdentityAgent: (not configured)',
+    identityAgent
+      ? `IdentityAgent socket: ${fs.existsSync(identityAgent) ? 'exists' : 'missing'}`
+      : '',
+    identityFile ? `identity file: ${identityFile}` : 'identity file: (not configured)',
+  ].filter(Boolean);
+
+  if (!probeDirectSsh) {
+    detailLines.push(
+      'active key visibility probe skipped; pass --probe-direct-ssh to test the 1Password SSH socket',
+    );
+    return {
+      lines: detailLines,
+      advisory: '',
+    };
+  }
+
+  const keyList = runBounded('ssh-add', ['-l'], {
+    env: identityAgent ? { SSH_AUTH_SOCK: identityAgent } : {},
+  });
+  const output = outputOf(keyList);
+  const keyListed = keyList.status === 0 && output.includes('github-governada');
+  if (keyListed) {
+    detailLines.push('ssh-add key visibility: github-governada listed');
+    return {
+      lines: detailLines,
+      advisory: '',
+    };
+  }
+
+  const classification = classifyCommandResult(keyList, { timeoutMs: keyList.timeoutMs });
+  detailLines.push(`ssh-add key visibility: ${summarizeBoundedCommand(keyList)}`);
+  detailLines.push(`failure class: ${formatClassification(classification)}`);
+  return {
+    lines: detailLines,
+    advisory: `direct SSH fallback key visibility is not healthy (${classification.code})`,
+  };
+}
+
 function printSection(title, lines) {
   console.log(`${title}:`);
   if (lines.length === 0) {
@@ -201,6 +344,9 @@ function main() {
   const goneUpstreamWorktrees = worktreeDiagnostics.filter((worktree) => worktree.goneUpstream);
   const blockingIssues = [];
   const advisories = [];
+  const directSshFallback = inspectDirectSshFallback({
+    probeDirectSsh: options.probeDirectSsh,
+  });
 
   if (sharedCheckout && !['main', 'master'].includes(branch)) {
     blockingIssues.push(`Shared checkout should stay on main/master. Current branch: ${branch}.`);
@@ -242,6 +388,10 @@ function main() {
     advisories.push(
       `Repo has ${orphanedWorktreeDirectories.length} orphaned .claude/worktrees director${orphanedWorktreeDirectories.length === 1 ? 'y' : 'ies'}. Confirm ownership before deleting.`,
     );
+  }
+
+  if (directSshFallback.advisory) {
+    advisories.push(directSshFallback.advisory);
   }
 
   console.log('=== Session Doctor ===');
@@ -300,6 +450,9 @@ function main() {
     fileLabel('.cursor/tasks/lessons.md'),
     fileLabel('.cursor/tasks/todo.md'),
   ]);
+  console.log('');
+
+  printSection('Direct SSH fallback lane', directSshFallback.lines);
   console.log('');
 
   if (blockingIssues.length > 0) {

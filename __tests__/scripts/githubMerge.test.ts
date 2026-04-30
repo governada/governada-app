@@ -74,6 +74,9 @@ describe('github merge wrapper guardrails', () => {
     expect(appDoctor).toContain('proving legacy fallback through the existing broker');
     expect(appDoctor).not.toContain('ensureGithubBrokerRunning');
     expect(mergeScript).toContain('ensureGithubBrokerRunning');
+    expect(mergeScript).toContain(
+      'Live merge approval accepted; checking broker/Keychain readiness now',
+    );
     expect(mergeScript).toContain('runPostMergeVerification');
   });
 

@@ -6,7 +6,7 @@ if (process.argv.includes('--register-inngest')) {
   process.exit(1);
 }
 
-const result = spawnSync('npm', ['run', 'deploy:verify', '--', ...process.argv.slice(2)], {
+const result = spawnSync('npm', ['run', 'health:verify', '--', ...process.argv.slice(2)], {
   stdio: 'inherit',
 });
 

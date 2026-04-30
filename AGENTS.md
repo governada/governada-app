@@ -17,6 +17,7 @@ Canonical agent guide for `governada/app`. Provider adapters in `.claude/`, Curs
 - Feature mutations happen in a fresh worktree; the shared checkout stays read-only except hotfixes.
 - Pause for destructive production-data operations, scope expansion, architectural forks, or secrets/credentials.
 - `.env.local` points at production services; never run write-heavy syncs/backfills without explicit approval.
+- Before merge approval, run `npm run github:merge-ready -- --pr <PR#>`; merge through `npm run github:merge` only after the exact approval prompt.
 
 ## Defaults
 

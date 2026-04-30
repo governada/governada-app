@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git fetch*)",
+      "Bash(git branch*)",
+      "Bash(git worktree*)",
+      "Bash(git remote*)",
+      "Bash(git config --local*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(gh auth status*)",
+      "Bash(gh repo view*)",
+      "Bash(gh pr list*)",
+      "Bash(gh pr view*)",
+      "Bash(gh pr create*)",
+      "Bash(gh pr edit*)",
+      "Bash(gh run list*)",
+      "Bash(gh run view*)",
+      "Bash(gh run watch*)",
+      "Bash(ssh -G github-governada)",
+      "Bash(ssh -G github-bluecargo)"
+    ],
+    "deny": [
+      "Bash(bash*)",
+      "Bash(/bin/bash*)",
+      "Bash(zsh*)",
+      "Bash(/bin/zsh*)",
+      "Bash(node*)",
+      "Bash(npx*)",
+      "mcp__b8948f82-e39a-43e5-b093-30d3a9d187c9__*"
+    ]
+  }
+}

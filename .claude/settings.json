@@ -2,7 +2,6 @@
   "respectGitignore": true,
   "permissions": {
     "allow": [
-      "Bash",
       "Read",
       "Edit",
       "Write",
@@ -14,11 +13,7 @@
       "Skill",
       "TodoWrite",
       "NotebookEdit",
-      "mcp__supabase__*",
-      "mcp__github__*",
       "mcp__linear__*",
-      "mcp__claude_ai_Linear__*",
-      "mcp__sentry__*",
       "mcp__Claude_Preview__*",
       "mcp__Claude_in_Chrome__*",
       "mcp__scheduled-tasks__*"

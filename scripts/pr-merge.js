@@ -6,8 +6,9 @@ function printGuidance() {
     '  npm run github:merge -- --pr <PR#> --expected-head <40-char-sha> --execute --confirm github.merge --approval-file <approval-file>',
   );
   console.error('');
+  console.error('Before requesting approval, run: npm run github:merge-ready -- --pr <PR#>');
   console.error(
-    'Before merging, run: npm run pre-merge-check -- <PR#> and npm run github:merge-doctor -- --pr <PR#> --expected-head <40-char-sha>',
+    'If the stable-host doctor fails closed in a human-present Codex process without OP_SERVICE_ACCOUNT_TOKEN, run: npm run github:merge-ready:legacy -- --pr <PR#>',
   );
 }
 

@@ -42,6 +42,8 @@
     "github:pr-write": "node scripts/github-pr-write.mjs",
     "github:pr-close": "node scripts/github-pr-close.mjs",
     "github:merge": "node scripts/github-merge.mjs",
+    "github:merge-ready": "node scripts/github-merge-ready.mjs",
+    "github:merge-ready:legacy": "node scripts/github-merge-ready.mjs --legacy",
     "ship:doctor": "node scripts/ship-lanes-doctor.mjs",
     "auth:repair": "node scripts/repair-gh-auth.mjs",
     "env:doctor": "node scripts/env-doctor.mjs",

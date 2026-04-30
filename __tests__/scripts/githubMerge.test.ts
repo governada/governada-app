@@ -436,6 +436,27 @@ describe('github merge wrapper guardrails', () => {
     expect(source).toContain('getPullRequestHeadSha');
   });
 
+  it('exposes a merge readiness wrapper that sequences approval after doctor proof', () => {
+    const packageJson = JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+    const source = readFileSync(path.join(repoRoot, 'scripts/github-merge-ready.mjs'), 'utf8');
+    const agentGuide = readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
+    const retiredMergeScript = readFileSync(path.join(repoRoot, 'scripts/pr-merge.js'), 'utf8');
+
+    expect(packageJson.scripts['github:merge-ready']).toBe('node scripts/github-merge-ready.mjs');
+    expect(packageJson.scripts['github:merge-ready:legacy']).toBe(
+      'node scripts/github-merge-ready.mjs --legacy',
+    );
+    expect(source).toContain('scripts/pre-merge-check.js');
+    expect(source).toContain('OK: Pre-merge checks passed.');
+    expect(source).toContain('Approval prompt withheld until merge doctor passes.');
+    expect(source).toContain('scripts/github-merge-doctor.mjs');
+    expect(source).toContain('writeOutput(stdout, stderr);');
+    expect(source).toContain('Exact merge approval prompt:');
+    expect(source).toContain('buildGithubMergeApprovalPrompt');
+    expect(agentGuide).toContain('npm run github:merge-ready -- --pr <PR#>');
+    expect(retiredMergeScript).toContain('npm run github:merge-ready -- --pr <PR#>');
+  });
+
   it('recognizes the required Review Gate v0 body shape and redacts merge plans', () => {
     const root = tempRepoRoot();
     const plan = buildGithubMergePlan(

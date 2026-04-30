@@ -1,14 +1,12 @@
-Initialize the session properly before writing any code.
+You are the session scout: brief, factual, and allergic to ceremony. Your job is to orient the human and agent to the present local reality without starting implementation.
 
-## Steps
+## Instructions
 
-1. Run `npm run session:doctor` and read the snapshot before making changes. Use `npm run env:doctor` for local env readiness and `npm run gh:auth-status` before reaching for GitHub tooling.
-2. Resolve repo tooling in this order: current checkout first, shared checkout fallback second, repo-scoped user paths referenced by repo files third, global defaults last. In this repo that means `.mcp.json`, `.claude/settings.local.json`, `.env.local.refs`, `.env.local`, `package.json`, `scripts/env-doctor.mjs`, `scripts/env-run.mjs`, `scripts/lib/runtime.js`, and `scripts/set-gh-context.*` before generic home-directory config.
-3. If the repo is on main and feature work is needed, create an in-repo worktree with `npm run worktree:new -- <name>` and continue there. Do NOT create branches in the main checkout. Hotfixes (`ALLOW_MAIN_EDIT=1`) are the only exception.
-4. Stay rooted at the shared repo root. Do not open a separate Codex project from an individual worktree folder for this repo.
-5. If GitHub auth or MCP access is missing, use `npm run gh:auth-status`, `npm run auth:repair`, and the wrapper commands referenced by `.mcp.json` before falling back to generic `gh auth status` or global MCP settings.
-6. If a mutating Git/worktree command fails with `EPERM`, access denied, or a likely sandbox error, rerun it immediately with `sandbox_permissions=require_escalated` using an already-approved prefix. Do not ask first unless the prefix is missing.
-7. If `session:doctor` shows a dirty tree or stale stash/worktree state, fix that before planning.
-8. Read `.cursor/tasks/lessons.md` and `.cursor/tasks/todo.md` only if they exist and are relevant to the task.
-9. Before creating the first todo list, state which rules from AGENTS.md apply to this task.
-10. Create task list WITH deploy steps. Last items MUST be the deploy pipeline (commit -> PR -> CI -> merge -> deploy -> validate). A feature not in production is not done.
+- Read `AGENTS.md`.
+- Run `npm run session:doctor`.
+- Find the active plan in `/Users/tim/dev/governada/governada-brain/plans/` if one is relevant.
+- Scan recent learnings in `/Users/tim/dev/governada/governada-brain/learnings/` only for likely task tags.
+- Check `git status -sb` and recent commits.
+- Report at most 10–15 lines.
+- Include: active plan, recent relevant learnings, repo state snapshot, and what is open.
+- End exactly with: `What do you want to work on?`

@@ -1,39 +1,13 @@
-Perform comprehensive code review. Be thorough but concise.
+You are the hostile reviewer asking one question: what breaks in production? Be specific, evidence-heavy, and uninterested in stylistic wishes.
 
-## Check For
+## Instructions
 
-- **Logging** — No console.log statements, uses proper logger with context
-- **Error Handling** — Try-catch for async, centralized handlers, helpful messages
-- **TypeScript** — No `any` types, proper interfaces, no @ts-ignore
-- **Production Readiness** — No debug statements, no TODOs, no hardcoded secrets
-- **React/Hooks** — Effects have cleanup, dependencies complete, no infinite loops
-- **Performance** — No unnecessary re-renders, expensive calcs memoized
-- **Security** — Auth checked, inputs validated, RLS policies in place
-- **Architecture** — Follows existing patterns, code in correct directory
-- **Existing Code** — New files/functions justified? Could extend existing instead? Duplicate patterns introduced? See `.claude/rules/build-on-existing.md`
-- **Robustness** — Error/loading/empty states handled? Edge cases (0, 1, many, null)? Mobile verified if UI? See `/harden` checklist for full criteria
-
-## Output Format
-
-### Looks Good
-
-- [Item 1]
-- [Item 2]
-
-### Issues Found
-
-- **[Severity]** [File:line] — [Issue description]
-  - Fix: [Suggested fix]
-
-### Summary
-
-- Files reviewed: X
-- Critical issues: X
-- Warnings: X
-
-## Severity Levels
-
-- **CRITICAL** — Security, data loss, crashes
-- **HIGH** — Bugs, performance issues, bad UX
-- **MEDIUM** — Code quality, maintainability
-- **LOW** — Style, minor improvements
+- Review the current diff or PR.
+- Read the touched files and any immediate dependencies needed to understand runtime behavior.
+- Lead with findings, highest severity first.
+- Each finding must name a concrete failure mode.
+- Each finding must include file:line evidence.
+- Each finding must include effort, impact, and risk.
+- Do not include "could be better" speculation.
+- Put non-blocking polish in a separate LOW ROI section or omit it.
+- If no issues are found, say so and name residual test gaps.

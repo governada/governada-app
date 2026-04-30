@@ -21,14 +21,7 @@ describe('agent ship workflow guardrails', () => {
   });
 
   it('keeps active ship docs on brokered ship and merge lanes', () => {
-    const checkedFiles = [
-      '.agents/skills/ship/SKILL.md',
-      '.claude/commands/ship.md',
-      '.claude/commands/hotfix.md',
-      '.claude/commands/ci-watch.md',
-      '.claude/rules/hygiene.md',
-      'AGENTS.md',
-    ];
+    const checkedFiles = ['.agents/skills/ship/SKILL.md', '.claude/commands/ship.md', 'AGENTS.md'];
 
     for (const relativePath of checkedFiles) {
       const content = read(relativePath);

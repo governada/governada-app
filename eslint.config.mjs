@@ -47,6 +47,7 @@ const config = [
       'scripts/**',
       '__tests__/**',
       'tests/**',
+      'docs/archive/auth-runtime/**',
       'analytics/**',
       'coverage/**',
       '.claude/worktrees/**',

@@ -17,8 +17,8 @@ User request in this Codex thread: Ship discipline follow-up PR.
 - scripts/github-merge.mjs
 - .github/workflows/post-deploy.yml
 - .github/workflows/preview.yml
-- __tests__/scripts/agentShipWorkflow.test.ts
-- __tests__/scripts/githubMerge.test.ts
+- `__tests__/scripts/agentShipWorkflow.test.ts`
+- `__tests__/scripts/githubMerge.test.ts`
 - README.md
 - .agents/skills/ship/SKILL.md
 - .claude/agents/deploy-verifier.md
@@ -43,8 +43,8 @@ Implementation files:
 
 Test files referencing changed APIs:
 
-- __tests__/scripts/agentShipWorkflow.test.ts
-- __tests__/scripts/githubMerge.test.ts
+- `__tests__/scripts/agentShipWorkflow.test.ts`
+- `__tests__/scripts/githubMerge.test.ts`
 
 Type definitions/usages:
 

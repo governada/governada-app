@@ -12,6 +12,24 @@ Path or URL:
 
 - TBD
 
+## Sites Affected
+
+Implementation files:
+
+- TBD
+
+Test files referencing changed APIs:
+
+- TBD
+
+Type definitions/usages:
+
+- TBD
+
+Documentation referencing changed names:
+
+- TBD
+
 ## ADRs That Apply
 
 - TBD

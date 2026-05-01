@@ -28,7 +28,7 @@ I approve merging governada/app PR #<PR#> if CI checks are green and the head SH
 ```
 
 11. Merge through the normal GitHub PR merge path only after approval.
-12. Run `npm run deploy:verify` or `npm run smoke-test` when post-merge or deploy evidence is needed.
+12. Run `npm run health:verify` or `npm run smoke-test` when post-merge or deploy evidence is needed.
 13. Run `npm run session:guard` before final closeout.
 
 ## PR Body Requirements

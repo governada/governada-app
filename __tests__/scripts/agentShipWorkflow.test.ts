@@ -62,7 +62,7 @@ describe('agent ship workflow guardrails', () => {
     expect(rollbackMjs).toContain("['fetch', 'origin', 'main']");
     expect(rollbackMjs).toContain('Completed emergency revert generation review');
     expect(deployVerifyJs).toContain('npm');
-    expect(deployVerifyJs).toContain('deploy:verify');
+    expect(deployVerifyJs).toContain('health:verify');
     expect(deployVerifyJs).toContain('no longer supports --register-inngest');
   });
 });

@@ -28,7 +28,7 @@ jobs:
       - run: npm ci
 
       - name: Verify deployed release
-        run: npm run deploy:verify -- --base-url=https://governada.io --profile=production --expected-sha=${{ github.event.workflow_run.head_sha }} --quiet
+        run: npm run health:verify -- --base-url=https://governada.io --profile=production --expected-sha=${{ github.event.workflow_run.head_sha }} --quiet
 
       - name: Ping deploy heartbeat
         if: success()

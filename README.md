@@ -88,7 +88,7 @@ Deployed on Railway via Docker. Auto-deploys from `main`. Background jobs run on
 npm run build          # Production build
 npm run gen:types      # Regenerate Supabase types (after migrations)
 npm run inngest:status # Verify Inngest function health
-npm run deploy:verify  # Release-aware post-deploy verification against production
+npm run health:verify  # Release-aware post-deploy verification against production
 npm run smoke-test     # Endpoint smoke suite (production profile by default)
 npm run test           # Vitest unit/integration tests
 npm run test:e2e       # Playwright E2E tests

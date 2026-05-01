@@ -35,7 +35,7 @@ jobs:
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
 
       - name: Verify preview release
-        run: npm run deploy:verify -- --base-url=${{ steps.preview.outputs.preview_url }} --profile=preview --expected-sha=${{ github.event.pull_request.head.sha }} --quiet
+        run: npm run health:verify -- --base-url=${{ steps.preview.outputs.preview_url }} --profile=preview --expected-sha=${{ github.event.pull_request.head.sha }} --quiet
 
       - name: Comment preview URL on PR
         if: success()

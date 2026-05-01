@@ -22,6 +22,20 @@ function parseNumberArg(args: string[], flag: string, fallback: number): number 
   return parsed;
 }
 
+function printHelp() {
+  console.log(`Usage: npm run health:verify -- [base-url] [options]
+
+Options:
+  --base-url=<url>       Health target, defaults to https://governada.io
+  --expected-sha=<sha>   Wait for this release SHA before checks
+  --profile=<name>      production or preview
+  --timeout-ms=<ms>     Readiness wait timeout
+  --interval-ms=<ms>    Readiness poll interval
+  --quiet               Reduce per-check output
+  --help                Show this help
+`);
+}
+
 export function parseDeployVerifyArgs(args: string[]) {
   const quiet = args.includes('--quiet');
   const baseUrl =
@@ -38,17 +52,22 @@ export function parseDeployVerifyArgs(args: string[]) {
   const intervalMs = parseNumberArg(args, '--interval-ms', 10_000);
 
   if (profile !== 'production' && profile !== 'preview') {
-    throw new Error(`Unsupported deploy-verify profile: ${profile}`);
+    throw new Error(`Unsupported health-verify profile: ${profile}`);
   }
 
   return { baseUrl, expectedSha, intervalMs, profile, quiet, timeoutMs };
 }
 
 export async function main(rawArgs = process.argv.slice(2)) {
+  if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
+    printHelp();
+    return;
+  }
+
   const { baseUrl, expectedSha, intervalMs, profile, quiet, timeoutMs } =
     parseDeployVerifyArgs(rawArgs);
 
-  console.log(`\nDeploy verification: ${baseUrl} [${profile}]`);
+  console.log(`\nHealth verification: ${baseUrl} [${profile}]`);
   if (expectedSha) {
     console.log(`Expected release: ${expectedSha.slice(0, 12)}`);
   }

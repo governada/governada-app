@@ -44,7 +44,7 @@
     "worktree:sync": "node scripts/sync-worktree.mjs",
     "inngest:doctor": "tsx scripts/inngest-doctor.ts",
     "inngest:register": "node scripts/register-inngest.js",
-    "health:verify": "tsx scripts/deploy-verify.ts",
+    "health:verify": "tsx scripts/health-verify.ts",
     "health:ready": "node scripts/health-check.js --path /api/health/ready --compact",
     "health:api": "node scripts/health-check.js --path /api/health --compact",
     "health:status": "node scripts/health-check.js --path /api/health --select status --compact",

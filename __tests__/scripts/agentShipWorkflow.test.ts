@@ -55,7 +55,7 @@ describe('agent ship workflow guardrails', () => {
     const packageJson = JSON.parse(read('package.json')) as { scripts: Record<string, string> };
     const rollbackJs = read('scripts/rollback.js');
     const rollbackMjs = read('scripts/rollback.mjs');
-    const deployVerifyJs = read('scripts/deploy-verify.js');
+    const deployVerifyJs = read('scripts/health-verify.js');
 
     expect(packageJson.scripts.rollback).toBe('node scripts/rollback.mjs');
     expect(rollbackJs).toContain('rollback.mjs');

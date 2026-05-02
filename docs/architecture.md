@@ -88,6 +88,38 @@ Cardano data sources
 - Serve: routes and APIs read cached governance data through `lib/data.ts` and subsystem libraries.
 - Render: Hub and Workspace prioritize action; Governance prioritizes understanding; You prioritizes identity.
 
+## Testing
+
+Governada uses a non-production preview environment for PR-level UX and telemetry
+verification. The preview stack is isolated from production writes, but it still
+reads mainnet governance data where the product experience depends on current
+chain state.
+
+- Each eligible feature PR gets a Supabase branch database through the Supabase
+  preview integration. Migrations apply to that branch before smoke checks run.
+- Each eligible feature PR gets a Railway preview deploy. Railway injects the
+  preview domain and Git metadata, and the deploy is torn down automatically
+  when the PR closes.
+- Preview Supabase auth is separate from production auth. Preview keys and
+  service-role credentials are configured in GitHub or Railway secrets, never in
+  committed files.
+- Preview delegation runs in sandbox mode with `GOVERNADA_DELEGATION_MODE` set
+  to `sandbox`. Sandbox delegation preserves the normal validation and telemetry
+  path, writes the simulated delegation to the preview Supabase branch, and skips
+  wallet signing and on-chain transaction submission.
+- Production defaults to mainnet mode. Sandbox mode is only for delegation
+  writes; DRep state, proposal state, sentiment reads, matching, scoring, and
+  other governance reads remain driven by the normal mainnet-backed data paths.
+- Synthetic preview seed data is deterministic and contains no real PII. It
+  exists to make homepage cinema, sentiment, proposal, and delegation smoke tests
+  meaningful on a fresh branch database.
+- `npm run preview:verify` is the per-PR smoke command. It checks the preview
+  health endpoint, confirms the homepage renders, and verifies the expected
+  structured-data signal is present before a PR is treated as UX-verifiable.
+- Preview PR descriptions should link the Railway URL and include screenshot or
+  recording evidence. PRs that touch funnel telemetry should also include
+  PostHog evidence from the dev project.
+
 ## Navigation Model
 
 - Home/Hub: persona-adaptive control center.

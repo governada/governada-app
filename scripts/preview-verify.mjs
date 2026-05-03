@@ -46,11 +46,7 @@ function parseArgs(args) {
     process.env.RAILWAY_PREVIEW_URL_TEMPLATE ??
     process.env.PREVIEW_URL_TEMPLATE ??
     DEFAULT_PREVIEW_TEMPLATE;
-  const waitMs = parseIntegerArg(
-    args,
-    '--wait-ms',
-    parseEnvInteger('PREVIEW_VERIFY_WAIT_MS', 0),
-  );
+  const waitMs = parseIntegerArg(args, '--wait-ms', parseEnvInteger('PREVIEW_VERIFY_WAIT_MS', 0));
   const intervalMs = parseIntegerArg(
     args,
     '--interval-ms',

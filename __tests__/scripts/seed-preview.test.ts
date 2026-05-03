@@ -68,4 +68,10 @@ describe('preview seed safety checks', () => {
     expect(buildPreviewSentimentRows()).toHaveLength(50);
     expect(buildPreviewVotes()).toHaveLength(10);
   });
+
+  it('uses database-compatible integer DRep confidence scores', async () => {
+    const { buildPreviewDReps } = await import('../../scripts/seed-preview');
+
+    expect(buildPreviewDReps().every((drep) => Number.isInteger(drep.confidence))).toBe(true);
+  });
 });

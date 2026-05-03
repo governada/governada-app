@@ -34,6 +34,11 @@ ALTER SCHEMA "public" OWNER TO "pg_database_owner";
 COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
+CREATE SCHEMA IF NOT EXISTS "extensions";
+
+CREATE EXTENSION IF NOT EXISTS "vector" WITH SCHEMA "extensions";
+
+
 --
 -- Name: embedding_similarity("extensions"."vector", "extensions"."vector"); Type: FUNCTION; Schema: public; Owner: postgres
 --
@@ -13541,4 +13546,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 --
 -- PostgreSQL database dump complete
 --
-

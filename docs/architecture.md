@@ -90,11 +90,16 @@ Cardano data sources
 
 ## Testing
 
-Governada uses a non-production preview environment for PR-level UX and telemetry
-verification. The preview stack is isolated from production writes, but it still
-reads mainnet governance data where the product experience depends on current
-chain state.
+Governada uses staging and per-PR preview environments for UX and telemetry
+verification. The non-production stack is isolated from production writes, but
+it still reads mainnet governance data where the product experience depends on
+current chain state.
 
+- Staging is a persistent Railway environment at `https://stg.governada.io`
+  backed by a persistent Supabase staging branch, non-prod Redis, and the
+  non-prod PostHog project.
+- Railway PR environments inherit from staging, not production. This keeps PR
+  previews production-shaped without copying production-write credentials.
 - Each eligible feature PR gets a Supabase branch database through the Supabase
   preview integration. Migrations apply to that branch before smoke checks run.
 - Each eligible feature PR gets a Railway preview deploy. Railway injects the
@@ -113,8 +118,8 @@ chain state.
 - Synthetic preview seed data is deterministic and contains no real PII. It
   exists to make homepage cinema, sentiment, proposal, and delegation smoke tests
   meaningful on a fresh branch database.
-- `npm run preview:verify` is the per-PR smoke command. It checks the preview
-  health endpoint, confirms the homepage renders, and verifies the expected
+- `npm run preview:verify` is the per-PR smoke command. It checks
+  `/api/health/ready`, confirms the homepage renders, and verifies the expected
   structured-data signal is present before a PR is treated as UX-verifiable.
 - Preview PR descriptions should link the Railway URL and include screenshot or
   recording evidence. PRs that touch funnel telemetry should also include

@@ -144,17 +144,19 @@ export function useDelegation() {
           })
           .catch(() => {});
 
-        waitForTxConfirmation(result.txHash, {
-          maxAttempts: 30,
-          intervalMs: 10_000,
-          onConfirmed: () => {
-            setPhase((prev) =>
-              prev.status === 'success' && prev.txHash === result.txHash
-                ? { ...prev, confirmed: true }
-                : prev,
-            );
-          },
-        }).catch(() => {});
+        if (result.mode !== 'sandbox') {
+          waitForTxConfirmation(result.txHash, {
+            maxAttempts: 30,
+            intervalMs: 10_000,
+            onConfirmed: () => {
+              setPhase((prev) =>
+                prev.status === 'success' && prev.txHash === result.txHash
+                  ? { ...prev, confirmed: true }
+                  : prev,
+              );
+            },
+          }).catch(() => {});
+        }
 
         return result;
       } catch (err) {

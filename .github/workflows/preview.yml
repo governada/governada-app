@@ -6,6 +6,11 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
 
+permissions:
+  checks: read
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: preview-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -13,8 +18,9 @@ concurrency:
 jobs:
   preview-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: vars.RAILWAY_PREVIEW_ENABLED == 'true'
+    timeout-minutes: 20
+    if: startsWith(github.head_ref, 'feat/')
+    environment: preview
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -22,6 +28,31 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+
+      - name: Check preview secrets
+        env:
+          SUPABASE_PREVIEW_ACCESS_TOKEN: ${{ secrets.SUPABASE_PREVIEW_ACCESS_TOKEN }}
+          RAILWAY_PREVIEW_TOKEN: ${{ secrets.RAILWAY_PREVIEW_TOKEN }}
+          POSTHOG_DEV_PROJECT_TOKEN: ${{ secrets.POSTHOG_DEV_PROJECT_TOKEN }}
+        run: |
+          test -n "$SUPABASE_PREVIEW_ACCESS_TOKEN"
+          test -n "$RAILWAY_PREVIEW_TOKEN"
+          test -n "$POSTHOG_DEV_PROJECT_TOKEN"
+
+      - name: Wait for Supabase preview branch
+        id: supabase_preview
+        uses: fountainhead/action-wait-for-check@v1.2.0
+        with:
+          checkName: Supabase Preview
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require Supabase preview success
+        run: |
+          if [ "${{ steps.supabase_preview.outputs.conclusion }}" != "success" ]; then
+            echo "Supabase Preview concluded with ${{ steps.supabase_preview.outputs.conclusion }}"
+            exit 1
+          fi
 
       - name: Resolve preview URL
         id: preview
@@ -35,21 +66,21 @@ jobs:
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
 
       - name: Verify preview release
-        run: npm run health:verify -- --base-url=${{ steps.preview.outputs.preview_url }} --profile=preview --expected-sha=${{ github.event.pull_request.head.sha }} --quiet
+        run: npm run preview:verify -- --url=${{ steps.preview.outputs.preview_url }} --expected-sha=${{ github.event.pull_request.head.sha }}
 
       - name: Comment preview URL on PR
         if: success()
         uses: actions/github-script@v9
         with:
           script: |
-            const body = `Preview deployed and verification passed\n\nPreview URL: ${{ steps.preview.outputs.preview_url }}`;
+            const body = `## Preview URL\n\n${{ steps.preview.outputs.preview_url }}\n\nPreview verification passed for \`${{ github.event.pull_request.head.sha }}\`.`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-            const existing = comments.find(c => c.body.includes('Preview deployed'));
+            const existing = comments.find(c => c.body.includes('## Preview URL'));
 
             if (existing) {
               await github.rest.issues.updateComment({

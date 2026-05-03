@@ -397,7 +397,7 @@ export function buildPreviewSentimentRows(
       proposal_tx_hash: proposal.tx_hash,
       sentiment,
       stake_address: `${FIXTURE_STAKE_ADDRESS}${i.toString().padStart(2, '0')}`,
-      user_id: userIds[i % userIds.length],
+      user_id: userIds[Math.floor(i / PROPOSALS.length) % userIds.length],
       wallet_address: `preview-wallet-${(i + 1).toString().padStart(2, '0')}`,
     };
   });

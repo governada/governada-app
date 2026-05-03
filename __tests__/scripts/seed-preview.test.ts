@@ -81,4 +81,13 @@ describe('preview seed safety checks', () => {
 
     expect(buildPreviewSentimentRows().every((row) => uuidPattern.test(row.user_id))).toBe(true);
   });
+
+  it('keeps sentiment proposal/user pairs unique', async () => {
+    const { buildPreviewSentimentRows } = await import('../../scripts/seed-preview');
+    const pairs = buildPreviewSentimentRows().map(
+      (row) => `${row.proposal_tx_hash}:${row.proposal_index}:${row.user_id}`,
+    );
+
+    expect(new Set(pairs)).toHaveLength(pairs.length);
+  });
 });

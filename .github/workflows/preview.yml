@@ -19,6 +19,8 @@ jobs:
   preview-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Phase 0.5 activates PR previews for feat/* branches. UX-affecting work on
+    # other prefixes should rename the branch or expand this gate before ready.
     if: startsWith(github.head_ref, 'feat/')
     environment: preview
     steps:

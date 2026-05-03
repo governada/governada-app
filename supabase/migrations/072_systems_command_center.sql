@@ -1,6 +1,9 @@
 -- Systems command center durable state
 -- Replace audit-log reconstruction with first-class systems tables while
 -- keeping admin_audit_log as the append-only audit trail.
+-- NOTE: This legacy 072_* migration sorts before timestamped rebaseline
+-- migrations on fresh preview replays. Keep guards below tolerant of tables
+-- that may not exist yet.
 
 BEGIN;
 

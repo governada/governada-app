@@ -284,6 +284,7 @@ export async function delegateToDRep(
       );
     }
 
+    // delegateToDRep can run without preflight; reject non-mainnet reward addresses here too.
     validateMainnet(rewardAddress);
 
     const mode = await resolveDelegationMode();

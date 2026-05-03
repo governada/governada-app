@@ -36,4 +36,15 @@ describe('delegation mode', () => {
 
     await expect(resolveDelegationMode(fetchImpl)).resolves.toBe('sandbox');
   });
+
+  it('skips the client mode endpoint when public mainnet mode is explicit', async () => {
+    delete process.env.GOVERNADA_DELEGATION_MODE;
+    process.env.NEXT_PUBLIC_GOVERNADA_DELEGATION_MODE = 'mainnet';
+    vi.stubGlobal('window', {});
+
+    const fetchImpl = vi.fn();
+
+    await expect(resolveDelegationMode(fetchImpl)).resolves.toBe('mainnet');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
 });

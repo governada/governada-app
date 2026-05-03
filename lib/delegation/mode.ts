@@ -19,11 +19,18 @@ export function isSandboxMode(): boolean {
   return getDelegationMode() === 'sandbox';
 }
 
+function getExplicitPublicDelegationMode(): DelegationMode | undefined {
+  const raw = readEnv('NEXT_PUBLIC_GOVERNADA_DELEGATION_MODE');
+  if (raw === 'mainnet' || raw === 'sandbox') return raw;
+  return undefined;
+}
+
 export async function resolveDelegationMode(
   fetchImpl: typeof fetch = fetch,
 ): Promise<DelegationMode> {
   const envMode = getDelegationMode();
-  if (typeof window === 'undefined' || envMode === 'sandbox') {
+  const publicMode = getExplicitPublicDelegationMode();
+  if (typeof window === 'undefined' || envMode === 'sandbox' || publicMode === 'mainnet') {
     return envMode;
   }
 

@@ -10,6 +10,8 @@ const SandboxDelegationBody = z.object({
   stakeAddress: z
     .string()
     .min(1, 'stakeAddress is required')
+    .min(57, 'Sandbox delegation requires a full mainnet stake address')
+    .max(59, 'Sandbox delegation requires a full mainnet stake address')
     .regex(/^stake1[a-z0-9]+$/, 'Sandbox delegation requires a mainnet stake address'),
   targetDrepId: z.string().min(1, 'targetDrepId is required'),
 });

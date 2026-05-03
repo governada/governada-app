@@ -28,6 +28,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - uses: supabase/setup-cli@v2
+        with:
+          version: latest
 
       - name: Check preview secrets
         env:
@@ -53,6 +56,33 @@ jobs:
             echo "Supabase Preview concluded with ${{ steps.supabase_preview.outputs.conclusion }}"
             exit 1
           fi
+
+      - name: Resolve Supabase preview credentials
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_PREVIEW_ACCESS_TOKEN }}
+        run: |
+          PARENT_REF="${{ vars.SUPABASE_PROJECT_ID }}"
+          if [ -z "$PARENT_REF" ]; then
+            PARENT_REF="pbfprhbaayvcrxokgicr"
+          fi
+
+          supabase --experimental branches get "$GITHUB_HEAD_REF" --project-ref "$PARENT_REF" -o env >> "$GITHUB_ENV"
+
+      - name: Seed Supabase preview data
+        run: |
+          PREVIEW_URL="${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL:-${API_URL:-${SUPABASE_API_URL:-}}}}"
+          PREVIEW_SECRET="${SUPABASE_SECRET_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-${SERVICE_ROLE_KEY:-}}}"
+
+          if [ -z "$PREVIEW_URL" ] || [ -z "$PREVIEW_SECRET" ]; then
+            echo "Supabase preview credentials were not exported by the CLI"
+            exit 1
+          fi
+
+          NEXT_PUBLIC_SUPABASE_URL="$PREVIEW_URL" \
+            SUPABASE_SECRET_KEY="$PREVIEW_SECRET" \
+            GOVERNADA_DELEGATION_MODE=sandbox \
+            SUPABASE_PREVIEW_BRANCH=1 \
+            npm run seed:preview
 
       - name: Resolve preview URL
         id: preview

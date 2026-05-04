@@ -172,6 +172,21 @@ jobs:
           echo "Timed out waiting for Railway preview environment $RAILWAY_PREVIEW_ENV"
           exit 1
 
+      - name: Wait for initial Railway preview deploy
+        id: railway_initial
+        uses: fountainhead/action-wait-for-check@v1.2.0
+        with:
+          checkName: governada-app - governada-app
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require initial Railway preview success
+        run: |
+          if [ "${{ steps.railway_initial.outputs.conclusion }}" != "success" ]; then
+            echo "Railway preview concluded with ${{ steps.railway_initial.outputs.conclusion }}"
+            exit 1
+          fi
+
       - name: Wire Railway preview Supabase branch
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}

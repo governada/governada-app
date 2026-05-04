@@ -114,9 +114,11 @@ current chain state.
 - GitHub Actions also wires `POSTHOG_DEV_PROJECT_TOKEN` into Railway previews as
   `NEXT_PUBLIC_POSTHOG_KEY`, with `NEXT_PUBLIC_POSTHOG_HOST` defaulting to the
   US PostHog ingestion host unless `POSTHOG_DEV_HOST` is set as a repository
-  variable. After writing preview variables, the workflow rebuilds the Railway
-  preview so public Next.js variables are present in the browser bundle. Funnel
-  evidence for preview PRs must come from the non-prod PostHog project.
+  variable. The workflow waits for Railway's initial PR deploy, writes the
+  dynamic preview variables, then rebuilds the Railway preview so public Next.js
+  variables are present in the browser bundle without cancelling the initial
+  Railway check. Funnel evidence for preview PRs must come from the non-prod
+  PostHog project.
 - Preview Supabase auth is separate from production auth. Preview keys and
   service-role credentials are configured in GitHub or Railway secrets, never in
   committed files.

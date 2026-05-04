@@ -141,13 +141,17 @@ jobs:
       - name: Link Railway project
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_PREVIEW_ENV: app-pr-${{ github.event.pull_request.number }}
           RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
         run: |
           if [ -z "$RAILWAY_PROJECT_ID" ]; then
             RAILWAY_PROJECT_ID="f661dbdf-91e0-4a46-81d8-51f345679e56"
           fi
 
-          npx --yes @railway/cli link --project "$RAILWAY_PROJECT_ID" --service governada-app
+          npx --yes @railway/cli link \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_PREVIEW_ENV" \
+            --service governada-app
 
       - name: Wait for Railway preview environment
         env:

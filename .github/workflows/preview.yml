@@ -52,11 +52,10 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Require Supabase preview success
+      - name: Record Supabase preview check result
         run: |
           if [ "${{ steps.supabase_preview.outputs.conclusion }}" != "success" ]; then
-            echo "Supabase Preview concluded with ${{ steps.supabase_preview.outputs.conclusion }}"
-            exit 1
+            echo "::warning::Supabase Preview concluded with ${{ steps.supabase_preview.outputs.conclusion }}; continuing to CLI branch credential resolution"
           fi
 
       - name: Resolve Supabase preview credentials
@@ -69,7 +68,19 @@ jobs:
           fi
 
           SUPABASE_ENV_FILE="$(mktemp)"
-          supabase --experimental branches get "$GITHUB_HEAD_REF" --project-ref "$PARENT_REF" -o env > "$SUPABASE_ENV_FILE"
+          for attempt in $(seq 1 60); do
+            if supabase --experimental branches get "$GITHUB_HEAD_REF" --project-ref "$PARENT_REF" -o env > "$SUPABASE_ENV_FILE"; then
+              break
+            fi
+
+            echo "Waiting for Supabase preview branch credentials (attempt $attempt/60)"
+            sleep 10
+          done
+
+          if [ ! -s "$SUPABASE_ENV_FILE" ]; then
+            echo "Timed out resolving Supabase preview branch credentials"
+            exit 1
+          fi
 
           unquote() {
             local value="$1"

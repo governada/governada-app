@@ -105,6 +105,10 @@ current chain state.
 - Each eligible feature PR gets a Railway preview deploy. Railway injects the
   preview domain and Git metadata, and the deploy is torn down automatically
   when the PR closes.
+- GitHub Actions resolves the Supabase branch credentials and writes them into
+  the matching Railway `app-pr-*` environment before verification. This dynamic
+  PR-environment wiring requires a Railway account/workspace token exposed as
+  `RAILWAY_API_TOKEN`; project-scoped Railway tokens are not sufficient.
 - Preview Supabase auth is separate from production auth. Preview keys and
   service-role credentials are configured in GitHub or Railway secrets, never in
   committed files.
@@ -119,8 +123,9 @@ current chain state.
   exists to make homepage cinema, sentiment, proposal, and delegation smoke tests
   meaningful on a fresh branch database.
 - `npm run preview:verify` is the per-PR smoke command. It checks
-  `/api/health/ready`, confirms the homepage renders, and verifies the expected
-  structured-data signal is present before a PR is treated as UX-verifiable.
+  `/api/health/ready`, confirms the homepage renders, verifies sandbox
+  delegation mode, and requires seeded constellation data before a PR is treated
+  as UX-verifiable.
 - Preview PR descriptions should link the Railway URL and include screenshot or
   recording evidence. PRs that touch funnel telemetry should also include
   PostHog evidence from the dev project.

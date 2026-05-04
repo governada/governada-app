@@ -37,11 +37,11 @@ jobs:
       - name: Check preview secrets
         env:
           SUPABASE_PREVIEW_ACCESS_TOKEN: ${{ secrets.SUPABASE_PREVIEW_ACCESS_TOKEN }}
-          RAILWAY_PREVIEW_TOKEN: ${{ secrets.RAILWAY_PREVIEW_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           POSTHOG_DEV_PROJECT_TOKEN: ${{ secrets.POSTHOG_DEV_PROJECT_TOKEN }}
         run: |
           test -n "$SUPABASE_PREVIEW_ACCESS_TOKEN"
-          test -n "$RAILWAY_PREVIEW_TOKEN"
+          test -n "$RAILWAY_API_TOKEN"
           test -n "$POSTHOG_DEV_PROJECT_TOKEN"
 
       - name: Wait for Supabase preview branch
@@ -140,7 +140,7 @@ jobs:
 
       - name: Link Railway project
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PREVIEW_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
         run: |
           if [ -z "$RAILWAY_PROJECT_ID" ]; then
@@ -151,7 +151,7 @@ jobs:
 
       - name: Wait for Railway preview environment
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PREVIEW_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_PREVIEW_ENV: app-pr-${{ github.event.pull_request.number }}
         run: |
           for attempt in $(seq 1 60); do
@@ -170,7 +170,7 @@ jobs:
 
       - name: Wire Railway preview Supabase branch
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PREVIEW_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_PREVIEW_ENV: app-pr-${{ github.event.pull_request.number }}
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
         run: |

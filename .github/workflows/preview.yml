@@ -177,9 +177,15 @@ jobs:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_PREVIEW_ENV: app-pr-${{ github.event.pull_request.number }}
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
+          POSTHOG_DEV_PROJECT_TOKEN: ${{ secrets.POSTHOG_DEV_PROJECT_TOKEN }}
+          POSTHOG_DEV_HOST: ${{ vars.POSTHOG_DEV_HOST || 'https://us.i.posthog.com' }}
         run: |
           if [ -z "$PREVIEW_SUPABASE_URL" ] || [ -z "$PREVIEW_SUPABASE_PUBLISHABLE_KEY" ] || [ -z "$PREVIEW_SUPABASE_SECRET_KEY" ]; then
             echo "Supabase preview credentials were not resolved"
+            exit 1
+          fi
+          if [ -z "$POSTHOG_DEV_PROJECT_TOKEN" ]; then
+            echo "PostHog dev project token was not resolved"
             exit 1
           fi
 
@@ -190,6 +196,8 @@ jobs:
             "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PREVIEW_SUPABASE_PUBLISHABLE_KEY" \
             "NEXT_PUBLIC_SUPABASE_ANON_KEY=$PREVIEW_SUPABASE_PUBLISHABLE_KEY" \
             "SUPABASE_SECRET_KEY=$PREVIEW_SUPABASE_SECRET_KEY" \
+            "NEXT_PUBLIC_POSTHOG_KEY=$POSTHOG_DEV_PROJECT_TOKEN" \
+            "NEXT_PUBLIC_POSTHOG_HOST=$POSTHOG_DEV_HOST" \
             "GOVERNADA_DELEGATION_MODE=sandbox" \
             "NEXT_PUBLIC_GOVERNADA_DELEGATION_MODE=sandbox" \
             "NEXT_PUBLIC_SITE_URL=$PREVIEW_URL"

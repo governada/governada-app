@@ -111,6 +111,11 @@ current chain state.
   `RAILWAY_API_TOKEN`. Create it from Railway account settings with no
   workspace selected; project-scoped and workspace-scoped Railway tokens are not
   sufficient for the CLI operations used here.
+- GitHub Actions also wires `POSTHOG_DEV_PROJECT_TOKEN` into Railway previews as
+  `NEXT_PUBLIC_POSTHOG_KEY`, with `NEXT_PUBLIC_POSTHOG_HOST` defaulting to the
+  US PostHog ingestion host unless `POSTHOG_DEV_HOST` is set as a repository
+  variable. Funnel evidence for preview PRs must come from the non-prod PostHog
+  project.
 - Preview Supabase auth is separate from production auth. Preview keys and
   service-role credentials are configured in GitHub or Railway secrets, never in
   committed files.

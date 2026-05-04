@@ -23,6 +23,45 @@ export type DelegationPhase =
   | { status: 'success'; txHash: string; confirmed: boolean }
   | { status: 'error'; code: string; message: string; hint: string };
 
+interface DelegationAnalyticsPayload {
+  drep_id: string;
+  previous_drep_id: string | null;
+  tx_hash: string;
+  stake_registered: boolean;
+}
+
+function captureDelegationSuccess(
+  payload: DelegationAnalyticsPayload,
+  preflight: DelegationPreflight,
+  result: DelegationResult,
+) {
+  fetch('/api/delegation/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      stakeAddress: preflight.rewardAddress,
+      drepId: payload.drep_id,
+      previousDrepId: payload.previous_drep_id,
+      txHash: payload.tx_hash,
+      stakeRegistered: payload.stake_registered,
+      mode: result.mode,
+      currentUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+    }),
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error(`Delegation analytics relay failed: ${response.status}`);
+    })
+    .catch(() => {
+      import('@/lib/posthog')
+        .then(({ posthog }) => {
+          posthog.capture('delegation_completed', payload);
+          // Phase 0: dual-emit during delegated naming transition
+          posthog.capture('delegated', payload);
+        })
+        .catch(() => {});
+    });
+}
+
 export function useDelegation() {
   const { wallet, walletName, connected, isAuthenticated, delegatedDrepId, refreshDelegation } =
     useWallet();
@@ -130,19 +169,16 @@ export function useDelegation() {
 
         setPhase({ status: 'success', txHash: result.txHash, confirmed: false });
 
-        import('@/lib/posthog')
-          .then(({ posthog }) => {
-            const delegationPayload = {
-              drep_id: drepId,
-              previous_drep_id: delegatedDrepId || null,
-              tx_hash: result.txHash,
-              stake_registered: preflight.stakeRegistered,
-            };
-            posthog.capture('delegation_completed', delegationPayload);
-            // Phase 0: dual-emit during delegated naming transition
-            posthog.capture('delegated', delegationPayload);
-          })
-          .catch(() => {});
+        captureDelegationSuccess(
+          {
+            drep_id: drepId,
+            previous_drep_id: delegatedDrepId || null,
+            tx_hash: result.txHash,
+            stake_registered: preflight.stakeRegistered,
+          },
+          preflight,
+          result,
+        );
 
         if (result.mode !== 'sandbox') {
           waitForTxConfirmation(result.txHash, {

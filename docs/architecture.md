@@ -125,6 +125,11 @@ current chain state.
   to `sandbox`. Sandbox delegation preserves the normal validation and telemetry
   path, writes the simulated delegation to the preview Supabase branch, and skips
   wallet signing and on-chain transaction submission.
+- Critical delegation success events are relayed through a same-origin API route
+  and captured server-side, then fall back to browser capture only if the relay
+  fails. This keeps the `delegation_completed` and `delegated` funnel reliable
+  for Brave, Do Not Track, and common blocker setups without changing event
+  names or funnel properties.
 - Production defaults to mainnet mode. Sandbox mode is only for delegation
   writes; DRep state, proposal state, sentiment reads, matching, scoring, and
   other governance reads remain driven by the normal mainnet-backed data paths.

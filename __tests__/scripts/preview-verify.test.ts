@@ -1,4 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  vi.restoreAllMocks();
+});
 
 describe('preview verifier helpers', () => {
   it('normalizes preview URLs', async () => {
@@ -49,5 +56,36 @@ describe('preview verifier helpers', () => {
     expect(releaseMatchesExpected('abcdef1234567890', 'abcdef1')).toBe(true);
     expect(releaseMatchesExpected('abcdef1', 'abcdef1234567890')).toBe(true);
     expect(releaseMatchesExpected('abcdef1', 'fffffff')).toBe(false);
+  });
+
+  it('rejects non-sandbox preview delegation mode', async () => {
+    const { checkSandboxMode } = await import('../../scripts/preview-verify.mjs');
+    globalThis.fetch = vi.fn(async () => {
+      return Response.json({ mode: 'mainnet', sandbox: false });
+    }) as typeof fetch;
+
+    await expect(checkSandboxMode('https://preview.example')).resolves.toContain(
+      'expected sandbox',
+    );
+  });
+
+  it('rejects empty constellation data', async () => {
+    const { checkConstellationData } = await import('../../scripts/preview-verify.mjs');
+    globalThis.fetch = vi.fn(async () => {
+      return Response.json({ nodes: [], stats: { activeDReps: 0 } });
+    }) as typeof fetch;
+
+    await expect(checkConstellationData('https://preview.example')).resolves.toContain(
+      'constellation data was empty',
+    );
+  });
+
+  it('accepts seeded constellation data', async () => {
+    const { checkConstellationData } = await import('../../scripts/preview-verify.mjs');
+    globalThis.fetch = vi.fn(async () => {
+      return Response.json({ nodes: [{ id: 'preview-drep-1' }], stats: { activeDReps: 1 } });
+    }) as typeof fetch;
+
+    await expect(checkConstellationData('https://preview.example')).resolves.toBeNull();
   });
 });

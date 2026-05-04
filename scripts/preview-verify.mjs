@@ -146,6 +146,40 @@ async function checkHomepage(baseUrl) {
   return null;
 }
 
+async function checkSandboxMode(baseUrl) {
+  const response = await fetchWithTimeout(`${baseUrl}/api/delegation/mode`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (response.status !== 200) {
+    return `delegation mode endpoint returned ${response.status}`;
+  }
+
+  const body = await response.json();
+  if (body?.mode !== 'sandbox' || body?.sandbox !== true) {
+    return `delegation mode was ${body?.mode ?? 'missing'}, expected sandbox`;
+  }
+
+  return null;
+}
+
+async function checkConstellationData(baseUrl) {
+  const response = await fetchWithTimeout(`${baseUrl}/api/governance/constellation`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (response.status !== 200) {
+    return `constellation endpoint returned ${response.status}`;
+  }
+
+  const body = await response.json();
+  const nodes = Array.isArray(body?.nodes) ? body.nodes : [];
+  const activeDReps = Number(body?.stats?.activeDReps ?? 0);
+  if (nodes.length === 0 || activeDReps === 0) {
+    return `constellation data was empty (nodes=${nodes.length}, activeDReps=${activeDReps})`;
+  }
+
+  return null;
+}
+
 async function runChecks(checks) {
   let failed = 0;
   for (const [name, check] of checks) {
@@ -173,6 +207,8 @@ async function runPreviewVerify({
   const checks = [
     ['Health readiness', () => checkReady(baseUrl, expectedSha)],
     ['Homepage JSON-LD', () => checkHomepage(baseUrl)],
+    ['Sandbox delegation mode', () => checkSandboxMode(baseUrl)],
+    ['Constellation seeded data', () => checkConstellationData(baseUrl)],
   ];
 
   console.log(`Preview verification: ${baseUrl}`);
@@ -243,7 +279,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
 export {
   checkHomepage,
+  checkConstellationData,
   checkReady,
+  checkSandboxMode,
   normalizeBaseUrl,
   parseArgs,
   parseIntegerValue,

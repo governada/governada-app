@@ -78,19 +78,40 @@ jobs:
             printf '%s' "$value"
           }
 
-          PREVIEW_URL="$(grep '^SUPABASE_URL=' "$SUPABASE_ENV_FILE" | cut -d= -f2-)"
-          PREVIEW_SECRET="$(grep '^SUPABASE_SERVICE_ROLE_KEY=' "$SUPABASE_ENV_FILE" | cut -d= -f2-)"
+          env_value() {
+            local key="$1"
+            grep "^${key}=" "$SUPABASE_ENV_FILE" | head -n 1 | cut -d= -f2-
+          }
+
+          first_env_value() {
+            local value=""
+            for key in "$@"; do
+              value="$(env_value "$key")"
+              if [ -n "$value" ]; then
+                printf '%s' "$value"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          PREVIEW_URL="$(first_env_value SUPABASE_URL API_URL)"
+          PREVIEW_PUBLISHABLE="$(first_env_value SUPABASE_PUBLISHABLE_KEY SUPABASE_ANON_KEY ANON_KEY)"
+          PREVIEW_SECRET="$(first_env_value SUPABASE_SECRET_KEY SUPABASE_SERVICE_ROLE_KEY SERVICE_ROLE_KEY)"
           PREVIEW_URL="$(unquote "$PREVIEW_URL")"
+          PREVIEW_PUBLISHABLE="$(unquote "$PREVIEW_PUBLISHABLE")"
           PREVIEW_SECRET="$(unquote "$PREVIEW_SECRET")"
           rm -f "$SUPABASE_ENV_FILE"
 
-          if [ -z "$PREVIEW_URL" ] || [ -z "$PREVIEW_SECRET" ]; then
+          if [ -z "$PREVIEW_URL" ] || [ -z "$PREVIEW_PUBLISHABLE" ] || [ -z "$PREVIEW_SECRET" ]; then
             echo "Supabase preview credentials were not exported by the CLI"
             exit 1
           fi
 
+          echo "::add-mask::$PREVIEW_PUBLISHABLE"
           echo "::add-mask::$PREVIEW_SECRET"
           echo "PREVIEW_SUPABASE_URL=$PREVIEW_URL" >> "$GITHUB_ENV"
+          echo "PREVIEW_SUPABASE_PUBLISHABLE_KEY=$PREVIEW_PUBLISHABLE" >> "$GITHUB_ENV"
           echo "PREVIEW_SUPABASE_SECRET_KEY=$PREVIEW_SECRET" >> "$GITHUB_ENV"
 
       - name: Seed Supabase preview data
@@ -116,6 +137,58 @@ jobs:
 
           PREVIEW_URL="${PREVIEW_TEMPLATE//\{pr\}/${{ github.event.pull_request.number }}}"
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+
+      - name: Link Railway project
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PREVIEW_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+        run: |
+          if [ -z "$RAILWAY_PROJECT_ID" ]; then
+            RAILWAY_PROJECT_ID="f661dbdf-91e0-4a46-81d8-51f345679e56"
+          fi
+
+          npx --yes @railway/cli link --project "$RAILWAY_PROJECT_ID" --service governada-app
+
+      - name: Wait for Railway preview environment
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PREVIEW_TOKEN }}
+          RAILWAY_PREVIEW_ENV: app-pr-${{ github.event.pull_request.number }}
+        run: |
+          for attempt in $(seq 1 60); do
+            if npx --yes @railway/cli environment list --json \
+              | node -e "let input=''; process.stdin.on('data', c => input += c); process.stdin.on('end', () => { const parsed = JSON.parse(input); const found = (parsed.environments || []).some((env) => env.name === process.env.RAILWAY_PREVIEW_ENV); process.exit(found ? 0 : 1); });"; then
+              echo "Railway preview environment $RAILWAY_PREVIEW_ENV is ready"
+              exit 0
+            fi
+
+            echo "Waiting for Railway preview environment $RAILWAY_PREVIEW_ENV (attempt $attempt/60)"
+            sleep 10
+          done
+
+          echo "Timed out waiting for Railway preview environment $RAILWAY_PREVIEW_ENV"
+          exit 1
+
+      - name: Wire Railway preview Supabase branch
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PREVIEW_TOKEN }}
+          RAILWAY_PREVIEW_ENV: app-pr-${{ github.event.pull_request.number }}
+          PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
+        run: |
+          if [ -z "$PREVIEW_SUPABASE_URL" ] || [ -z "$PREVIEW_SUPABASE_PUBLISHABLE_KEY" ] || [ -z "$PREVIEW_SUPABASE_SECRET_KEY" ]; then
+            echo "Supabase preview credentials were not resolved"
+            exit 1
+          fi
+
+          npx --yes @railway/cli variable set \
+            -e "$RAILWAY_PREVIEW_ENV" \
+            -s governada-app \
+            "NEXT_PUBLIC_SUPABASE_URL=$PREVIEW_SUPABASE_URL" \
+            "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PREVIEW_SUPABASE_PUBLISHABLE_KEY" \
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY=$PREVIEW_SUPABASE_PUBLISHABLE_KEY" \
+            "SUPABASE_SECRET_KEY=$PREVIEW_SUPABASE_SECRET_KEY" \
+            "GOVERNADA_DELEGATION_MODE=sandbox" \
+            "NEXT_PUBLIC_GOVERNADA_DELEGATION_MODE=sandbox" \
+            "NEXT_PUBLIC_SITE_URL=$PREVIEW_URL"
 
       - name: Verify preview release
         run: npm run preview:verify -- --url=${{ steps.preview.outputs.preview_url }} --expected-sha=${{ github.event.pull_request.head.sha }} --wait-ms=420000 --interval-ms=10000

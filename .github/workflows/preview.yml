@@ -202,6 +202,15 @@ jobs:
             "NEXT_PUBLIC_GOVERNADA_DELEGATION_MODE=sandbox" \
             "NEXT_PUBLIC_SITE_URL=$PREVIEW_URL"
 
+      - name: Rebuild Railway preview with wired variables
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+        run: |
+          npx --yes @railway/cli redeploy \
+            -s governada-app \
+            --from-source \
+            --yes
+
       - name: Verify preview release
         run: npm run preview:verify -- --url=${{ steps.preview.outputs.preview_url }} --expected-sha=${{ github.event.pull_request.head.sha }} --wait-ms=420000 --interval-ms=10000
 

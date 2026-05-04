@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { isSandboxMode } from '@/lib/delegation/mode';
+import { captureServerEvent } from '@/lib/posthog-server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 const SandboxDelegationBody = z.object({
@@ -15,6 +16,16 @@ const SandboxDelegationBody = z.object({
     .regex(/^stake1[a-z0-9]+$/, 'Sandbox delegation requires a mainnet stake address'),
   targetDrepId: z.string().min(1, 'targetDrepId is required'),
 });
+
+function hostFromUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+
+  try {
+    return new URL(value).host;
+  } catch {
+    return undefined;
+  }
+}
 
 export const POST = withRouteHandler(
   async (request: NextRequest) => {
@@ -37,6 +48,20 @@ export const POST = withRouteHandler(
     if (error) {
       throw new Error(`Failed to record sandbox delegation: ${error.message}`);
     }
+
+    const currentUrl = request.headers.get('referer') ?? undefined;
+    const delegationPayload = {
+      drep_id: body.targetDrepId,
+      previous_drep_id: null,
+      tx_hash: simulatedTxHash,
+      stake_registered: false,
+      mode: 'sandbox',
+      $current_url: currentUrl,
+      $host: hostFromUrl(currentUrl) ?? request.headers.get('host') ?? undefined,
+    };
+
+    captureServerEvent('delegation_completed', delegationPayload, body.stakeAddress);
+    captureServerEvent('delegated', delegationPayload, body.stakeAddress);
 
     return NextResponse.json({
       mode: 'sandbox',

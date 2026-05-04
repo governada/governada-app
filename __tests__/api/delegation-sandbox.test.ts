@@ -3,6 +3,8 @@ import { createRequest, parseJson } from '../helpers';
 
 const mockCaptureServerEvent = vi.fn();
 const mockGetRedis = vi.fn();
+const mockInsert = vi.fn();
+const mockIsSandboxMode = vi.fn();
 const mockLimit = vi.fn();
 
 vi.mock('@upstash/ratelimit', () => {
@@ -17,8 +19,23 @@ vi.mock('@upstash/ratelimit', () => {
   return { Ratelimit };
 });
 
+vi.mock('@/lib/delegation/mode', () => ({
+  isSandboxMode: () => mockIsSandboxMode(),
+}));
+
 vi.mock('@/lib/posthog-server', () => ({
   captureServerEvent: (...args: unknown[]) => mockCaptureServerEvent(...args),
+}));
+
+vi.mock('@/lib/supabase', () => ({
+  getSupabaseAdmin: () => ({
+    from: (table: string) => ({
+      insert: (data: unknown) => {
+        mockInsert(table, data);
+        return mockInsert();
+      },
+    }),
+  }),
 }));
 
 vi.mock('@/lib/logger', () => ({
@@ -29,35 +46,43 @@ vi.mock('@/lib/redis', () => ({
   getRedis: () => mockGetRedis(),
 }));
 
-import { POST } from '@/app/api/delegation/events/route';
+import { POST } from '@/app/api/delegation/sandbox/route';
 
-describe('POST /api/delegation/events', () => {
+describe('POST /api/delegation/sandbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetRedis.mockReturnValue({});
-    mockLimit.mockResolvedValue({ success: true, remaining: 29 });
+    mockIsSandboxMode.mockReturnValue(true);
+    mockLimit.mockResolvedValue({ success: true, remaining: 9 });
+    mockInsert.mockResolvedValue({ error: null });
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('2fe922f0-b59a-4b77-ae1e-20b4e96a8566');
   });
 
-  it('captures both delegation success events server-side', async () => {
-    const req = createRequest('/api/delegation/events', {
+  it('records the sandbox delegation and captures both success events server-side', async () => {
+    const stakeAddress = `stake1${'q'.repeat(51)}`;
+    const req = createRequest('/api/delegation/sandbox', {
       method: 'POST',
       headers: { referer: 'https://governada-app-app-pr-948.up.railway.app/dev/delegation-test' },
-      body: {
-        stakeAddress: 'stake1u9rl9nvxdummy0000000000000000000000000000000000000000',
-        drepId: 'drep1_test4',
-        previousDrepId: null,
-        txHash: 'sandbox-2fe922f0-b59a-4b77-ae1e-20b4e96a8566',
-        stakeRegistered: false,
-        mode: 'sandbox',
-      },
+      body: { stakeAddress, targetDrepId: 'drep1_test4' },
     });
 
     const res = await POST(req);
-    const body = (await parseJson(res)) as { captured: boolean; events: string[] };
+    const body = (await parseJson(res)) as { mode: string; txHash: string; drepId: string };
 
     expect(res.status).toBe(200);
-    expect(body.captured).toBe(true);
-    expect(body.events).toEqual(['delegation_completed', 'delegated']);
+    expect(body).toEqual({
+      mode: 'sandbox',
+      txHash: 'sandbox-2fe922f0-b59a-4b77-ae1e-20b4e96a8566',
+      drepId: 'drep1_test4',
+    });
+    expect(mockInsert).toHaveBeenCalledWith(
+      'sandbox_delegations',
+      expect.objectContaining({
+        stake_address: stakeAddress,
+        target_drep_id: 'drep1_test4',
+        simulated_tx_hash: 'sandbox-2fe922f0-b59a-4b77-ae1e-20b4e96a8566',
+      }),
+    );
     expect(mockCaptureServerEvent).toHaveBeenCalledTimes(2);
     expect(mockCaptureServerEvent).toHaveBeenNthCalledWith(
       1,
@@ -71,33 +96,31 @@ describe('POST /api/delegation/events', () => {
         $current_url: 'https://governada-app-app-pr-948.up.railway.app/dev/delegation-test',
         $host: 'governada-app-app-pr-948.up.railway.app',
       }),
-      'stake1u9rl9nvxdummy0000000000000000000000000000000000000000',
+      stakeAddress,
     );
     expect(mockCaptureServerEvent).toHaveBeenNthCalledWith(
       2,
       'delegated',
       expect.objectContaining({
         tx_hash: 'sandbox-2fe922f0-b59a-4b77-ae1e-20b4e96a8566',
+        mode: 'sandbox',
       }),
-      'stake1u9rl9nvxdummy0000000000000000000000000000000000000000',
+      stakeAddress,
     );
   });
 
-  it('rejects invalid payloads before capturing analytics', async () => {
-    const req = createRequest('/api/delegation/events', {
+  it('does not capture analytics when sandbox mode is disabled', async () => {
+    mockIsSandboxMode.mockReturnValue(false);
+
+    const req = createRequest('/api/delegation/sandbox', {
       method: 'POST',
-      body: {
-        stakeAddress: 'addr_test1notamainnetstakeaddress',
-        drepId: 'drep1_test4',
-        txHash: 'sandbox-2fe922f0-b59a-4b77-ae1e-20b4e96a8566',
-        stakeRegistered: false,
-        mode: 'sandbox',
-      },
+      body: { stakeAddress: `stake1${'q'.repeat(51)}`, targetDrepId: 'drep1_test4' },
     });
 
     const res = await POST(req);
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(403);
+    expect(mockInsert).not.toHaveBeenCalled();
     expect(mockCaptureServerEvent).not.toHaveBeenCalled();
   });
 });

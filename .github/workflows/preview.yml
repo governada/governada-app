@@ -172,41 +172,6 @@ jobs:
           echo "Timed out waiting for Railway preview environment $RAILWAY_PREVIEW_ENV"
           exit 1
 
-      - name: Wait for initial Railway preview deploy
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const ref = context.payload.pull_request.head.sha;
-            const contextName = 'governada-app - governada-app';
-
-            for (let attempt = 1; attempt <= 60; attempt += 1) {
-              const { data } = await github.rest.repos.getCombinedStatusForRef({
-                owner,
-                repo,
-                ref,
-              });
-
-              const latest = data.statuses.find((status) => status.context === contextName);
-              if (latest?.state === 'success') {
-                core.info(`Railway preview deploy succeeded: ${latest.target_url}`);
-                return;
-              }
-
-              if (latest && ['failure', 'error'].includes(latest.state)) {
-                core.setFailed(`Railway preview deploy ${latest.state}: ${latest.description ?? ''}`);
-                return;
-              }
-
-              core.info(
-                `Waiting for Railway preview deploy (${latest?.state ?? 'missing'}, attempt ${attempt}/60)`,
-              );
-              await new Promise((resolve) => setTimeout(resolve, 10_000));
-            }
-
-            core.setFailed('Timed out waiting for Railway preview deploy status');
-
       - name: Wire Railway preview Supabase branch
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
@@ -236,15 +201,6 @@ jobs:
             "GOVERNADA_DELEGATION_MODE=sandbox" \
             "NEXT_PUBLIC_GOVERNADA_DELEGATION_MODE=sandbox" \
             "NEXT_PUBLIC_SITE_URL=$PREVIEW_URL"
-
-      - name: Rebuild Railway preview with wired variables
-        env:
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-        run: |
-          npx --yes @railway/cli redeploy \
-            -s governada-app \
-            --from-source \
-            --yes
 
       - name: Verify preview release
         run: npm run preview:verify -- --url=${{ steps.preview.outputs.preview_url }} --expected-sha=${{ github.event.pull_request.head.sha }} --wait-ms=420000 --interval-ms=10000

@@ -107,8 +107,10 @@ current chain state.
   when the PR closes.
 - GitHub Actions resolves the Supabase branch credentials and writes them into
   the matching Railway `app-pr-*` environment before verification. This dynamic
-  PR-environment wiring requires a Railway account/workspace token exposed as
-  `RAILWAY_API_TOKEN`; project-scoped Railway tokens are not sufficient.
+  PR-environment wiring requires a Railway account-scoped token exposed as
+  `RAILWAY_API_TOKEN`. Create it from Railway account settings with no
+  workspace selected; project-scoped and workspace-scoped Railway tokens are not
+  sufficient for the CLI operations used here.
 - Preview Supabase auth is separate from production auth. Preview keys and
   service-role credentials are configured in GitHub or Railway secrets, never in
   committed files.

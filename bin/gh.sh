@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ADDENDUM='[[decisions/lean-agent-harness#addendum-2-2026-05-04--github-api-write-lane-via-gh_token_op_ref]]'
+ADDENDUM='[[decisions/lean-agent-harness#addendum-3-2026-05-04--agent-sa-reads-the-github-pat-revises-addenda-1-and-2]]'
+DEFAULT_AGENT_RUNTIME_FILE='/Users/tim/dev/agent-runtime/env/governada-agent.env'
 
 redact() {
   sed -E \
@@ -52,6 +53,22 @@ if [[ -z "$gh_token_ref" ]]; then
   exit 1
 fi
 
+agent_runtime_file="${OP_AGENT_RUNTIME_FILE:-$DEFAULT_AGENT_RUNTIME_FILE}"
+agent_token="$(read_ref_value OP_AGENT_SERVICE_ACCOUNT_TOKEN "$agent_runtime_file")"
+
+if [[ -z "$agent_token" ]]; then
+  {
+    echo "BLOCKED: OP_AGENT_SERVICE_ACCOUNT_TOKEN is missing from ${agent_runtime_file}."
+    echo "Remediation: configure the agent service-account runtime file per ${ADDENDUM}, then run npm run op:agent-doctor."
+  } >&2
+  exit 1
+fi
+
+if [[ "$agent_token" != ops_* ]]; then
+  echo 'BLOCKED: OP_AGENT_SERVICE_ACCOUNT_TOKEN does not have the expected 1Password service-account token shape.' >&2
+  exit 1
+fi
+
 if ! command -v op >/dev/null 2>&1; then
   echo 'BLOCKED: 1Password CLI (`op`) is not available for GH_TOKEN_OP_REF resolution.' >&2
   exit 1
@@ -66,16 +83,26 @@ fi
 unset GH_TOKEN
 unset GITHUB_TOKEN
 unset GH_HOST
-export OP_ACCOUNT="${OP_ACCOUNT:-my.1password.com}"
 set +e
-# Use `op run` instead of shell-capturing `op read`; Codex can hit desktop IPC
-# hangs when secret values are piped through command substitution.
-op --account "$OP_ACCOUNT" run --env-file <(printf 'GH_TOKEN=%s\n' "$gh_token_ref") -- "$gh_bin" "$@" 2> >(redact >&2)
+(
+  export OP_SERVICE_ACCOUNT_TOKEN="$agent_token"
+  unset OP_AGENT_SERVICE_ACCOUNT_TOKEN
+  unset OP_ACCOUNT
+  unset OP_CONNECT_HOST
+  unset OP_CONNECT_TOKEN
+  op run --env-file <(printf 'GH_TOKEN=%s\n' "$gh_token_ref") -- \
+    env -u OP_SERVICE_ACCOUNT_TOKEN \
+      -u OP_AGENT_SERVICE_ACCOUNT_TOKEN \
+      -u OP_ACCOUNT \
+      -u OP_CONNECT_HOST \
+      -u OP_CONNECT_TOKEN \
+      "$gh_bin" "$@"
+) 2> >(redact >&2)
 status=$?
 set -e
 
 if [[ "$status" -ne 0 ]]; then
-  echo 'Remediation: confirm GH_TOKEN_OP_REF points at the Governada-Human/governada-app-agent credential item, then run npm run gh:auth-status.' >&2
+  echo 'Remediation: confirm GH_TOKEN_OP_REF points at the Governada-Agent/governada-app-agent credential item and the agent runtime SA token is valid, then run npm run gh:auth-status.' >&2
 fi
 
 exit "$status"

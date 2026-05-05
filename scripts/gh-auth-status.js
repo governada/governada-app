@@ -8,10 +8,13 @@ const { repoRoot, runCommand } = require('./lib/runtime');
 const CANONICAL_REMOTE = 'git@github-governada:governada/app.git';
 const EXPECTED_USER = 'tim-governada';
 const ADDENDUM =
-  '[[decisions/lean-agent-harness#addendum-2-2026-05-04--github-api-write-lane-via-gh_token_op_ref]]';
+  '[[decisions/lean-agent-harness#addendum-3-2026-05-04--agent-sa-reads-the-github-pat-revises-addenda-1-and-2]]';
 const API_REPO = 'governada/app';
 const GH_WRAPPER = path.join(repoRoot, 'bin', 'gh.sh');
 const ENV_REFS_FILE = '.env.local.refs';
+const DEFAULT_AGENT_RUNTIME_FILE = '/Users/tim/dev/agent-runtime/env/governada-agent.env';
+const EXPECTED_GH_TOKEN_OP_REF = 'op://Governada-Agent/governada-app-agent/credential';
+const DESKTOP_PROMPT_PATTERN = /touch id|passcode|biometric|1password desktop|desktop app|prompt/i;
 
 function firstLine(text) {
   return (
@@ -162,6 +165,13 @@ function runGhApi(args, env = {}) {
   });
 }
 
+function assertNoDesktopPromptShape(result, failures, label) {
+  const output = `${result.stdout}\n${result.stderr}`;
+  if (DESKTOP_PROMPT_PATTERN.test(output)) {
+    failures.push(`${label} showed a Desktop-auth prompt-shaped message; review ${ADDENDUM}.`);
+  }
+}
+
 function printRemediation() {
   console.error('');
   console.error('Remediation:');
@@ -169,7 +179,10 @@ function printRemediation() {
     '- If SSH failed: enable/unlock 1Password SSH agent and verify ssh -T git@github-governada.',
   );
   console.error(
-    '- If API failed: confirm GH_TOKEN_OP_REF points at the Governada-Human/governada-app-agent credential.',
+    '- If API failed: confirm GH_TOKEN_OP_REF points at the Governada-Agent/governada-app-agent credential.',
+  );
+  console.error(
+    `- If service-account auth failed: confirm ${process.env.OP_AGENT_RUNTIME_FILE || DEFAULT_AGENT_RUNTIME_FILE} has OP_AGENT_SERVICE_ACCOUNT_TOKEN, then run npm run op:agent-doctor.`,
   );
   console.error(`- If PR-create failed: confirm the PAT has pull_requests:write per ${ADDENDUM}.`);
   console.error('- Token rotation is a Tim manual action; no automated repair is attempted.');
@@ -241,6 +254,55 @@ function checkSshLane(failures) {
   console.log('OK: SSH + 1Password git lane passed');
 }
 
+function checkAgentServiceAccountRuntime(failures) {
+  const runtimeFile = process.env.OP_AGENT_RUNTIME_FILE || DEFAULT_AGENT_RUNTIME_FILE;
+  if (!fs.existsSync(runtimeFile)) {
+    failures.push(
+      `${runtimeFile} is missing; configure OP_AGENT_SERVICE_ACCOUNT_TOKEN per ${ADDENDUM}.`,
+    );
+    return;
+  }
+
+  const stat = fs.statSync(runtimeFile);
+  if ((stat.mode & 0o077) !== 0) {
+    failures.push(`${runtimeFile} is group/world readable; run chmod 600 before using it.`);
+    return;
+  }
+
+  const token = parseEnvFile(runtimeFile).OP_AGENT_SERVICE_ACCOUNT_TOKEN || '';
+  if (!token) {
+    failures.push(`${runtimeFile} does not contain OP_AGENT_SERVICE_ACCOUNT_TOKEN.`);
+    return;
+  }
+
+  if (!token.startsWith('ops_')) {
+    failures.push('OP_AGENT_SERVICE_ACCOUNT_TOKEN does not have the expected ops_ shape.');
+    return;
+  }
+
+  console.log('OK: agent service account env file is present and owner-only');
+}
+
+function checkWrapperNoDesktopAuth(failures) {
+  const wrapper = fs.existsSync(GH_WRAPPER) ? fs.readFileSync(GH_WRAPPER, 'utf8') : '';
+  if (!wrapper) {
+    failures.push('bin/gh.sh is missing.');
+    return;
+  }
+
+  const forbiddenPatterns = [
+    /OP_ACCOUNT\s*=\s*["']?my\.1password\.com/u,
+    /my\.1password\.com/u,
+    /\bop\s+--account\b/u,
+  ];
+  if (forbiddenPatterns.some((pattern) => pattern.test(wrapper))) {
+    failures.push(`bin/gh.sh invokes Desktop-auth account selection; revise per ${ADDENDUM}.`);
+    return;
+  }
+
+  console.log('OK: bin/gh.sh does not invoke Desktop auth');
+}
+
 function checkApiLane(failures) {
   const opRef = resolveEnvValue('GH_TOKEN_OP_REF');
   const rotateAfter = resolveEnvValue('GH_TOKEN_ROTATE_AFTER');
@@ -257,28 +319,6 @@ function checkApiLane(failures) {
 
   console.log(`OK: GH_TOKEN_OP_REF configured (${opRef.source}; value redacted)`);
 
-  if (rotateAfter.value) {
-    const rotationDate = new Date(`${rotateAfter.value}T00:00:00Z`);
-    if (Number.isNaN(rotationDate.getTime())) {
-      failures.push(`GH_TOKEN_ROTATE_AFTER is not a valid YYYY-MM-DD date: ${rotateAfter.value}`);
-      return;
-    }
-
-    const daysUntilRotation = Math.ceil((rotationDate.getTime() - Date.now()) / 86_400_000);
-    if (daysUntilRotation < 0) {
-      failures.push(
-        `GH_TOKEN_ROTATE_AFTER is past due: ${rotateAfter.value}. Rotate per ${ADDENDUM}.`,
-      );
-      return;
-    }
-
-    if (daysUntilRotation <= 14) {
-      console.warn(
-        `WARN: GH_TOKEN_ROTATE_AFTER is within ${daysUntilRotation} day(s): ${rotateAfter.value}.`,
-      );
-    }
-  }
-
   const wrapperEnv = {
     GH_TOKEN_OP_REF: opRef.value,
   };
@@ -286,7 +326,23 @@ function checkApiLane(failures) {
     wrapperEnv.GH_TOKEN_ROTATE_AFTER = rotateAfter.value;
   }
 
+  const userProbe = runGhApi(['api', 'user', '--jq', '.login'], wrapperEnv);
+  assertNoDesktopPromptShape(userProbe, failures, 'bin/gh.sh api user');
+  if (failures.length > 0) {
+    return;
+  }
+  if (userProbe.status === 0 && userProbe.stdout.trim() === EXPECTED_USER) {
+    console.log('OK: bin/gh.sh resolved GH_TOKEN via service-account auth (no Desktop prompt)');
+  } else {
+    failures.push(`gh API user probe failed: ${resultSummary(userProbe)}`);
+    return;
+  }
+
   const repoRead = runGhApi(['api', `repos/${API_REPO}`, '-i'], wrapperEnv);
+  assertNoDesktopPromptShape(repoRead, failures, `repos/${API_REPO} read`);
+  if (failures.length > 0) {
+    return;
+  }
   const repoReadStatus = parseHttpStatus(`${repoRead.stdout}\n${repoRead.stderr}`);
   if (repoRead.status === 0 && repoReadStatus === 200) {
     console.log(`OK: gh API can read repos/${API_REPO}`);
@@ -314,6 +370,10 @@ function checkApiLane(failures) {
     wrapperEnv,
   );
   const prProbeOutput = `${prCreateProbe.stdout}\n${prCreateProbe.stderr}`;
+  assertNoDesktopPromptShape(prCreateProbe, failures, 'PR-create capability probe');
+  if (failures.length > 0) {
+    return;
+  }
   const prProbeStatus = parseHttpStatus(prProbeOutput);
 
   if (prProbeStatus === 422) {
@@ -329,6 +389,7 @@ function checkApiLane(failures) {
     // A 422 from the PR-create endpoint with a deliberately missing head proves the
     // token reached create-pull-request validation instead of failing authz at 401/403.
     console.log('OK: gh API PR-create capability reached validation (pull_requests:write)');
+    checkTokenRotation(rotateAfter, failures);
     return;
   }
 
@@ -340,11 +401,58 @@ function checkApiLane(failures) {
   failures.push(`gh API PR-create capability probe failed: ${resultSummary(prCreateProbe)}`);
 }
 
+function checkTokenRotation(rotateAfter, failures) {
+  if (!rotateAfter.value) {
+    failures.push('GH_TOKEN_ROTATE_AFTER is missing.');
+    return;
+  }
+
+  const rotationDate = new Date(`${rotateAfter.value}T00:00:00Z`);
+  if (Number.isNaN(rotationDate.getTime())) {
+    failures.push(`GH_TOKEN_ROTATE_AFTER is not a valid YYYY-MM-DD date: ${rotateAfter.value}`);
+    return;
+  }
+
+  const daysUntilRotation = Math.ceil((rotationDate.getTime() - Date.now()) / 86_400_000);
+  if (daysUntilRotation < 0) {
+    failures.push(
+      `GH_TOKEN_ROTATE_AFTER is past due: ${rotateAfter.value}. Rotate per ${ADDENDUM}.`,
+    );
+    return;
+  }
+
+  if (daysUntilRotation <= 14) {
+    console.warn(
+      `WARN: GH_TOKEN_ROTATE_AFTER is within ${daysUntilRotation} day(s): ${rotateAfter.value}.`,
+    );
+    return;
+  }
+
+  console.log(
+    `OK: GH_TOKEN_ROTATE_AFTER ${rotateAfter.value} is outside the 14-day warning window`,
+  );
+}
+
+function checkExpectedVaultLocation(failures) {
+  const opRef = resolveEnvValue('GH_TOKEN_OP_REF');
+  if (opRef.value && opRef.value.includes('Governada-Human/governada-app-agent')) {
+    failures.push(`GH_TOKEN_OP_REF still points at Governada-Human; update it per ${ADDENDUM}.`);
+    return;
+  }
+
+  if (opRef.value && opRef.value !== EXPECTED_GH_TOKEN_OP_REF) {
+    failures.push(`GH_TOKEN_OP_REF must be ${EXPECTED_GH_TOKEN_OP_REF} per ${ADDENDUM}.`);
+  }
+}
+
 function main() {
   const failures = [];
 
   console.log('GitHub auth: SSH + 1Password and GH_TOKEN_OP_REF probes');
   checkSshLane(failures);
+  checkAgentServiceAccountRuntime(failures);
+  checkWrapperNoDesktopAuth(failures);
+  checkExpectedVaultLocation(failures);
   checkApiLane(failures);
 
   if (failures.length > 0) {

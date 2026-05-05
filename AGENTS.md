@@ -54,7 +54,7 @@ Canonical agent guide for `governada/app`. Provider adapters in `.claude/`, Curs
 
 `bin/gh.sh` is a governed capability lane, not a generic `gh` shell. It allowlists read/status, draft PR creation, PR metadata edits, and PR comments; it blocks token-printing, merge, ready-for-review, destructive API, admin, secret, workflow-dispatch, and other-repo operations before secret resolution.
 
-If broken, run `npm run gh:auth-status` (probes both lanes plus API capability and token expiry separately).
+If GitHub/API auth is broken, run `npm run gh:auth-status` (probes both lanes plus API capability and token expiry separately). If routine automation secret access is broken, run `npm run op:agent-doctor`; do not move provider secrets into `.env.local`. Use `npm run env:doctor` when you need the first-line active credential lane indicator.
 
 The autonomous-agent secret-read lane (`OP_AGENT_SERVICE_ACCOUNT_TOKEN`, vault `Governada-Agent`) reads the GitHub PAT and the PostHog dev credential from `Governada-Agent`. Per ADR Addendum #3, this is exactly one bounded GitHub credential; expanding the agent's GitHub access requires an explicit ADR addendum, not a vault-content change.
 

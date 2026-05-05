@@ -49,12 +49,17 @@ Canonical agent guide for `governada/app`. Provider adapters in `.claude/`, Curs
 
 - SSH + 1Password is the sole git lane.
 - Remotes use `git@github-governada:...`.
+- Routine automation secret reads use the `governada-agent-automation` 1Password Service Account through `npm run op:agent-doctor`; this lane is read-only, scoped to `Governada-Agent`, must not prompt through Tim's desktop session, and has zero GitHub access or production scopes.
+- `OP_CONNECT_HOST` and `OP_CONNECT_TOKEN` must not be set for the service-account lane because they override `OP_AGENT_SERVICE_ACCOUNT_TOKEN`.
 - If broken, run `npm run gh:auth-status`, then `npm run auth:repair`.
+- If routine automation secret access is broken, run `npm run op:agent-doctor`; do not move provider secrets into `.env.local`.
 - Do not print, copy, or store raw secrets.
+- Secret creation, rotation, deletion, production data writes, production deploy approval, and PR merge approval remain human/manual gates.
 
 ## Where to Find More
 
 - Architecture: `docs/architecture.md`
+- Agent secret access: `docs/operations/agent-secret-access.md`
 - Shipped/not-shipped status: `docs/manifest.md`
 - Terms and code names: `docs/glossary.md`
 - Brain entry: `/Users/tim/dev/governada/governada-brain/agents/governada-context.md`

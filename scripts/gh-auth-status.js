@@ -343,15 +343,15 @@ function checkWrapperCapabilityPolicy(failures) {
     },
     {
       args: ['api', 'graphql', '-f', 'query=mutation{addComment(input:{}){clientMutationId}}'],
-      label: 'GraphQL mutation bypass',
+      label: 'GraphQL endpoint bypass',
       expectedStderr: policyBlockPrefix,
-      okMessage: 'OK: GraphQL mutation blocked',
+      okMessage: 'OK: GraphQL endpoint blocked',
     },
   ];
 
   for (const probe of blockedProbes) {
     const result = runGhApi(probe.args, preSecretProbeEnv);
-    if (result.status === 0 || !result.stderr.includes(probe.expectedStderr)) {
+    if (result.status === 0 || !firstLine(result.stderr).startsWith(probe.expectedStderr)) {
       failures.push(`bin/gh.sh did not block ${probe.label}: ${resultSummary(result)}`);
       return;
     }

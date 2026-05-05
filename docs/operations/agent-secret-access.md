@@ -153,7 +153,7 @@ npm run op:agent-doctor
 - SSH + 1Password git lane still works.
 - Agent service-account env file exists, is owner-only, and contains an `ops_` token shape.
 - `bin/gh.sh` does not invoke Desktop auth.
-- `bin/gh.sh` blocks token-printing commands, merge commands, unsafe API methods, direct non-draft PR creation, API-layer merge bypass, ref-overwrite via API, and GraphQL mutation before secret resolution.
+- `bin/gh.sh` blocks token-printing commands, merge commands, unsafe API methods, direct non-draft PR creation, API-layer merge bypass, ref-overwrite via API, and the GraphQL endpoint before secret resolution.
 - `bin/gh.sh` resolves the GitHub token through service-account auth without prompt-shaped output.
 - GitHub API read works for `governada/app`.
 - PR-create capability reaches GitHub validation with `pull_requests:write`.

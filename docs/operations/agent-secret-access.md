@@ -146,6 +146,7 @@ Run:
 ```bash
 npm run gh:auth-status
 npm run op:agent-doctor
+npm run env:doctor
 ```
 
 `npm run gh:auth-status` checks:
@@ -159,7 +160,15 @@ npm run op:agent-doctor
 - PR-create capability reaches GitHub validation with `pull_requests:write`.
 - GitHub PAT rotation date is valid and outside the 14-day warning window.
 
-`npm run op:agent-doctor` checks the broader 1Password service-account lane and expected vault items. It must not print secret values.
+`npm run op:agent-doctor` checks the broader 1Password service-account lane and expected vault items. It fails closed if `OP_CONNECT_HOST` or `OP_CONNECT_TOKEN` are set, because those override service-account auth. It must not print secret values.
+
+`npm run env:doctor` prints the first-line active credential lane indicator:
+
+- `Active credential lane: agent (OP_AGENT_SERVICE_ACCOUNT_TOKEN, vault=Governada-Agent)`
+- `Active credential lane: human (SSH+1Password Desktop)`
+- `Active credential lane: NONE`
+
+The lane indicator is intentionally one line. Per-secret read logging is deferred until the 2026-06-01 audit if lane confusion actually happens.
 
 ## Manual Gates Stay Manual
 
@@ -184,7 +193,8 @@ Always pause for Tim's explicit approval before:
 6. Confirm first rotation dates are set for the service-account token and GitHub PAT.
 7. Confirm `/Users/tim/dev/agent-runtime/env/governada-agent.env` exists with mode `600`.
 8. Run `npm run op:agent-doctor`.
-9. Run `npm run gh:auth-status`.
+9. Run `npm run env:doctor`.
+10. Run `npm run gh:auth-status`.
 
 ## References
 

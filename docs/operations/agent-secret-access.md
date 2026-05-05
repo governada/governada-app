@@ -92,6 +92,8 @@ The wrapper:
 - Reads `OP_AGENT_SERVICE_ACCOUNT_TOKEN` from `/Users/tim/dev/agent-runtime/env/governada-agent.env`.
 - Maps that token to `OP_SERVICE_ACCOUNT_TOKEN` only for the `op` subprocess.
 - Unsets `OP_ACCOUNT`, `OP_CONNECT_HOST`, and `OP_CONNECT_TOKEN` so 1Password Desktop and Connect do not override service-account auth.
+- Blocks token-printing `gh auth` commands.
+- Redacts GitHub token, service-account token, and op-ref shapes from stdout and stderr.
 - Never prints or writes the GitHub token.
 
 This is the GitHub API write lane from `lean-agent-harness` Addendum #3. It can create draft PRs and update PR metadata within the PAT scope. It is not a merge lane.

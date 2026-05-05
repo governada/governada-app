@@ -13,8 +13,34 @@ redact() {
     -e 's/vault [a-z0-9]{20,}/vault [redacted]/g'
 }
 
+reject_token_oracle_command() {
+  local command="${1:-}"
+  local subcommand="${2:-}"
+
+  if [[ "$command" == "auth" && "$subcommand" == "token" ]]; then
+    echo 'BLOCKED: bin/gh.sh does not run token-printing gh auth commands.' >&2
+    exit 1
+  fi
+
+  if [[ "$command" == "auth" && "$subcommand" == "status" ]]; then
+    local arg
+    for arg in "$@"; do
+      if [[ "$arg" == "--show-token" ]]; then
+        echo 'BLOCKED: bin/gh.sh does not run token-printing gh auth commands.' >&2
+        exit 1
+      fi
+    done
+  fi
+}
+
+reject_token_oracle_command "$@"
+
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-repo_root="$(git -C "$script_dir/.." rev-parse --show-toplevel 2>/dev/null || cd "$script_dir/.." && pwd -P)"
+if repo_root="$(git -C "$script_dir/.." rev-parse --show-toplevel 2>/dev/null)"; then
+  :
+else
+  repo_root="$(cd "$script_dir/.." && pwd -P)"
+fi
 
 refs_file="${GOVERNADA_GH_ENV_REFS_FILE:-}"
 if [[ -z "$refs_file" ]]; then
@@ -97,7 +123,7 @@ set +e
       -u OP_CONNECT_HOST \
       -u OP_CONNECT_TOKEN \
       "$gh_bin" "$@"
-) 2> >(redact >&2)
+) > >(redact) 2> >(redact >&2)
 status=$?
 set -e
 

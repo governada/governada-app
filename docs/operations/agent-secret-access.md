@@ -110,7 +110,7 @@ Allowed command groups:
 - `gh pr view`, `gh pr list`, `gh pr diff`, `gh pr checks`, and `gh pr status`.
 - `gh pr create` only with `--draft`.
 - `gh pr edit` for PR title/body metadata.
-- `gh pr comment` for posting PR comments.
+- `gh pr comment` for posting PR comments. **Etiquette:** agents post at most one comment per PR — typically the closeout summary. Multi-comment threads are human-driven only. Comments that contain log dumps, progress updates, or per-step status are out of scope and indicate a workflow problem, not a wrapper one.
 
 Blocked command groups include:
 
@@ -119,7 +119,16 @@ Blocked command groups include:
 - Destructive or administrative `gh api` methods/endpoints such as `DELETE`, repo settings, secrets, variables, environments, branch protection, workflow dispatch, releases, deployments, and actions mutation.
 - Any repo target other than `governada/app`.
 
-Extending this allowlist requires an ADR addendum plus updated doctor probes. Do not broaden it with a local wrapper edit only.
+### Allowlist Extension Policy
+
+The allowlist is intentionally narrow. Extending it is a deliberate action, not a silent edit.
+
+1. An agent flow hits `BLOCKED: ...` from `bin/gh.sh`. The blocked operation is recorded with its exact command shape.
+2. Tim decides whether the operation is in scope for the autonomous lane (gut check: would I be comfortable if this PAT were exercised by a compromised agent runtime executing this exact operation against `governada/app`?).
+3. If yes: a one-line entry is added to ADR Addendum #2's "What's added" list (or whichever addendum scopes the lane), the wrapper allowlist gets the new entry, and `gh-auth-status` gets a positive probe (the operation now succeeds) and a negative probe (a near-miss variant still fails closed).
+4. The change ships as a single PR reviewed against the addendum diff. The wrapper allowlist edit is never reviewed in isolation; it always lands with the addendum line and the doctor probes.
+
+A near-miss negative probe is required because the value of the allowlist is closed-default, and that default is only as good as its boundary tests. Adding a permission without testing the surrounding restrictions weakens the lane.
 
 ## Expiration And Rotation Policy
 
@@ -144,7 +153,7 @@ npm run op:agent-doctor
 - SSH + 1Password git lane still works.
 - Agent service-account env file exists, is owner-only, and contains an `ops_` token shape.
 - `bin/gh.sh` does not invoke Desktop auth.
-- `bin/gh.sh` blocks token-printing commands, merge commands, unsafe API methods, and direct non-draft PR creation before secret resolution.
+- `bin/gh.sh` blocks token-printing commands, merge commands, unsafe API methods, direct non-draft PR creation, API-layer merge bypass, ref-overwrite via API, and GraphQL mutation before secret resolution.
 - `bin/gh.sh` resolves the GitHub token through service-account auth without prompt-shaped output.
 - GitHub API read works for `governada/app`.
 - PR-create capability reaches GitHub validation with `pull_requests:write`.

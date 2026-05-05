@@ -304,34 +304,60 @@ function checkWrapperNoDesktopAuth(failures) {
 }
 
 function checkWrapperCapabilityPolicy(failures) {
+  const policyBlockPrefix = 'BLOCKED: bin/gh.sh allows only governed Governada GitHub operations';
+  const preSecretProbeEnv = {
+    OP_AGENT_RUNTIME_FILE: '/private/tmp/governada-gh-policy-probe-no-secret-env',
+  };
   const blockedProbes = [
     {
       args: ['auth', 'token'],
       label: 'token-printing auth command',
+      expectedStderr: 'BLOCKED: bin/gh.sh does not run token-printing gh auth commands.',
     },
     {
       args: ['api', '-X', 'DELETE', `repos/${API_REPO}`],
       label: 'destructive API method',
+      expectedStderr: policyBlockPrefix,
     },
     {
       args: ['api', '-X', 'POST', `repos/${API_REPO}/pulls`, '-f', 'title=probe'],
       label: 'direct non-draft PR creation',
+      expectedStderr: policyBlockPrefix,
     },
     {
       args: ['pr', 'merge', '1', '--repo', API_REPO],
       label: 'PR merge command',
+      expectedStderr: policyBlockPrefix,
+    },
+    {
+      args: ['api', '-X', 'PUT', `repos/${API_REPO}/pulls/1/merge`],
+      label: 'API-layer merge bypass',
+      expectedStderr: policyBlockPrefix,
+      okMessage: 'OK: API-merge bypass blocked',
+    },
+    {
+      args: ['api', '-X', 'PATCH', `repos/${API_REPO}/git/refs/heads/main`],
+      label: 'ref-overwrite via API',
+      expectedStderr: policyBlockPrefix,
+      okMessage: 'OK: ref-overwrite via API blocked',
+    },
+    {
+      args: ['api', 'graphql', '-f', 'query=mutation{addComment(input:{}){clientMutationId}}'],
+      label: 'GraphQL mutation bypass',
+      expectedStderr: policyBlockPrefix,
+      okMessage: 'OK: GraphQL mutation blocked',
     },
   ];
 
   for (const probe of blockedProbes) {
-    const result = runGhApi(probe.args);
-    if (
-      result.status === 0 ||
-      !outputOf(result).includes('BLOCKED:') ||
-      !outputOf(result).includes('bin/gh.sh')
-    ) {
+    const result = runGhApi(probe.args, preSecretProbeEnv);
+    if (result.status === 0 || !result.stderr.includes(probe.expectedStderr)) {
       failures.push(`bin/gh.sh did not block ${probe.label}: ${resultSummary(result)}`);
       return;
+    }
+
+    if (probe.okMessage) {
+      console.log(probe.okMessage);
     }
   }
 

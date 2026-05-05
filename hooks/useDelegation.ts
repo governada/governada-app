@@ -130,31 +130,19 @@ export function useDelegation() {
 
         setPhase({ status: 'success', txHash: result.txHash, confirmed: false });
 
-        import('@/lib/posthog')
-          .then(({ posthog }) => {
-            const delegationPayload = {
-              drep_id: drepId,
-              previous_drep_id: delegatedDrepId || null,
-              tx_hash: result.txHash,
-              stake_registered: preflight.stakeRegistered,
-            };
-            posthog.capture('delegation_completed', delegationPayload);
-            // Phase 0: dual-emit during delegated naming transition
-            posthog.capture('delegated', delegationPayload);
-          })
-          .catch(() => {});
-
-        waitForTxConfirmation(result.txHash, {
-          maxAttempts: 30,
-          intervalMs: 10_000,
-          onConfirmed: () => {
-            setPhase((prev) =>
-              prev.status === 'success' && prev.txHash === result.txHash
-                ? { ...prev, confirmed: true }
-                : prev,
-            );
-          },
-        }).catch(() => {});
+        if (result.mode !== 'sandbox') {
+          waitForTxConfirmation(result.txHash, {
+            maxAttempts: 30,
+            intervalMs: 10_000,
+            onConfirmed: () => {
+              setPhase((prev) =>
+                prev.status === 'success' && prev.txHash === result.txHash
+                  ? { ...prev, confirmed: true }
+                  : prev,
+              );
+            },
+          }).catch(() => {});
+        }
 
         return result;
       } catch (err) {
@@ -176,7 +164,7 @@ export function useDelegation() {
         return null;
       }
     },
-    [wallet, connected, isAuthenticated, refreshDelegation, delegatedDrepId],
+    [wallet, connected, isAuthenticated, refreshDelegation],
   );
 
   const reset = useCallback(() => {

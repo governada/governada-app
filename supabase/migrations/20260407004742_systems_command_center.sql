@@ -1,8 +1,21 @@
 -- Systems command center durable state
 -- Replace audit-log reconstruction with first-class systems tables while
 -- keeping admin_audit_log as the append-only audit trail.
+-- NOTE: This legacy 072_* migration sorts before timestamped rebaseline
+-- migrations on fresh preview replays. Keep guards below tolerant of tables
+-- that may not exist yet.
 
 BEGIN;
+
+CREATE OR REPLACE FUNCTION public.set_updated_at() RETURNS trigger
+  LANGUAGE plpgsql
+  SET search_path TO 'public'
+  AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
 
 CREATE TABLE IF NOT EXISTS systems_reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -325,6 +338,9 @@ CREATE POLICY "systems_journey_verifications_service_role_full_access"
   ON systems_journey_verifications FOR ALL
   USING (auth.role() = 'service_role');
 
+DO $systems_backfill$
+BEGIN
+IF to_regclass('public.admin_audit_log') IS NOT NULL THEN
 WITH latest_incidents AS (
   SELECT DISTINCT ON (target)
     target,
@@ -750,5 +766,9 @@ WHERE action = 'systems_review_draft_generated'
     WHERE existing.created_at = admin_audit_log.created_at
       AND existing.review_date = (admin_audit_log.payload ->> 'reviewDate')::date
   );
+
+END IF;
+END;
+$systems_backfill$;
 
 COMMIT;

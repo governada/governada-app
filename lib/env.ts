@@ -1,15 +1,27 @@
 import { z } from 'zod';
 import { logger } from './logger';
 
-const requiredEnv = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SECRET_KEY: z.string().min(1),
-  SESSION_SECRET: z.string().min(32),
-  CRON_SECRET: z.string().min(1),
-  UPSTASH_REDIS_REST_URL: z.string().url(),
-  UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
-});
+const requiredEnv = z
+  .object({
+    NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
+    SUPABASE_SECRET_KEY: z.string().min(1),
+    SESSION_SECRET: z.string().min(32),
+    CRON_SECRET: z.string().min(1),
+    UPSTASH_REDIS_REST_URL: z.string().url(),
+    UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
+  })
+  .superRefine((env, ctx) => {
+    if (!env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && !env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'],
+        message:
+          'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required; NEXT_PUBLIC_SUPABASE_ANON_KEY is accepted temporarily for legacy compatibility',
+      });
+    }
+  });
 
 const optionalEnv = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),

@@ -4,7 +4,11 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
 const AGENT_TOKEN_KEY = 'OP_AGENT_SERVICE_ACCOUNT_TOKEN';
-const OP_CLI_SERVICE_ACCOUNT_TOKEN_KEY = ['OP', 'SERVICE', 'ACCOUNT', 'TOKEN'].join('_');
+// `op` CLI expects the literal env var name OP_SERVICE_ACCOUNT_TOKEN; this
+// doctor maps OP_AGENT_SERVICE_ACCOUNT_TOKEN into it for the subprocess only,
+// per ADR Addendum #1's rename. The literal must appear here for the CLI to
+// authenticate; live code paths use OP_AGENT_SERVICE_ACCOUNT_TOKEN.
+const OP_CLI_NATIVE_TOKEN_VAR = 'OP_SERVICE_ACCOUNT_TOKEN';
 const DEFAULT_ENV_FILE = '/Users/tim/dev/agent-runtime/env/governada-agent.env';
 const DEFAULT_VAULT = 'Governada-Agent';
 const DEFAULT_EXPECTED_ITEMS = [
@@ -300,7 +304,7 @@ function main() {
     ...process.env,
   };
   const token = mergedEnv[AGENT_TOKEN_KEY] || '';
-  const legacyToken = mergedEnv[OP_CLI_SERVICE_ACCOUNT_TOKEN_KEY] || '';
+  const legacyToken = mergedEnv[OP_CLI_NATIVE_TOKEN_VAR] || '';
   const sensitiveValues = [token, legacyToken];
   const vault = options.vault || mergedEnv.GOVERNADA_OP_AGENT_VAULT || DEFAULT_VAULT;
   const envItems = parseItemsEnv(mergedEnv.GOVERNADA_OP_AGENT_ITEMS || '');
@@ -326,9 +330,9 @@ function main() {
 
   if (legacyToken && !token) {
     failures.push(
-      `${OP_CLI_SERVICE_ACCOUNT_TOKEN_KEY} is set but no longer recognized for this lane - rename to ${AGENT_TOKEN_KEY} per the lean-agent-harness ADR addendum.`,
+      `${OP_CLI_NATIVE_TOKEN_VAR} is set but no longer recognized for this lane - rename to ${AGENT_TOKEN_KEY} per the lean-agent-harness ADR addendum.`,
     );
-    printCheck(false, `${OP_CLI_SERVICE_ACCOUNT_TOKEN_KEY} is not recognized for this lane`);
+    printCheck(false, `${OP_CLI_NATIVE_TOKEN_VAR} is not recognized for this lane`);
   } else if (!token) {
     failures.push(`${AGENT_TOKEN_KEY} is missing from process env and ${options.envFile}.`);
     printCheck(false, `${AGENT_TOKEN_KEY} is missing`);
@@ -349,7 +353,14 @@ function main() {
     printCheck(true, 'OP_CONNECT_HOST and OP_CONNECT_TOKEN are absent');
   }
 
-  const version = runOp(['--version'], mergedEnv, sensitiveValues);
+  const opProbeEnv = {
+    ...mergedEnv,
+  };
+  delete opProbeEnv.OP_CONNECT_HOST;
+  delete opProbeEnv.OP_CONNECT_TOKEN;
+  delete opProbeEnv.OP_ACCOUNT;
+
+  const version = runOp(['--version'], opProbeEnv, sensitiveValues);
   if (version.status !== 0) {
     failures.push(`1Password CLI probe failed: ${resultSummary(version, sensitiveValues)}`);
     printCheck(false, '1Password CLI (`op`) is not available');
@@ -377,11 +388,9 @@ function main() {
 
   if (failures.length === 0) {
     const opEnv = {
-      ...mergedEnv,
+      ...opProbeEnv,
     };
-    opEnv[OP_CLI_SERVICE_ACCOUNT_TOKEN_KEY] = token;
-    delete opEnv.OP_CONNECT_HOST;
-    delete opEnv.OP_CONNECT_TOKEN;
+    opEnv[OP_CLI_NATIVE_TOKEN_VAR] = token;
 
     const itemList = runOp(
       ['item', 'list', '--vault', vault, '--format', 'json'],

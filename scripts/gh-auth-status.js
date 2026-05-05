@@ -11,6 +11,7 @@ const ADDENDUM =
   '[[decisions/lean-agent-harness#addendum-3-2026-05-04--agent-sa-reads-the-github-pat-revises-addenda-1-and-2]]';
 const API_REPO = 'governada/app';
 const GH_WRAPPER = path.join(repoRoot, 'bin', 'gh.sh');
+const OP_AGENT_DOCTOR = path.join(repoRoot, 'scripts', 'op-agent-doctor.mjs');
 const ENV_REFS_FILE = '.env.local.refs';
 const DEFAULT_AGENT_RUNTIME_FILE = '/Users/tim/dev/agent-runtime/env/governada-agent.env';
 const EXPECTED_GH_TOKEN_OP_REF = 'op://Governada-Agent/governada-app-agent/credential';
@@ -303,6 +304,30 @@ function checkWrapperNoDesktopAuth(failures) {
   console.log('OK: bin/gh.sh does not invoke Desktop auth');
 }
 
+function checkOpAgentDoctorNoDesktopAuth(failures) {
+  const doctor = fs.existsSync(OP_AGENT_DOCTOR) ? fs.readFileSync(OP_AGENT_DOCTOR, 'utf8') : '';
+  if (!doctor) {
+    failures.push('scripts/op-agent-doctor.mjs is missing.');
+    return;
+  }
+
+  const unsafeReferences = doctor
+    .split(/\r?\n/u)
+    .map((line, index) => ({ line, lineNumber: index + 1 }))
+    .filter(({ line }) => line.includes('OP_ACCOUNT'))
+    .filter(({ line }) => !/^\s*delete\s+\w+\.OP_ACCOUNT\s*;\s*$/.test(line));
+
+  if (unsafeReferences.length > 0) {
+    const lines = unsafeReferences.map(({ lineNumber }) => lineNumber).join(', ');
+    failures.push(
+      `scripts/op-agent-doctor.mjs references OP_ACCOUNT outside env deletion on line(s): ${lines}.`,
+    );
+    return;
+  }
+
+  console.log('OK: scripts/op-agent-doctor.mjs only deletes OP_ACCOUNT before op subprocesses');
+}
+
 function checkWrapperCapabilityPolicy(failures) {
   const policyBlockPrefix = 'BLOCKED: bin/gh.sh allows only governed Governada GitHub operations';
   const preSecretProbeEnv = {
@@ -516,6 +541,7 @@ function main() {
   checkSshLane(failures);
   checkAgentServiceAccountRuntime(failures);
   checkWrapperNoDesktopAuth(failures);
+  checkOpAgentDoctorNoDesktopAuth(failures);
   checkWrapperCapabilityPolicy(failures);
   checkExpectedVaultLocation(failures);
   checkApiLane(failures);

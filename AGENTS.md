@@ -47,10 +47,16 @@ Canonical agent guide for `governada/app`. Provider adapters in `.claude/`, Curs
 
 ## Auth
 
-- SSH + 1Password is the sole git lane.
-- Remotes use `git@github-governada:...`.
-- If broken, run `npm run gh:auth-status`, then `npm run auth:repair`.
-- Do not print, copy, or store raw secrets.
+**Two lanes, both 1Password-sourced:**
+
+- **git push/pull:** SSH + 1Password Desktop. Remotes use `git@github-governada:...`.
+- **GitHub API (PR create, comments, status):** `GH_TOKEN_OP_REF` resolved at runtime via `bin/gh.sh` (or `npm run gh -- ...`). PAT is fine-grained, scoped to `governada/app` only with `Contents:write`, `Pull requests:write`, `Metadata:read`, `Workflows:read`. Stored in 1Password `Governada-Human` vault.
+
+If broken, run `npm run gh:auth-status` (probes both lanes plus API capability and token expiry separately).
+
+The agent service-account lane (`OP_AGENT_SERVICE_ACCOUNT_TOKEN`, vault `Governada-Agent`, per ADR Addendum #1) is for non-git secret reads only and has zero GitHub access. Do not put GitHub tokens in the agent vault.
+
+Do not print, copy, or store raw secrets. Token rotation is a Tim manual action.
 
 ## Where to Find More
 

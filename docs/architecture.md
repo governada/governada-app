@@ -95,6 +95,12 @@ verification. The non-production stack is isolated from production writes, but
 it still reads mainnet governance data where the product experience depends on
 current chain state.
 
+Claude Preview (the agent-internal MCP tool, documented in
+`.claude/rules/archive/dev-preview.md`) is the inner-loop verification harness
+used during coding. It is not a substitute for the Railway preview deploy and
+`preview:verify` flow described below — those remain the integration-honest
+gate before merge.
+
 - Staging is a persistent Railway environment at `https://stg.governada.io`
   backed by a persistent Supabase staging branch, non-prod Redis, and the
   non-prod PostHog project.

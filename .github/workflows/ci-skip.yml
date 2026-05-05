@@ -1,0 +1,23 @@
+# Pass-through CI for docs-only PRs.
+# ci.yml's paths-ignore excludes these paths, which leaves the required
+# `build` check forever pending on docs-only PRs (auto-merge never fires,
+# branch protection blocks). This sentinel workflow runs on the inverse
+# path set and reports `build` success so the required-check contract is
+# satisfied without weakening the real build for code PRs.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'tasks/**'
+      - '.cursor/**'
+      - '.claude/**'
+      - 'LICENSE'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "build pass-through for docs-only PR (matches ci.yml paths-ignore at .github/workflows/ci.yml)"

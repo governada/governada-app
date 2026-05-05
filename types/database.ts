@@ -5618,6 +5618,30 @@ export type Database = {
           },
         ];
       };
+      sandbox_delegations: {
+        Row: {
+          created_at: string;
+          id: string;
+          simulated_tx_hash: string;
+          stake_address: string;
+          target_drep_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          simulated_tx_hash: string;
+          stake_address: string;
+          target_drep_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          simulated_tx_hash?: string;
+          stake_address?: string;
+          target_drep_id?: string;
+        };
+        Relationships: [];
+      };
       scoring_methodology_changelog: {
         Row: {
           changes: Json;

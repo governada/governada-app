@@ -88,6 +88,62 @@ Cardano data sources
 - Serve: routes and APIs read cached governance data through `lib/data.ts` and subsystem libraries.
 - Render: Hub and Workspace prioritize action; Governance prioritizes understanding; You prioritizes identity.
 
+## Testing
+
+Governada uses staging and per-PR preview environments for UX and telemetry
+verification. The non-production stack is isolated from production writes, but
+it still reads mainnet governance data where the product experience depends on
+current chain state.
+
+- Staging is a persistent Railway environment at `https://stg.governada.io`
+  backed by a persistent Supabase staging branch, non-prod Redis, and the
+  non-prod PostHog project.
+- Railway PR environments inherit from staging, not production. This keeps PR
+  previews production-shaped without copying production-write credentials.
+- Each eligible feature PR gets a Supabase branch database through the Supabase
+  preview integration. Migrations apply to that branch before smoke checks run.
+- Each eligible feature PR gets a Railway preview deploy. Railway injects the
+  preview domain and Git metadata, and the deploy is torn down automatically
+  when the PR closes.
+- GitHub Actions resolves the Supabase branch credentials and writes them into
+  the matching Railway `app-pr-*` environment before verification. This dynamic
+  PR-environment wiring requires a Railway account-scoped token exposed as
+  `RAILWAY_API_TOKEN`. Create it from Railway account settings with no
+  workspace selected; project-scoped and workspace-scoped Railway tokens are not
+  sufficient for the CLI operations used here.
+- GitHub Actions also wires `POSTHOG_DEV_PROJECT_TOKEN` into Railway previews as
+  `NEXT_PUBLIC_POSTHOG_KEY`, with `NEXT_PUBLIC_POSTHOG_HOST` defaulting to the
+  US PostHog ingestion host unless `POSTHOG_DEV_HOST` is set as a repository
+  variable. The Dockerfile declares public `NEXT_PUBLIC_*` values as build args
+  so Railway can expose those public build-time values to the Next.js client
+  bundle. Funnel evidence for preview PRs must come from the non-prod PostHog
+  project.
+- Preview Supabase auth is separate from production auth. Preview keys and
+  service-role credentials are configured in GitHub or Railway secrets, never in
+  committed files.
+- Preview delegation runs in sandbox mode with `GOVERNADA_DELEGATION_MODE` set
+  to `sandbox`. Sandbox delegation preserves the normal validation and telemetry
+  path, writes the simulated delegation to the preview Supabase branch, and skips
+  wallet signing and on-chain transaction submission.
+- Critical delegation success events are relayed through a same-origin API route
+  and captured server-side, then fall back to browser capture only if the relay
+  fails. This keeps the `delegation_completed` and `delegated` funnel reliable
+  for Brave, Do Not Track, and common blocker setups without changing event
+  names or funnel properties.
+- Production defaults to mainnet mode. Sandbox mode is only for delegation
+  writes; DRep state, proposal state, sentiment reads, matching, scoring, and
+  other governance reads remain driven by the normal mainnet-backed data paths.
+- Synthetic preview seed data is deterministic and contains no real PII. It
+  exists to make homepage cinema, sentiment, proposal, and delegation smoke tests
+  meaningful on a fresh branch database.
+- `npm run preview:verify` is the per-PR smoke command. It checks
+  `/api/health/ready`, confirms the homepage renders, verifies sandbox
+  delegation mode, and requires seeded constellation data before a PR is treated
+  as UX-verifiable.
+- Preview PR descriptions should link the Railway URL and include screenshot or
+  recording evidence. PRs that touch funnel telemetry should also include
+  PostHog evidence from the dev project.
+
 ## Navigation Model
 
 - Home/Hub: persona-adaptive control center.

@@ -22,7 +22,7 @@ SET row_security = off;
 -- Name: public; Type: SCHEMA; Schema: -; Owner: pg_database_owner
 --
 
-CREATE SCHEMA "public";
+CREATE SCHEMA IF NOT EXISTS "public";
 
 
 ALTER SCHEMA "public" OWNER TO "pg_database_owner";
@@ -32,6 +32,11 @@ ALTER SCHEMA "public" OWNER TO "pg_database_owner";
 --
 
 COMMENT ON SCHEMA "public" IS 'standard public schema';
+
+
+CREATE SCHEMA IF NOT EXISTS "extensions";
+
+CREATE EXTENSION IF NOT EXISTS "vector" WITH SCHEMA "extensions";
 
 
 --
@@ -110,7 +115,7 @@ ALTER FUNCTION "public"."rls_auto_enable"() OWNER TO "postgres";
 -- Name: set_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE FUNCTION "public"."set_updated_at"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."set_updated_at"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
     AS $$
@@ -13541,5 +13546,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 --
 -- PostgreSQL database dump complete
 --
-
-

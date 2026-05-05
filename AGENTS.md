@@ -52,6 +52,8 @@ Canonical agent guide for `governada/app`. Provider adapters in `.claude/`, Curs
 - **git push/pull:** SSH + 1Password Desktop. Remotes use `git@github-governada:...`.
 - **GitHub API (PR create, comments, status):** `GH_TOKEN_OP_REF` resolved at runtime via `bin/gh.sh` (or `npm run gh -- ...`) using the agent service account. PAT is fine-grained, scoped to `governada/app` only with `Contents:write`, `Pull requests:write`, `Metadata:read`, `Workflows:read`. Stored in 1Password `Governada-Agent` vault as `governada-app-agent`.
 
+`bin/gh.sh` is a governed capability lane, not a generic `gh` shell. It allowlists read/status, draft PR creation, PR metadata edits, and PR comments; it blocks token-printing, merge, ready-for-review, destructive API, admin, secret, workflow-dispatch, and other-repo operations before secret resolution.
+
 If broken, run `npm run gh:auth-status` (probes both lanes plus API capability and token expiry separately).
 
 The autonomous-agent secret-read lane (`OP_AGENT_SERVICE_ACCOUNT_TOKEN`, vault `Governada-Agent`) reads the GitHub PAT and the PostHog dev credential from `Governada-Agent`. Per ADR Addendum #3, this is exactly one bounded GitHub credential; expanding the agent's GitHub access requires an explicit ADR addendum, not a vault-content change.

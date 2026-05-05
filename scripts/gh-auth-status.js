@@ -303,7 +303,69 @@ function checkWrapperNoDesktopAuth(failures) {
   console.log('OK: bin/gh.sh does not invoke Desktop auth');
 }
 
+function checkWrapperCapabilityPolicy(failures) {
+  const policyBlockPrefix = 'BLOCKED: bin/gh.sh allows only governed Governada GitHub operations';
+  const preSecretProbeEnv = {
+    OP_AGENT_RUNTIME_FILE: '/private/tmp/governada-gh-policy-probe-no-secret-env',
+  };
+  const blockedProbes = [
+    {
+      args: ['auth', 'token'],
+      label: 'token-printing auth command',
+      expectedStderr: 'BLOCKED: bin/gh.sh does not run token-printing gh auth commands.',
+    },
+    {
+      args: ['api', '-X', 'DELETE', `repos/${API_REPO}`],
+      label: 'destructive API method',
+      expectedStderr: policyBlockPrefix,
+    },
+    {
+      args: ['api', '-X', 'POST', `repos/${API_REPO}/pulls`, '-f', 'title=probe'],
+      label: 'direct non-draft PR creation',
+      expectedStderr: policyBlockPrefix,
+    },
+    {
+      args: ['pr', 'merge', '1', '--repo', API_REPO],
+      label: 'PR merge command',
+      expectedStderr: policyBlockPrefix,
+    },
+    {
+      args: ['api', '-X', 'PUT', `repos/${API_REPO}/pulls/1/merge`],
+      label: 'API-layer merge bypass',
+      expectedStderr: policyBlockPrefix,
+      okMessage: 'OK: API-merge bypass blocked',
+    },
+    {
+      args: ['api', '-X', 'PATCH', `repos/${API_REPO}/git/refs/heads/main`],
+      label: 'ref-overwrite via API',
+      expectedStderr: policyBlockPrefix,
+      okMessage: 'OK: ref-overwrite via API blocked',
+    },
+    {
+      args: ['api', 'graphql', '-f', 'query=mutation{addComment(input:{}){clientMutationId}}'],
+      label: 'GraphQL endpoint bypass',
+      expectedStderr: policyBlockPrefix,
+      okMessage: 'OK: GraphQL endpoint blocked',
+    },
+  ];
+
+  for (const probe of blockedProbes) {
+    const result = runGhApi(probe.args, preSecretProbeEnv);
+    if (result.status === 0 || !firstLine(result.stderr).startsWith(probe.expectedStderr)) {
+      failures.push(`bin/gh.sh did not block ${probe.label}: ${resultSummary(result)}`);
+      return;
+    }
+
+    if (probe.okMessage) {
+      console.log(probe.okMessage);
+    }
+  }
+
+  console.log('OK: bin/gh.sh capability allowlist blocks token, merge, and unsafe API commands');
+}
+
 function checkApiLane(failures) {
+  const apiFailuresAtStart = failures.length;
   const opRef = resolveEnvValue('GH_TOKEN_OP_REF');
   const rotateAfter = resolveEnvValue('GH_TOKEN_ROTATE_AFTER');
 
@@ -328,7 +390,7 @@ function checkApiLane(failures) {
 
   const userProbe = runGhApi(['api', 'user', '--jq', '.login'], wrapperEnv);
   assertNoDesktopPromptShape(userProbe, failures, 'bin/gh.sh api user');
-  if (failures.length > 0) {
+  if (failures.length > apiFailuresAtStart) {
     return;
   }
   if (userProbe.status === 0 && userProbe.stdout.trim() === EXPECTED_USER) {
@@ -340,7 +402,7 @@ function checkApiLane(failures) {
 
   const repoRead = runGhApi(['api', `repos/${API_REPO}`, '-i'], wrapperEnv);
   assertNoDesktopPromptShape(repoRead, failures, `repos/${API_REPO} read`);
-  if (failures.length > 0) {
+  if (failures.length > apiFailuresAtStart) {
     return;
   }
   const repoReadStatus = parseHttpStatus(`${repoRead.stdout}\n${repoRead.stderr}`);
@@ -364,6 +426,8 @@ function checkApiLane(failures) {
       'head=governada:__governada_auth_probe_missing_head__',
       '-f',
       'base=main',
+      '-F',
+      'draft=true',
       '-f',
       `body=Capability probe for ${ADDENDUM}. Expected result is validation failure, not PR creation.`,
     ],
@@ -371,7 +435,7 @@ function checkApiLane(failures) {
   );
   const prProbeOutput = `${prCreateProbe.stdout}\n${prCreateProbe.stderr}`;
   assertNoDesktopPromptShape(prCreateProbe, failures, 'PR-create capability probe');
-  if (failures.length > 0) {
+  if (failures.length > apiFailuresAtStart) {
     return;
   }
   const prProbeStatus = parseHttpStatus(prProbeOutput);
@@ -452,6 +516,7 @@ function main() {
   checkSshLane(failures);
   checkAgentServiceAccountRuntime(failures);
   checkWrapperNoDesktopAuth(failures);
+  checkWrapperCapabilityPolicy(failures);
   checkExpectedVaultLocation(failures);
   checkApiLane(failures);
 

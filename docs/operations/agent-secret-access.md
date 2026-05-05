@@ -92,11 +92,43 @@ The wrapper:
 - Reads `OP_AGENT_SERVICE_ACCOUNT_TOKEN` from `/Users/tim/dev/agent-runtime/env/governada-agent.env`.
 - Maps that token to `OP_SERVICE_ACCOUNT_TOKEN` only for the `op` subprocess.
 - Unsets `OP_ACCOUNT`, `OP_CONNECT_HOST`, and `OP_CONNECT_TOKEN` so 1Password Desktop and Connect do not override service-account auth.
+- Enforces a command and endpoint allowlist before any 1Password token resolution.
 - Blocks token-printing `gh auth` commands.
 - Redacts GitHub token, service-account token, and op-ref shapes from stdout and stderr.
 - Never prints or writes the GitHub token.
 
 This is the GitHub API write lane from `lean-agent-harness` Addendum #3. It can create draft PRs and update PR metadata within the PAT scope. It is not a merge lane.
+
+### Capability Allowlist
+
+`bin/gh.sh` is a governed capability lane, not a generic `gh` shell.
+
+Allowed command groups:
+
+- `gh api` for narrow Governada read endpoints: authenticated user, `governada/app` repo metadata, PR reads, check-run reads, and workflow-run/job log reads.
+- `gh api POST /repos/governada/app/pulls` only when the request includes `draft=true`.
+- `gh pr view`, `gh pr list`, `gh pr diff`, `gh pr checks`, and `gh pr status`.
+- `gh pr create` only with `--draft`.
+- `gh pr edit` for PR title/body metadata.
+- `gh pr comment` for posting PR comments. **Etiquette:** agents post at most one comment per PR — typically the closeout summary. Multi-comment threads are human-driven only. Comments that contain log dumps, progress updates, or per-step status are out of scope and indicate a workflow problem, not a wrapper one.
+
+Blocked command groups include:
+
+- `gh auth token` and `gh auth status --show-token`.
+- `gh pr merge`, `gh pr ready`, `gh pr close`, `gh pr reopen`, and `gh pr review`.
+- Destructive or administrative `gh api` methods/endpoints such as `DELETE`, repo settings, secrets, variables, environments, branch protection, workflow dispatch, releases, deployments, and actions mutation.
+- Any repo target other than `governada/app`.
+
+### Allowlist Extension Policy
+
+The allowlist is intentionally narrow. Extending it is a deliberate action, not a silent edit.
+
+1. An agent flow hits `BLOCKED: ...` from `bin/gh.sh`. The blocked operation is recorded with its exact command shape.
+2. Tim decides whether the operation is in scope for the autonomous lane (gut check: would I be comfortable if this PAT were exercised by a compromised agent runtime executing this exact operation against `governada/app`?).
+3. If yes: a one-line entry is added to ADR Addendum #2's "What's added" list (or whichever addendum scopes the lane), the wrapper allowlist gets the new entry, and `gh-auth-status` gets a positive probe (the operation now succeeds) and a negative probe (a near-miss variant still fails closed).
+4. The change ships as a single PR reviewed against the addendum diff. The wrapper allowlist edit is never reviewed in isolation; it always lands with the addendum line and the doctor probes.
+
+A near-miss negative probe is required because the value of the allowlist is closed-default, and that default is only as good as its boundary tests. Adding a permission without testing the surrounding restrictions weakens the lane.
 
 ## Expiration And Rotation Policy
 
@@ -121,6 +153,7 @@ npm run op:agent-doctor
 - SSH + 1Password git lane still works.
 - Agent service-account env file exists, is owner-only, and contains an `ops_` token shape.
 - `bin/gh.sh` does not invoke Desktop auth.
+- `bin/gh.sh` blocks token-printing commands, merge commands, unsafe API methods, direct non-draft PR creation, API-layer merge bypass, ref-overwrite via API, and the GraphQL endpoint before secret resolution.
 - `bin/gh.sh` resolves the GitHub token through service-account auth without prompt-shaped output.
 - GitHub API read works for `governada/app`.
 - PR-create capability reaches GitHub validation with `pull_requests:write`.

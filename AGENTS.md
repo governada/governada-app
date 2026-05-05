@@ -47,14 +47,21 @@ Canonical agent guide for `governada/app`. Provider adapters in `.claude/`, Curs
 
 ## Auth
 
-- SSH + 1Password is the sole git lane.
-- Remotes use `git@github-governada:...`.
-- If broken, run `npm run gh:auth-status`, then `npm run auth:repair`.
-- Do not print, copy, or store raw secrets.
+**Two lanes, both 1Password-sourced:**
+
+- **git push/pull:** SSH + 1Password Desktop. Remotes use `git@github-governada:...`.
+- **GitHub API (PR create, comments, status):** `GH_TOKEN_OP_REF` resolved at runtime via `bin/gh.sh` (or `npm run gh -- ...`) using the agent service account. PAT is fine-grained, scoped to `governada/app` only with `Contents:write`, `Pull requests:write`, `Metadata:read`, `Workflows:read`. Stored in 1Password `Governada-Agent` vault as `governada-app-agent`.
+
+If broken, run `npm run gh:auth-status` (probes both lanes plus API capability and token expiry separately).
+
+The autonomous-agent secret-read lane (`OP_AGENT_SERVICE_ACCOUNT_TOKEN`, vault `Governada-Agent`) reads the GitHub PAT and the PostHog dev credential from `Governada-Agent`. Per ADR Addendum #3, this is exactly one bounded GitHub credential; expanding the agent's GitHub access requires an explicit ADR addendum, not a vault-content change.
+
+Do not print, copy, or store raw secrets. Token rotation is a Tim manual action.
 
 ## Where to Find More
 
 - Architecture: `docs/architecture.md`
+- Agent secret access: `docs/operations/agent-secret-access.md`
 - Shipped/not-shipped status: `docs/manifest.md`
 - Terms and code names: `docs/glossary.md`
 - Brain entry: `/Users/tim/dev/governada/governada-brain/agents/governada-context.md`

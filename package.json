@@ -21,6 +21,7 @@
     "error-rate:check": "node scripts/check-error-rate.js",
     "notify": "node scripts/notify.js",
     "uptime-check": "node scripts/uptime-check.js",
+    "gh": "bin/gh.sh",
     "gh:auth-status": "node scripts/gh-auth-status.js",
     "auth:repair": "node scripts/repair-gh-auth.mjs",
     "git:stage": "node scripts/git-stage.js",

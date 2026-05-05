@@ -6,6 +6,7 @@
  */
 
 import { MeshTxBuilder, KoiosProvider, BrowserWallet } from '@meshsdk/core';
+import { resolveDelegationMode, type DelegationMode } from '@/lib/delegation/mode';
 
 const KOIOS_BASE = process.env.NEXT_PUBLIC_KOIOS_BASE_URL || 'https://api.koios.rest/api/v1';
 
@@ -79,6 +80,7 @@ const provider = new KoiosProvider('api');
 export interface DelegationResult {
   txHash: string;
   drepId: string;
+  mode: DelegationMode;
 }
 
 export interface DelegationPreflight {
@@ -159,6 +161,32 @@ function validateMainnet(rewardAddress: string): void {
       'Switch your wallet to mainnet to delegate on Governada.',
     );
   }
+}
+
+async function submitSandboxDelegation(
+  rewardAddress: string,
+  drepId: string,
+): Promise<DelegationResult> {
+  const response = await fetch('/api/delegation/sandbox', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ stakeAddress: rewardAddress, targetDrepId: drepId }),
+  });
+
+  const body = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    txHash?: string;
+  };
+
+  if (!response.ok || !body.txHash) {
+    throw new DelegationError(
+      'tx_submit_failed',
+      body.error ?? 'Sandbox delegation submission failed.',
+      'The preview environment could not record the sandbox delegation. Please try again.',
+    );
+  }
+
+  return { txHash: body.txHash, drepId, mode: 'sandbox' };
 }
 
 /**
@@ -245,8 +273,6 @@ export async function delegateToDRep(
   try {
     options?.onPhase?.('building');
 
-    const utxos = await wallet.getUtxos();
-    const changeAddress = await wallet.getChangeAddress();
     const rewardAddresses = await wallet.getRewardAddresses();
     const rewardAddress = rewardAddresses?.[0];
 
@@ -257,6 +283,18 @@ export async function delegateToDRep(
         'Your wallet may not have a registered stake address.',
       );
     }
+
+    // delegateToDRep can run without preflight; reject non-mainnet reward addresses here too.
+    validateMainnet(rewardAddress);
+
+    const mode = await resolveDelegationMode();
+    if (mode === 'sandbox') {
+      options?.onPhase?.('submitting');
+      return await submitSandboxDelegation(rewardAddress, drepId);
+    }
+
+    const utxos = await wallet.getUtxos();
+    const changeAddress = await wallet.getChangeAddress();
 
     if (!utxos || utxos.length === 0) {
       throw new DelegationError(
@@ -285,7 +323,7 @@ export async function delegateToDRep(
     options?.onPhase?.('submitting');
     const txHash = await wallet.submitTx(signedTx);
 
-    return { txHash, drepId };
+    return { txHash, drepId, mode: 'mainnet' };
   } catch (err) {
     if (err instanceof DelegationError) throw err;
     throw classifyError(err);

@@ -6,6 +6,11 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
 
+permissions:
+  checks: read
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: preview-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -13,8 +18,11 @@ concurrency:
 jobs:
   preview-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: vars.RAILWAY_PREVIEW_ENABLED == 'true'
+    timeout-minutes: 20
+    # Phase 0.5 activates PR previews for feat/* branches. UX-affecting work on
+    # other prefixes should rename the branch or expand this gate before ready.
+    if: startsWith(github.head_ref, 'feat/')
+    environment: preview
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -22,34 +30,205 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - uses: supabase/setup-cli@v2
+        with:
+          version: latest
+
+      - name: Check preview secrets
+        env:
+          SUPABASE_PREVIEW_ACCESS_TOKEN: ${{ secrets.SUPABASE_PREVIEW_ACCESS_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          POSTHOG_DEV_PROJECT_TOKEN: ${{ secrets.POSTHOG_DEV_PROJECT_TOKEN }}
+        run: |
+          test -n "$SUPABASE_PREVIEW_ACCESS_TOKEN"
+          test -n "$RAILWAY_API_TOKEN"
+          test -n "$POSTHOG_DEV_PROJECT_TOKEN"
+
+      - name: Wait for Supabase preview branch
+        id: supabase_preview
+        uses: fountainhead/action-wait-for-check@v1.2.0
+        with:
+          checkName: Supabase Preview
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Record Supabase preview check result
+        run: |
+          if [ "${{ steps.supabase_preview.outputs.conclusion }}" != "success" ]; then
+            echo "::warning::Supabase Preview concluded with ${{ steps.supabase_preview.outputs.conclusion }}; continuing to CLI branch credential resolution"
+          fi
+
+      - name: Resolve Supabase preview credentials
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_PREVIEW_ACCESS_TOKEN }}
+        run: |
+          PARENT_REF="${{ vars.SUPABASE_PROJECT_ID }}"
+          if [ -z "$PARENT_REF" ]; then
+            PARENT_REF="pbfprhbaayvcrxokgicr"
+          fi
+
+          SUPABASE_ENV_FILE="$(mktemp)"
+          for attempt in $(seq 1 60); do
+            if supabase --experimental branches get "$GITHUB_HEAD_REF" --project-ref "$PARENT_REF" -o env > "$SUPABASE_ENV_FILE"; then
+              break
+            fi
+
+            echo "Waiting for Supabase preview branch credentials (attempt $attempt/60)"
+            sleep 10
+          done
+
+          if [ ! -s "$SUPABASE_ENV_FILE" ]; then
+            echo "Timed out resolving Supabase preview branch credentials"
+            exit 1
+          fi
+
+          unquote() {
+            local value="$1"
+            value="${value%\"}"
+            value="${value#\"}"
+            printf '%s' "$value"
+          }
+
+          env_value() {
+            local key="$1"
+            grep "^${key}=" "$SUPABASE_ENV_FILE" | head -n 1 | cut -d= -f2-
+          }
+
+          first_env_value() {
+            local value=""
+            for key in "$@"; do
+              value="$(env_value "$key")"
+              if [ -n "$value" ]; then
+                printf '%s' "$value"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          PREVIEW_URL="$(first_env_value SUPABASE_URL API_URL)"
+          PREVIEW_PUBLISHABLE="$(first_env_value SUPABASE_PUBLISHABLE_KEY SUPABASE_ANON_KEY ANON_KEY)"
+          PREVIEW_SECRET="$(first_env_value SUPABASE_SECRET_KEY SUPABASE_SERVICE_ROLE_KEY SERVICE_ROLE_KEY)"
+          PREVIEW_URL="$(unquote "$PREVIEW_URL")"
+          PREVIEW_PUBLISHABLE="$(unquote "$PREVIEW_PUBLISHABLE")"
+          PREVIEW_SECRET="$(unquote "$PREVIEW_SECRET")"
+          rm -f "$SUPABASE_ENV_FILE"
+
+          if [ -z "$PREVIEW_URL" ] || [ -z "$PREVIEW_PUBLISHABLE" ] || [ -z "$PREVIEW_SECRET" ]; then
+            echo "Supabase preview credentials were not exported by the CLI"
+            exit 1
+          fi
+
+          echo "::add-mask::$PREVIEW_PUBLISHABLE"
+          echo "::add-mask::$PREVIEW_SECRET"
+          echo "PREVIEW_SUPABASE_URL=$PREVIEW_URL" >> "$GITHUB_ENV"
+          echo "PREVIEW_SUPABASE_PUBLISHABLE_KEY=$PREVIEW_PUBLISHABLE" >> "$GITHUB_ENV"
+          echo "PREVIEW_SUPABASE_SECRET_KEY=$PREVIEW_SECRET" >> "$GITHUB_ENV"
+
+      - name: Seed Supabase preview data
+        run: |
+          if [ -z "$PREVIEW_SUPABASE_URL" ] || [ -z "$PREVIEW_SUPABASE_SECRET_KEY" ]; then
+            echo "Supabase preview credentials were not resolved"
+            exit 1
+          fi
+
+          NEXT_PUBLIC_SUPABASE_URL="$PREVIEW_SUPABASE_URL" \
+            SUPABASE_SECRET_KEY="$PREVIEW_SUPABASE_SECRET_KEY" \
+            GOVERNADA_DELEGATION_MODE=sandbox \
+            SUPABASE_PREVIEW_BRANCH=1 \
+            npm run seed:preview
 
       - name: Resolve preview URL
         id: preview
         run: |
           PREVIEW_TEMPLATE="${{ vars.RAILWAY_PREVIEW_URL_TEMPLATE }}"
           if [ -z "$PREVIEW_TEMPLATE" ]; then
-            PREVIEW_TEMPLATE="https://pr-{pr}-governada-app.up.railway.app"
+            PREVIEW_TEMPLATE="https://governada-app-app-pr-{pr}.up.railway.app"
           fi
 
           PREVIEW_URL="${PREVIEW_TEMPLATE//\{pr\}/${{ github.event.pull_request.number }}}"
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
 
+      - name: Link Railway project
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_PREVIEW_ENV: app-pr-${{ github.event.pull_request.number }}
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+        run: |
+          if [ -z "$RAILWAY_PROJECT_ID" ]; then
+            RAILWAY_PROJECT_ID="f661dbdf-91e0-4a46-81d8-51f345679e56"
+          fi
+
+          npx --yes @railway/cli link \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_PREVIEW_ENV" \
+            --service governada-app
+
+      - name: Wait for Railway preview environment
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_PREVIEW_ENV: app-pr-${{ github.event.pull_request.number }}
+        run: |
+          for attempt in $(seq 1 60); do
+            if npx --yes @railway/cli environment list --json \
+              | node -e "let input=''; process.stdin.on('data', c => input += c); process.stdin.on('end', () => { const parsed = JSON.parse(input); const found = (parsed.environments || []).some((env) => env.name === process.env.RAILWAY_PREVIEW_ENV); process.exit(found ? 0 : 1); });"; then
+              echo "Railway preview environment $RAILWAY_PREVIEW_ENV is ready"
+              exit 0
+            fi
+
+            echo "Waiting for Railway preview environment $RAILWAY_PREVIEW_ENV (attempt $attempt/60)"
+            sleep 10
+          done
+
+          echo "Timed out waiting for Railway preview environment $RAILWAY_PREVIEW_ENV"
+          exit 1
+
+      - name: Wire Railway preview Supabase branch
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_PREVIEW_ENV: app-pr-${{ github.event.pull_request.number }}
+          PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
+          POSTHOG_DEV_PROJECT_TOKEN: ${{ secrets.POSTHOG_DEV_PROJECT_TOKEN }}
+          POSTHOG_DEV_HOST: ${{ vars.POSTHOG_DEV_HOST || 'https://us.i.posthog.com' }}
+        run: |
+          if [ -z "$PREVIEW_SUPABASE_URL" ] || [ -z "$PREVIEW_SUPABASE_PUBLISHABLE_KEY" ] || [ -z "$PREVIEW_SUPABASE_SECRET_KEY" ]; then
+            echo "Supabase preview credentials were not resolved"
+            exit 1
+          fi
+          if [ -z "$POSTHOG_DEV_PROJECT_TOKEN" ]; then
+            echo "PostHog dev project token was not resolved"
+            exit 1
+          fi
+
+          npx --yes @railway/cli variable set \
+            -e "$RAILWAY_PREVIEW_ENV" \
+            -s governada-app \
+            "NEXT_PUBLIC_SUPABASE_URL=$PREVIEW_SUPABASE_URL" \
+            "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PREVIEW_SUPABASE_PUBLISHABLE_KEY" \
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY=$PREVIEW_SUPABASE_PUBLISHABLE_KEY" \
+            "SUPABASE_SECRET_KEY=$PREVIEW_SUPABASE_SECRET_KEY" \
+            "NEXT_PUBLIC_POSTHOG_KEY=$POSTHOG_DEV_PROJECT_TOKEN" \
+            "NEXT_PUBLIC_POSTHOG_HOST=$POSTHOG_DEV_HOST" \
+            "GOVERNADA_DELEGATION_MODE=sandbox" \
+            "NEXT_PUBLIC_GOVERNADA_DELEGATION_MODE=sandbox" \
+            "NEXT_PUBLIC_SITE_URL=$PREVIEW_URL"
+
       - name: Verify preview release
-        run: npm run health:verify -- --base-url=${{ steps.preview.outputs.preview_url }} --profile=preview --expected-sha=${{ github.event.pull_request.head.sha }} --quiet
+        run: npm run preview:verify -- --url=${{ steps.preview.outputs.preview_url }} --expected-sha=${{ github.event.pull_request.head.sha }} --wait-ms=420000 --interval-ms=10000
 
       - name: Comment preview URL on PR
         if: success()
         uses: actions/github-script@v9
         with:
           script: |
-            const body = `Preview deployed and verification passed\n\nPreview URL: ${{ steps.preview.outputs.preview_url }}`;
+            const body = `## Preview URL\n\n${{ steps.preview.outputs.preview_url }}\n\nPreview verification passed for \`${{ github.event.pull_request.head.sha }}\`.`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-            const existing = comments.find(c => c.body.includes('Preview deployed'));
+            const existing = comments.find(c => c.body.includes('## Preview URL'));
 
             if (existing) {
               await github.rest.issues.updateComment({

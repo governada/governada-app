@@ -16,6 +16,10 @@ on:
       - '.claude/**'
       - 'LICENSE'
 
+concurrency:
+  group: ci-skip-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest

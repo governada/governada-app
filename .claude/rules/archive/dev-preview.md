@@ -10,6 +10,10 @@ paths:
 
 Rules for running the local dev server via Claude Preview tools. Worktree sync links `node_modules` when possible, but it no longer copies plaintext `.env.local`. Use `npm run env:doctor` to inspect local env readiness and `npm run env:run -- <command>` for 1Password-backed local env injection.
 
+## Scope vs Preview/Staging
+
+Claude Preview is the agent-internal inner-loop verification tool: local dev server plus headless browser, scoped to the current session. The integration-honest gate — real env vars, real services, real Supabase branch — is the Railway Preview/Staging flow with `preview:verify`, documented in `docs/architecture.md` Testing section. Don't substitute Claude Preview for it on env-resolution, cross-service, or migration-shaped changes.
+
 ## Starting the Dev Server
 
 1. **Start**: Use `preview_start` with name `"dev"` (configured in `.claude/launch.json`, port 3111 with `autoPort`)

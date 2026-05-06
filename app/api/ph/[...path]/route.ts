@@ -9,6 +9,7 @@ const RATE_LIMIT_MAX_TOKENS = 100;
 const RATE_LIMIT_REFILL_MS = 60_000;
 const REQUEST_HEADERS_TO_FORWARD = ['accept', 'content-type', 'content-encoding'] as const;
 const RESPONSE_HEADERS_TO_FORWARD = ['content-type', 'content-encoding', 'cache-control'] as const;
+const DECODED_RESPONSE_ENCODINGS = new Set(['br', 'deflate', 'gzip', 'x-gzip', 'zstd']);
 
 type RouteContext = {
   params: Promise<{ path: string[] }>;
@@ -78,7 +79,15 @@ function buildForwardHeaders(request: NextRequest): Headers {
     }
   }
 
+  headers.set('accept-encoding', 'identity');
   return headers;
+}
+
+function isDecodedResponseEncoding(value: string): boolean {
+  return value
+    .split(',')
+    .map((encoding) => encoding.trim().toLowerCase())
+    .some((encoding) => DECODED_RESPONSE_ENCODINGS.has(encoding));
 }
 
 function buildResponseHeaders(upstreamResponse: Response): Headers {
@@ -87,6 +96,12 @@ function buildResponseHeaders(upstreamResponse: Response): Headers {
   for (const header of RESPONSE_HEADERS_TO_FORWARD) {
     const value = upstreamResponse.headers.get(header);
     if (value) {
+      // Node fetch decodes compressed response bodies but leaves the original
+      // content-encoding header visible. Do not advertise decoded bytes as gzip.
+      if (header === 'content-encoding' && isDecodedResponseEncoding(value)) {
+        continue;
+      }
+
       headers.set(header, value);
     }
   }

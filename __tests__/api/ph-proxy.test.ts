@@ -92,6 +92,7 @@ describe('/api/ph/[...path] PostHog proxy', () => {
 
     const forwardedHeaders = init.headers as Headers;
     expect(forwardedHeaders.get('accept')).toBe('*/*');
+    expect(forwardedHeaders.get('accept-encoding')).toBe('identity');
     expect(forwardedHeaders.get('content-encoding')).toBe('gzip');
     expect(forwardedHeaders.get('content-type')).toBe('application/json');
     expect(forwardedHeaders.has('authorization')).toBe(false);
@@ -100,7 +101,7 @@ describe('/api/ph/[...path] PostHog proxy', () => {
 
     expect(response.status).toBe(202);
     expect(response.headers.get('content-type')).toBe('text/plain');
-    expect(response.headers.get('content-encoding')).toBe('gzip');
+    expect(response.headers.get('content-encoding')).toBeNull();
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(response.headers.get('x-posthog-private')).toBeNull();
     expect(await response.text()).toBe('accepted');

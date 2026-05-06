@@ -40,6 +40,7 @@ const makeDrep = (overrides = {}) => ({
   rationaleRate: 60,
   reliabilityScore: 65,
   isActive: true,
+  votingPowerLovelace: '1000000',
   totalVotes: 40,
   updatedAt: '2025-01-01T00:00:00Z',
   ...overrides,
@@ -52,13 +53,13 @@ describe('GET /api/v1/governance/health', () => {
 
   it('returns governance health metrics', async () => {
     const dreps = [
-      makeDrep({ drepScore: 90, isActive: true }),
-      makeDrep({ drepId: 'drep2', drepScore: 60, isActive: true }),
-      makeDrep({ drepId: 'drep3', drepScore: 40, isActive: false }),
+      makeDrep({ drepScore: 90, isActive: false, votingPowerLovelace: '1000000' }),
+      makeDrep({ drepId: 'drep2', drepScore: 60, isActive: false, votingPowerLovelace: '1' }),
+      makeDrep({ drepId: 'drep3', drepScore: 40, isActive: true, votingPowerLovelace: '0' }),
     ];
 
     mockGetAllDReps.mockResolvedValue({
-      dreps: dreps.filter((d) => d.isActive),
+      dreps,
       allDReps: dreps,
       error: null,
     });

@@ -140,6 +140,8 @@ Commands run:
 - `git fetch origin main`
 - `git worktree add .claude/worktrees/sync-health-hardening -b codex/sync-health-hardening origin/main`
 - `rg` and `sed` over Supabase, health, alert, Inngest, and sync paths.
+- `npm run gh -- pr checks 961`
+- Supabase MCP `_list_branches` for project `pbfprhbaayvcrxokgicr`
 
 Claims verified:
 
@@ -148,3 +150,4 @@ Claims verified:
 - `lib/env.ts` accepts either read key but does not include the Supabase read key pair in `OPS_CRITICAL_KEYS`.
 - `inngest/helpers.ts` falls back to `http://localhost:3000` when `NEXT_PUBLIC_SITE_URL` is unset.
 - Integrity score distribution currently queries `drep_score`, while generated DB types expose `dreps.score`.
+- PR #961 GitHub Actions and Railway checks passed after publish; the external Supabase Preview check initially cancelled before a PR-specific Supabase branch appeared.

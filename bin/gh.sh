@@ -334,6 +334,10 @@ enforce_api_policy() {
     return 0
   fi
 
+  if [[ "$method" == "POST" && "$endpoint" =~ ^repos/governada/app/actions/runs/[0-9]+/rerun-failed-jobs$ ]]; then
+    return 0
+  fi
+
   block_policy "gh api ${method} /${endpoint} is not in the allowlist."
 }
 

@@ -36,16 +36,33 @@ export interface SupabaseReadProbeResult {
 
 function getSupabasePublishableKey(): string | undefined {
   return (
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    getNonEmptyEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') ??
+    getNonEmptyEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
   );
 }
 
+function getNonEmptyEnv(key: string): string | undefined {
+  const value = process.env[key];
+  if (typeof value !== 'string') return undefined;
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function getSupabasePublishableKeyStatus(): SupabaseReadEnvStatus['publishableKey'] {
+  return getNonEmptyEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') ? 'present' : 'missing';
+}
+
+function getSupabaseLegacyAnonKeyStatus(): SupabaseReadEnvStatus['legacyAnonKey'] {
+  return getNonEmptyEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') ? 'present' : 'missing';
+}
+
 function getSupabaseReadKeyName(): SupabaseReadKeyName | null {
-  if (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+  if (getNonEmptyEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')) {
     return 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY';
   }
 
-  if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (getNonEmptyEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')) {
     return 'NEXT_PUBLIC_SUPABASE_ANON_KEY';
   }
 
@@ -69,8 +86,8 @@ export function getSupabaseReadEnvStatus(): SupabaseReadEnvStatus {
 
   return {
     url,
-    publishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ? 'present' : 'missing',
-    legacyAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'present' : 'missing',
+    publishableKey: getSupabasePublishableKeyStatus(),
+    legacyAnonKey: getSupabaseLegacyAnonKeyStatus(),
     activeKey:
       activeKey === 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'
         ? 'publishable'

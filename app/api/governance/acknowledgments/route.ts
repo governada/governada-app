@@ -12,20 +12,49 @@ const AcknowledgmentRequestSchema = z.object({
   stakeAddress: z.string().min(1).optional(),
 });
 
+interface IdentifierResolution {
+  identifier?: string;
+  error?: NextResponse;
+}
+
 function resolveIdentifier(
   body: z.infer<typeof AcknowledgmentRequestSchema>,
   context: RouteContext,
-): string | null {
-  return body.userIdOrStakeAddress ?? body.stakeAddress ?? context.userId ?? null;
+): IdentifierResolution {
+  const verifiedIdentifiers = new Set([context.userId, context.wallet].filter(Boolean));
+
+  if (body.stakeAddress && body.stakeAddress !== context.wallet) {
+    return {
+      error: NextResponse.json(
+        { error: 'Stake address does not match authenticated wallet' },
+        { status: 403 },
+      ),
+    };
+  }
+
+  if (body.userIdOrStakeAddress && !verifiedIdentifiers.has(body.userIdOrStakeAddress)) {
+    return {
+      error: NextResponse.json(
+        { error: 'Identifier does not match authenticated user' },
+        { status: 403 },
+      ),
+    };
+  }
+
+  return {
+    identifier: body.stakeAddress ?? body.userIdOrStakeAddress ?? context.wallet ?? context.userId,
+  };
 }
 
 export const POST = withRouteHandler(
   async (request: NextRequest, context: RouteContext) => {
     const body = AcknowledgmentRequestSchema.parse(await request.json());
-    const userIdOrStakeAddress = resolveIdentifier(body, context);
+    const { identifier: userIdOrStakeAddress, error } = resolveIdentifier(body, context);
+
+    if (error) return error;
 
     if (!userIdOrStakeAddress) {
-      return NextResponse.json({ error: 'Missing user or stake address' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing authenticated user' }, { status: 400 });
     }
 
     const record =
@@ -35,5 +64,5 @@ export const POST = withRouteHandler(
 
     return NextResponse.json({ ok: true, item: record });
   },
-  { auth: 'optional', rateLimit: { max: 60, window: 60 } },
+  { auth: 'required', rateLimit: { max: 60, window: 60 } },
 );

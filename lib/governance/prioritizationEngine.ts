@@ -246,9 +246,11 @@ function actionRequiredCandidate(
 }
 
 function sentimentCandidate(
+  userContext: UserCinematicContext,
   governanceContext: GovernanceCinematicContext,
   surfacedAt: string,
 ): CandidateItem | null {
+  if (userContext.segment !== 'citizen') return null;
   const opportunities = governanceContext.sentimentOpportunities ?? [];
   if (opportunities.length === 0) return null;
   return makeCandidate(
@@ -289,7 +291,7 @@ function coldStartCandidate(
   userContext: UserCinematicContext,
   surfacedAt: string,
 ): CandidateItem | null {
-  if (!userContext.isColdStart && !userContext.delegatedDrepId) return null;
+  if (!userContext.isColdStart) return null;
   return makeCandidate(
     'returning_cold_start',
     'returning-cold-start',
@@ -448,7 +450,7 @@ export async function getCinematicState(
   const epoch = epochCandidate(userContext, surfacedAt);
   if (epoch) candidates.push(epoch);
 
-  const sentiment = sentimentCandidate(governanceContext, surfacedAt);
+  const sentiment = sentimentCandidate(userContext, governanceContext, surfacedAt);
   if (sentiment) candidates.push(sentiment);
 
   const coldStart = coldStartCandidate(userContext, surfacedAt);
@@ -460,7 +462,9 @@ export async function getCinematicState(
     (a, b) => a.priority - b.priority,
   );
   const primaryCandidate =
-    lifecycleCandidates.find((candidate) => !candidate.item.dismissed_at) ?? lifecycleCandidates[0];
+    lifecycleCandidates.find(
+      (candidate) => candidate.item.kind !== 'soft' || !candidate.item.dismissed_at,
+    ) ?? lifecycleCandidates[0];
 
   const secondary = [
     ...lifecycleCandidates

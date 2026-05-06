@@ -13,6 +13,8 @@ export interface ItemLifecycleRecord {
   dismissed_at?: string | null;
 }
 
+type SupabaseAdminClient = ReturnType<typeof getSupabaseAdmin>;
+
 function normalizeIdentifier(value: string, label: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -26,45 +28,75 @@ function toIso(value?: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
-export async function acknowledgeItem(input: ItemLifecycleInput): Promise<ItemLifecycleRecord> {
-  const row: ItemLifecycleRecord = {
-    user_id_or_stake_address: normalizeIdentifier(
-      input.userIdOrStakeAddress,
-      'userIdOrStakeAddress',
-    ),
-    item_id: normalizeIdentifier(input.itemId, 'itemId'),
-    acknowledged_at: toIso(input.at),
-    dismissed_at: null,
-  };
+async function readLifecycleRecord(
+  supabase: SupabaseAdminClient,
+  userIdOrStakeAddress: string,
+  itemId: string,
+): Promise<ItemLifecycleRecord | null> {
+  const { data, error } = await supabase
+    .from('prioritization_acknowledgments')
+    .select('user_id_or_stake_address, item_id, acknowledged_at, dismissed_at')
+    .eq('user_id_or_stake_address', userIdOrStakeAddress)
+    .eq('item_id', itemId)
+    .maybeSingle();
 
-  const { error } = await getSupabaseAdmin()
+  if (error) {
+    throw new Error(`Failed to read prioritization item lifecycle: ${error.message}`);
+  }
+
+  return (data as ItemLifecycleRecord | null) ?? null;
+}
+
+async function upsertLifecycleRecord(
+  supabase: SupabaseAdminClient,
+  row: ItemLifecycleRecord,
+  action: 'acknowledge' | 'dismiss',
+): Promise<void> {
+  const { error } = await supabase
     .from('prioritization_acknowledgments')
     .upsert(row, { onConflict: 'user_id_or_stake_address,item_id' });
 
   if (error) {
-    throw new Error(`Failed to acknowledge prioritization item: ${error.message}`);
+    throw new Error(`Failed to ${action} prioritization item: ${error.message}`);
   }
+}
+
+export async function acknowledgeItem(input: ItemLifecycleInput): Promise<ItemLifecycleRecord> {
+  const userIdOrStakeAddress = normalizeIdentifier(
+    input.userIdOrStakeAddress,
+    'userIdOrStakeAddress',
+  );
+  const itemId = normalizeIdentifier(input.itemId, 'itemId');
+  const supabase = getSupabaseAdmin();
+  const existing = await readLifecycleRecord(supabase, userIdOrStakeAddress, itemId);
+  const row: ItemLifecycleRecord = {
+    user_id_or_stake_address: userIdOrStakeAddress,
+    item_id: itemId,
+    acknowledged_at: toIso(input.at),
+    dismissed_at: existing?.dismissed_at ?? null,
+  };
+
+  await upsertLifecycleRecord(supabase, row, 'acknowledge');
 
   return row;
 }
 
 export async function dismissItem(input: ItemLifecycleInput): Promise<ItemLifecycleRecord> {
+  const userIdOrStakeAddress = normalizeIdentifier(
+    input.userIdOrStakeAddress,
+    'userIdOrStakeAddress',
+  );
+  const itemId = normalizeIdentifier(input.itemId, 'itemId');
+  const supabase = getSupabaseAdmin();
+  const existing = await readLifecycleRecord(supabase, userIdOrStakeAddress, itemId);
   const row: ItemLifecycleRecord = {
-    user_id_or_stake_address: normalizeIdentifier(
-      input.userIdOrStakeAddress,
-      'userIdOrStakeAddress',
-    ),
-    item_id: normalizeIdentifier(input.itemId, 'itemId'),
+    user_id_or_stake_address: userIdOrStakeAddress,
+    item_id: itemId,
+    acknowledged_at: existing?.acknowledged_at ?? null,
     dismissed_at: toIso(input.at),
   };
 
-  const { error } = await getSupabaseAdmin()
-    .from('prioritization_acknowledgments')
-    .upsert(row, { onConflict: 'user_id_or_stake_address,item_id' });
-
-  if (error) {
-    throw new Error(`Failed to dismiss prioritization item: ${error.message}`);
-  }
+  await upsertLifecycleRecord(supabase, row, 'dismiss');
 
   return row;
 }

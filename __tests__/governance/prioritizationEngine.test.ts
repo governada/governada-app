@@ -124,6 +124,12 @@ describe('prioritization engine selector', () => {
     expect(queue.primary.state).toBe('returning_cold_start');
   });
 
+  it('keeps delegated returning users quiet when they are not cold-start', async () => {
+    const queue = await getCinematicState(user({ delegatedDrepId: 'drep1xyz' }), governance());
+
+    expect(queue.primary.state).toBe('returning_quiet');
+  });
+
   it('returns action_required for role-scoped action items', async () => {
     const queue = await getCinematicState(
       user({ segment: 'drep' }),
@@ -150,6 +156,23 @@ describe('prioritization engine selector', () => {
     expect(queue.primary.state).toBe('sentiment_opportunity');
   });
 
+  it('does not return sentiment_opportunity for non-citizen personas', async () => {
+    const queue = await getCinematicState(
+      user({ segment: 'drep', drepId: 'drep1xyz' }),
+      governance({
+        sentimentOpportunities: [
+          {
+            id: 'proposal-1',
+            title: 'Treasury sentiment',
+            proposalType: 'TreasuryWithdrawals',
+          },
+        ],
+      }),
+    );
+
+    expect(queue.primary.state).toBe('returning_quiet');
+  });
+
   it('returns civic_event_tier_0 when Tier 0 triggers exist', async () => {
     const queue = await getCinematicState(
       user({ scoreMomentum: -9, missedVotesCount: 7 }),
@@ -173,6 +196,35 @@ describe('prioritization engine selector', () => {
     expect(queue.primary.tier).toBe(0);
     expect(queue.meta.reasoning).toContain('supersedes personal state');
   });
+
+  it('does not allow dismissals to bypass informational Tier 0 triggers', async () => {
+    const trigger = {
+      id: 'hard-fork:abc:0',
+      type: 'hard_fork_enacted' as const,
+      proposalTxHash: 'abc',
+      proposalIndex: 0,
+      proposalType: 'HardForkInitiation',
+      eventEpoch: 100,
+      decayHours: 168,
+    };
+    const queue = await getCinematicState(
+      user({
+        acknowledgments: [
+          {
+            item_id: trigger.id,
+            acknowledged_at: null,
+            dismissed_at: NOW,
+          },
+        ],
+      }),
+      governance({
+        tier0Triggers: [trigger],
+        actionItems: [actionItem()],
+      }),
+    );
+
+    expect(queue.primary.state).toBe('civic_event_tier_0');
+  });
 });
 
 describe('prioritization lifecycle writes', () => {
@@ -181,9 +233,16 @@ describe('prioritization lifecycle writes', () => {
   });
 
   it('acknowledgeItem writes an acknowledgment row', async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
     const upsert = vi.fn().mockResolvedValue({ error: null });
+    const query = {
+      select: vi.fn(() => query),
+      eq: vi.fn(() => query),
+      maybeSingle,
+      upsert,
+    };
     mockGetSupabaseAdmin.mockReturnValue({
-      from: vi.fn(() => ({ upsert })),
+      from: vi.fn(() => query),
     });
 
     const record = await acknowledgeItem({
@@ -203,10 +262,48 @@ describe('prioritization lifecycle writes', () => {
     });
   });
 
-  it('dismissItem writes a dismissal row', async () => {
+  it('acknowledgeItem preserves an existing dismissal timestamp', async () => {
+    const existing = {
+      user_id_or_stake_address: 'stake1',
+      item_id: 'item1',
+      acknowledged_at: null,
+      dismissed_at: '2026-05-06T13:30:00.000Z',
+    };
+    const maybeSingle = vi.fn().mockResolvedValue({ data: existing, error: null });
     const upsert = vi.fn().mockResolvedValue({ error: null });
+    const query = {
+      select: vi.fn(() => query),
+      eq: vi.fn(() => query),
+      maybeSingle,
+      upsert,
+    };
     mockGetSupabaseAdmin.mockReturnValue({
-      from: vi.fn(() => ({ upsert })),
+      from: vi.fn(() => query),
+    });
+
+    const record = await acknowledgeItem({
+      userIdOrStakeAddress: 'stake1',
+      itemId: 'item1',
+      at: NOW,
+    });
+
+    expect(record).toMatchObject({
+      acknowledged_at: NOW,
+      dismissed_at: existing.dismissed_at,
+    });
+  });
+
+  it('dismissItem writes a dismissal row', async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const query = {
+      select: vi.fn(() => query),
+      eq: vi.fn(() => query),
+      maybeSingle,
+      upsert,
+    };
+    mockGetSupabaseAdmin.mockReturnValue({
+      from: vi.fn(() => query),
     });
 
     const record = await dismissItem({
@@ -218,10 +315,42 @@ describe('prioritization lifecycle writes', () => {
     expect(record).toMatchObject({
       user_id_or_stake_address: 'stake1',
       item_id: 'item1',
+      acknowledged_at: null,
       dismissed_at: NOW,
     });
     expect(upsert).toHaveBeenCalledWith(record, {
       onConflict: 'user_id_or_stake_address,item_id',
+    });
+  });
+
+  it('dismissItem preserves an existing acknowledgment timestamp', async () => {
+    const existing = {
+      user_id_or_stake_address: 'stake1',
+      item_id: 'item1',
+      acknowledged_at: '2026-05-06T13:30:00.000Z',
+      dismissed_at: null,
+    };
+    const maybeSingle = vi.fn().mockResolvedValue({ data: existing, error: null });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const query = {
+      select: vi.fn(() => query),
+      eq: vi.fn(() => query),
+      maybeSingle,
+      upsert,
+    };
+    mockGetSupabaseAdmin.mockReturnValue({
+      from: vi.fn(() => query),
+    });
+
+    const record = await dismissItem({
+      userIdOrStakeAddress: 'stake1',
+      itemId: 'item1',
+      at: NOW,
+    });
+
+    expect(record).toMatchObject({
+      acknowledged_at: existing.acknowledged_at,
+      dismissed_at: NOW,
     });
   });
 

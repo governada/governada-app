@@ -8,6 +8,13 @@ export const LOVELACE_PER_ADA = 1_000_000;
 export const TIER0_DECAY_HOURS = 7 * 24;
 export const RATIONALE_PUBLISH_DECAY_HOURS = 24;
 
+export const TIER0_TYPE_PRIORITY: Record<Tier0TriggerType, number> = {
+  constitutional_amendment_ratified: 0,
+  hard_fork_enacted: 1,
+  no_confidence_ratified: 2,
+  major_treasury_withdrawal_closed: 3,
+};
+
 export const EVENT_DECAY_HOURS: Record<Tier0TriggerType | 'rationale_published', number> = {
   constitutional_amendment_ratified: TIER0_DECAY_HOURS,
   hard_fork_enacted: TIER0_DECAY_HOURS,
@@ -94,6 +101,15 @@ export function proposalToTier0Trigger(row: ProposalRow, now = new Date()): Tier
   };
 }
 
+function sortTier0Triggers(a: Tier0Trigger, b: Tier0Trigger): number {
+  if (a.eventEpoch !== b.eventEpoch) return b.eventEpoch - a.eventEpoch;
+
+  const priorityDelta = TIER0_TYPE_PRIORITY[a.type] - TIER0_TYPE_PRIORITY[b.type];
+  if (priorityDelta !== 0) return priorityDelta;
+
+  return a.proposalTxHash.localeCompare(b.proposalTxHash);
+}
+
 export async function getTier0Triggers(now = new Date()): Promise<Tier0Trigger[]> {
   const { data, error } = await getSupabaseAdmin()
     .from('proposals')
@@ -114,5 +130,6 @@ export async function getTier0Triggers(now = new Date()): Promise<Tier0Trigger[]
 
   return (data ?? [])
     .map((row) => proposalToTier0Trigger(row as ProposalRow, now))
-    .filter((trigger): trigger is Tier0Trigger => trigger !== null);
+    .filter((trigger): trigger is Tier0Trigger => trigger !== null)
+    .sort(sortTier0Triggers);
 }

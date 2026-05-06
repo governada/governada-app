@@ -4759,6 +4759,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      prioritization_acknowledgments: {
+        Row: {
+          acknowledged_at: string | null;
+          dismissed_at: string | null;
+          id: string;
+          item_id: string;
+          user_id_or_stake_address: string;
+        };
+        Insert: {
+          acknowledged_at?: string | null;
+          dismissed_at?: string | null;
+          id?: string;
+          item_id: string;
+          user_id_or_stake_address: string;
+        };
+        Update: {
+          acknowledged_at?: string | null;
+          dismissed_at?: string | null;
+          id?: string;
+          item_id?: string;
+          user_id_or_stake_address?: string;
+        };
+        Relationships: [];
+      };
       proposal_outcomes: {
         Row: {
           created_at: string;
@@ -7184,6 +7208,27 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      user_visit_state: {
+        Row: {
+          id: string;
+          last_visit_at: string;
+          prior_visit_at: string | null;
+          stake_address: string | null;
+        };
+        Insert: {
+          id?: string;
+          last_visit_at: string;
+          prior_visit_at?: string | null;
+          stake_address?: string | null;
+        };
+        Update: {
+          id?: string;
+          last_visit_at?: string;
+          prior_visit_at?: string | null;
+          stake_address?: string | null;
+        };
+        Relationships: [];
       };
       users: {
         Row: {

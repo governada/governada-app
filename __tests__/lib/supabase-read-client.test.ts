@@ -12,7 +12,7 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: supabaseMock.createSupabaseClient,
 }));
 
-import { getSupabaseReadEnvStatus, probeSupabaseReadClient } from '@/lib/supabase';
+import { createClient, getSupabaseReadEnvStatus, probeSupabaseReadClient } from '@/lib/supabase';
 
 describe('Supabase read-client diagnostics', () => {
   beforeEach(() => {
@@ -51,6 +51,32 @@ describe('Supabase read-client diagnostics', () => {
       publishableKey: 'missing',
       legacyAnonKey: 'present',
     });
+  });
+
+  it('uses the legacy anon key when the publishable key is empty', () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'legacy-key');
+
+    createClient();
+
+    expect(supabaseMock.createSupabaseClient).toHaveBeenCalledWith(
+      'https://example.supabase.co',
+      'legacy-key',
+    );
+  });
+
+  it('probes successfully with legacy anon key fallback when the publishable key is empty', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'legacy-key');
+
+    const result = await probeSupabaseReadClient();
+
+    expect(result.status).toBe('healthy');
+    expect(result.env.activeKey).toBe('legacy_anon');
+    expect(supabaseMock.createSupabaseClient).toHaveBeenCalledWith(
+      'https://example.supabase.co',
+      'legacy-key',
+    );
   });
 
   it('fails closed before client creation when the read key is missing', async () => {

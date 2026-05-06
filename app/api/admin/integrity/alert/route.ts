@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient, getSupabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin, probeSupabaseReadClient } from '@/lib/supabase';
 import { inngest } from '@/lib/inngest';
 import { logger } from '@/lib/logger';
 import { getSyncPolicy, SYNC_POLICY, type SyncPolicy } from '@/lib/syncPolicy';
@@ -30,8 +30,20 @@ export const GET = withRouteHandler(async (request) => {
     return NextResponse.json({ skipped: true, reason: 'No webhook URL configured' });
   }
 
-  const supabase = createClient();
+  const supabase = getSupabaseAdmin();
   const alerts: Alert[] = [];
+
+  const readClient = await probeSupabaseReadClient();
+  if (readClient.status !== 'healthy') {
+    alerts.push({
+      level: 'critical',
+      metric: 'Supabase read client unavailable',
+      value: `${readClient.reason}: ${readClient.message}`,
+      threshold: 'public read client must answer a head-only DRep query',
+      action:
+        'Check Railway NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY / legacy NEXT_PUBLIC_SUPABASE_ANON_KEY. Do not print secret values.',
+    });
+  }
 
   const [{ data: vpc }, { data: hv }, { data: ai }, { data: sh }] = await Promise.all([
     supabase.from('v_vote_power_coverage').select('*').single(),
@@ -312,11 +324,11 @@ export const GET = withRouteHandler(async (request) => {
   {
     const { data: scoreDist } = await supabase
       .from('dreps')
-      .select('drep_score')
-      .not('drep_score', 'is', null);
+      .select('score')
+      .not('score', 'is', null);
 
     if (scoreDist && scoreDist.length > 10) {
-      const scores = scoreDist.map((d: { drep_score: number }) => d.drep_score);
+      const scores = scoreDist.map((d: { score: number }) => d.score);
       const avg = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
       const zeroCount = scores.filter((s: number) => s === 0).length;
       const zeroPct = (zeroCount / scores.length) * 100;
@@ -417,7 +429,7 @@ export const GET = withRouteHandler(async (request) => {
     }
   }
 
-  const admin = getSupabaseAdmin();
+  const admin = supabase;
 
   if (alerts.length === 0) {
     try {
@@ -427,7 +439,7 @@ export const GET = withRouteHandler(async (request) => {
         finished_at: new Date().toISOString(),
         duration_ms: 0,
         success: true,
-        metrics: { alerts: 0, recoveries },
+        metrics: { alerts: 0, recoveries, read_client: readClient },
       });
     } catch {
       /* best-effort */
@@ -506,7 +518,12 @@ export const GET = withRouteHandler(async (request) => {
         finished_at: new Date().toISOString(),
         duration_ms: 0,
         success: true,
-        metrics: { alerts: alerts.length, webhook_status: res.status, recoveries },
+        metrics: {
+          alerts: alerts.length,
+          webhook_status: res.status,
+          recoveries,
+          read_client: readClient,
+        },
       });
     } catch {
       /* best-effort */

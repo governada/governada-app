@@ -13,7 +13,14 @@ vi.mock('@/lib/posthog-server', () => ({
   captureServerEvent: vi.fn(),
 }));
 
-import { batchUpsert, errMsg, capMsg, alertDiscord, pingHeartbeat } from '@/lib/sync-utils';
+import {
+  batchUpsert,
+  errMsg,
+  capMsg,
+  alertDiscord,
+  pingHeartbeat,
+  fetchAll,
+} from '@/lib/sync-utils';
 
 describe('sync-utils', () => {
   beforeEach(() => {
@@ -79,6 +86,27 @@ describe('sync-utils', () => {
       const result = await batchUpsert(supabase, 'test', rows, 'id', 'test');
       expect(result.success).toBe(250);
       expect(mockUpsert).toHaveBeenCalledTimes(3); // 100 + 100 + 50
+    });
+  });
+
+  describe('fetchAll', () => {
+    it('paginates until a short page is returned', async () => {
+      const range = vi
+        .fn()
+        .mockResolvedValueOnce({
+          data: Array.from({ length: 1000 }, (_, id) => ({ id })),
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: Array.from({ length: 179 }, (_, id) => ({ id: id + 1000 })),
+          error: null,
+        });
+
+      const rows = await fetchAll<{ id: number }>(() => ({ range }));
+
+      expect(rows).toHaveLength(1179);
+      expect(range).toHaveBeenNthCalledWith(1, 0, 999);
+      expect(range).toHaveBeenNthCalledWith(2, 1000, 1999);
     });
   });
 

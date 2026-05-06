@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
-import { SyncLogger, batchUpsert, errMsg, emitPostHog } from '@/lib/sync-utils';
+import { SyncLogger, batchUpsert, errMsg, emitPostHog, fetchAll } from '@/lib/sync-utils';
 import { fetchDRepDelegatorCount } from '@/utils/koios';
 import { blockTimeToEpoch } from '@/lib/koios';
 import * as Sentry from '@sentry/nextjs';
@@ -28,12 +28,11 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
       // so that drep_power_snapshots have fresh Koios delegator counts.
       const step1Result = await Promise.allSettled([
         (async () => {
-          const { data: dreps } = await supabase
-            .from('dreps')
-            .select('id, info')
-            .filter('info->>isActive', 'eq', 'true');
+          const dreps = await fetchAll<{ id: string; info: unknown }>(() =>
+            supabase.from('dreps').select('id, info').filter('info->>isActive', 'eq', 'true'),
+          );
 
-          if (!dreps?.length) return 0;
+          if (!dreps.length) return 0;
 
           let updated = 0;
           for (let i = 0; i < dreps.length; i += DELEGATOR_CONCURRENCY) {
@@ -77,9 +76,11 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
         // Snapshot ALL DReps (not just active) so coverage matches the completeness check
         // which counts all rows in the dreps table.
         (async () => {
-          const { data: dreps } = await supabase.from('dreps').select('id, info');
+          const dreps = await fetchAll<{ id: string; info: unknown }>(() =>
+            supabase.from('dreps').select('id, info'),
+          );
 
-          if (!dreps?.length) return 0;
+          if (!dreps.length) return 0;
 
           const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
           const rows = dreps.map((d) => {

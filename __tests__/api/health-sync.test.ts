@@ -3,12 +3,29 @@ import { createRequest, parseJson } from '../helpers';
 
 const mockRows = {
   value: [] as Array<Record<string, unknown>>,
+  error: null as { message: string } | null,
+};
+
+const mockReadClient = {
+  value: {
+    status: 'healthy',
+    reason: 'ok',
+    message: 'Supabase read-client query succeeded',
+    latencyMs: 1,
+    env: {
+      url: 'present',
+      publishableKey: 'present',
+      legacyAnonKey: 'missing',
+      activeKey: 'publishable',
+    },
+  },
 };
 
 vi.mock('@/lib/supabase', () => ({
+  probeSupabaseReadClient: vi.fn(() => Promise.resolve(mockReadClient.value)),
   createClient: () => ({
     from: () => ({
-      select: vi.fn(() => Promise.resolve({ data: mockRows.value, error: null })),
+      select: vi.fn(() => Promise.resolve({ data: mockRows.value, error: mockRows.error })),
     }),
   }),
 }));
@@ -18,6 +35,19 @@ import { GET } from '@/app/api/health/sync/route';
 describe('GET /api/health/sync', () => {
   beforeEach(() => {
     mockRows.value = [];
+    mockRows.error = null;
+    mockReadClient.value = {
+      status: 'healthy',
+      reason: 'ok',
+      message: 'Supabase read-client query succeeded',
+      latencyMs: 1,
+      env: {
+        url: 'present',
+        publishableKey: 'present',
+        legacyAnonKey: 'missing',
+        activeKey: 'publishable',
+      },
+    };
     vi.clearAllMocks();
   });
 
@@ -27,6 +57,40 @@ describe('GET /api/health/sync', () => {
 
     expect(res.status).toBe(503);
     expect(body.status).toBe('unknown');
+  });
+
+  it('returns a structured 503 when the read client is unavailable', async () => {
+    mockReadClient.value = {
+      status: 'unhealthy',
+      reason: 'missing_read_key',
+      message: 'Supabase read-client environment is not usable: missing_read_key',
+      latencyMs: 0,
+      env: {
+        url: 'present',
+        publishableKey: 'missing',
+        legacyAnonKey: 'missing',
+        activeKey: 'none',
+      },
+    };
+
+    const res = await GET();
+    const body = (await parseJson(res)) as { status: string; reason: string };
+
+    expect(res.status).toBe(503);
+    expect(body.status).toBe('error');
+    expect(body.reason).toBe('missing_read_key');
+  });
+
+  it('returns a structured 503 when v_sync_health fails', async () => {
+    mockRows.error = { message: 'permission denied for view v_sync_health' };
+
+    const res = await GET();
+    const body = (await parseJson(res)) as { status: string; reason: string; message: string };
+
+    expect(res.status).toBe(503);
+    expect(body.status).toBe('error');
+    expect(body.reason).toBe('sync_health_query_error');
+    expect(body.message).toContain('permission denied');
   });
 
   it('keeps proposal sync healthy before the external threshold is crossed', async () => {

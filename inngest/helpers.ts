@@ -7,11 +7,23 @@
 import { alertDiscord, emitPostHog } from '@/lib/sync-utils';
 import type { SyncType } from '@/lib/sync-utils';
 
+function isProductionRuntime(): boolean {
+  return (
+    process.env.NODE_ENV === 'production' ||
+    Boolean(process.env.RAILWAY_ENVIRONMENT_ID || process.env.RAILWAY_SERVICE_ID)
+  );
+}
+
 export async function callSyncRoute(
   path: string,
   timeoutMs: number,
 ): Promise<{ status: number; body: unknown }> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const configuredBaseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!configuredBaseUrl && isProductionRuntime()) {
+    throw new Error('NEXT_PUBLIC_SITE_URL not configured; refusing to self-fetch sync route');
+  }
+
+  const baseUrl = configuredBaseUrl || 'http://localhost:3000';
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {

@@ -13,6 +13,7 @@ import {
   batchUpsert,
   emitPostHog,
   errMsg,
+  fetchAll,
 } from '@/lib/sync-utils';
 import { generateText } from '@/lib/ai';
 import { blake2bHex } from 'blakejs';
@@ -320,8 +321,10 @@ async function runSocialLinkChecks(supabase: SupabaseClient) {
   const LINK_CHECK_LIMIT = 50;
   const staleThreshold = new Date(Date.now() - 14 * 86_400_000).toISOString();
 
-  const { data: dreps } = await supabase.from('dreps').select('id, metadata');
-  if (!dreps?.length) return { checked: 0 };
+  const dreps = await fetchAll<{ id: string; metadata: unknown }>(() =>
+    supabase.from('dreps').select('id, metadata'),
+  );
+  if (!dreps.length) return { checked: 0 };
 
   const allLinks: { drep_id: string; uri: string }[] = [];
   const seen = new Set<string>();

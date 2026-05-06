@@ -73,6 +73,7 @@ const OPTIONAL_IGNORED_KEYS = new Set<string>([
 ]);
 
 const URL_SCHEMA = z.string().url();
+const NONEMPTY_SCHEMA = z.string().min(1);
 
 interface OpsCriticalIssue {
   key: string;
@@ -86,6 +87,11 @@ interface OpsCriticalGroupIssue {
 }
 
 const OPS_CRITICAL_KEYS = [
+  {
+    key: 'NEXT_PUBLIC_SUPABASE_URL',
+    reason: 'Supabase Data API base URL for public read client health and cached governance reads',
+    schema: URL_SCHEMA,
+  },
   {
     key: 'NEXT_PUBLIC_SITE_URL',
     reason: 'canonical base URL for production links, callbacks, and notifications',
@@ -114,6 +120,13 @@ const OPS_CRITICAL_KEYS = [
 ] as const;
 
 const OPS_CRITICAL_GROUPS = [
+  {
+    keys: ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'] as const,
+    name: 'supabase_read_key',
+    reason:
+      'Supabase public read client key; publishable key is canonical and anon key is accepted temporarily for legacy compatibility',
+    schema: NONEMPTY_SCHEMA,
+  },
   {
     keys: ['DISCORD_WEBHOOK_URL', 'SLACK_WEBHOOK_URL'] as const,
     name: 'alert_webhook',

@@ -22,7 +22,8 @@ export function initPostHog() {
   if (!key || isDoNotTrackEnabled()) return;
 
   posthog.init(key, {
-    api_host: host,
+    api_host: '/api/ph',
+    ui_host: host,
     person_profiles: 'identified_only',
     capture_pageview: true,
     capture_pageleave: true,

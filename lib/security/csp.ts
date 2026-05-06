@@ -1,12 +1,12 @@
 const THIRD_PARTY_SCRIPT_SOURCES = [
-  'https://us.i.posthog.com',
+  'https://*.i.posthog.com',
   'https://*.ingest.us.sentry.io',
   'blob:',
 ];
 
 const CONNECT_SOURCES = [
   'https://*.supabase.co',
-  'https://us.i.posthog.com',
+  'https://*.i.posthog.com',
   'https://us.posthog.com',
   'https://*.ingest.us.sentry.io',
   'https://*.sentry.io',

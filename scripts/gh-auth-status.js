@@ -8,14 +8,21 @@ const { repoRoot, runCommand } = require('./lib/runtime');
 const CANONICAL_REMOTE = 'git@github-governada:governada/app.git';
 const EXPECTED_USER = 'tim-governada';
 const ADDENDUM =
-  '[[decisions/lean-agent-harness#addendum-3-2026-05-04--agent-sa-reads-the-github-pat-revises-addenda-1-and-2]]';
+  '[[decisions/lean-agent-harness#addendum-4-2026-05-05--pivot-from-user-pat-to-github-app-for-autonomous-agent-operations]]';
 const API_REPO = 'governada/app';
+const PUSH_PROBE_BRANCH = 'feat/gh-auth-doctor-probe';
 const GH_WRAPPER = path.join(repoRoot, 'bin', 'gh.sh');
+const GIT_PUSH_WRAPPER = path.join(repoRoot, 'bin', 'git-push.sh');
 const OP_AGENT_DOCTOR = path.join(repoRoot, 'scripts', 'op-agent-doctor.mjs');
+const MINT_HELPER = path.join(repoRoot, 'scripts', 'mint-installation-token.mjs');
 const ENV_REFS_FILE = '.env.local.refs';
 const DEFAULT_AGENT_RUNTIME_FILE = '/Users/tim/dev/agent-runtime/env/governada-agent.env';
-const EXPECTED_GH_TOKEN_OP_REF = 'op://Governada-Agent/governada-app-agent/credential';
 const DESKTOP_PROMPT_PATTERN = /touch id|passcode|biometric|1password desktop|desktop app|prompt/i;
+const APP_REF_KEYS = [
+  'GOVERNADA_GITHUB_CLIENT_ID_OP_REF',
+  'GOVERNADA_GITHUB_INSTALLATION_ID_OP_REF',
+  'GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF',
+];
 
 function firstLine(text) {
   return (
@@ -35,11 +42,9 @@ function outputOf(result) {
 
 function redactSensitiveText(text) {
   return String(text || '')
-    .replace(
-      /\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/gu,
-      '[redacted-github-token]',
-    )
+    .replace(/\bgh[pousr]_[A-Za-z0-9_]{12,}\b/gu, '[redacted-github-token]')
     .replace(/\bops_[A-Za-z0-9_=-]{20,}\b/gu, '[redacted-op-token]')
+    .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/gu, '[redacted-pem]')
     .replace(/op:\/\/[^\s'"]+/gu, 'op://[redacted]')
     .replace(/\bitem [^:\s]+/gu, 'item [redacted]')
     .replace(/\bvault [a-z0-9]{20,}/gu, 'vault [redacted]');
@@ -141,15 +146,6 @@ function parseHttpStatus(output) {
   return lastMatch ? Number.parseInt(lastMatch[1], 10) : 0;
 }
 
-function headerValues(output, headerName) {
-  const prefix = `${headerName.toLowerCase()}:`;
-  return String(output || '')
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter((line) => line.toLowerCase().startsWith(prefix))
-    .map((line) => line.slice(prefix.length).trim());
-}
-
 function resultSummary(result) {
   return firstLine(redactSensitiveText(outputOf(result))) || `exit ${result.status}`;
 }
@@ -163,6 +159,35 @@ function runGhApi(args, env = {}) {
     },
     stripDisabledLocalProxyEnv: true,
     timeoutMs: 90000,
+  });
+}
+
+function runGitPush(args, env = {}) {
+  return runCommand(GIT_PUSH_WRAPPER, args, {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      ...env,
+    },
+    stripDisabledLocalProxyEnv: true,
+    timeoutMs: 90000,
+  });
+}
+
+function runOpRead(opRef, agentToken) {
+  const env = {
+    ...process.env,
+    OP_SERVICE_ACCOUNT_TOKEN: agentToken,
+  };
+  delete env.OP_AGENT_SERVICE_ACCOUNT_TOKEN;
+  delete env.OP_ACCOUNT;
+  delete env.OP_CONNECT_HOST;
+  delete env.OP_CONNECT_TOKEN;
+
+  return runCommand('op', ['read', opRef], {
+    cwd: repoRoot,
+    env,
+    timeoutMs: 30000,
   });
 }
 
@@ -180,13 +205,12 @@ function printRemediation() {
     '- If SSH failed: enable/unlock 1Password SSH agent and verify ssh -T git@github-governada.',
   );
   console.error(
-    '- If API failed: confirm GH_TOKEN_OP_REF points at the Governada-Agent/governada-app-agent credential.',
+    '- If App auth failed: confirm the three GitHub App op-refs, App installation permissions, and governada-agent-app item per Addendum #4.',
   );
   console.error(
     `- If service-account auth failed: confirm ${process.env.OP_AGENT_RUNTIME_FILE || DEFAULT_AGENT_RUNTIME_FILE} has OP_AGENT_SERVICE_ACCOUNT_TOKEN, then run npm run op:agent-doctor.`,
   );
-  console.error(`- If PR-create failed: confirm the PAT has pull_requests:write per ${ADDENDUM}.`);
-  console.error('- Token rotation is a Tim manual action; no automated repair is attempted.');
+  console.error('- App private-key rotation is a Tim manual action; no automated repair is attempted.');
 }
 
 function checkSshLane(failures) {
@@ -255,33 +279,34 @@ function checkSshLane(failures) {
   console.log('OK: SSH + 1Password git lane passed');
 }
 
-function checkAgentServiceAccountRuntime(failures) {
+function agentServiceAccountToken(failures) {
   const runtimeFile = process.env.OP_AGENT_RUNTIME_FILE || DEFAULT_AGENT_RUNTIME_FILE;
   if (!fs.existsSync(runtimeFile)) {
     failures.push(
       `${runtimeFile} is missing; configure OP_AGENT_SERVICE_ACCOUNT_TOKEN per ${ADDENDUM}.`,
     );
-    return;
+    return '';
   }
 
   const stat = fs.statSync(runtimeFile);
   if ((stat.mode & 0o077) !== 0) {
     failures.push(`${runtimeFile} is group/world readable; run chmod 600 before using it.`);
-    return;
+    return '';
   }
 
   const token = parseEnvFile(runtimeFile).OP_AGENT_SERVICE_ACCOUNT_TOKEN || '';
   if (!token) {
     failures.push(`${runtimeFile} does not contain OP_AGENT_SERVICE_ACCOUNT_TOKEN.`);
-    return;
+    return '';
   }
 
   if (!token.startsWith('ops_')) {
     failures.push('OP_AGENT_SERVICE_ACCOUNT_TOKEN does not have the expected ops_ shape.');
-    return;
+    return '';
   }
 
   console.log('OK: agent service account env file is present and owner-only');
+  return token;
 }
 
 function checkWrapperNoDesktopAuth(failures) {
@@ -389,75 +414,125 @@ function checkWrapperCapabilityPolicy(failures) {
   console.log('OK: bin/gh.sh capability allowlist blocks token, merge, and unsafe API commands');
 }
 
+function checkAppOpRefs(failures) {
+  const refs = {};
+  for (const key of APP_REF_KEYS) {
+    const resolved = resolveEnvValue(key);
+    if (!resolved.value) {
+      failures.push(`${key} is missing. Configure it per ${ADDENDUM}.`);
+      return null;
+    }
+    if (!resolved.value.startsWith('op://')) {
+      failures.push(`${key} must be an op:// 1Password reference.`);
+      return null;
+    }
+    refs[key] = resolved.value;
+  }
+
+  console.log('OK: GitHub App op-refs configured (values redacted)');
+  return refs;
+}
+
+function readAppSecrets(refs, agentToken, failures) {
+  const secrets = {};
+  const mapping = {
+    GOVERNADA_GITHUB_CLIENT_ID_OP_REF: 'GOVERNADA_GITHUB_CLIENT_ID',
+    GOVERNADA_GITHUB_INSTALLATION_ID_OP_REF: 'GOVERNADA_GITHUB_INSTALLATION_ID',
+    GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF: 'GOVERNADA_GITHUB_APP_PRIVATE_KEY',
+  };
+
+  for (const [refKey, envKey] of Object.entries(mapping)) {
+    const result = runOpRead(refs[refKey], agentToken);
+    assertNoDesktopPromptShape(result, failures, `op read ${refKey}`);
+    if (result.status !== 0) {
+      failures.push(`agent SA could not read ${refKey}: ${resultSummary(result)}`);
+      return null;
+    }
+    secrets[envKey] = result.stdout.trim();
+  }
+
+  if (!/^-----BEGIN (RSA )?PRIVATE KEY-----/u.test(secrets.GOVERNADA_GITHUB_APP_PRIVATE_KEY)) {
+    failures.push('agent SA read private_key, but it does not have a PEM private-key shape.');
+    return null;
+  }
+
+  console.log('OK: agent SA reads GitHub App private key (value not printed)');
+  return secrets;
+}
+
+function checkMintHelper(secrets, failures) {
+  const result = runCommand(process.execPath, [MINT_HELPER], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      ...secrets,
+    },
+    stripDisabledLocalProxyEnv: true,
+    timeoutMs: 90000,
+  });
+
+  assertNoDesktopPromptShape(result, failures, 'installation-token mint');
+  const token = result.stdout.trim();
+  if (result.status !== 0) {
+    failures.push(`installation-token mint failed: ${resultSummary(result)}`);
+    return;
+  }
+  if (!/^ghs_[A-Za-z0-9_]+$/u.test(token)) {
+    failures.push('installation-token mint did not return the expected ghs_ token shape.');
+    return;
+  }
+
+  console.log('OK: JWT mint and installation-token mint succeeded (ghs_ token shape)');
+}
+
 function checkApiLane(failures) {
   const apiFailuresAtStart = failures.length;
-  const opRef = resolveEnvValue('GH_TOKEN_OP_REF');
-  const rotateAfter = resolveEnvValue('GH_TOKEN_ROTATE_AFTER');
-
-  if (!opRef.value) {
-    failures.push(`GH_TOKEN_OP_REF is missing. Configure it per ${ADDENDUM}.`);
-    return;
-  }
-
-  if (!opRef.value.startsWith('op://')) {
-    failures.push('GH_TOKEN_OP_REF must be an op:// 1Password reference.');
-    return;
-  }
-
-  console.log(`OK: GH_TOKEN_OP_REF configured (${opRef.source}; value redacted)`);
-
-  const wrapperEnv = {
-    GH_TOKEN_OP_REF: opRef.value,
-  };
-  if (rotateAfter.value) {
-    wrapperEnv.GH_TOKEN_ROTATE_AFTER = rotateAfter.value;
-  }
-
-  const userProbe = runGhApi(['api', 'user', '--jq', '.login'], wrapperEnv);
+  const userProbe = runGhApi(['api', 'user', '--jq', '.login']);
   assertNoDesktopPromptShape(userProbe, failures, 'bin/gh.sh api user');
   if (failures.length > apiFailuresAtStart) {
     return;
   }
-  if (userProbe.status === 0 && userProbe.stdout.trim() === EXPECTED_USER) {
-    console.log('OK: bin/gh.sh resolved GH_TOKEN via service-account auth (no Desktop prompt)');
+  if (userProbe.status === 0 && firstLine(userProbe.stdout)) {
+    console.log(`OK: bin/gh.sh authenticates as ${firstLine(userProbe.stdout)} via App token`);
+  } else if (
+    userProbe.status !== 0 &&
+    outputOf(userProbe).includes('Resource not accessible by integration')
+  ) {
+    console.log('OK: App installation token minted; GitHub rejects user-only /user endpoint');
   } else {
     failures.push(`gh API user probe failed: ${resultSummary(userProbe)}`);
     return;
   }
 
-  const repoRead = runGhApi(['api', `repos/${API_REPO}`, '-i'], wrapperEnv);
+  const repoRead = runGhApi(['api', `repos/${API_REPO}`, '--jq', '.full_name']);
   assertNoDesktopPromptShape(repoRead, failures, `repos/${API_REPO} read`);
   if (failures.length > apiFailuresAtStart) {
     return;
   }
-  const repoReadStatus = parseHttpStatus(`${repoRead.stdout}\n${repoRead.stderr}`);
-  if (repoRead.status === 0 && repoReadStatus === 200) {
+  if (repoRead.status === 0 && repoRead.stdout.trim() === API_REPO) {
     console.log(`OK: gh API can read repos/${API_REPO}`);
   } else {
     failures.push(`gh API read failed: ${resultSummary(repoRead)}`);
     return;
   }
 
-  const prCreateProbe = runGhApi(
-    [
-      'api',
-      '-i',
-      '-X',
-      'POST',
-      `repos/${API_REPO}/pulls`,
-      '-f',
-      'title=Governada auth capability probe',
-      '-f',
-      'head=governada:__governada_auth_probe_missing_head__',
-      '-f',
-      'base=main',
-      '-F',
-      'draft=true',
-      '-f',
-      `body=Capability probe for ${ADDENDUM}. Expected result is validation failure, not PR creation.`,
-    ],
-    wrapperEnv,
-  );
+  const prCreateProbe = runGhApi([
+    'api',
+    '-i',
+    '-X',
+    'POST',
+    `repos/${API_REPO}/pulls`,
+    '-f',
+    'title=Governada auth capability probe',
+    '-f',
+    'head=governada:__governada_auth_probe_missing_head__',
+    '-f',
+    'base=main',
+    '-F',
+    'draft=true',
+    '-f',
+    `body=Capability probe for ${ADDENDUM}. Expected result is validation failure, not PR creation.`,
+  ]);
   const prProbeOutput = `${prCreateProbe.stdout}\n${prCreateProbe.stderr}`;
   assertNoDesktopPromptShape(prCreateProbe, failures, 'PR-create capability probe');
   if (failures.length > apiFailuresAtStart) {
@@ -466,85 +541,62 @@ function checkApiLane(failures) {
   const prProbeStatus = parseHttpStatus(prProbeOutput);
 
   if (prProbeStatus === 422) {
-    const acceptedPermissions = headerValues(prProbeOutput, 'x-accepted-github-permissions').join(
-      '; ',
-    );
-    if (acceptedPermissions && !acceptedPermissions.includes('pull_requests=write')) {
-      failures.push(`PAT lacks pull_requests:write - rotate per ${ADDENDUM}.`);
-      return;
-    }
-
-    // GitHub does not expose a stable granted-permissions header for every token type.
-    // A 422 from the PR-create endpoint with a deliberately missing head proves the
-    // token reached create-pull-request validation instead of failing authz at 401/403.
     console.log('OK: gh API PR-create capability reached validation (pull_requests:write)');
-    checkTokenRotation(rotateAfter, failures);
     return;
   }
 
   if (prProbeStatus === 401 || prProbeStatus === 403) {
-    failures.push(`PAT lacks pull_requests:write - rotate per ${ADDENDUM}.`);
+    failures.push(`App installation lacks pull_requests:write - review ${ADDENDUM}.`);
     return;
   }
 
   failures.push(`gh API PR-create capability probe failed: ${resultSummary(prCreateProbe)}`);
 }
 
-function checkTokenRotation(rotateAfter, failures) {
-  if (!rotateAfter.value) {
-    failures.push('GH_TOKEN_ROTATE_AFTER is missing.');
+function checkPushLane(failures) {
+  const dryRun = runGitPush(['--dry-run', 'origin', PUSH_PROBE_BRANCH]);
+  assertNoDesktopPromptShape(dryRun, failures, 'git push dry-run');
+  if (dryRun.status === 0) {
+    console.log(`OK: bin/git-push.sh dry-run push capability passed for ${PUSH_PROBE_BRANCH}`);
+  } else {
+    failures.push(`git push dry-run failed: ${resultSummary(dryRun)}`);
     return;
   }
 
-  const rotationDate = new Date(`${rotateAfter.value}T00:00:00Z`);
-  if (Number.isNaN(rotationDate.getTime())) {
-    failures.push(`GH_TOKEN_ROTATE_AFTER is not a valid YYYY-MM-DD date: ${rotateAfter.value}`);
+  const preSecretProbeEnv = {
+    OP_AGENT_RUNTIME_FILE: '/private/tmp/governada-git-push-policy-probe-no-secret-env',
+  };
+  const mainBlocked = runGitPush(['origin', 'main'], preSecretProbeEnv);
+  if (mainBlocked.status === 0 || !firstLine(mainBlocked.stderr).startsWith('BLOCKED:')) {
+    failures.push(`bin/git-push.sh did not block push to main: ${resultSummary(mainBlocked)}`);
     return;
   }
+  console.log('OK: bin/git-push.sh blocks push to main before secret resolution');
 
-  const daysUntilRotation = Math.ceil((rotationDate.getTime() - Date.now()) / 86_400_000);
-  if (daysUntilRotation < 0) {
-    failures.push(
-      `GH_TOKEN_ROTATE_AFTER is past due: ${rotateAfter.value}. Rotate per ${ADDENDUM}.`,
-    );
+  const forceBlocked = runGitPush(['--force', 'origin', 'feat/something'], preSecretProbeEnv);
+  if (forceBlocked.status === 0 || !firstLine(forceBlocked.stderr).startsWith('BLOCKED:')) {
+    failures.push(`bin/git-push.sh did not block force-push: ${resultSummary(forceBlocked)}`);
     return;
   }
-
-  if (daysUntilRotation <= 14) {
-    console.warn(
-      `WARN: GH_TOKEN_ROTATE_AFTER is within ${daysUntilRotation} day(s): ${rotateAfter.value}.`,
-    );
-    return;
-  }
-
-  console.log(
-    `OK: GH_TOKEN_ROTATE_AFTER ${rotateAfter.value} is outside the 14-day warning window`,
-  );
-}
-
-function checkExpectedVaultLocation(failures) {
-  const opRef = resolveEnvValue('GH_TOKEN_OP_REF');
-  if (opRef.value && opRef.value.includes('Governada-Human/governada-app-agent')) {
-    failures.push(`GH_TOKEN_OP_REF still points at Governada-Human; update it per ${ADDENDUM}.`);
-    return;
-  }
-
-  if (opRef.value && opRef.value !== EXPECTED_GH_TOKEN_OP_REF) {
-    failures.push(`GH_TOKEN_OP_REF must be ${EXPECTED_GH_TOKEN_OP_REF} per ${ADDENDUM}.`);
-  }
+  console.log('OK: bin/git-push.sh blocks force-push before secret resolution');
 }
 
 function main() {
   const failures = [];
 
-  console.log('GitHub auth: SSH + 1Password and GH_TOKEN_OP_REF probes');
+  console.log('GitHub auth: SSH + 1Password and GitHub App installation-token probes');
   checkSshLane(failures);
-  checkAgentServiceAccountRuntime(failures);
+  const agentToken = agentServiceAccountToken(failures);
   checkWrapperNoDesktopAuth(failures);
   checkOpAgentDoctorNoDesktopAuth(failures);
   checkWrapperCapabilityPolicy(failures);
-  checkExpectedVaultLocation(failures);
+  const refs = checkAppOpRefs(failures);
+  const secrets = refs && agentToken ? readAppSecrets(refs, agentToken, failures) : null;
+  if (secrets) {
+    checkMintHelper(secrets, failures);
+  }
   checkApiLane(failures);
+  checkPushLane(failures);
 
   if (failures.length > 0) {
     for (const failure of failures) {

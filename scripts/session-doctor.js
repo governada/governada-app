@@ -188,7 +188,7 @@ function redactSensitiveText(text) {
   return String(text)
     .replace(/op:\/\/[^\s'"`]+/gu, 'op://[redacted]')
     .replace(
-      /\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/gu,
+      /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/gu,
       '[redacted-token]',
     );
 }

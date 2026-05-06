@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ADDENDUM='[[decisions/lean-agent-harness#addendum-3-2026-05-04--agent-sa-reads-the-github-pat-revises-addenda-1-and-2]]'
+ADDENDUM='[[decisions/lean-agent-harness#addendum-4-2026-05-05--pivot-from-user-pat-to-github-app-for-autonomous-agent-operations]]'
 DEFAULT_AGENT_RUNTIME_FILE='/Users/tim/dev/agent-runtime/env/governada-agent.env'
 
 redact() {
   sed -E \
-    -e 's/(gh[pousr]_|github_pat_)[A-Za-z0-9_]{12,}/[redacted-github-token]/g' \
+    -e 's/gh[pousr]_[A-Za-z0-9_]{12,}/[redacted-github-token]/g' \
     -e 's/ops_[A-Za-z0-9_=-]{20,}/[redacted-op-token]/g' \
     -e 's#op://[^[:space:]]+#op://[redacted]#g' \
     -e 's/item [^: ]+/item [redacted]/g' \
@@ -387,18 +387,37 @@ read_ref_value() {
     sed -E 's/[[:space:]]+#.*$//; s/^[[:space:]]+//; s/[[:space:]]+$//; s/^"//; s/"$//; s/^'\''//; s/'\''$//'
 }
 
-gh_token_ref="${GH_TOKEN_OP_REF:-}"
-if [[ -z "$gh_token_ref" ]]; then
-  gh_token_ref="$(read_ref_value GH_TOKEN_OP_REF "$refs_file")"
-fi
+app_ref_value() {
+  local key="$1"
+  local value="${!key:-}"
+  if [[ -z "$value" ]]; then
+    value="$(read_ref_value "$key" "$refs_file")"
+  fi
+  printf '%s' "$value"
+}
 
-if [[ -z "$gh_token_ref" ]]; then
-  {
-    echo "BLOCKED: GH_TOKEN_OP_REF is not set in the process environment or .env.local.refs."
-    echo "Remediation: configure GH_TOKEN_OP_REF per ${ADDENDUM}, then run npm run gh:auth-status."
-  } >&2
-  exit 1
-fi
+assert_op_ref() {
+  local key="$1"
+  local value="$2"
+  if [[ -z "$value" ]]; then
+    {
+      echo "BLOCKED: ${key} is not set in the process environment or .env.local.refs."
+      echo "Remediation: configure GitHub App op-refs per ${ADDENDUM}, then run npm run gh:auth-status."
+    } >&2
+    exit 1
+  fi
+  if [[ "$value" != op://* ]]; then
+    echo "BLOCKED: ${key} must be an op:// 1Password reference." >&2
+    exit 1
+  fi
+}
+
+client_id_ref="$(app_ref_value GOVERNADA_GITHUB_CLIENT_ID_OP_REF)"
+installation_id_ref="$(app_ref_value GOVERNADA_GITHUB_INSTALLATION_ID_OP_REF)"
+private_key_ref="$(app_ref_value GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF)"
+assert_op_ref GOVERNADA_GITHUB_CLIENT_ID_OP_REF "$client_id_ref"
+assert_op_ref GOVERNADA_GITHUB_INSTALLATION_ID_OP_REF "$installation_id_ref"
+assert_op_ref GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF "$private_key_ref"
 
 agent_runtime_file="${OP_AGENT_RUNTIME_FILE:-$DEFAULT_AGENT_RUNTIME_FILE}"
 agent_token="$(read_ref_value OP_AGENT_SERVICE_ACCOUNT_TOKEN "$agent_runtime_file")"
@@ -417,9 +436,29 @@ if [[ "$agent_token" != ops_* ]]; then
 fi
 
 if ! command -v op >/dev/null 2>&1; then
-  echo 'BLOCKED: 1Password CLI (`op`) is not available for GH_TOKEN_OP_REF resolution.' >&2
+  echo 'BLOCKED: 1Password CLI (`op`) is not available for GitHub App op-ref resolution.' >&2
   exit 1
 fi
+
+op_read_secret() {
+  local op_ref="$1"
+  local err_file
+  err_file="$(mktemp "${TMPDIR:-/tmp}/governada-op-read.XXXXXX")" || return 1
+  (
+    export OP_SERVICE_ACCOUNT_TOKEN="$agent_token"
+    unset OP_AGENT_SERVICE_ACCOUNT_TOKEN
+    unset OP_ACCOUNT
+    unset OP_CONNECT_HOST
+    unset OP_CONNECT_TOKEN
+    op read "$op_ref"
+  ) 2>"$err_file"
+  local status=$?
+  if [[ -s "$err_file" ]]; then
+    redact <"$err_file" >&2
+  fi
+  rm -f "$err_file"
+  return "$status"
+}
 
 gh_bin="${GOVERNADA_SYSTEM_GH:-$(command -v gh || true)}"
 if [[ -z "$gh_bin" ]]; then
@@ -431,25 +470,60 @@ unset GH_TOKEN
 unset GITHUB_TOKEN
 unset GH_HOST
 set +e
-(
-  export OP_SERVICE_ACCOUNT_TOKEN="$agent_token"
-  unset OP_AGENT_SERVICE_ACCOUNT_TOKEN
-  unset OP_ACCOUNT
-  unset OP_CONNECT_HOST
-  unset OP_CONNECT_TOKEN
-  op run --env-file <(printf 'GH_TOKEN=%s\n' "$gh_token_ref") -- \
-    env -u OP_SERVICE_ACCOUNT_TOKEN \
-      -u OP_AGENT_SERVICE_ACCOUNT_TOKEN \
-      -u OP_ACCOUNT \
-      -u OP_CONNECT_HOST \
-      -u OP_CONNECT_TOKEN \
-      "$gh_bin" "$@"
-) > >(redact) 2> >(redact >&2)
-status=$?
+client_id="$(op_read_secret "$client_id_ref")"
+client_id_status=$?
+installation_id="$(op_read_secret "$installation_id_ref")"
+installation_id_status=$?
+private_key="$(op_read_secret "$private_key_ref")"
+private_key_status=$?
 set -e
 
-if [[ "$status" -ne 0 ]]; then
-  echo 'Remediation: confirm GH_TOKEN_OP_REF points at the Governada-Agent/governada-app-agent credential item and the agent runtime SA token is valid, then run npm run gh:auth-status.' >&2
+if [[ "$client_id_status" -ne 0 || "$installation_id_status" -ne 0 || "$private_key_status" -ne 0 ]]; then
+  echo "Remediation: confirm GitHub App op-refs and the agent runtime SA token per ${ADDENDUM}." >&2
+  exit 1
 fi
+
+export GOVERNADA_GITHUB_CLIENT_ID="$client_id"
+export GOVERNADA_GITHUB_INSTALLATION_ID="$installation_id"
+export GOVERNADA_GITHUB_APP_PRIVATE_KEY="$private_key"
+mint_err_file="$(mktemp "${TMPDIR:-/tmp}/governada-mint.XXXXXX")"
+set +e
+minted_token="$(
+  env -u OP_SERVICE_ACCOUNT_TOKEN \
+    -u OP_AGENT_SERVICE_ACCOUNT_TOKEN \
+    -u OP_ACCOUNT \
+    -u OP_CONNECT_HOST \
+    -u OP_CONNECT_TOKEN \
+    node "$repo_root/scripts/mint-installation-token.mjs" 2>"$mint_err_file"
+)"
+mint_status=$?
+set -e
+unset GOVERNADA_GITHUB_CLIENT_ID
+unset GOVERNADA_GITHUB_INSTALLATION_ID
+unset GOVERNADA_GITHUB_APP_PRIVATE_KEY
+if [[ -s "$mint_err_file" ]]; then
+  redact <"$mint_err_file" >&2
+fi
+rm -f "$mint_err_file"
+
+if [[ "$mint_status" -ne 0 || -z "$minted_token" ]]; then
+  echo "Remediation: confirm GitHub App op-refs and the agent runtime SA token per ${ADDENDUM}." >&2
+  if [[ "$mint_status" -ne 0 ]]; then
+    exit "$mint_status"
+  fi
+  exit 1
+fi
+
+export GH_TOKEN="$minted_token"
+unset GITHUB_TOKEN
+set +e
+env -u OP_SERVICE_ACCOUNT_TOKEN \
+  -u OP_AGENT_SERVICE_ACCOUNT_TOKEN \
+  -u OP_ACCOUNT \
+  -u OP_CONNECT_HOST \
+  -u OP_CONNECT_TOKEN \
+  "$gh_bin" "$@" > >(redact) 2> >(redact >&2)
+status=$?
+set -e
 
 exit "$status"

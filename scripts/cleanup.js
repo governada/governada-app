@@ -122,6 +122,34 @@ function getBranchTrackingRemote(branch) {
   return result.status === 0 ? result.stdout.trim() : '';
 }
 
+function parseLocalBranches() {
+  const result = runCommand(
+    'git',
+    [
+      'for-each-ref',
+      'refs/heads',
+      '--format=%(refname:short)%09%(upstream:short)%09%(upstream:track)',
+    ],
+    { cwd: repoRoot },
+  );
+  if (result.status !== 0) {
+    return [];
+  }
+
+  return result.stdout
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      const [name, upstream, track] = line.split('\t');
+      return {
+        name,
+        upstream: upstream || '',
+        track: track || '',
+      };
+    })
+    .filter((branch) => branch.name);
+}
+
 function compareMtime(a, b) {
   if (!fs.existsSync(a) || !fs.existsSync(b)) {
     return null;
@@ -272,24 +300,20 @@ runCommand('git', ['fetch', '--prune', '--quiet'], { cwd: repoRoot });
 
 const goneBranches = [];
 const localOnlyBranches = [];
-const branchResult = runCommand('git', ['branch', '-vv'], { cwd: repoRoot });
-if (branchResult.status === 0) {
-  for (const rawLine of branchResult.stdout.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line) {
-      continue;
-    }
-    const branch = line.replace(/^\*\s*/, '').split(/\s+/)[0];
-    if (branch === 'main' || branch === 'master') {
-      continue;
-    }
-    if (line.includes(': gone]')) {
-      goneBranches.push(branch);
-    } else if (!getBranchTrackingRemote(branch)) {
-      localOnlyBranches.push(branch);
-    }
+for (const branch of parseLocalBranches()) {
+  if (branch.name === 'main' || branch.name === 'master') {
+    continue;
+  }
+
+  if (branch.track.includes('[gone]')) {
+    goneBranches.push(branch.name);
+  } else if (!branch.upstream && !getBranchTrackingRemote(branch.name)) {
+    localOnlyBranches.push(branch.name);
   }
 }
+
+goneBranches.sort();
+localOnlyBranches.sort();
 
 if (goneBranches.length > 0) {
   console.log(

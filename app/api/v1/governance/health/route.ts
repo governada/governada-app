@@ -3,6 +3,12 @@ import { withApiHandler } from '@/lib/api/handler';
 import { apiSuccess } from '@/lib/api/response';
 import { getAllDReps, getActualProposalCount } from '@/lib/data';
 import type { ApiContext } from '@/lib/api/handler';
+import type { EnrichedDRep } from '@/lib/koios';
+
+function hasVotingPower(drep: EnrichedDRep): boolean {
+  const lovelace = Number.parseInt(drep.votingPowerLovelace || '0', 10);
+  return Number.isFinite(lovelace) && lovelace > 0;
+}
 
 async function handler(request: NextRequest, ctx: ApiContext) {
   const [{ allDReps }, proposalCount] = await Promise.all([
@@ -10,7 +16,7 @@ async function handler(request: NextRequest, ctx: ApiContext) {
     getActualProposalCount(),
   ]);
 
-  const activeDReps = allDReps.filter((d) => d.isActive);
+  const activeDReps = allDReps.filter(hasVotingPower);
   const scores = allDReps.map((d) => d.drepScore).filter((s) => s > 0);
   const sorted = [...scores].sort((a, b) => a - b);
 

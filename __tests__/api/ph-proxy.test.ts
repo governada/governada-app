@@ -1,10 +1,38 @@
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mockGetRedis = vi.fn();
+const mockLimit = vi.fn();
+const mockLoggerError = vi.fn();
+
+vi.mock('@/lib/redis', () => ({
+  getRedis: () => mockGetRedis(),
+}));
+
+vi.mock('@upstash/ratelimit', () => {
+  const Ratelimit = vi.fn().mockImplementation(() => ({
+    limit: (...args: unknown[]) => mockLimit(...args),
+  }));
+
+  Object.assign(Ratelimit, {
+    slidingWindow: vi.fn().mockReturnValue('window'),
+  });
+
+  return { Ratelimit };
+});
+
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    error: (...args: unknown[]) => mockLoggerError(...args),
+  },
+}));
+
 import {
   GET,
   POST,
   dynamic,
   resetPostHogProxyRateLimitForTests,
+  resolvePostHogUpstreamOrigin,
   runtime,
 } from '@/app/api/ph/[...path]/route';
 
@@ -35,14 +63,17 @@ describe('/api/ph/[...path] PostHog proxy', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
+    mockGetRedis.mockReturnValue({});
+    mockLimit.mockResolvedValue({ success: true, remaining: 99 });
     resetPostHogProxyRateLimitForTests();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it('is explicitly dynamic and uses the Node.js runtime', () => {
@@ -84,6 +115,7 @@ describe('/api/ph/[...path] PostHog proxy', () => {
     );
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockLimit).toHaveBeenCalledWith(expect.stringMatching(/^ip:/u));
 
     const [upstreamUrl, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
     expect(String(upstreamUrl)).toBe('https://us.i.posthog.com/e/?compression=gzip-js');
@@ -139,22 +171,28 @@ describe('/api/ph/[...path] PostHog proxy', () => {
     expect(await response.json()).toEqual({ featureFlags: {} });
   });
 
-  it('bounds abuse with a per-IP token bucket before hitting upstream', async () => {
-    vi.spyOn(Date, 'now').mockReturnValue(1_900_000_000_000);
-    fetchMock.mockImplementation(async () => new Response('ok', { status: 200 }));
+  it('derives the upstream ingest origin from the configured PostHog host', async () => {
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', 'https://eu.posthog.com');
+    fetchMock.mockResolvedValueOnce(new Response('ok', { status: 200 }));
 
-    for (let index = 0; index < 100; index += 1) {
-      const response = await POST(
-        createProxyRequest('/api/ph/e/', {
-          method: 'POST',
-          body: '{}',
-          headers: { 'x-forwarded-for': '198.51.100.22' },
-        }),
-        routeContext(['e']),
-      );
+    await POST(
+      createProxyRequest('/api/ph/e/', {
+        method: 'POST',
+        body: '{}',
+        headers: { 'x-forwarded-for': '198.51.100.22' },
+      }),
+      routeContext(['e']),
+    );
 
-      expect(response.status).toBe(200);
-    }
+    const [upstreamUrl] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(String(upstreamUrl)).toBe('https://eu.i.posthog.com/e/');
+    expect(resolvePostHogUpstreamOrigin('https://eu.i.posthog.com')).toBe(
+      'https://eu.i.posthog.com',
+    );
+  });
+
+  it('bounds abuse with the shared Redis-backed limiter before hitting upstream', async () => {
+    mockLimit.mockResolvedValueOnce({ success: false, remaining: 0 });
 
     const blocked = await POST(
       createProxyRequest('/api/ph/e/', {
@@ -167,6 +205,42 @@ describe('/api/ph/[...path] PostHog proxy', () => {
 
     expect(blocked.status).toBe(429);
     expect(await blocked.text()).toBe('Too many requests');
-    expect(fetchMock).toHaveBeenCalledTimes(100);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('uses a fallback limiter key when proxy IP headers are missing', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+    const response = await POST(
+      createProxyRequest('/api/ph/e/', {
+        method: 'POST',
+        body: '{}',
+        headers: { 'user-agent': 'vitest' },
+      }),
+      routeContext(['e']),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockLimit).toHaveBeenCalledWith(expect.stringMatching(/^fallback:/u));
+  });
+
+  it('returns 502 and logs when the upstream request fails', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('upstream unavailable'));
+
+    const response = await POST(
+      createProxyRequest('/api/ph/e/', {
+        method: 'POST',
+        body: '{}',
+        headers: { 'x-forwarded-for': '198.51.100.23' },
+      }),
+      routeContext(['e']),
+    );
+
+    expect(response.status).toBe(502);
+    expect(await response.text()).toBe('PostHog upstream unavailable');
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      'PostHog proxy upstream request failed',
+      expect.objectContaining({ context: 'api/ph', method: 'POST', path: '/api/ph/e/' }),
+    );
   });
 });

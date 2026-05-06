@@ -3,6 +3,7 @@
 import posthog from 'posthog-js';
 
 let initialized = false;
+const DEFAULT_POSTHOG_UI_HOST = 'https://us.posthog.com';
 
 export function isDoNotTrackEnabled(): boolean {
   if (typeof window === 'undefined') return false;
@@ -17,13 +18,13 @@ export function initPostHog() {
   if (initialized || typeof window === 'undefined') return;
 
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
+  const uiHost = resolvePostHogUiHost(process.env.NEXT_PUBLIC_POSTHOG_HOST);
 
   if (!key || isDoNotTrackEnabled()) return;
 
   posthog.init(key, {
     api_host: '/api/ph',
-    ui_host: host,
+    ui_host: uiHost,
     person_profiles: 'identified_only',
     capture_pageview: true,
     capture_pageleave: true,
@@ -34,3 +35,20 @@ export function initPostHog() {
 }
 
 export { posthog };
+
+export function resolvePostHogUiHost(configuredHost?: string): string {
+  if (!configuredHost) return DEFAULT_POSTHOG_UI_HOST;
+
+  try {
+    const url = new URL(configuredHost);
+
+    if (url.hostname.endsWith('.i.posthog.com')) {
+      url.hostname = url.hostname.replace(/\.i\.posthog\.com$/u, '.posthog.com');
+      return url.origin;
+    }
+
+    return url.origin;
+  } catch {
+    return DEFAULT_POSTHOG_UI_HOST;
+  }
+}

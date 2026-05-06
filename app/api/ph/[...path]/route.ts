@@ -1,12 +1,14 @@
 import { createHash } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const POSTHOG_UPSTREAM_ORIGIN = 'https://us.i.posthog.com';
+const DEFAULT_POSTHOG_UPSTREAM_ORIGIN = 'https://us.i.posthog.com';
 const RATE_LIMIT_MAX_TOKENS = 100;
-const RATE_LIMIT_REFILL_MS = 60_000;
+const RATE_LIMIT_WINDOW = '60 s';
+const POSTHOG_PROXY_TIMEOUT_MS = 10_000;
 const REQUEST_HEADERS_TO_FORWARD = ['accept', 'content-type', 'content-encoding'] as const;
 const RESPONSE_HEADERS_TO_FORWARD = ['content-type', 'content-encoding', 'cache-control'] as const;
 const DECODED_RESPONSE_ENCODINGS = new Set(['br', 'deflate', 'gzip', 'x-gzip', 'zstd']);
@@ -15,58 +17,60 @@ type RouteContext = {
   params: Promise<{ path: string[] }>;
 };
 
-type RateLimitBucket = {
-  tokens: number;
-  updatedAt: number;
-};
-
-const rateLimitBuckets = new Map<string, RateLimitBucket>();
+let postHogProxyLimiter: import('@upstash/ratelimit').Ratelimit | null = null;
 
 function hashIp(ip: string): string {
   return createHash('sha256').update(ip).digest('hex').slice(0, 16);
 }
 
-function getClientIp(request: NextRequest): string {
-  return (
+function getClientIp(request: NextRequest): string | null {
+  const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
-  );
+    request.headers.get('x-real-ip')?.trim();
+
+  return ip || null;
 }
 
-function pruneOldBuckets(now: number): void {
-  if (rateLimitBuckets.size <= 1_000) return;
+function getRateLimitIdentifier(request: NextRequest): string {
+  const ip = getClientIp(request);
+  if (ip) return `ip:${hashIp(ip)}`;
 
-  for (const [key, bucket] of rateLimitBuckets) {
-    if (now - bucket.updatedAt > RATE_LIMIT_REFILL_MS * 2) {
-      rateLimitBuckets.delete(key);
-    }
-  }
+  return `fallback:${hashIp(
+    [
+      request.headers.get('host') ?? request.nextUrl.host,
+      request.headers.get('user-agent') ?? 'unknown-agent',
+    ].join('|'),
+  )}`;
 }
 
-function consumeRateLimitToken(request: NextRequest): boolean {
-  const now = Date.now();
-  const key = hashIp(getClientIp(request));
-  const bucket = rateLimitBuckets.get(key) ?? {
-    tokens: RATE_LIMIT_MAX_TOKENS,
-    updatedAt: now,
-  };
-  const elapsedMs = Math.max(0, now - bucket.updatedAt);
-  const refillTokens = (elapsedMs / RATE_LIMIT_REFILL_MS) * RATE_LIMIT_MAX_TOKENS;
+async function getPostHogProxyLimiter(): Promise<import('@upstash/ratelimit').Ratelimit> {
+  if (postHogProxyLimiter) return postHogProxyLimiter;
 
-  bucket.tokens = Math.min(RATE_LIMIT_MAX_TOKENS, bucket.tokens + refillTokens);
-  bucket.updatedAt = now;
+  const [{ getRedis }, { Ratelimit }] = await Promise.all([
+    import('@/lib/redis'),
+    import('@upstash/ratelimit'),
+  ]);
 
-  if (bucket.tokens < 1) {
-    rateLimitBuckets.set(key, bucket);
-    pruneOldBuckets(now);
+  postHogProxyLimiter = new Ratelimit({
+    redis: getRedis(),
+    limiter: Ratelimit.slidingWindow(RATE_LIMIT_MAX_TOKENS, RATE_LIMIT_WINDOW),
+    prefix: 'rl:posthog-proxy',
+  });
+  return postHogProxyLimiter;
+}
+
+async function isRateLimitAllowed(request: NextRequest): Promise<boolean> {
+  try {
+    const limiter = await getPostHogProxyLimiter();
+    const result = await limiter.limit(getRateLimitIdentifier(request));
+    return result.success;
+  } catch (error) {
+    logger.error('PostHog proxy rate limit check failed', {
+      context: 'api/ph',
+      error,
+    });
     return false;
   }
-
-  bucket.tokens -= 1;
-  rateLimitBuckets.set(key, bucket);
-  pruneOldBuckets(now);
-  return true;
 }
 
 function buildForwardHeaders(request: NextRequest): Headers {
@@ -109,13 +113,36 @@ function buildResponseHeaders(upstreamResponse: Response): Headers {
   return headers;
 }
 
+export function resolvePostHogUpstreamOrigin(
+  configuredHost = process.env.NEXT_PUBLIC_POSTHOG_HOST,
+): string {
+  if (!configuredHost) return DEFAULT_POSTHOG_UPSTREAM_ORIGIN;
+
+  try {
+    const url = new URL(configuredHost);
+
+    if (url.hostname.endsWith('.i.posthog.com')) {
+      return url.origin;
+    }
+
+    if (url.hostname.endsWith('.posthog.com')) {
+      url.hostname = url.hostname.replace(/\.posthog\.com$/u, '.i.posthog.com');
+      return url.origin;
+    }
+
+    return url.origin;
+  } catch {
+    return DEFAULT_POSTHOG_UPSTREAM_ORIGIN;
+  }
+}
+
 function buildUpstreamUrl(request: NextRequest): URL {
   const prefix = '/api/ph/';
   const pathname = request.nextUrl.pathname;
   const upstreamPath = pathname.startsWith(prefix)
     ? pathname.slice(prefix.length)
     : pathname.replace(/^\/api\/ph\/?/u, '');
-  const upstreamUrl = new URL(`${POSTHOG_UPSTREAM_ORIGIN}/${upstreamPath}`);
+  const upstreamUrl = new URL(`${resolvePostHogUpstreamOrigin()}/${upstreamPath}`);
 
   upstreamUrl.search = request.nextUrl.search;
   return upstreamUrl;
@@ -131,18 +158,33 @@ async function readForwardBody(request: NextRequest): Promise<ArrayBuffer | unde
 }
 
 async function proxyPostHog(request: NextRequest, _context: RouteContext): Promise<NextResponse> {
-  if (!consumeRateLimitToken(request)) {
+  if (!(await isRateLimitAllowed(request))) {
     return new NextResponse('Too many requests', {
       status: 429,
       headers: { 'cache-control': 'no-store' },
     });
   }
 
-  const upstreamResponse = await fetch(buildUpstreamUrl(request), {
-    method: request.method,
-    headers: buildForwardHeaders(request),
-    body: await readForwardBody(request),
-  });
+  let upstreamResponse: Response;
+  try {
+    upstreamResponse = await fetch(buildUpstreamUrl(request), {
+      method: request.method,
+      headers: buildForwardHeaders(request),
+      body: await readForwardBody(request),
+      signal: AbortSignal.timeout(POSTHOG_PROXY_TIMEOUT_MS),
+    });
+  } catch (error) {
+    logger.error('PostHog proxy upstream request failed', {
+      context: 'api/ph',
+      method: request.method,
+      path: request.nextUrl.pathname,
+      error,
+    });
+    return new NextResponse('PostHog upstream unavailable', {
+      status: 502,
+      headers: { 'cache-control': 'no-store' },
+    });
+  }
 
   return new NextResponse(upstreamResponse.body, {
     status: upstreamResponse.status,
@@ -160,5 +202,5 @@ export const OPTIONS = proxyPostHog;
 export const HEAD = proxyPostHog;
 
 export function resetPostHogProxyRateLimitForTests(): void {
-  rateLimitBuckets.clear();
+  postHogProxyLimiter = null;
 }

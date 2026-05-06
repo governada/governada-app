@@ -566,15 +566,17 @@ function checkPushLane(failures) {
   const preSecretProbeEnv = {
     OP_AGENT_RUNTIME_FILE: '/private/tmp/governada-git-push-policy-probe-no-secret-env',
   };
+  const pushPolicyPrefix =
+    'BLOCKED: bin/git-push.sh allows only governed Governada branch publication';
   const mainBlocked = runGitPush(['origin', 'main'], preSecretProbeEnv);
-  if (mainBlocked.status === 0 || !firstLine(mainBlocked.stderr).startsWith('BLOCKED:')) {
+  if (mainBlocked.status === 0 || !firstLine(mainBlocked.stderr).startsWith(pushPolicyPrefix)) {
     failures.push(`bin/git-push.sh did not block push to main: ${resultSummary(mainBlocked)}`);
     return;
   }
   console.log('OK: bin/git-push.sh blocks push to main before secret resolution');
 
   const forceBlocked = runGitPush(['--force', 'origin', 'feat/something'], preSecretProbeEnv);
-  if (forceBlocked.status === 0 || !firstLine(forceBlocked.stderr).startsWith('BLOCKED:')) {
+  if (forceBlocked.status === 0 || !firstLine(forceBlocked.stderr).startsWith(pushPolicyPrefix)) {
     failures.push(`bin/git-push.sh did not block force-push: ${resultSummary(forceBlocked)}`);
     return;
   }

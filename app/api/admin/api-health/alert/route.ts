@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin, probeSupabaseReadClient } from '@/lib/supabase';
 import { broadcastDiscord } from '@/lib/notifications';
 import { alertEmail } from '@/lib/sync-utils';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
@@ -31,6 +31,17 @@ export const GET = withRouteHandler(async (request) => {
   const checks: HealthCheck[] = [];
   const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  const readClient = await probeSupabaseReadClient();
+  checks.push({
+    name: 'Supabase public read client',
+    severity: 'critical',
+    passed: readClient.status === 'healthy',
+    detail:
+      readClient.status === 'healthy'
+        ? `${readClient.env.activeKey} key responded in ${readClient.latencyMs}ms`
+        : `${readClient.reason}: ${readClient.message}`,
+  });
 
   // --- Check 1: 5xx Error Rate (15 min window) ---
   const { data: recentLogs } = await supabase
@@ -171,6 +182,11 @@ export const GET = withRouteHandler(async (request) => {
   const failures = checks.filter((c) => !c.passed);
   const criticalFailures = failures.filter((c) => c.severity === 'critical');
   const warnings = failures.filter((c) => c.severity === 'warning');
+  const failedChecks = failures.map((c) => ({
+    name: c.name,
+    severity: c.severity,
+    detail: c.detail,
+  }));
 
   if (criticalFailures.length > 0 || warnings.length > 0) {
     const lines: string[] = [];
@@ -220,6 +236,8 @@ export const GET = withRouteHandler(async (request) => {
       passed: checks.filter((c) => c.passed).length,
       critical_failures: criticalFailures.length,
       warnings: warnings.length,
+      failed_checks: failedChecks,
+      read_client: readClient,
     },
   });
 

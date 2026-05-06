@@ -10,7 +10,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { getSupabaseAdmin, probeSupabaseReadClient } from '@/lib/supabase';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getCurrentEpoch } from '@/lib/constants';
@@ -35,8 +35,17 @@ export const GET = withRouteHandler(async (request) => {
     return NextResponse.json({ skipped: true, reason: 'No webhook URL configured' });
   }
 
-  const supabase = createClient();
+  const supabase = getSupabaseAdmin();
   const alerts: InboxAlert[] = [];
+
+  const readClient = await probeSupabaseReadClient();
+  if (readClient.status !== 'healthy') {
+    alerts.push({
+      level: 'critical',
+      title: 'Supabase read client unavailable',
+      detail: `${readClient.reason}: ${readClient.message}. Check Railway Supabase public read env without printing values.`,
+    });
+  }
 
   const activeDrepsRes = await supabase
     .from('dreps')
@@ -44,7 +53,7 @@ export const GET = withRouteHandler(async (request) => {
     .filter('info->>isActive', 'eq', 'true');
   const totalActiveDreps = activeDrepsRes.count ?? 0;
 
-  if (totalActiveDreps === 0) {
+  if (totalActiveDreps === 0 && alerts.length === 0) {
     return NextResponse.json({ alerts: 0, reason: 'No active DReps' });
   }
 
@@ -70,7 +79,7 @@ export const GET = withRouteHandler(async (request) => {
     .is('dropped_epoch', null)
     .is('expired_epoch', null);
 
-  if (!openProposals || openProposals.length === 0) {
+  if ((!openProposals || openProposals.length === 0) && alerts.length === 0) {
     return NextResponse.json({ alerts: 0, reason: 'No open proposals' });
   }
 
@@ -87,7 +96,9 @@ export const GET = withRouteHandler(async (request) => {
 
   let totalDrepVotes = 0;
 
-  for (const p of openProposals) {
+  const proposalsToCheck = openProposals ?? [];
+
+  for (const p of proposalsToCheck) {
     const vs = Array.isArray(p.proposal_voting_summary)
       ? p.proposal_voting_summary[0]
       : p.proposal_voting_summary;
@@ -96,7 +107,7 @@ export const GET = withRouteHandler(async (request) => {
       (vs?.drep_no_votes_cast ?? 0) +
       (vs?.drep_abstain_votes_cast ?? 0);
     totalDrepVotes += drepVotes;
-    const coverage = Math.round((drepVotes / totalActiveDreps) * 100);
+    const coverage = totalActiveDreps > 0 ? Math.round((drepVotes / totalActiveDreps) * 100) : 0;
     const expirationEpoch =
       p.expiration_epoch ?? (p.proposed_epoch != null ? p.proposed_epoch + 6 : null);
     const epochsRemaining =
@@ -122,20 +133,20 @@ export const GET = withRouteHandler(async (request) => {
   }
 
   const avgCoverage =
-    openProposals.length > 0
-      ? Math.round((totalDrepVotes / openProposals.length / totalActiveDreps) * 100)
+    proposalsToCheck.length > 0 && totalActiveDreps > 0
+      ? Math.round((totalDrepVotes / proposalsToCheck.length / totalActiveDreps) * 100)
       : 0;
-  if (avgCoverage < 30) {
+  if (proposalsToCheck.length > 0 && avgCoverage < 30) {
     alerts.push({
       level: 'warning',
       title: 'Low overall DRep engagement',
-      detail: `Average vote coverage across ${openProposals.length} open proposals is ${avgCoverage}% (threshold: 30%)`,
+      detail: `Average vote coverage across ${proposalsToCheck.length} open proposals is ${avgCoverage}% (threshold: 30%)`,
     });
   }
 
   captureServerEvent('inbox_engagement_alert_check', {
     alertCount: alerts.length,
-    openProposals: openProposals.length,
+    openProposals: proposalsToCheck.length,
     avgCoverage,
     currentEpoch,
   });

@@ -18,6 +18,7 @@ import {
   errMsg,
   capMsg,
   emitPostHog,
+  fetchAll,
   triggerAnalyticsDeploy,
   alertDiscord,
 } from '@/lib/sync-utils';
@@ -302,8 +303,10 @@ export async function phaseFetchDReps(
   // Read existing delegator counts from DB
   const delegatorCounts: Record<string, number> = {};
   try {
-    const { data: existing } = await supabase.from('dreps').select('id, info');
-    for (const row of existing || []) {
+    const existing = await fetchAll<{ id: string; info: unknown }>(() =>
+      supabase.from('dreps').select('id, info'),
+    );
+    for (const row of existing) {
       const info = row.info as Record<string, unknown> | null;
       const count = (info?.delegatorCount as number) || 0;
       delegatorCounts[row.id] = count;

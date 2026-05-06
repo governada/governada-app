@@ -6,7 +6,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
-import { errMsg, pingHeartbeat } from '@/lib/sync-utils';
+import { errMsg, fetchAll, pingHeartbeat } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import { detectClusters } from '@/lib/globe/clusterDetection';
 import { nameAllClusters } from '@/lib/globe/clusterNaming';
@@ -510,14 +510,16 @@ Output ONLY the narrative paragraph, nothing else.`,
               .maybeSingle();
             if (existing) return { skipped: true };
 
-            const [votersResult, totalDrepsResult, totalPowerResult, rationaleResult] =
+            const [votersResult, totalDrepsResult, totalPowerRows, rationaleResult] =
               await Promise.all([
                 supabase.from('drep_votes').select('drep_id').eq('epoch_no', epoch),
                 supabase
                   .from('dreps')
                   .select('id', { count: 'exact', head: true })
                   .not('info->isActive', 'eq', false),
-                supabase.from('dreps').select('info').not('info->isActive', 'eq', false),
+                fetchAll<{ info: unknown }>(() =>
+                  supabase.from('dreps').select('info').not('info->isActive', 'eq', false),
+                ),
                 supabase
                   .from('drep_votes')
                   .select('vote_tx_hash', { count: 'exact', head: true })
@@ -535,7 +537,7 @@ Output ONLY the narrative paragraph, nothing else.`,
             const rationaleRate =
               totalVotes > 0 ? Math.round((rationaleCount / totalVotes) * 10000) / 100 : 0;
 
-            const totalPower = (totalPowerResult.data || []).reduce((sum, row) => {
+            const totalPower = totalPowerRows.reduce((sum, row) => {
               const info = row.info as Record<string, unknown>;
               return sum + BigInt((info?.votingPowerLovelace as string) || '0');
             }, BigInt(0));

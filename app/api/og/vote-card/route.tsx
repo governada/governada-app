@@ -36,13 +36,14 @@ export async function GET(request: Request) {
 
     // Direct Supabase fetch compatible with edge runtime
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseReadKey =
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     let drepName = drepId.length > 20 ? `${drepId.slice(0, 12)}...${drepId.slice(-8)}` : drepId;
     let proposalTitle = 'Governance Proposal';
 
-    if (supabaseUrl && supabaseAnonKey) {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    if (supabaseUrl && supabaseReadKey) {
+      const supabase = createClient(supabaseUrl, supabaseReadKey);
 
       // Fetch DRep name
       const { data: drep } = await supabase.from('dreps').select('info').eq('id', drepId).single();

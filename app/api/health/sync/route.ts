@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { createClient, probeSupabaseReadClient } from '@/lib/supabase';
 import { CORE_SYNC_TYPES, getExternalSyncHealthLevel, getSyncPolicy } from '@/lib/syncPolicy';
 
 export const dynamic = 'force-dynamic';
@@ -11,12 +11,45 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   try {
+    const readClient = await probeSupabaseReadClient();
+    if (readClient.status !== 'healthy') {
+      return NextResponse.json(
+        {
+          status: 'error',
+          reason: readClient.reason,
+          message: 'Supabase read client is unavailable',
+          read_client: readClient,
+          checked_at: new Date().toISOString(),
+        },
+        { status: 503 },
+      );
+    }
+
     const supabase = createClient();
-    const { data: rows } = await supabase.from('v_sync_health').select('*');
+    const { data: rows, error } = await supabase.from('v_sync_health').select('*');
+
+    if (error) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          reason: 'sync_health_query_error',
+          message: error.message,
+          read_client: readClient,
+          checked_at: new Date().toISOString(),
+        },
+        { status: 503 },
+      );
+    }
 
     if (!rows?.length) {
       return NextResponse.json(
-        { status: 'unknown', message: 'No sync data available' },
+        {
+          status: 'unknown',
+          reason: 'no_sync_data',
+          message: 'No sync data available',
+          read_client: readClient,
+          checked_at: new Date().toISOString(),
+        },
         { status: 503 },
       );
     }
@@ -47,11 +80,20 @@ export async function GET() {
       {
         status: healthy ? 'healthy' : 'critical',
         core_syncs: coreStatuses,
+        read_client: readClient,
         checked_at: new Date().toISOString(),
       },
       { status: healthy ? 200 : 503 },
     );
-  } catch {
-    return NextResponse.json({ status: 'error', message: 'Health check failed' }, { status: 503 });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        status: 'error',
+        reason: 'unexpected_error',
+        message: error instanceof Error ? error.message : 'Health check failed',
+        checked_at: new Date().toISOString(),
+      },
+      { status: 503 },
+    );
   }
 }

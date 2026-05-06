@@ -7,9 +7,22 @@ const mockState = {
   currentEpoch: 0,
   snapshotError: null as Error | null,
   snapshotLatest: {} as Record<string, Record<string, unknown> | null>,
+  readClient: {
+    status: 'healthy',
+    reason: 'ok',
+    message: 'Supabase read-client query succeeded',
+    latencyMs: 1,
+    env: {
+      url: 'present',
+      publishableKey: 'present',
+      legacyAnonKey: 'missing',
+      activeKey: 'publishable',
+    },
+  },
 };
 
 vi.mock('@/lib/supabase', () => ({
+  probeSupabaseReadClient: vi.fn(() => Promise.resolve(mockState.readClient)),
   createClient: () => ({
     from: (table: string) => {
       if (table === 'v_sync_health') {
@@ -78,6 +91,20 @@ describe('GET /api/health', () => {
     mockState.currentEpoch = 0;
     mockState.snapshotError = null;
     mockState.snapshotLatest = {};
+    mockState.readClient = {
+      status: 'healthy',
+      reason: 'ok',
+      message: 'Supabase read-client query succeeded',
+      latencyMs: 1,
+      env: {
+        url: 'present',
+        publishableKey: 'present',
+        legacyAnonKey: 'missing',
+        activeKey: 'publishable',
+      },
+    };
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'publishable-key');
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://governada.io');
     vi.stubEnv('NEXT_PUBLIC_SENTRY_DSN', 'https://public@example.ingest.sentry.io/1');
     vi.stubEnv('HEARTBEAT_URL_PROPOSALS', 'https://betterstack.example/proposals');
@@ -251,13 +278,38 @@ describe('GET /api/health', () => {
     );
   });
 
-  it('returns 500 on unexpected sync query error', async () => {
+  it('returns structured critical status when the read client is unavailable', async () => {
+    mockState.readClient = {
+      status: 'unhealthy',
+      reason: 'query_error',
+      message: 'Invalid API key',
+      latencyMs: 12,
+      env: {
+        url: 'present',
+        publishableKey: 'present',
+        legacyAnonKey: 'missing',
+        activeKey: 'publishable',
+      },
+    };
+
+    const res = await GET(makeReq());
+    const body = (await parseJson(res)) as { status: string; reason: string; message: string };
+
+    expect(res.status).toBe(200);
+    expect(body.status).toBe('critical');
+    expect(body.reason).toBe('query_error');
+    expect(body.message).toBe('Supabase read client is unavailable');
+  });
+
+  it('returns structured critical status on unexpected sync query error', async () => {
     mockState.syncError = new Error('DB connection failed');
 
     const res = await GET(makeReq());
-    const body = (await parseJson(res)) as { error: string };
+    const body = (await parseJson(res)) as { status: string; reason: string; error: string };
 
-    expect(res.status).toBe(500);
-    expect(body.error).toBe('Internal server error');
+    expect(res.status).toBe(200);
+    expect(body.status).toBe('critical');
+    expect(body.reason).toBe('sync_health_query_exception');
+    expect(body.error).toBe('DB connection failed');
   });
 });

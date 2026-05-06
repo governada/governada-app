@@ -1,23 +1,112 @@
 import { NextResponse } from 'next/server';
 import { getOpsEnvReport } from '@/lib/env';
 import { getRuntimeRelease } from '@/lib/runtimeMetadata';
-import { createClient } from '@/lib/supabase';
+import { createClient, probeSupabaseReadClient } from '@/lib/supabase';
 import { getSyncHealthLevel, getSyncPolicy, mergeSyncHealthLevel } from '@/lib/syncPolicy';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 
 export const dynamic = 'force-dynamic';
 
+const SNAPSHOT_PROBE_TIMEOUT_MS = 2_500;
+
+type SyncHealthRow = {
+  sync_type: string;
+  last_run: string | null;
+  last_success: boolean | null;
+  success_count: number | null;
+  failure_count: number | null;
+};
+
+type SyncHealthQueryResult = {
+  data: SyncHealthRow[] | null;
+  error: { message: string } | null;
+};
+
+type SnapshotProbeResult = {
+  data: Record<string, unknown> | null;
+  error: { message: string } | null;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'unknown error';
+}
+
+async function withProbeTimeout<T>(operation: PromiseLike<T>, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${SNAPSHOT_PROBE_TIMEOUT_MS}ms`)),
+      SNAPSHOT_PROBE_TIMEOUT_MS,
+    );
+  });
+
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export const GET = withRouteHandler(async () => {
-  const supabase = createClient();
   const operations = getOpsEnvReport();
-  const { data: rows } = await supabase.from('v_sync_health').select('*');
+  const readClient = await probeSupabaseReadClient();
+
+  if (readClient.status !== 'healthy') {
+    return NextResponse.json({
+      status: 'critical',
+      message: 'Supabase read client is unavailable',
+      reason: readClient.reason,
+      syncs: [],
+      snapshots: null,
+      operations,
+      read_client: readClient,
+      release: getRuntimeRelease(),
+    });
+  }
+
+  const supabase = createClient();
+  let syncHealthResult: SyncHealthQueryResult;
+
+  try {
+    syncHealthResult = (await supabase.from('v_sync_health').select('*')) as SyncHealthQueryResult;
+  } catch (error) {
+    return NextResponse.json({
+      status: 'critical',
+      message: 'Sync health query failed',
+      reason: 'sync_health_query_exception',
+      error: getErrorMessage(error),
+      syncs: [],
+      snapshots: null,
+      operations,
+      read_client: readClient,
+      release: getRuntimeRelease(),
+    });
+  }
+
+  const { data: rows, error: syncHealthError } = syncHealthResult;
+
+  if (syncHealthError) {
+    return NextResponse.json({
+      status: 'critical',
+      message: 'Sync health query failed',
+      reason: 'sync_health_query_error',
+      error: syncHealthError.message,
+      syncs: [],
+      snapshots: null,
+      operations,
+      read_client: readClient,
+      release: getRuntimeRelease(),
+    });
+  }
 
   if (!rows?.length) {
     return NextResponse.json({
       status: operations.status === 'healthy' ? 'unknown' : 'degraded',
+      reason: 'no_sync_data',
       message: 'No sync data',
       syncs: [],
       operations,
+      read_client: readClient,
       release: getRuntimeRelease(),
     });
   }
@@ -77,12 +166,18 @@ export const GET = withRouteHandler(async () => {
       const snapshotChecks = await Promise.all(
         snapshotTables.map(
           async ({ name, col, isDate }: { name: string; col: string; isDate?: boolean }) => {
-            const { data: latest } = await supabase
+            const query = supabase
               .from(name)
               .select(col)
               .order(col, { ascending: false })
               .limit(1)
-              .maybeSingle();
+              .maybeSingle() as PromiseLike<SnapshotProbeResult>;
+
+            const { data: latest, error } = await withProbeTimeout(query, `snapshot ${name}`);
+
+            if (error) {
+              throw new Error(`${name}: ${error.message}`);
+            }
 
             if (isDate) {
               const latestDate = latest
@@ -144,10 +239,11 @@ export const GET = withRouteHandler(async () => {
       snapshotHealth = { status: snapshotLevel, epoch, checks: snapshotChecks };
       worstLevel = mergeSyncHealthLevel(worstLevel, snapshotLevel);
     }
-  } catch {
+  } catch (error) {
     snapshotHealth = {
       status: 'unavailable',
       error: 'snapshot health check failed',
+      reason: getErrorMessage(error),
     };
     worstLevel = mergeSyncHealthLevel(worstLevel, 'degraded');
   }
@@ -157,6 +253,7 @@ export const GET = withRouteHandler(async () => {
     syncs,
     snapshots: snapshotHealth,
     operations,
+    read_client: readClient,
     release: getRuntimeRelease(),
   });
 });

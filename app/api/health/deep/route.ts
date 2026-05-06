@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withRouteHandler } from '@/lib/api/withRouteHandler';
 import { getOpsEnvReport } from '@/lib/env';
 import { getRuntimeRelease } from '@/lib/runtimeMetadata';
-import { getSupabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin, probeSupabaseReadClient } from '@/lib/supabase';
 import { checkKoiosHealthFast } from '@/utils/koios';
 import { getRedis } from '@/lib/redis';
 
@@ -41,6 +41,10 @@ async function probeSupabase(): Promise<DepResult> {
   }
 }
 
+async function probeSupabaseRead(): Promise<Awaited<ReturnType<typeof probeSupabaseReadClient>>> {
+  return probeSupabaseReadClient();
+}
+
 async function probeKoios(): Promise<DepResult> {
   const start = Date.now();
   try {
@@ -76,8 +80,9 @@ function probeOperationalEnv(): EnvDepResult {
 
 export const GET = withRouteHandler(
   async () => {
-    const [supabase, koios, redis] = await Promise.all([
+    const [supabase, supabaseRead, koios, redis] = await Promise.all([
       probeSupabase(),
+      probeSupabaseRead(),
       probeKoios(),
       probeRedis(),
     ]);
@@ -87,7 +92,7 @@ export const GET = withRouteHandler(
     // supporting dependency for shared rate limits and cache-backed coordination,
     // but core reads stay available without it. Koios is background-only because
     // scheduled sync jobs, not page requests, depend on it.
-    const coreHealthy = supabase.status === 'healthy';
+    const coreHealthy = supabase.status === 'healthy' && supabaseRead.status === 'healthy';
     const allHealthy =
       coreHealthy &&
       koios.status === 'healthy' &&
@@ -96,7 +101,13 @@ export const GET = withRouteHandler(
 
     return NextResponse.json({
       status: allHealthy ? 'healthy' : coreHealthy ? 'degraded' : 'critical',
-      dependencies: { supabase, koios, redis, operational_env: operationalEnv },
+      dependencies: {
+        supabase,
+        supabase_read: supabaseRead,
+        koios,
+        redis,
+        operational_env: operationalEnv,
+      },
       release: getRuntimeRelease(),
       timestamp: new Date().toISOString(),
     });

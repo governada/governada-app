@@ -12,6 +12,7 @@ import { inngest } from '@/lib/inngest';
 import { generateAndStoreReport } from '@/lib/stateOfGovernance';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
+import { fetchAll } from '@/lib/sync-utils';
 import {
   getCitizenMandate,
   computeSentimentDivergence,
@@ -70,12 +71,14 @@ export const generateStateOfGovernance = inngest.createFunction(
       }));
 
       // DRep participation
-      const { data: dreps } = await supabase.from('dreps').select('info').not('info', 'is', null);
+      const dreps = await fetchAll<{ info: unknown }>(() =>
+        supabase.from('dreps').select('info').not('info', 'is', null),
+      );
       const activeDreps = (dreps ?? []).filter(
         (d) => (d.info as Record<string, unknown> | null)?.isActive,
       );
       const participationRate =
-        dreps && dreps.length > 0 ? Math.round((activeDreps.length / dreps.length) * 100) : 0;
+        dreps.length > 0 ? Math.round((activeDreps.length / dreps.length) * 100) : 0;
 
       // Citizen engagement counts
       const [sentimentCount, priorityCount, assemblyCount] = await Promise.all([

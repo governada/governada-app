@@ -173,10 +173,7 @@ function redactSensitiveText(text, sensitiveValues = []) {
 
   return redacted
     .replace(/\bops_[A-Za-z0-9_=-]{20,}\b/gu, '[redacted-op-service-account-token]')
-    .replace(
-      /\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/gu,
-      '[redacted-token]',
-    )
+    .replace(/\bgh[pousr]_[A-Za-z0-9_]{20,}\b/gu, '[redacted-token]')
     .replace(/op:\/\/[^\r\n'"]+/gu, 'op://[redacted]');
 }
 

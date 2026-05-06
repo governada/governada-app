@@ -47,18 +47,16 @@ Canonical agent guide for `governada/app`. Provider adapters in `.claude/`, Curs
 
 ## Auth
 
-**Two lanes, both 1Password-sourced:**
+**Two lanes for git/GitHub:**
 
-- **git push/pull:** SSH + 1Password Desktop. Remotes use `git@github-governada:...`.
-- **GitHub API (PR create, comments, status):** `GH_TOKEN_OP_REF` resolved at runtime via `bin/gh.sh` (or `npm run gh -- ...`) using the agent service account. PAT is fine-grained, scoped to `governada/app` only with `Contents:write`, `Pull requests:write`, `Metadata:read`, `Workflows:read`. Stored in 1Password `Governada-Agent` vault as `governada-app-agent`.
+- **Human (Tim) git push/pull and signed commits:** SSH + 1Password Desktop. Remotes use `git@github-governada:...`. Manual; biometric-gated. Used for Tim's direct work.
+- **Autonomous agent (read non-git secrets, GitHub API, branch publication):** GitHub App installation tokens, minted from `governada-agent-app` in 1Password `Governada-Agent` vault via the agent service account `OP_AGENT_SERVICE_ACCOUNT_TOKEN`. Wrappers: `bin/gh.sh` (or `npm run gh -- ...`) for API; `bin/git-push.sh` (or `npm run git:push -- ...`) for branch publication. Both are governed capability lanes — see Addendum #4 for scope.
 
-`bin/gh.sh` is a governed capability lane, not a generic `gh` shell. It allowlists read/status, draft PR creation, PR metadata edits, and PR comments; it blocks token-printing, merge, ready-for-review, destructive API, admin, secret, workflow-dispatch, and other-repo operations before secret resolution.
+If broken, run `npm run gh:auth-status` (probes both lanes plus App mint chain, API capability, and push capability/blocked-target).
 
-If GitHub/API auth is broken, run `npm run gh:auth-status` (probes both lanes plus API capability and token expiry separately). If routine automation secret access is broken, run `npm run op:agent-doctor`; do not move provider secrets into `.env.local`. Use `npm run env:doctor` when you need the first-line active credential lane indicator.
+The agent service-account vault `Governada-Agent` contains: PostHog staging credentials and the GitHub App's client_id + installation_id + private_key. Expanding vault contents requires an explicit ADR addendum.
 
-The autonomous-agent secret-read lane (`OP_AGENT_SERVICE_ACCOUNT_TOKEN`, vault `Governada-Agent`) reads the GitHub PAT and the PostHog dev credential from `Governada-Agent`. Per ADR Addendum #3, this is exactly one bounded GitHub credential; expanding the agent's GitHub access requires an explicit ADR addendum, not a vault-content change.
-
-Do not print, copy, or store raw secrets. Token rotation is a Tim manual action.
+Do not print, copy, or store raw secrets. Token rotation: installation tokens are auto-rotated hourly by GitHub; App private key is rotated annually or on suspected compromise (Tim manual action).
 
 ## Where to Find More
 

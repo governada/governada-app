@@ -15,7 +15,7 @@ export default defineConfig({
         resolve: sharedResolve,
         test: {
           name: 'unit',
-          include: ['__tests__/**/*.test.ts'],
+          include: ['__tests__/**/*.test.ts', '__tests__/**/*.test.mjs'],
           environment: 'node',
         },
       },

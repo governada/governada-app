@@ -30,7 +30,7 @@
     "auth:repair": "node scripts/repair-gh-auth.mjs",
     "git:stage": "node scripts/git-stage.js",
     "git:commit": "node scripts/git-commit.js",
-    "git:push": "node scripts/git-push.js",
+    "git:push": "bin/git-push.sh",
     "rollback": "node scripts/rollback.mjs",
     "cleanup": "node scripts/cleanup.js",
     "cleanup:clean": "node scripts/cleanup.js --clean",

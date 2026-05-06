@@ -58,11 +58,11 @@ function buildCSP(nonce: string): string {
     // Core: nonce + strict-dynamic for script trust propagation
     // wasm-unsafe-eval: allows WebAssembly.instantiate() for CSL + libsodium (NOT eval())
     // unsafe-inline + host sources: backwards compat fallbacks (ignored by modern browsers when nonce is present)
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval' 'unsafe-inline' https://us.i.posthog.com https://*.ingest.us.sentry.io blob:`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval' 'unsafe-inline' https://*.i.posthog.com https://*.ingest.us.sentry.io blob:`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.supabase.co https://us.i.posthog.com https://us.posthog.com https://*.ingest.us.sentry.io https://*.sentry.io https://api.koios.rest wss://*.supabase.co",
+    "connect-src 'self' https://*.supabase.co https://*.i.posthog.com https://us.posthog.com https://*.ingest.us.sentry.io https://*.sentry.io https://api.koios.rest wss://*.supabase.co",
     "worker-src 'self' blob:",
     "child-src 'self' blob:",
     "frame-ancestors 'none'",

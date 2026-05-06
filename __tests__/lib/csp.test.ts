@@ -14,6 +14,8 @@ describe('security csp helpers', () => {
   it('builds static public CSP without nonce semantics', () => {
     const csp = buildPublicCsp({ isDev: false });
     expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain('https://*.i.posthog.com');
+    expect(csp).not.toContain('https://us.i.posthog.com');
     expect(csp).not.toContain("'strict-dynamic'");
     expect(csp).not.toContain("'nonce-");
   });
@@ -22,5 +24,7 @@ describe('security csp helpers', () => {
     const csp = buildNonceCsp('abc123', { isDev: false });
     expect(csp).toContain("'strict-dynamic'");
     expect(csp).toContain("'nonce-abc123'");
+    expect(csp).toContain('https://*.i.posthog.com');
+    expect(csp).not.toContain('https://us.i.posthog.com');
   });
 });

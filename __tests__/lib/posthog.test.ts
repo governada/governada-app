@@ -27,7 +27,7 @@ describe('posthog bootstrap', () => {
 
   it('initializes when configured and Do Not Track is not enabled', async () => {
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'ph_test_key');
-    vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', 'https://example.posthog.test');
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', 'https://us.i.posthog.com');
 
     const { initPostHog } = await import('@/lib/posthog');
 
@@ -35,7 +35,8 @@ describe('posthog bootstrap', () => {
     initPostHog();
 
     expect(initMock).toHaveBeenCalledWith('ph_test_key', {
-      api_host: 'https://example.posthog.test',
+      api_host: '/api/ph',
+      ui_host: 'https://us.posthog.com',
       person_profiles: 'identified_only',
       capture_pageview: true,
       capture_pageleave: true,
@@ -52,5 +53,22 @@ describe('posthog bootstrap', () => {
     initPostHog();
 
     expect(initMock).not.toHaveBeenCalled();
+  });
+
+  it('uses the US PostHog UI host when no host is configured', async () => {
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'ph_test_key');
+
+    const { initPostHog } = await import('@/lib/posthog');
+
+    globalThis.window = { navigator: { doNotTrack: '0' } } as Window & typeof globalThis;
+    initPostHog();
+
+    expect(initMock).toHaveBeenCalledWith(
+      'ph_test_key',
+      expect.objectContaining({
+        api_host: '/api/ph',
+        ui_host: 'https://us.posthog.com',
+      }),
+    );
   });
 });

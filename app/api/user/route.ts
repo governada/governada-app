@@ -139,7 +139,10 @@ export const PATCH = withRouteHandler(
       const previousHistory = asDelegationHistory(
         (currentUser as { delegation_history?: unknown } | null)?.delegation_history,
       );
-      const nextHistory = buildDelegationHistoryUpdate(incomingDelegationHistory, previousHistory ?? []);
+      const nextHistory = buildDelegationHistoryUpdate(
+        incomingDelegationHistory,
+        previousHistory ?? [],
+      );
 
       sanitizedUpdates.delegation_history = nextHistory;
     }

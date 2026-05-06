@@ -133,7 +133,7 @@ Blocked command groups include:
 Use the GitHub App branch-publication wrapper for autonomous pushes:
 
 ```bash
-bin/git-push.sh --dry-run origin feat/gh-auth-doctor-probe
+bin/git-push.sh --dry-run origin HEAD:refs/heads/feat/gh-auth-doctor-probe
 npm run git:push -- --set-upstream origin feat/my-branch
 ```
 
@@ -142,12 +142,12 @@ The wrapper:
 - Mints an installation token using the same service-account and helper path as `bin/gh.sh`.
 - Pushes to `https://github.com/governada/app.git` for this invocation only.
 - Leaves the persistent `origin` remote unchanged.
-- Supplies credentials through a transient git credential helper sourced from env.
+- Supplies credentials through a transient git credential helper sourced from env and disables hooks for the wrapped push so repo hook code cannot inherit the installation token.
 - Allows only `feat/*` and `codex/*` branch targets.
 - Allows `--dry-run`, `-u`, and `--set-upstream`.
 - Blocks `main`, `master`, `release/*`, `production*`, force-push flags, delete/mirror/all/tags/prune flags, and non-`origin` remotes.
 
-`feat/gh-auth-doctor-probe` is the known feature branch used by `npm run gh:auth-status` for non-mutating push capability checks.
+`HEAD:refs/heads/feat/gh-auth-doctor-probe` is the self-contained refspec used by `npm run gh:auth-status` for non-mutating push capability checks.
 
 ## Allowlist Extension Policy
 
@@ -187,7 +187,7 @@ npm run env:doctor
 - The agent service account can read the App private key without printing it.
 - JWT and installation-token minting succeeds.
 - GitHub API read works for `governada/app`.
-- `bin/git-push.sh --dry-run origin feat/gh-auth-doctor-probe` succeeds.
+- `bin/git-push.sh --dry-run origin HEAD:refs/heads/feat/gh-auth-doctor-probe` succeeds.
 - Push to `main` and force-push attempts fail closed with `BLOCKED:` before secret resolution.
 
 `npm run op:agent-doctor` checks the broader 1Password service-account lane and expected vault items. It fails closed if `OP_CONNECT_HOST` or `OP_CONNECT_TOKEN` are set, because those override service-account auth. It must not print secret values.

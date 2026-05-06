@@ -10,7 +10,7 @@ const EXPECTED_USER = 'tim-governada';
 const ADDENDUM =
   '[[decisions/lean-agent-harness#addendum-4-2026-05-05--pivot-from-user-pat-to-github-app-for-autonomous-agent-operations]]';
 const API_REPO = 'governada/app';
-const PUSH_PROBE_BRANCH = 'feat/gh-auth-doctor-probe';
+const PUSH_PROBE_REFSPEC = 'HEAD:refs/heads/feat/gh-auth-doctor-probe';
 const GH_WRAPPER = path.join(repoRoot, 'bin', 'gh.sh');
 const GIT_PUSH_WRAPPER = path.join(repoRoot, 'bin', 'git-push.sh');
 const OP_AGENT_DOCTOR = path.join(repoRoot, 'scripts', 'op-agent-doctor.mjs');
@@ -554,10 +554,10 @@ function checkApiLane(failures) {
 }
 
 function checkPushLane(failures) {
-  const dryRun = runGitPush(['--dry-run', 'origin', PUSH_PROBE_BRANCH]);
+  const dryRun = runGitPush(['--dry-run', 'origin', PUSH_PROBE_REFSPEC]);
   assertNoDesktopPromptShape(dryRun, failures, 'git push dry-run');
   if (dryRun.status === 0) {
-    console.log(`OK: bin/git-push.sh dry-run push capability passed for ${PUSH_PROBE_BRANCH}`);
+    console.log(`OK: bin/git-push.sh dry-run push capability passed for ${PUSH_PROBE_REFSPEC}`);
   } else {
     failures.push(`git push dry-run failed: ${resultSummary(dryRun)}`);
     return;

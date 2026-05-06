@@ -210,7 +210,9 @@ function printRemediation() {
   console.error(
     `- If service-account auth failed: confirm ${process.env.OP_AGENT_RUNTIME_FILE || DEFAULT_AGENT_RUNTIME_FILE} has OP_AGENT_SERVICE_ACCOUNT_TOKEN, then run npm run op:agent-doctor.`,
   );
-  console.error('- App private-key rotation is a Tim manual action; no automated repair is attempted.');
+  console.error(
+    '- App private-key rotation is a Tim manual action; no automated repair is attempted.',
+  );
 }
 
 function checkSshLane(failures) {

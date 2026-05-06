@@ -48,6 +48,8 @@ console.error(
   '   - If 401/403 from gh API: App installation permissions or private-key material are wrong. See [[decisions/lean-agent-harness#addendum-4]].',
 );
 console.error('No GitHub token, Keychain cache, LaunchAgent, or broker repair is attempted.');
-console.error('No automated private-key rotation is performed - App private-key rotation is a Tim manual action.');
+console.error(
+  'No automated private-key rotation is performed - App private-key rotation is a Tim manual action.',
+);
 
 process.exit(result.status ?? 1);

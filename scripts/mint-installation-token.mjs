@@ -52,9 +52,7 @@ export function mintAppJwt({ clientId, privateKey, now = Math.floor(Date.now() /
     iat: now - 60,
     exp: now + 540,
   };
-  const signingInput = `${base64Url(JSON.stringify(header))}.${base64Url(
-    JSON.stringify(payload),
-  )}`;
+  const signingInput = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(payload))}`;
   const signer = createSign('RSA-SHA256');
   signer.update(signingInput);
   signer.end();
@@ -82,9 +80,7 @@ export async function requestInstallationToken({
 
   const jwt = mintAppJwt({ clientId, privateKey });
   const response = await fetchImpl(
-    `https://api.github.com/app/installations/${encodeURIComponent(
-      installationId,
-    )}/access_tokens`,
+    `https://api.github.com/app/installations/${encodeURIComponent(installationId)}/access_tokens`,
     {
       method: 'POST',
       headers: {
@@ -108,7 +104,9 @@ export async function requestInstallationToken({
 
   if (response.status !== 201) {
     const detail = redactSensitiveText(JSON.stringify(body));
-    throw new Error(`GitHub installation-token mint failed with HTTP ${response.status}: ${detail}`);
+    throw new Error(
+      `GitHub installation-token mint failed with HTTP ${response.status}: ${detail}`,
+    );
   }
 
   if (!body?.token || typeof body.token !== 'string') {

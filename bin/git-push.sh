@@ -148,7 +148,10 @@ parse_push_args() {
     block_policy "target ${ref} must match feat/* or codex/*."
   fi
 
-  PUSH_ARGS=("${parsed[@]}" "origin" "$ref")
+  PUSH_ARGS=("origin" "$ref")
+  if [[ "${#parsed[@]}" -gt 0 ]]; then
+    PUSH_ARGS=("${parsed[@]}" "${PUSH_ARGS[@]}")
+  fi
 }
 
 parse_push_args "$@"

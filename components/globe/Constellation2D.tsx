@@ -24,6 +24,7 @@ import type { ConstellationRef } from '@/lib/globe/types';
 import type { ConstellationNode3D, ConstellationApiData } from '@/lib/constellation/types';
 import { useGovernanceConstellation } from '@/hooks/queries';
 import { computeLayout } from '@/lib/constellation/layout';
+import { clampMotionStrength } from '@/lib/globe/layer1Constants';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -103,6 +104,7 @@ export const Constellation2D = forwardRef(function Constellation2D(
   const animFrameRef = useRef<number>(0);
   const [ready, setReady] = useState(false);
   const breathRef = useRef(0);
+  const effectiveMotionStrength = clampMotionStrength(motionStrength);
 
   // Load constellation data
   const { data: apiData } = useGovernanceConstellation();
@@ -165,10 +167,12 @@ export const Constellation2D = forwardRef(function Constellation2D(
     if (s.nodes.length === 0) return;
 
     // Breathing animation
-    if (breathing) {
+    if (breathing && effectiveMotionStrength > 0) {
       breathRef.current += 0.01;
     }
-    const breathScale = breathing ? 1 + Math.sin(breathRef.current) * 0.005 : 1;
+    const breathScale = breathing
+      ? 1 + Math.sin(breathRef.current) * 0.005 * effectiveMotionStrength
+      : 1;
 
     // Draw nodes
     for (const node of s.nodes) {
@@ -233,7 +237,7 @@ export const Constellation2D = forwardRef(function Constellation2D(
     }
 
     animFrameRef.current = requestAnimationFrame(render);
-  }, [project, breathing]);
+  }, [project, breathing, effectiveMotionStrength]);
 
   // Start render loop
   useEffect(() => {
@@ -438,7 +442,7 @@ export const Constellation2D = forwardRef(function Constellation2D(
   return (
     <canvas
       ref={canvasRef}
-      data-motion-strength={motionStrength}
+      data-motion-strength={effectiveMotionStrength}
       className={`w-full h-full touch-none ${className || ''}`}
       style={{ background: BG_COLOR }}
       onClick={handleClick}

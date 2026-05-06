@@ -43,6 +43,8 @@ export function ConstellationNodes({
   completedNodeIds,
   hoveredNodeId,
   visitedNodeIds,
+  layer1ColorOverrides,
+  layer1Brightness,
 }: {
   nodes: ConstellationNode3D[];
   focus: FocusState;
@@ -56,6 +58,8 @@ export function ConstellationNodes({
   completedNodeIds?: Set<string>;
   hoveredNodeId?: string | null;
   visitedNodeIds?: Set<string>;
+  layer1ColorOverrides?: Map<string, string>;
+  layer1Brightness?: Map<string, number>;
 }) {
   const [frameReady, setFrameReady] = useState(false);
 
@@ -151,6 +155,7 @@ export function ConstellationNodes({
         getColor={getDrepColor}
         emissive={2.0}
         activityMap={activityMap}
+        layer1Brightness={layer1Brightness}
       />
       {groups.spo.length > 0 && (
         <NodePoints
@@ -166,6 +171,7 @@ export function ConstellationNodes({
           emissive={focus.nodeTypeFilter === 'drep' ? 0.1 : 2.0}
           fragmentShader={SPO_FRAG}
           activityMap={activityMap}
+          layer1Brightness={layer1Brightness}
         />
       )}
       {/* CC members — rendered as standard nodes (symbology TBD) */}
@@ -178,6 +184,7 @@ export function ConstellationNodes({
           getColor={getCcColor}
           emissive={focus.nodeTypeFilter === 'drep' ? 0.1 : 2.0}
           activityMap={activityMap}
+          layer1Brightness={layer1Brightness}
         />
       )}
       {groups.user.length > 0 && (
@@ -192,6 +199,7 @@ export function ConstellationNodes({
           getColor={getUserColor}
           emissive={6.0}
           activityMap={activityMap}
+          layer1Brightness={layer1Brightness}
         />
       )}
       {groups.proposal.length > 0 && (
@@ -207,6 +215,8 @@ export function ConstellationNodes({
           getColor={getProposalColor}
           emissive={focus.nodeTypeFilter === 'drep' ? 0.1 : 2.5}
           activityMap={activityMap}
+          layer1ColorOverrides={layer1ColorOverrides}
+          layer1Brightness={layer1Brightness}
         />
       )}
     </>
@@ -230,6 +240,8 @@ function NodePoints({
   emissive,
   fragmentShader,
   activityMap,
+  layer1ColorOverrides,
+  layer1Brightness,
 }: {
   nodes: ConstellationNode3D[];
   focus: FocusState;
@@ -243,6 +255,8 @@ function NodePoints({
   emissive: number;
   fragmentShader?: string;
   activityMap?: Map<string, number>;
+  layer1ColorOverrides?: Map<string, string>;
+  layer1Brightness?: Map<string, number>;
 }) {
   const tmpColor = useMemo(() => new THREE.Color(), []);
   // Focus color is read from FocusState in computeBuffers — this ref caches the THREE.Color
@@ -267,6 +281,11 @@ function NodePoints({
         const intensity = focusState.intensities.get(node.id) ?? 0;
         const isPulsing = pulseId === node.id;
         const isUnfocused = focusState.active && !isFocused && !isPulsing;
+        const layer1Color =
+          layer1ColorOverrides?.get(node.id) ?? layer1ColorOverrides?.get(node.fullId);
+        const layer1Boost =
+          layer1Brightness?.get(node.id) ?? layer1Brightness?.get(node.fullId) ?? 0;
+        const layer1BrightnessMultiplier = 1 + layer1Boost * 0.7;
         // Intermediate "maybe" nodes — partially visible, not full match glow
         const intermediateLevel =
           !isFocused && focusState.intermediateIds
@@ -286,7 +305,7 @@ function NodePoints({
           colors[i * 3 + 2] = Math.max(0.005, dimVal);
         } else if (isIntermediate) {
           // "Maybe" nodes: base color at reduced brightness
-          tmpColor.set(getColor(node));
+          tmpColor.set(layer1Color ?? getColor(node));
           const intEmissive = emissive * 0.3 * intermediateLevel;
           colors[i * 3] = tmpColor.r * intEmissive;
           colors[i * 3 + 1] = tmpColor.g * intEmissive;
@@ -297,7 +316,7 @@ function NodePoints({
           colors[i * 3 + 1] = tmpColor.g * emissive;
           colors[i * 3 + 2] = tmpColor.b * emissive;
         } else if (isFocused && intensity > 0) {
-          tmpColor.set(getColor(node));
+          tmpColor.set(layer1Color ?? getColor(node));
           // Blend toward the focus color (configurable per-intent, default: amber)
           focusColorRef.current.set(focusState.focusColor);
           const blend = intensity * 0.85;
@@ -312,14 +331,32 @@ function NodePoints({
           colors[i * 3 + 1] = blendedG * focusEmissive;
           colors[i * 3 + 2] = blendedB * focusEmissive;
         } else {
-          tmpColor.set(getColor(node));
+          tmpColor.set(layer1Color ?? getColor(node));
           const activity = activityMap?.get(node.id) ?? activityMap?.get(node.fullId) ?? 0;
           const activityBoost = 1 + activity * 0.8;
           const hoverBoost = hoveredNodeId === node.id ? 1.5 : 1.0;
           const visitedDim = visitedNodeIds?.has(node.id) ? 0.65 : 1.0;
-          colors[i * 3] = tmpColor.r * emissive * activityBoost * hoverBoost * visitedDim;
-          colors[i * 3 + 1] = tmpColor.g * emissive * activityBoost * hoverBoost * visitedDim;
-          colors[i * 3 + 2] = tmpColor.b * emissive * activityBoost * hoverBoost * visitedDim;
+          colors[i * 3] =
+            tmpColor.r *
+            emissive *
+            activityBoost *
+            hoverBoost *
+            visitedDim *
+            layer1BrightnessMultiplier;
+          colors[i * 3 + 1] =
+            tmpColor.g *
+            emissive *
+            activityBoost *
+            hoverBoost *
+            visitedDim *
+            layer1BrightnessMultiplier;
+          colors[i * 3 + 2] =
+            tmpColor.b *
+            emissive *
+            activityBoost *
+            hoverBoost *
+            visitedDim *
+            layer1BrightnessMultiplier;
         }
 
         // SIZE
@@ -360,7 +397,17 @@ function NodePoints({
       return { positions, colors, sizes, dimmedArr };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tmpColor/matchColor are stable refs
-    [nodes, hoveredNodeId, visitedNodeIds, pulseId, getColor, emissive, activityMap],
+    [
+      nodes,
+      hoveredNodeId,
+      visitedNodeIds,
+      pulseId,
+      getColor,
+      emissive,
+      activityMap,
+      layer1ColorOverrides,
+      layer1Brightness,
+    ],
   );
 
   // Target buffers ref — updated by useFrame when focus changes via _sharedFocusVersion

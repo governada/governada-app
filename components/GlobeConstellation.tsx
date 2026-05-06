@@ -27,6 +27,7 @@ import { MatchedEdgeGlow } from '@/components/globe/MatchedEdgeGlow';
 import { FlyToParticles } from '@/components/globe/FlyToParticles';
 import { GloryRing } from '@/components/globe/GloryRing';
 import { ConvergenceParticles } from '@/components/globe/ConvergenceParticles';
+import { Layer1Replay } from '@/components/globe/Layer1Replay';
 import { ProximityHalo } from '@/components/globe/ProximityHalo';
 import { RegionHighlight } from '@/components/globe/RegionHighlight';
 import { ConstellationNodes } from '@/components/globe/NodePoints';
@@ -52,6 +53,12 @@ import { getSharedIntent, getSharedIntentVersion, setSharedIntent } from '@/lib/
 import { deriveFromIntent } from '@/lib/globe/focusEngine';
 import { isEngineLocked, releaseEngineLock } from '@/lib/globe/sequencer';
 import { createConstellationCommands } from '@/lib/globe/constellationCommands';
+import { useChainActivityReplay } from '@/lib/chain/activityReplay';
+import {
+  buildLayer1RenderPlan,
+  clampMotionStrength,
+  LAYER1_REPLAY_WINDOW_HOURS,
+} from '@/lib/globe/layer1Constants';
 import type { GPUTier } from '@/hooks/useDeviceCapability';
 
 interface GlobeConstellationProps {
@@ -147,6 +154,7 @@ export const GlobeConstellation = forwardRef<
   const cameraControlsRef = useRef<CameraControls>(null);
   const rotationAngleRef = useRef(0);
   const rotationSpeedRef = useRef(DEFAULT_ROTATION_SPEED);
+  const effectiveMotionStrength = clampMotionStrength(motionStrength);
   const userFlyInDone = useRef(false);
   const [ready, setReady] = useState(false);
 
@@ -326,6 +334,7 @@ export const GlobeConstellation = forwardRef<
   }, [sceneState.nodes, engineEnabled]);
 
   const { data: apiData } = useGovernanceConstellation();
+  const chainActivityEvents = useChainActivityReplay(LAYER1_REPLAY_WINDOW_HOURS);
   const cachedProposalNodes = apiData?.proposalNodes ?? [];
 
   const onNodeSelectRef = useRef(onNodeSelect);
@@ -361,6 +370,24 @@ export const GlobeConstellation = forwardRef<
     }
     return map;
   }, [apiData]);
+
+  const layer1RenderPlan = useMemo(
+    () =>
+      buildLayer1RenderPlan({
+        events: chainActivityEvents,
+        nodes: sceneState.nodes,
+        motionStrength: effectiveMotionStrength,
+      }),
+    [chainActivityEvents, sceneState.nodes, effectiveMotionStrength],
+  );
+
+  const combinedActivityMap = useMemo(() => {
+    const map = new Map(activityMap);
+    for (const [nodeId, brightness] of layer1RenderPlan.proposalBrightness) {
+      map.set(nodeId, Math.max(map.get(nodeId) ?? 0, brightness));
+    }
+    return map;
+  }, [activityMap, layer1RenderPlan.proposalBrightness]);
 
   // Priority 4: Convergence particle source/target positions (derived from focus state)
   const convergenceSourcePositions = useMemo(() => {
@@ -477,7 +504,8 @@ export const GlobeConstellation = forwardRef<
   return (
     <div
       className={`relative z-0 w-full ${className || ''}`}
-      data-motion-strength={motionStrength}
+      data-motion-strength={effectiveMotionStrength}
+      data-layer1-rotation-speed={DEFAULT_ROTATION_SPEED * effectiveMotionStrength}
       style={{ background: '#0a0b14' }}
       onPointerMove={handlePointerMove}
     >
@@ -516,6 +544,7 @@ export const GlobeConstellation = forwardRef<
             speedRef={rotationSpeedRef}
             breathing={breathing && !sceneState.focus.active}
             urgency={urgency}
+            motionStrength={effectiveMotionStrength}
           >
             {/* Subtle point light at center for depth cues */}
             <pointLight color="#4466aa" intensity={0.8} distance={10} decay={2} />
@@ -531,8 +560,11 @@ export const GlobeConstellation = forwardRef<
                 onNodeHoverRef.current?.(node);
                 onNodeHoverScreenRef.current?.(node, node ? { ...mouseScreenRef.current } : null);
               }}
-              activityMap={activityMap}
+              activityMap={combinedActivityMap}
+              layer1ColorOverrides={layer1RenderPlan.proposalColorOverrides}
+              layer1Brightness={layer1RenderPlan.proposalBrightness}
             />
+            <Layer1Replay plan={layer1RenderPlan} />
             {/* Intra-cluster constellation lines (MST-based Orion-like patterns)
                 Hidden during match mode (nodeTypeFilter set) — lines create visual noise over DRep dots */}
             {clusters && clusters.length > 0 && !sceneState.focus.nodeTypeFilter && (
@@ -631,7 +663,10 @@ export const GlobeConstellation = forwardRef<
             minDistance={sceneState.focus.active ? 0.5 : 8}
             maxDistance={22}
           />
-          <IdleCameraWobble controlsRef={cameraControlsRef} />
+          <IdleCameraWobble
+            controlsRef={cameraControlsRef}
+            motionStrength={effectiveMotionStrength}
+          />
           <CinematicCamera
             controlsRef={cameraControlsRef}
             orbitSpeed={cinematicOrbitSpeed}

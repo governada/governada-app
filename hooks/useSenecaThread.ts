@@ -14,6 +14,7 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
+import type { HomepageCinematicSnapshot } from '@/stores/senecaThreadStore';
 import type { SenecaPersona } from '@/lib/intelligence/senecaPersonas';
 import { getPersonaForRoute } from '@/lib/intelligence/senecaPersonas';
 import type { ThreadMessage } from '@/stores/senecaThreadStore';
@@ -103,6 +104,7 @@ export interface UseSenecaThreadResult {
   persona: SenecaPersona;
   visitedPages: string[];
   pendingGlobeAction: GlobeIntent | null;
+  homepageCinematic: HomepageCinematicSnapshot | null;
 
   // Actions
   toggle: () => void;
@@ -140,6 +142,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
   const visitedPages = useSenecaThreadStore((s) => s.visitedPages);
 
   const pendingGlobeAction = useSenecaThreadStore((s) => s.pendingGlobeAction);
+  const homepageCinematic = useSenecaThreadStore((s) => s.homepageCinematic);
 
   const setOpen = useSenecaThreadStore((s) => s.setOpen);
   const navigateTo = useSenecaThreadStore((s) => s.navigateTo);
@@ -218,6 +221,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
     persona,
     visitedPages,
     pendingGlobeAction,
+    homepageCinematic,
 
     // Actions
     toggle,

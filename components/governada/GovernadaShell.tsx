@@ -174,6 +174,11 @@ function SenecaOrbAndThread({
         : seneca.mode === 'research'
           ? ('thinking' as const)
           : ('idle' as const);
+  const homepageCinematic = seneca.homepageCinematic;
+  const pulse =
+    !isStudioMode &&
+    (homepageCinematic?.queue.primary.state === 'first_visit_anonymous' ||
+      homepageCinematic?.queue.primary.state === 'first_visit_wallet_connected');
 
   const handleGlobeCommand = useCallback((cmd: unknown) => {
     dispatchGlobeCommand(cmd as import('@/lib/globe/types').GlobeCommand);
@@ -181,13 +186,14 @@ function SenecaOrbAndThread({
 
   return (
     <>
-      {!seneca.isOpen && (
+      {(!seneca.isOpen || pulse) && (
         <SenecaOrb
           onClick={seneca.toggle}
           sigilState={isStudioMode ? 'idle' : sigilState}
           accentColor={seneca.persona.accentColor}
-          whisper={isStudioMode ? null : currentWhisper}
+          whisper={isStudioMode || seneca.isOpen ? null : currentWhisper}
           onWhisperDismiss={dismissWhisper}
+          pulse={pulse}
         />
       )}
 
@@ -213,6 +219,7 @@ function SenecaOrbAndThread({
           handleGlobeCommand({ cmd: 'flyTo', target: `${entityType}:${entityId}` });
         }}
         isAuthenticated={isAuthenticated}
+        homepageCinematic={homepageCinematic}
       />
     </>
   );

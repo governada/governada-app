@@ -130,6 +130,26 @@ export function useDelegation() {
 
         setPhase({ status: 'success', txHash: result.txHash, confirmed: false });
 
+        if (result.mode === 'mainnet') {
+          const token = getStoredSession();
+          if (token) {
+            fetch('/api/delegation/mainnet', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                stakeAddress: preflight.rewardAddress,
+                targetDrepId: drepId,
+                txHash: result.txHash,
+                previousDrepId: delegatedDrepId ?? null,
+                stakeRegistered: preflight.stakeRegistered,
+                currentUrl: window.location.href,
+              }),
+            }).catch((error) => {
+              console.warn('Failed to capture mainnet delegation analytics', error);
+            });
+          }
+        }
+
         if (result.mode !== 'sandbox') {
           waitForTxConfirmation(result.txHash, {
             maxAttempts: 30,
@@ -164,7 +184,7 @@ export function useDelegation() {
         return null;
       }
     },
-    [wallet, connected, isAuthenticated, refreshDelegation],
+    [wallet, connected, isAuthenticated, refreshDelegation, delegatedDrepId],
   );
 
   const reset = useCallback(() => {

@@ -7,7 +7,6 @@ import { logger } from '@/lib/logger';
 import { withRouteHandler, type RouteContext } from '@/lib/api/withRouteHandler';
 import { isValidDepth, getTunerEvents, getTunerDigestFrequency } from '@/lib/governanceTuner';
 import { EVENT_REGISTRY } from '@/lib/notificationRegistry';
-import { captureServerEvent } from '@/lib/posthog-server';
 
 type DelegationHistoryEntry = {
   drepId?: string;
@@ -23,36 +22,14 @@ function asDelegationHistory(value: unknown): DelegationHistoryEntry[] | null {
   return Array.isArray(value) && value.length > 0 ? (value as DelegationHistoryEntry[]) : null;
 }
 
-function drepIdFromEntry(entry: DelegationHistoryEntry | undefined): string | undefined {
-  return entry?.drepId ?? entry?.drep_id;
-}
-
 function txHashFromEntry(entry: DelegationHistoryEntry | undefined): string | undefined {
   return entry?.txHash ?? entry?.tx_hash;
-}
-
-function stakeRegisteredFromEntry(entry: DelegationHistoryEntry | undefined): boolean | undefined {
-  return entry?.stakeRegistered ?? entry?.stake_registered;
-}
-
-function hostFromUrl(value: string | undefined): string | undefined {
-  if (!value) return undefined;
-
-  try {
-    return new URL(value).host;
-  } catch {
-    return undefined;
-  }
-}
-
-function isMainnetTxHash(txHash: string | undefined): txHash is string {
-  return /^[a-f0-9]{64}$/i.test(txHash ?? '');
 }
 
 function buildDelegationHistoryUpdate(
   incomingHistory: DelegationHistoryEntry[],
   previousHistory: DelegationHistoryEntry[],
-): { nextHistory: DelegationHistoryEntry[]; latestEntry: DelegationHistoryEntry; isNew: boolean } {
+): DelegationHistoryEntry[] {
   const latestEntry = incomingHistory[incomingHistory.length - 1]!;
   const incomingTxHash = txHashFromEntry(latestEntry);
   const previousLatestTxHash = txHashFromEntry(previousHistory[previousHistory.length - 1]);
@@ -63,14 +40,14 @@ function buildDelegationHistoryUpdate(
     : incomingHistory.length > previousHistory.length;
 
   if (!isNew && incomingHistory.length < previousHistory.length) {
-    return { nextHistory: previousHistory, latestEntry, isNew };
+    return previousHistory;
   }
 
   if (isNew && incomingHistory.length <= previousHistory.length) {
-    return { nextHistory: [...previousHistory, latestEntry], latestEntry, isNew };
+    return [...previousHistory, latestEntry];
   }
 
-  return { nextHistory: incomingHistory, latestEntry, isNew };
+  return incomingHistory;
 }
 
 export const GET = withRouteHandler(
@@ -98,7 +75,7 @@ export const GET = withRouteHandler(
 );
 
 export const PATCH = withRouteHandler(
-  async (request: NextRequest, { userId, wallet }: RouteContext) => {
+  async (request: NextRequest, { userId }: RouteContext) => {
     const updates: SupabaseUserUpdate = await request.json();
 
     const allowedFields: (keyof SupabaseUserUpdate)[] = [
@@ -144,8 +121,6 @@ export const PATCH = withRouteHandler(
     }
 
     const incomingDelegationHistory = asDelegationHistory(updates.delegation_history);
-    let delegationPayload: Record<string, unknown> | null = null;
-    let delegationDistinctId: string | null = null;
 
     if (incomingDelegationHistory) {
       const { data: currentUser, error: currentUserError } = await supabase
@@ -164,64 +139,12 @@ export const PATCH = withRouteHandler(
       const previousHistory = asDelegationHistory(
         (currentUser as { delegation_history?: unknown } | null)?.delegation_history,
       );
-      const { nextHistory, latestEntry, isNew } = buildDelegationHistoryUpdate(
+      const nextHistory = buildDelegationHistoryUpdate(
         incomingDelegationHistory,
         previousHistory ?? [],
       );
 
       sanitizedUpdates.delegation_history = nextHistory;
-
-      const txHash = txHashFromEntry(latestEntry);
-      const drepId = drepIdFromEntry(latestEntry);
-      const previousLatestEntry = previousHistory?.[previousHistory.length - 1];
-
-      if (isNew && txHash?.startsWith('sandbox-')) {
-        logger.info('Skipping user delegation telemetry for sandbox history entry', {
-          context: 'user',
-          txHash,
-        });
-      } else if (isNew && drepId && isMainnetTxHash(txHash)) {
-        const { data: walletRow, error: walletError } = await supabase
-          .from('user_wallets')
-          .select('stake_address')
-          .eq('user_id', userId!)
-          .maybeSingle();
-
-        if (walletError) {
-          logger.warn('Could not resolve stake address for delegation telemetry', {
-            context: 'user',
-            error: walletError.message,
-          });
-        }
-
-        const walletStakeAddress = (walletRow as { stake_address?: string } | null)?.stake_address;
-        const stakeAddress =
-          typeof walletStakeAddress === 'string'
-            ? walletStakeAddress
-            : wallet?.startsWith('stake1')
-              ? wallet
-              : null;
-
-        if (stakeAddress) {
-          const currentUrl = request.headers.get('referer') ?? undefined;
-          const stakeRegistered = stakeRegisteredFromEntry(latestEntry);
-          delegationDistinctId = stakeAddress;
-          delegationPayload = {
-            drep_id: drepId,
-            previous_drep_id: drepIdFromEntry(previousLatestEntry) ?? null,
-            tx_hash: txHash,
-            ...(stakeRegistered !== undefined ? { stake_registered: stakeRegistered } : {}),
-            mode: 'mainnet',
-            $current_url: currentUrl,
-            $host: hostFromUrl(currentUrl) ?? request.headers.get('host') ?? undefined,
-          };
-        } else {
-          logger.warn('Skipping delegation telemetry without a resolved stake address', {
-            context: 'user',
-            userId,
-          });
-        }
-      }
     }
 
     const { data, error } = await supabase
@@ -234,11 +157,6 @@ export const PATCH = withRouteHandler(
     if (error) {
       logger.error('User update error', { context: 'user', error: error?.message });
       return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
-    }
-
-    if (delegationPayload && delegationDistinctId) {
-      captureServerEvent('delegation_completed', delegationPayload, delegationDistinctId);
-      captureServerEvent('delegated', delegationPayload, delegationDistinctId);
     }
 
     return NextResponse.json(data as SupabaseUser);

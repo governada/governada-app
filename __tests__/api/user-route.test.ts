@@ -62,7 +62,7 @@ import { PATCH } from '@/app/api/user/route';
 
 const stakeAddress = `stake1${'q'.repeat(51)}`;
 
-describe('PATCH /api/user delegation telemetry', () => {
+describe('PATCH /api/user delegation history', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequireAuth.mockResolvedValue({ userId: 'user-1', wallet: 'addr1paymentwallet' });
@@ -88,7 +88,7 @@ describe('PATCH /api/user delegation telemetry', () => {
     });
   });
 
-  it('captures both delegation success events when delegation_history is appended', async () => {
+  it('updates delegation_history without capturing mainnet telemetry', async () => {
     const txHash = 'b'.repeat(64);
     const req = createRequest('/api/user', {
       method: 'PATCH',
@@ -120,27 +120,8 @@ describe('PATCH /api/user delegation telemetry', () => {
         ],
       }),
     );
-    expect(mockCaptureServerEvent).toHaveBeenCalledTimes(2);
-    expect(mockCaptureServerEvent).toHaveBeenNthCalledWith(
-      1,
-      'delegation_completed',
-      expect.objectContaining({
-        drep_id: 'drep_new',
-        previous_drep_id: 'drep_old',
-        tx_hash: txHash,
-        stake_registered: true,
-        mode: 'mainnet',
-        $current_url: 'https://governada.io/dev/delegation-test',
-        $host: 'governada.io',
-      }),
-      stakeAddress,
-    );
-    expect(mockCaptureServerEvent).toHaveBeenNthCalledWith(
-      2,
-      'delegated',
-      expect.objectContaining({ drep_id: 'drep_new', tx_hash: txHash, mode: 'mainnet' }),
-      stakeAddress,
-    );
+    expect(mockWalletMaybeSingle).not.toHaveBeenCalled();
+    expect(mockCaptureServerEvent).not.toHaveBeenCalled();
   });
 
   it('does not capture when the PATCH body has no delegation_history', async () => {
@@ -180,7 +161,7 @@ describe('PATCH /api/user delegation telemetry', () => {
     expect(mockCaptureServerEvent).not.toHaveBeenCalled();
   });
 
-  it('does not capture sandbox history because the sandbox route owns sandbox telemetry', async () => {
+  it('updates sandbox history without capturing telemetry because the sandbox route owns events', async () => {
     const req = createRequest('/api/user', {
       method: 'PATCH',
       headers: { Authorization: 'Bearer valid-token' },
@@ -198,6 +179,17 @@ describe('PATCH /api/user delegation telemetry', () => {
     const res = await PATCH(req);
 
     expect(res.status).toBe(200);
+    expect(mockUserUpdatePayload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        delegation_history: [
+          expect.objectContaining({ drepId: 'drep_old', txHash: 'a'.repeat(64) }),
+          expect.objectContaining({
+            drepId: 'drep_preview',
+            txHash: 'sandbox-cce5b91d-406e-4e20-a59e-9012095f9ff5',
+          }),
+        ],
+      }),
+    );
     expect(mockWalletMaybeSingle).not.toHaveBeenCalled();
     expect(mockCaptureServerEvent).not.toHaveBeenCalled();
   });

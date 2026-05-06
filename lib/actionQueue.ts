@@ -16,6 +16,12 @@ import { canBodyVote } from '@/lib/governance/votingBodies';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
 import type { UserSegment } from '@/components/providers/SegmentProvider';
+import type {
+  CinematicState,
+  PrioritizedItem,
+  PrioritizedKind,
+  PrioritizedTier,
+} from '@/types/cinematic';
 
 export type ActionPriority = 'urgent' | 'high' | 'medium' | 'low';
 
@@ -65,11 +71,31 @@ export interface ActionQueueContext {
   delegatedDrepId?: string | null;
 }
 
+export type ActionQueuePrioritizedItem = PrioritizedItem<ActionItem>;
+
 /**
  * Get the unified action queue for a user.
  * Returns top 10 items sorted by priority.
  */
 export async function getActionQueue(
+  segment: UserSegment,
+  context?: ActionQueueContext,
+): Promise<ActionItem[]> {
+  const prioritizedItems = await buildActionQueuePrioritizedItems(segment, context);
+  return prioritizedItems.map((item) => item.payload);
+}
+
+export async function buildActionQueuePrioritizedItems(
+  segment: UserSegment,
+  context?: ActionQueueContext,
+): Promise<ActionQueuePrioritizedItem[]> {
+  const items = await buildLegacyActionQueue(segment, context);
+  const surfacedAt = new Date().toISOString();
+
+  return items.map((item) => legacyActionToPrioritizedItem(item, surfacedAt));
+}
+
+async function buildLegacyActionQueue(
   segment: UserSegment,
   context?: ActionQueueContext,
 ): Promise<ActionItem[]> {
@@ -101,6 +127,43 @@ export async function getActionQueue(
   }
 
   return sortByPriority(items).slice(0, 10);
+}
+
+function tierForAction(item: ActionItem): PrioritizedTier {
+  if (item.type === 'pending_vote') return 1;
+  if (item.type === 'delegation_alert' || item.type === 'score_alert') {
+    return item.priority === 'urgent' || item.priority === 'high' ? 1 : 2;
+  }
+  return 2;
+}
+
+function kindForAction(item: ActionItem): PrioritizedKind {
+  if (item.type === 'pending_vote') return 'crisp';
+  if (item.type === 'match_cta' || item.type === 'profile_cta') return 'soft';
+  return 'informational';
+}
+
+function stateForAction(item: ActionItem): CinematicState {
+  if (item.type === 'pending_vote') return 'action_required';
+  if (item.type === 'delegation_alert' || item.type === 'score_alert') {
+    return 'returning_significant_delta';
+  }
+  if (item.type === 'match_cta') return 'sentiment_opportunity';
+  return 'returning_cold_start';
+}
+
+function legacyActionToPrioritizedItem(
+  item: ActionItem,
+  surfacedAt: string,
+): ActionQueuePrioritizedItem {
+  return {
+    id: item.id,
+    tier: tierForAction(item),
+    kind: kindForAction(item),
+    state: stateForAction(item),
+    surfaced_at: surfacedAt,
+    payload: item,
+  };
 }
 
 // ── DRep Actions ────────────────────────────────────────────────────────

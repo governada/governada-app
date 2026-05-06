@@ -5,11 +5,15 @@ import {
   buildLayer1RenderPlan,
   computeTreasuryAmberSaturation,
   getTreasuryAmberColor,
+  RATIONALE_FLICKER_BASE_INTENSITY,
   RATIONALE_FLICKER_DURATION_MS,
   RATIONALE_FLICKER_EMISSIVE_BUMP,
+  RATIONALE_FLICKER_SIZE_MULTIPLIER,
   scaleInfluenceToParticleSize,
   TREASURY_AMBER_MAX_ADA,
   TREASURY_AMBER_MIN_ADA,
+  VOTE_PARTICLE_ALPHA,
+  VOTE_PARTICLE_COLOR_INTENSITY,
   VOTE_PARTICLE_FADE_MS,
   VOTE_PARTICLE_MAX_SCALE,
   VOTE_PARTICLE_MIN_SCALE,
@@ -55,6 +59,10 @@ describe('Layer 1b replay renderer plan', () => {
     expect(VOTE_PARTICLE_MAX_SCALE).toBe(2);
     expect(RATIONALE_FLICKER_EMISSIVE_BUMP).toBe(0.2);
     expect(RATIONALE_FLICKER_DURATION_MS).toBe(300);
+    expect(VOTE_PARTICLE_COLOR_INTENSITY).toBe(2.2);
+    expect(VOTE_PARTICLE_ALPHA).toBe(0.8);
+    expect(RATIONALE_FLICKER_SIZE_MULTIPLIER).toBe(1.6);
+    expect(RATIONALE_FLICKER_BASE_INTENSITY).toBe(2);
   });
 
   it('plans identity-color, log-scaled vote particles on a gentle arc', () => {
@@ -106,6 +114,27 @@ describe('Layer 1b replay renderer plan', () => {
 
     expect(plan.voteParticles).toHaveLength(0);
     expect(plan.rationaleFlickers).toHaveLength(0);
+  });
+
+  it('keeps Tim Q2.3 rationale bump magnitude while reduced motion samples rate', () => {
+    const events: ChainActivityEvent[] = [
+      {
+        type: 'rationale_published',
+        id: '0',
+        timestamp: 100,
+        drepNodeId: 'drep_abc123',
+        drepFullId: 'drep_abc123_full',
+        drepIdentityColor: '#06b6d4',
+        proposalNodeId: 'proposal-deadbeefcafe-0',
+        proposalKey: 'deadbeefcafefeed#0',
+        voteTxHash: 'vote-fixture',
+      },
+    ];
+
+    const plan = buildLayer1RenderPlan({ events, nodes, motionStrength: 0.05 });
+
+    expect(plan.rationaleFlickers).toHaveLength(1);
+    expect(plan.rationaleFlickers[0].emissiveBump).toBe(RATIONALE_FLICKER_EMISSIVE_BUMP);
   });
 
   it('clamps influence sizing to the Q2.1 1.0-2.0x range', () => {

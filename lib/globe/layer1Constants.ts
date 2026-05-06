@@ -11,9 +11,13 @@ export const VOTE_PARTICLE_INFLUENCE_MIN_ADA = 1;
 export const VOTE_PARTICLE_INFLUENCE_MAX_ADA = 1_000_000_000;
 export const VOTE_PARTICLE_BASE_SIZE = 0.045;
 export const VOTE_PARTICLE_ARC_HEIGHT = 0.6;
+export const VOTE_PARTICLE_COLOR_INTENSITY = 2.2;
+export const VOTE_PARTICLE_ALPHA = 0.8;
 
 export const RATIONALE_FLICKER_EMISSIVE_BUMP = 0.2;
 export const RATIONALE_FLICKER_DURATION_MS = 300;
+export const RATIONALE_FLICKER_SIZE_MULTIPLIER = 1.6;
+export const RATIONALE_FLICKER_BASE_INTENSITY = 2.0;
 
 export const TREASURY_AMBER_MIN_ADA = 10_000;
 export const TREASURY_AMBER_MAX_ADA = 100_000_000;
@@ -209,7 +213,7 @@ export function buildLayer1RenderPlan({
         position: drep.position,
         color: event.drepIdentityColor,
         replayOffsetMs: getReplayOffsetMs(event.timestamp, minTimestamp, maxTimestamp),
-        emissiveBump: RATIONALE_FLICKER_EMISSIVE_BUMP * strength,
+        emissiveBump: RATIONALE_FLICKER_EMISSIVE_BUMP,
       });
       continue;
     }

@@ -334,7 +334,9 @@ export const GlobeConstellation = forwardRef<
   }, [sceneState.nodes, engineEnabled]);
 
   const { data: apiData } = useGovernanceConstellation();
-  const chainActivityEvents = useChainActivityReplay(LAYER1_REPLAY_WINDOW_HOURS);
+  const chainActivityEvents = useChainActivityReplay(LAYER1_REPLAY_WINDOW_HOURS, {
+    enabled: effectiveMotionStrength > 0,
+  });
   const cachedProposalNodes = apiData?.proposalNodes ?? [];
 
   const onNodeSelectRef = useRef(onNodeSelect);

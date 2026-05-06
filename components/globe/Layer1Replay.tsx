@@ -3,8 +3,12 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
   LAYER1_REPLAY_LOOP_MS,
+  RATIONALE_FLICKER_BASE_INTENSITY,
   RATIONALE_FLICKER_DURATION_MS,
+  RATIONALE_FLICKER_SIZE_MULTIPLIER,
   VOTE_PARTICLE_BASE_SIZE,
+  VOTE_PARTICLE_ALPHA,
+  VOTE_PARTICLE_COLOR_INTENSITY,
   VOTE_PARTICLE_FADE_MS,
   type Layer1RationaleFlickerPlan,
   type Layer1RenderPlan,
@@ -62,9 +66,9 @@ function Layer1VoteParticles({ particles }: { particles: Layer1VoteParticlePlan[
       sizes[i] = VOTE_PARTICLE_BASE_SIZE * particle.sizeMultiplier;
 
       tempColor.set(particle.color);
-      colors[i * 3] = tempColor.r * 2.2;
-      colors[i * 3 + 1] = tempColor.g * 2.2;
-      colors[i * 3 + 2] = tempColor.b * 2.2;
+      colors[i * 3] = tempColor.r * VOTE_PARTICLE_COLOR_INTENSITY;
+      colors[i * 3 + 1] = tempColor.g * VOTE_PARTICLE_COLOR_INTENSITY;
+      colors[i * 3 + 2] = tempColor.b * VOTE_PARTICLE_COLOR_INTENSITY;
     }
 
     return { positions, sizes, alphas, colors };
@@ -92,7 +96,7 @@ function Layer1VoteParticles({ particles }: { particles: Layer1VoteParticlePlan[
       const linear = Math.max(0, Math.min(1, ageMs / VOTE_PARTICLE_FADE_MS));
       const eased = 1 - Math.pow(1 - linear, 2);
       setQuadraticBezierPosition(positions, i, particle, eased);
-      alphas.setX(i, (1 - linear) * 0.8 * particle.alphaMultiplier);
+      alphas.setX(i, (1 - linear) * VOTE_PARTICLE_ALPHA * particle.alphaMultiplier);
     }
 
     positions.needsUpdate = true;
@@ -135,12 +139,12 @@ function Layer1RationaleFlickers({ flickers }: { flickers: Layer1RationaleFlicke
       positions[i * 3] = flicker.position[0];
       positions[i * 3 + 1] = flicker.position[1];
       positions[i * 3 + 2] = flicker.position[2];
-      sizes[i] = VOTE_PARTICLE_BASE_SIZE * 1.6;
+      sizes[i] = VOTE_PARTICLE_BASE_SIZE * RATIONALE_FLICKER_SIZE_MULTIPLIER;
 
       tempColor.set(flicker.color);
-      colors[i * 3] = tempColor.r * (2 + flicker.emissiveBump);
-      colors[i * 3 + 1] = tempColor.g * (2 + flicker.emissiveBump);
-      colors[i * 3 + 2] = tempColor.b * (2 + flicker.emissiveBump);
+      colors[i * 3] = tempColor.r * (RATIONALE_FLICKER_BASE_INTENSITY + flicker.emissiveBump);
+      colors[i * 3 + 1] = tempColor.g * (RATIONALE_FLICKER_BASE_INTENSITY + flicker.emissiveBump);
+      colors[i * 3 + 2] = tempColor.b * (RATIONALE_FLICKER_BASE_INTENSITY + flicker.emissiveBump);
     }
 
     return { positions, sizes, alphas, colors };

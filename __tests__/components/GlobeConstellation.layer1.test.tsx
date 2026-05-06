@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChainActivityEvent } from '@/lib/chain/activityReplay';
 import type { ConstellationApiData, ConstellationNode3D } from '@/lib/constellation/types';
+import { LAYER1_REPLAY_WINDOW_HOURS } from '@/lib/globe/layer1Constants';
 import { DEFAULT_ROTATION_SPEED } from '@/lib/globe/types';
 
 const mockUseGovernanceConstellation = vi.fn();
@@ -46,7 +47,7 @@ vi.mock('@/hooks/queries', () => ({
 }));
 
 vi.mock('@/lib/chain/activityReplay', () => ({
-  useChainActivityReplay: () => mockUseChainActivityReplay(),
+  useChainActivityReplay: (...args: unknown[]) => mockUseChainActivityReplay(...args),
 }));
 
 vi.mock('@/components/globe/GlobePostProcessing', () => ({
@@ -207,6 +208,20 @@ describe('GlobeConstellation Layer 1 wiring', () => {
     expect(screen.getByTestId('canvas').parentElement?.dataset.layer1RotationSpeed).toBe(
       String(DEFAULT_ROTATION_SPEED * 0.05),
     );
+    expect(mockUseChainActivityReplay).toHaveBeenLastCalledWith(LAYER1_REPLAY_WINDOW_HOURS, {
+      enabled: true,
+    });
+  });
+
+  it('disables replay polling when motion strength is zero', async () => {
+    render(<GlobeConstellation motionStrength={0} breathing />);
+
+    await waitFor(() => expect(screen.getByTestId('canvas')).toBeTruthy());
+    expect(mockUseChainActivityReplay).toHaveBeenLastCalledWith(LAYER1_REPLAY_WINDOW_HOURS, {
+      enabled: false,
+    });
+    expect(screen.getByTestId('layer1-replay').dataset.particles).toBe('0');
+    expect(screen.getByTestId('layer1-replay').dataset.flickers).toBe('0');
   });
 
   it('projects replay events into particles, proposal brightness, and amber tint', async () => {

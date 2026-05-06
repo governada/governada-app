@@ -56,6 +56,10 @@ export interface ChainActivityReplayResponse {
   generatedAt: string;
 }
 
+interface ChainActivityReplayOptions {
+  enabled?: boolean;
+}
+
 async function fetchChainActivityReplay(windowHours: number): Promise<ChainActivityReplayResponse> {
   const params = new URLSearchParams({ hours: String(windowHours) });
   const res = await fetch(`/api/chain/activity-replay?${params.toString()}`);
@@ -69,13 +73,15 @@ async function fetchChainActivityReplay(windowHours: number): Promise<ChainActiv
 
 export function useChainActivityReplay(
   windowHours: number = LAYER1_REPLAY_WINDOW_HOURS,
+  { enabled = true }: ChainActivityReplayOptions = {},
 ): ChainActivityEvent[] {
   const query = useQuery({
     queryKey: ['chain-activity-replay', windowHours],
     queryFn: () => fetchChainActivityReplay(windowHours),
+    enabled,
     staleTime: 60_000,
-    refetchInterval: 60_000,
+    refetchInterval: enabled ? 60_000 : false,
   });
 
-  return query.data?.events ?? [];
+  return enabled ? (query.data?.events ?? []) : [];
 }

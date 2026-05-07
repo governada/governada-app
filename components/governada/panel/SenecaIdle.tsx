@@ -78,6 +78,7 @@ const ANCHORED_CARD_STATE_BY_KIND: Record<AnchoredCardKind, CinematicState> = {
   civic: 'civic_event_tier_0',
   action: 'action_required',
   sentiment: 'sentiment_opportunity',
+  match: 'returning_in_session',
 };
 
 // ---------------------------------------------------------------------------

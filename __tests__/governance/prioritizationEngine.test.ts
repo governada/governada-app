@@ -386,7 +386,12 @@ describe('homepage visit tracking', () => {
   it('does not track anonymous visitors', async () => {
     const result = await recordHomepageVisit({ stakeAddress: null, now: NOW });
 
-    expect(result).toEqual({ tracked: false, visitStarted: false, state: null });
+    expect(result).toEqual({
+      tracked: false,
+      visitStarted: false,
+      state: null,
+      priorEpochVisited: null,
+    });
     expect(mockGetSupabaseAdmin).not.toHaveBeenCalled();
   });
 
@@ -397,6 +402,7 @@ describe('homepage visit tracking', () => {
         stake_address: 'stake1',
         last_visit_at: '2026-05-06T13:00:00.000Z',
         prior_visit_at: null,
+        last_epoch_visited: 99,
       },
       error: null,
     });
@@ -412,13 +418,19 @@ describe('homepage visit tracking', () => {
       from: vi.fn(() => query),
     });
 
-    const result = await recordHomepageVisit({ stakeAddress: 'stake1', now: NOW });
+    const result = await recordHomepageVisit({
+      stakeAddress: 'stake1',
+      now: NOW,
+      currentEpoch: 100,
+    });
 
     expect(result.visitStarted).toBe(true);
+    expect(result.priorEpochVisited).toBe(99);
     expect(result.state).toMatchObject({
       stake_address: 'stake1',
       last_visit_at: NOW,
       prior_visit_at: '2026-05-06T13:00:00.000Z',
+      last_epoch_visited: 100,
     });
     expect(upsert).toHaveBeenCalledWith(result.state, { onConflict: 'stake_address' });
   });
@@ -432,6 +444,7 @@ describe('homepage visit tracking', () => {
       stake_address: 'stake1',
       last_visit_at: lastVisitAt,
       prior_visit_at: null,
+      last_epoch_visited: 100,
     };
     const maybeSingle = vi.fn().mockResolvedValue({ data: existing, error: null });
     const upsert = vi.fn().mockResolvedValue({ error: null });
@@ -448,8 +461,57 @@ describe('homepage visit tracking', () => {
 
     const result = await recordHomepageVisit({ stakeAddress: 'stake1', now: NOW });
 
-    expect(result).toEqual({ tracked: true, visitStarted: false, state: existing });
+    expect(result).toEqual({
+      tracked: true,
+      visitStarted: false,
+      state: existing,
+      priorEpochVisited: 100,
+    });
     expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('surfaces prior epoch visited so returning_epoch is reachable through visit state', async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        id: 'visit1',
+        stake_address: 'stake1',
+        last_visit_at: '2026-05-06T13:00:00.000Z',
+        prior_visit_at: null,
+        last_epoch_visited: 99,
+      },
+      error: null,
+    });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const query = {
+      select: vi.fn(() => query),
+      eq: vi.fn(() => query),
+      maybeSingle,
+      upsert,
+    };
+
+    mockGetSupabaseAdmin.mockReturnValue({
+      from: vi.fn(() => query),
+    });
+
+    const visit = await recordHomepageVisit({
+      stakeAddress: 'stake1',
+      now: NOW,
+      currentEpoch: 100,
+    });
+    const queue = await getCinematicState(
+      user({
+        currentEpoch: 100,
+        lastEpochVisited: visit.priorEpochVisited,
+        visitState: {
+          lastVisitAt: visit.state?.last_visit_at ?? null,
+          priorVisitAt: visit.state?.prior_visit_at ?? null,
+          priorEpochVisited: visit.priorEpochVisited,
+        },
+      }),
+      governance(),
+    );
+
+    expect(queue.primary.state).toBe('returning_epoch');
   });
 });
 

@@ -8,6 +8,8 @@ const {
   homepageMatchWorkspaceMock,
   homepageSenecaBridgeMock,
   getValidatedSessionFromCookiesMock,
+  derivePersonaFromSessionMock,
+  getSupabaseAdminMock,
   getCinematicStateMock,
   getTier0TriggersMock,
   recordHomepageVisitMock,
@@ -49,6 +51,8 @@ const {
     ),
   ),
   getValidatedSessionFromCookiesMock: vi.fn(),
+  derivePersonaFromSessionMock: vi.fn(),
+  getSupabaseAdminMock: vi.fn(),
   getCinematicStateMock: vi.fn(),
   getTier0TriggersMock: vi.fn(),
   recordHomepageVisitMock: vi.fn(),
@@ -91,6 +95,10 @@ vi.mock('@/lib/navigation/session', () => ({
   getValidatedSessionFromCookies: getValidatedSessionFromCookiesMock,
 }));
 
+vi.mock('@/lib/governance/derivePersonaFromSession', () => ({
+  derivePersonaFromSession: derivePersonaFromSessionMock,
+}));
+
 vi.mock('@/lib/governance/prioritizationEngine', () => ({
   getCinematicState: getCinematicStateMock,
 }));
@@ -108,7 +116,7 @@ vi.mock('@/lib/koios', () => ({
 }));
 
 vi.mock('@/lib/supabase', () => ({
-  getSupabaseAdmin: vi.fn(),
+  getSupabaseAdmin: getSupabaseAdminMock,
 }));
 
 describe('HomePageShell', () => {
@@ -117,12 +125,27 @@ describe('HomePageShell', () => {
     globeLayoutMock.mockClear();
     homepageMatchWorkspaceMock.mockClear();
     homepageSenecaBridgeMock.mockClear();
+    getValidatedSessionFromCookiesMock.mockClear();
+    derivePersonaFromSessionMock.mockClear();
+    getSupabaseAdminMock.mockClear();
+    getCinematicStateMock.mockClear();
+    getTier0TriggersMock.mockClear();
+    recordHomepageVisitMock.mockClear();
     getValidatedSessionFromCookiesMock.mockResolvedValue(null);
+    derivePersonaFromSessionMock.mockResolvedValue({ persona: 'anonymous' });
+    const acknowledgmentQuery = {
+      select: vi.fn(() => acknowledgmentQuery),
+      eq: vi.fn(async () => ({ data: [], error: null })),
+    };
+    getSupabaseAdminMock.mockReturnValue({
+      from: vi.fn(() => acknowledgmentQuery),
+    });
     getTier0TriggersMock.mockResolvedValue([]);
     recordHomepageVisitMock.mockResolvedValue({
       tracked: false,
       visitStarted: false,
       state: null,
+      priorEpochVisited: null,
     });
     blockTimeToEpochMock.mockReturnValue(555);
     getCinematicStateMock.mockResolvedValue({
@@ -164,6 +187,7 @@ describe('HomePageShell', () => {
     expect(recordHomepageVisitMock).toHaveBeenCalledWith({
       stakeAddress: null,
       now: expect.any(Date),
+      currentEpoch: 555,
     });
     expect(getTier0TriggersMock).toHaveBeenCalledWith(expect.any(Date));
     expect(getCinematicStateMock).toHaveBeenCalledWith(
@@ -185,6 +209,118 @@ describe('HomePageShell', () => {
     );
     expect(homepageMatchWorkspaceMock).not.toHaveBeenCalled();
     expect(screen.getByTestId('json-ld-organization').getAttribute('nonce')).toBe('nonce-123');
+  });
+
+  it('does not mark undelegated returning wallet users as cold-start', async () => {
+    getValidatedSessionFromCookiesMock.mockResolvedValue({
+      userId: 'user1',
+      walletAddress: 'stake1',
+    });
+    derivePersonaFromSessionMock.mockResolvedValue({
+      persona: 'citizen',
+      delegatedDrepId: null,
+    });
+    recordHomepageVisitMock.mockResolvedValue({
+      tracked: true,
+      visitStarted: true,
+      priorEpochVisited: 555,
+      state: {
+        stake_address: 'stake1',
+        last_visit_at: '2026-05-06T14:00:00.000Z',
+        prior_visit_at: '2026-05-06T13:00:00.000Z',
+        last_epoch_visited: 555,
+      },
+    });
+
+    render(await HomePageShell({}));
+
+    expect(getCinematicStateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        segment: 'citizen',
+        delegatedDrepId: null,
+        isColdStart: false,
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it('marks delegated returning wallet users with no other signals as cold-start', async () => {
+    getValidatedSessionFromCookiesMock.mockResolvedValue({
+      userId: 'user1',
+      walletAddress: 'stake1',
+    });
+    derivePersonaFromSessionMock.mockResolvedValue({
+      persona: 'citizen',
+      delegatedDrepId: 'drep1delegated',
+    });
+    recordHomepageVisitMock.mockResolvedValue({
+      tracked: true,
+      visitStarted: true,
+      priorEpochVisited: 555,
+      state: {
+        stake_address: 'stake1',
+        last_visit_at: '2026-05-06T14:00:00.000Z',
+        prior_visit_at: '2026-05-06T13:00:00.000Z',
+        last_epoch_visited: 555,
+      },
+    });
+
+    render(await HomePageShell({}));
+
+    expect(getCinematicStateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        segment: 'citizen',
+        delegatedDrepId: 'drep1delegated',
+        isColdStart: true,
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it('does not mark delegated returning wallet users as cold-start when Tier 0 is active', async () => {
+    getValidatedSessionFromCookiesMock.mockResolvedValue({
+      userId: 'user1',
+      walletAddress: 'stake1',
+    });
+    derivePersonaFromSessionMock.mockResolvedValue({
+      persona: 'citizen',
+      delegatedDrepId: 'drep1delegated',
+    });
+    getTier0TriggersMock.mockResolvedValue([
+      {
+        id: 'hard-fork:abc:0',
+        type: 'hard_fork_enacted',
+        proposalTxHash: 'abc',
+        proposalIndex: 0,
+        proposalType: 'HardForkInitiation',
+        eventEpoch: 555,
+        decayHours: 168,
+      },
+    ]);
+    recordHomepageVisitMock.mockResolvedValue({
+      tracked: true,
+      visitStarted: true,
+      priorEpochVisited: 555,
+      state: {
+        stake_address: 'stake1',
+        last_visit_at: '2026-05-06T14:00:00.000Z',
+        prior_visit_at: '2026-05-06T13:00:00.000Z',
+        last_epoch_visited: 555,
+      },
+    });
+
+    render(await HomePageShell({}));
+
+    expect(getCinematicStateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        segment: 'citizen',
+        delegatedDrepId: 'drep1delegated',
+        isColdStart: false,
+      }),
+      expect.objectContaining({
+        tier0Triggers: expect.arrayContaining([expect.objectContaining({ id: 'hard-fork:abc:0' })]),
+      }),
+    );
   });
 
   it('renders the canonical homepage quick-match workspace when mode=match', async () => {

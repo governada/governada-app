@@ -65,6 +65,7 @@ export interface PrioritizationAcknowledgment {
 export interface VisitState {
   lastVisitAt: string | null;
   priorVisitAt: string | null;
+  priorEpochVisited?: number | null;
 }
 
 export interface UserCinematicContext {
@@ -73,6 +74,7 @@ export interface UserCinematicContext {
   userId?: string | null;
   drepId?: string | null;
   poolId?: string | null;
+  ccHotId?: string | null;
   delegatedDrepId?: string | null;
   claimedDrepId?: string | null;
   hasConnectedWallet?: boolean;

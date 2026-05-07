@@ -7212,18 +7212,21 @@ export type Database = {
       user_visit_state: {
         Row: {
           id: string;
+          last_epoch_visited: number | null;
           last_visit_at: string;
           prior_visit_at: string | null;
           stake_address: string | null;
         };
         Insert: {
           id?: string;
+          last_epoch_visited?: number | null;
           last_visit_at: string;
           prior_visit_at?: string | null;
           stake_address?: string | null;
         };
         Update: {
           id?: string;
+          last_epoch_visited?: number | null;
           last_visit_at?: string;
           prior_visit_at?: string | null;
           stake_address?: string | null;

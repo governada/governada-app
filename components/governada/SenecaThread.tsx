@@ -624,9 +624,9 @@ export function SenecaThread({
           {/* Panel */}
           <motion.div
             key="seneca-thread-panel"
-            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.96 }}
-            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
+            initial={prefersReducedMotion ? false : { y: 24, scale: 0.96 }}
+            animate={prefersReducedMotion ? undefined : { y: 0, scale: 1 }}
+            exit={prefersReducedMotion ? undefined : { y: 16, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             className={cn(
               // Shared
@@ -645,9 +645,9 @@ export function SenecaThread({
             {/* ── Header ── */}
             <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/[0.06] shrink-0">
               <CompassSigil state={sigilState} size={18} accentColor={persona.accentColor} />
-              <span className="text-sm font-semibold text-foreground/90">Seneca</span>
+              <span className="text-sm font-semibold text-white">Seneca</span>
               {personaLabel && (
-                <span className="text-xs text-muted-foreground/60">&middot; {personaLabel}</span>
+                <span className="text-xs text-zinc-200">&middot; {personaLabel}</span>
               )}
 
               <div className="flex-1" />
@@ -685,9 +685,8 @@ export function SenecaThread({
 
             {/* ── Page context indicator ── */}
             <div className="px-3 py-1.5 border-b border-white/[0.04] shrink-0">
-              <p className="text-[10px] text-zinc-300 tracking-wide">
-                Now viewing:{' '}
-                <span className="text-zinc-100 font-medium">{ROUTE_LABELS[panelRoute]}</span>
+              <p className="text-[11px] text-white">
+                Now viewing: <span className="font-semibold">{ROUTE_LABELS[panelRoute]}</span>
               </p>
             </div>
 

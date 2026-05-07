@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Space_Grotesk, Fraunces } from 'next/font/google';
+import { headers } from 'next/headers';
+import Script from 'next/script';
 import { connection } from 'next/server';
 import './globals.css';
 import { Providers } from '@/components/Providers';
@@ -20,6 +22,22 @@ import { DEFAULT_LOCALE, RTL_LOCALES } from '@/lib/i18n/config';
 //   and formatting until explicit localized route paths exist.
 const DOCUMENT_LOCALE = DEFAULT_LOCALE;
 const DOCUMENT_DIR = RTL_LOCALES.has(DOCUMENT_LOCALE) ? 'rtl' : 'ltr';
+const CSP_DYNAMIC_SCRIPT_NONCE_BOOTSTRAP = `
+(function () {
+  var currentScript = document.currentScript;
+  var nonce = currentScript && currentScript.nonce;
+  if (!nonce || window.__governadaCspNoncePatched) return;
+  window.__governadaCspNoncePatched = true;
+  var createElement = Document.prototype.createElement;
+  Document.prototype.createElement = function (tagName, options) {
+    var element = createElement.call(this, tagName, options);
+    if (String(tagName).toLowerCase() === 'script' && !element.nonce) {
+      element.setAttribute('nonce', nonce);
+    }
+    return element;
+  };
+})();
+`;
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -86,6 +104,7 @@ export default async function RootLayout({
   // Keep the full App Router tree request-bound so CSP nonces are resolved during
   // request-time rendering instead of drifting through prerendered shells.
   await connection();
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
 
   return (
     <html
@@ -99,6 +118,12 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${spaceGrotesk.variable} ${fraunces.variable} antialiased`}
         suppressHydrationWarning
       >
+        <Script
+          id="governada-csp-dynamic-script-nonce"
+          nonce={nonce}
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: CSP_DYNAMIC_SCRIPT_NONCE_BOOTSTRAP }}
+        />
         <LocaleProvider initialLocale={DOCUMENT_LOCALE}>
           <Providers>
             <NavDirectionProvider>

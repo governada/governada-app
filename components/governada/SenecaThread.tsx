@@ -19,6 +19,7 @@ import { SenecaInput } from '@/components/governada/panel/SenecaInput';
 import type { ThreadMessage } from '@/stores/senecaThreadStore';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import type { HomepageCinematicSnapshot } from '@/stores/senecaThreadStore';
+import type { AnchoredCardDescriptor } from '@/components/globe/AnchoredCard';
 import type { PanelRoute, World } from '@/hooks/useSenecaThread';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useSegment } from '@/components/providers/SegmentProvider';
@@ -87,6 +88,7 @@ interface SenecaThreadProps {
   /** Whether user is authenticated (affects what's available) */
   isAuthenticated?: boolean;
   homepageCinematic?: HomepageCinematicSnapshot | null;
+  homepageAnchoredCards?: AnchoredCardDescriptor[];
 }
 
 // Constants and sub-components extracted to:
@@ -119,6 +121,7 @@ export function SenecaThread({
   onEntityFocus,
   isAuthenticated,
   homepageCinematic,
+  homepageAnchoredCards = [],
 }: SenecaThreadProps) {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
@@ -695,6 +698,8 @@ export function SenecaThread({
             onAnonOption={handleAnonOption}
             cinematicPrimary={homepageCinematic?.queue.primary}
             cinematicSecondary={homepageCinematic?.queue.secondary}
+            cinematicAnchoredCards={homepageAnchoredCards}
+            panelOpen={isOpen}
             cinematicReasoning={homepageCinematic?.queue.meta.reasoning}
             cinematicSegment={segment}
             canRecordLifecycle={

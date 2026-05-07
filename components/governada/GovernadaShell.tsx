@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Suspense, useCallback, useEffect } from 'react';
+import { Suspense, useCallback, useEffect, type CSSProperties } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
@@ -242,6 +242,7 @@ function SenecaOrbAndThread({
         }}
         isAuthenticated={isAuthenticated}
         homepageCinematic={homepageCinematic}
+        homepageAnchoredCards={seneca.homepageAnchoredCards}
       />
     </>
   );
@@ -273,6 +274,11 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
   const mobileGestures = useFeatureFlag('mobile_gestures') === true;
   const { tintColor } = useGovernanceTemperature();
   const seneca = useSenecaThread();
+  const shellLayoutStyle = {
+    '--governada-bottom-nav-height': isStudioMode
+      ? '0px'
+      : 'calc(4rem + env(safe-area-inset-bottom, 0px))',
+  } as CSSProperties;
 
   useSwipeNavigation(mobileGestures && !isStudioMode);
 
@@ -295,6 +301,7 @@ export function GovernadaShell({ children }: { children: React.ReactNode }) {
           )}
           <main
             id="main-content"
+            style={shellLayoutStyle}
             className={cn(
               'relative z-0',
               isStudioMode ? 'min-h-screen' : 'min-h-screen pb-16 lg:pb-0',

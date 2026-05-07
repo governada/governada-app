@@ -7,6 +7,7 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
+import { useMemo } from 'react';
 import { CompassSigil } from '@/components/governada/CompassSigil';
 import type { PanelRoute } from '@/hooks/useSenecaThread';
 import { buildFirstVisitBriefing } from '@/lib/seneca/firstVisitBriefing';
@@ -14,7 +15,9 @@ import type { BriefingPathId } from '@/lib/seneca/firstVisitBriefing';
 import { getEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
 import { cn } from '@/lib/utils';
 import type { UserSegment } from '@/components/providers/SegmentProvider';
-import type { PrioritizedItem } from '@/types/cinematic';
+import type { CinematicState, PrioritizedItem } from '@/types/cinematic';
+import type { AnchoredCardDescriptor, AnchoredCardKind } from '@/components/globe/AnchoredCard';
+import { useViewportClass } from '@/hooks/useViewportClass';
 
 // ---------------------------------------------------------------------------
 // Route -> human-readable label
@@ -53,6 +56,28 @@ const IDLE_BRIEFINGS: Record<PanelRoute, string> = {
     'Your workspace is where proposals come to life. I can help with drafting, constitutional compliance, or understanding what makes a proposal succeed.',
   default:
     "I'm Seneca, your governance companion. I can help you explore Cardano governance, find your representative, or discover what's being decided right now.",
+};
+
+const CINEMATIC_STATE_LABELS: Record<CinematicState, string | null> = {
+  civic_event_tier_0: 'A constitutional moment',
+  first_visit_anonymous: null,
+  first_visit_wallet_connected: 'Welcome back',
+  returning_in_session: null,
+  returning_quiet: null,
+  returning_significant_delta: 'Something changed',
+  returning_epoch: 'New epoch',
+  returning_cold_start: 'Your representative',
+  action_required: 'Action required',
+  sentiment_opportunity: 'Your voice',
+};
+
+const ANCHORED_CARD_STATE_BY_KIND: Record<AnchoredCardKind, CinematicState> = {
+  team: 'first_visit_wallet_connected',
+  delta: 'returning_significant_delta',
+  epoch: 'returning_epoch',
+  civic: 'civic_event_tier_0',
+  action: 'action_required',
+  sentiment: 'sentiment_opportunity',
 };
 
 // ---------------------------------------------------------------------------
@@ -287,6 +312,33 @@ export function sigilStateForMode(mode: string) {
   }
 }
 
+function anchoredCardToPrioritizedItem(card: AnchoredCardDescriptor): PrioritizedItem {
+  return {
+    id: `anchored:${card.id}`,
+    tier: 2,
+    kind: 'informational',
+    state: ANCHORED_CARD_STATE_BY_KIND[card.kind],
+    surfaced_at: new Date(0).toISOString(),
+    payload: card,
+  };
+}
+
+function getAnchoredCardPayload(item: PrioritizedItem): AnchoredCardDescriptor | null {
+  const payload = item.payload;
+  if (
+    typeof payload !== 'object' ||
+    payload === null ||
+    !('id' in payload) ||
+    !('kind' in payload) ||
+    !('title' in payload) ||
+    !('anchorNodeId' in payload)
+  ) {
+    return null;
+  }
+
+  return payload as AnchoredCardDescriptor;
+}
+
 // ---------------------------------------------------------------------------
 // IdleContent component
 // ---------------------------------------------------------------------------
@@ -300,8 +352,10 @@ export function IdleContent({
   onAnonOption,
   cinematicPrimary,
   cinematicSecondary = [],
+  cinematicAnchoredCards = [],
   cinematicReasoning,
   cinematicSegment = 'anonymous',
+  panelOpen,
   canRecordLifecycle,
   onPrioritizationAction,
   accentColor,
@@ -314,13 +368,26 @@ export function IdleContent({
   onAnonOption: (option: GuidedOption) => void;
   cinematicPrimary?: PrioritizedItem;
   cinematicSecondary?: PrioritizedItem[];
+  cinematicAnchoredCards?: AnchoredCardDescriptor[];
   cinematicReasoning?: string;
   cinematicSegment?: UserSegment;
+  panelOpen?: boolean;
   canRecordLifecycle?: boolean;
   onPrioritizationAction?: (item: PrioritizedItem, action: 'acknowledge' | 'dismiss') => void;
   accentColor?: string;
 }) {
   const prefersReducedMotion = useReducedMotion();
+  const viewportClass = useViewportClass();
+  const shouldFoldAnchoredCards =
+    viewportClass === 'mobile' && panelOpen === true && cinematicAnchoredCards.length > 0;
+  const secondaryMentions = useMemo(
+    () =>
+      shouldFoldAnchoredCards
+        ? [...cinematicSecondary, ...cinematicAnchoredCards.map(anchoredCardToPrioritizedItem)]
+        : cinematicSecondary,
+    [cinematicAnchoredCards, cinematicSecondary, shouldFoldAnchoredCards],
+  );
+  const secondaryLimit = shouldFoldAnchoredCards ? 3 + cinematicAnchoredCards.length : 3;
   const firstVisitBriefing =
     cinematicPrimary?.state === 'first_visit_anonymous'
       ? buildFirstVisitBriefing({ segment: cinematicSegment })
@@ -446,10 +513,10 @@ export function IdleContent({
             ))}
       </motion.div>
 
-      {cinematicSecondary.length > 0 && (
+      {secondaryMentions.length > 0 && (
         <div className="space-y-2 border-t border-white/[0.06] pt-3">
           <p className="text-[10px] uppercase tracking-wide text-zinc-300">Still in view</p>
-          {cinematicSecondary.slice(0, 3).map((item) => (
+          {secondaryMentions.slice(0, secondaryLimit).map((item) => (
             <CinematicStateCard
               key={item.id}
               item={item}
@@ -477,6 +544,10 @@ function CinematicStateCard({
   canRecordLifecycle?: boolean;
   onPrioritizationAction?: (item: PrioritizedItem, action: 'acknowledge' | 'dismiss') => void;
 }) {
+  const anchoredCard = getAnchoredCardPayload(item);
+  const label = anchoredCard?.title ?? CINEMATIC_STATE_LABELS[item.state];
+  const body = anchoredCard?.body ?? getEvergreenFallback(item.state);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 4 }}
@@ -486,18 +557,24 @@ function CinematicStateCard({
         compact ? 'px-2.5 py-2' : 'px-3 py-2.5',
       )}
     >
-      <p className="text-[10px] uppercase tracking-wide text-zinc-300">
-        {item.state.replace(/_/g, ' ')}
-      </p>
-      <p className={cn('mt-1 text-zinc-100 leading-relaxed', compact ? 'text-xs' : 'text-sm')}>
-        {getEvergreenFallback(item.state)}
+      {label && <p className="text-[10px] font-medium tracking-wide text-zinc-300">{label}</p>}
+      <p
+        className={cn(
+          'text-zinc-100 leading-relaxed',
+          label && 'mt-1',
+          compact ? 'text-xs' : 'text-sm',
+        )}
+      >
+        {body}
       </p>
       {reasoning && <p className="mt-2 text-[11px] text-zinc-300">{reasoning}</p>}
-      <LifecycleActions
-        item={item}
-        canRecordLifecycle={canRecordLifecycle}
-        onPrioritizationAction={onPrioritizationAction}
-      />
+      {!anchoredCard && (
+        <LifecycleActions
+          item={item}
+          canRecordLifecycle={canRecordLifecycle}
+          onPrioritizationAction={onPrioritizationAction}
+        />
+      )}
     </motion.div>
   );
 }

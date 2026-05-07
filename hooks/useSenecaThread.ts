@@ -14,7 +14,10 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
-import type { HomepageCinematicSnapshot } from '@/stores/senecaThreadStore';
+import type {
+  HomepageCinematicSnapshot,
+  RegionSuggestionWhisper,
+} from '@/stores/senecaThreadStore';
 import type { SenecaPersona } from '@/lib/intelligence/senecaPersonas';
 import { getPersonaForRoute } from '@/lib/intelligence/senecaPersonas';
 import type { ThreadMessage } from '@/stores/senecaThreadStore';
@@ -105,6 +108,7 @@ export interface UseSenecaThreadResult {
   visitedPages: string[];
   pendingGlobeAction: GlobeIntent | null;
   homepageCinematic: HomepageCinematicSnapshot | null;
+  regionSuggestionWhisper: RegionSuggestionWhisper | null;
 
   // Actions
   toggle: () => void;
@@ -125,6 +129,7 @@ export interface UseSenecaThreadResult {
   executeIntent: (query: string) => GlobeIntent | null;
   /** Clear the pending globe action after GlobeLayout consumes it */
   consumeGlobeAction: () => void;
+  setRegionSuggestionWhisper: (whisper: RegionSuggestionWhisper | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +148,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
 
   const pendingGlobeAction = useSenecaThreadStore((s) => s.pendingGlobeAction);
   const homepageCinematic = useSenecaThreadStore((s) => s.homepageCinematic);
+  const regionSuggestionWhisper = useSenecaThreadStore((s) => s.regionSuggestionWhisper);
 
   const setOpen = useSenecaThreadStore((s) => s.setOpen);
   const navigateTo = useSenecaThreadStore((s) => s.navigateTo);
@@ -155,6 +161,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
   const clearConversation = useSenecaThreadStore((s) => s.clearConversation);
   const dispatchGlobeIntent = useSenecaThreadStore((s) => s.dispatchGlobeIntent);
   const consumeGlobeAction = useSenecaThreadStore((s) => s.consumeGlobeAction);
+  const setRegionSuggestionWhisper = useSenecaThreadStore((s) => s.setRegionSuggestionWhisper);
 
   // Route derivation
   const panelRoute = useMemo(() => detectPanelRoute(pathname), [pathname]);
@@ -222,6 +229,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
     visitedPages,
     pendingGlobeAction,
     homepageCinematic,
+    regionSuggestionWhisper,
 
     // Actions
     toggle,
@@ -236,5 +244,6 @@ export function useSenecaThread(): UseSenecaThreadResult {
     clearConversation,
     executeIntent,
     consumeGlobeAction,
+    setRegionSuggestionWhisper,
   };
 }

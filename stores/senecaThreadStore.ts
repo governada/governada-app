@@ -55,6 +55,11 @@ export interface HomepageCinematicSnapshot {
   identity: HomepageCinematicIdentity;
 }
 
+export interface RegionSuggestionWhisper {
+  clusterId: string;
+  text: string;
+}
+
 // ---------------------------------------------------------------------------
 // State shape
 // ---------------------------------------------------------------------------
@@ -70,6 +75,8 @@ export interface SenecaThreadState {
   pendingGlobeAction: GlobeIntent | null;
   /** Homepage prioritization-engine output, published by the server shell bridge */
   homepageCinematic: HomepageCinematicSnapshot | null;
+  /** Soft Layer 2 region suggestion surfaced through the orb whisper */
+  regionSuggestionWhisper: RegionSuggestionWhisper | null;
 }
 
 export interface SenecaThreadActions {
@@ -89,6 +96,7 @@ export interface SenecaThreadActions {
   /** Clear the pending globe action after consumption */
   consumeGlobeAction: () => void;
   setHomepageCinematic: (snapshot: HomepageCinematicSnapshot | null) => void;
+  setRegionSuggestionWhisper: (whisper: RegionSuggestionWhisper | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,6 +219,7 @@ export const useSenecaThreadStore = create<SenecaThreadState & SenecaThreadActio
       visitedPages: [],
       pendingGlobeAction: null,
       homepageCinematic: null,
+      regionSuggestionWhisper: null,
 
       // ----- Actions -----
 
@@ -316,6 +325,8 @@ export const useSenecaThreadStore = create<SenecaThreadState & SenecaThreadActio
       consumeGlobeAction: () => set({ pendingGlobeAction: null }),
 
       setHomepageCinematic: (snapshot) => set({ homepageCinematic: snapshot }),
+
+      setRegionSuggestionWhisper: (whisper) => set({ regionSuggestionWhisper: whisper }),
     }),
     {
       name: STORAGE_KEY,

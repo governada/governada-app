@@ -434,6 +434,13 @@ export const Constellation2D = forwardRef(function Constellation2D(
     flyToPosition: async () => {
       // No fly-to-position in 2D fallback
     },
+    getCameraSnapshot: () => {
+      const s = stateRef.current;
+      return {
+        position: [s.cameraX, s.cameraY, s.zoom],
+        target: [s.cameraX, s.cameraY, 0],
+      };
+    },
     narrowTo: () => {
       // No narrow-to in 2D fallback
     },

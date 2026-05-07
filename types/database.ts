@@ -7545,6 +7545,23 @@ export type Database = {
         Args: { embedding_a: string; embedding_b: string };
         Returns: number;
       };
+      get_cluster_treasury_behavior: {
+        Args: { drep_ids: string[] };
+        Returns: {
+          approved_180d: number | null;
+          approved_30d: number | null;
+          approved_90d: number | null;
+          approved_all_time: number | null;
+          proposals_180d: number | null;
+          proposals_30d: number | null;
+          proposals_90d: number | null;
+          proposals_all_time: number | null;
+          yes_180d: number | null;
+          yes_30d: number | null;
+          yes_90d: number | null;
+          yes_all_time: number | null;
+        }[];
+      };
       match_embeddings: {
         Args: {
           match_entity_type: string;

@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Settings2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSenecaSearch } from '@/hooks/useSenecaSearch';
 import { CompassSigil } from '@/components/governada/CompassSigil';
@@ -47,6 +47,13 @@ import type { QuickAction, GuidedOption } from '@/components/governada/panel/Sen
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { ConversationContent } from '@/components/governada/panel/SenecaMessages';
 import { SearchResultsContent } from '@/components/governada/panel/SenecaSearchPanel';
+import { useViewportClass } from '@/hooks/useViewportClass';
+import {
+  type MotionStrengthUserOverride,
+  useMotionStrengthSetter,
+} from '@/lib/motion/motionStrength';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,9 +122,11 @@ export function SenecaThread({
 }: SenecaThreadProps) {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
+  const viewportClass = useViewportClass();
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevRouteRef = useRef<PanelRoute>(panelRoute);
   const wasOpenRef = useRef(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // ── Streaming state ──
   const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
@@ -605,179 +614,238 @@ export function SenecaThread({
     return messages;
   }, [messages, mode, routeChanged]);
 
+  const panelContent = (
+    <>
+      <span className="sr-only">Seneca conversation</span>
+
+      {/* ── Header ── */}
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/[0.06] shrink-0">
+        <CompassSigil state={sigilState} size={18} accentColor={persona.accentColor} />
+        <span className="text-sm font-semibold text-white">Seneca</span>
+        {personaLabel && <span className="text-xs text-zinc-200">&middot; {personaLabel}</span>}
+
+        <div className="flex-1" />
+
+        <button
+          type="button"
+          onClick={() => setSettingsOpen((current) => !current)}
+          className={cn(
+            'p-1.5 rounded-md transition-colors',
+            settingsOpen
+              ? 'text-primary bg-primary/10'
+              : 'text-muted-foreground/40 hover:text-muted-foreground hover:bg-white/5',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+          )}
+          aria-label="Seneca settings"
+          aria-pressed={settingsOpen}
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+        </button>
+
+        {messages.length > 0 && (
+          <button
+            type="button"
+            onClick={onClearConversation}
+            className={cn(
+              'p-1.5 rounded-md transition-colors',
+              'text-muted-foreground/40 hover:text-muted-foreground hover:bg-white/5',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+            )}
+            aria-label="Clear conversation"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={onClose}
+          className={cn(
+            'p-1.5 rounded-md transition-colors',
+            'text-muted-foreground/40 hover:text-muted-foreground hover:bg-white/5',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+          )}
+          aria-label="Close Seneca"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* ── Page context indicator ── */}
+      <div className="px-3 py-1.5 border-b border-white/[0.04] shrink-0">
+        <p className="text-[11px] text-white">
+          Now viewing: <span className="font-semibold">{ROUTE_LABELS[panelRoute]}</span>
+        </p>
+      </div>
+
+      {settingsOpen && <MotionSettingsGroup />}
+
+      {/* ── Content area ── */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent"
+      >
+        {mode === 'idle' && (
+          <IdleContent
+            panelRoute={panelRoute}
+            isAuthenticated={isAuthenticated}
+            quickActions={quickActions}
+            anonOptions={anonOptions}
+            onQuickAction={handleQuickAction}
+            onAnonOption={handleAnonOption}
+            cinematicPrimary={homepageCinematic?.queue.primary}
+            cinematicSecondary={homepageCinematic?.queue.secondary}
+            cinematicReasoning={homepageCinematic?.queue.meta.reasoning}
+            cinematicSegment={segment}
+            canRecordLifecycle={
+              isAuthenticated &&
+              !!(homepageCinematic?.identity.stakeAddress ?? homepageCinematic?.identity.userId)
+            }
+            onPrioritizationAction={handlePrioritizationAction}
+            accentColor={persona.accentColor}
+          />
+        )}
+
+        {mode === 'conversation' && (
+          <ConversationContent
+            messages={messagesWithMarkers}
+            onEntityFocus={handleEntityFocus}
+            routeChanged={routeChanged}
+            routeLabel={ROUTE_LABELS[panelRoute]}
+            accentColor={persona.accentColor}
+            isStreaming={isStreaming}
+            toolStatus={toolStatus}
+            personaId={persona.id}
+            onStartResearch={onStartResearch}
+          />
+        )}
+
+        {mode === 'research' && pendingQuery && (
+          <SenecaResearch question={pendingQuery} onBack={onReturnToIdle} />
+        )}
+
+        {mode === 'matching' && (
+          <SenecaMatch
+            onBack={onReturnToIdle}
+            onStartConversation={(query) => {
+              onReturnToIdle();
+              setTimeout(() => onStartConversation(query), 100);
+            }}
+          />
+        )}
+
+        {mode === 'idle' && senecaSearch.hasSearched && (
+          <SearchResultsContent
+            results={senecaSearch.results}
+            query={senecaSearch.query}
+            isSearching={senecaSearch.isSearching}
+            error={senecaSearch.error}
+            onClear={senecaSearch.clearSearch}
+            accentColor={persona.accentColor}
+          />
+        )}
+      </div>
+
+      {(mode === 'idle' || mode === 'conversation') && (
+        <div className="shrink-0 border-t border-white/[0.06]">
+          <SenecaInput
+            panelRoute={panelRoute}
+            onSubmit={(query) => onStartConversation(query)}
+            disabled={isStreaming}
+          />
+        </div>
+      )}
+    </>
+  );
+
+  if (viewportClass === 'mobile') {
+    return (
+      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          className={cn(
+            'inset-0 h-[100dvh] w-screen max-w-none gap-0 p-0',
+            'border-white/[0.08] bg-black/72 text-white backdrop-blur-2xl',
+          )}
+        >
+          <SheetTitle className="sr-only">Seneca conversation</SheetTitle>
+          {panelContent}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          {/* Mobile backdrop */}
-          <motion.div
-            key="seneca-thread-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-            onClick={onClose}
-            aria-hidden
-          />
-
-          {/* Panel */}
-          <motion.div
-            key="seneca-thread-panel"
-            initial={prefersReducedMotion ? false : { y: 24, scale: 0.96 }}
-            animate={prefersReducedMotion ? undefined : { y: 0, scale: 1 }}
-            exit={prefersReducedMotion ? undefined : { y: 16, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className={cn(
-              // Shared
-              'fixed z-[60] flex flex-col overflow-hidden',
-              'bg-black/75 backdrop-blur-2xl border border-white/[0.08]',
-              'shadow-2xl shadow-black/40',
-              // Desktop: floating card
-              'lg:bottom-20 lg:right-6 lg:w-[380px] lg:max-h-[70vh] lg:rounded-2xl',
-              // Mobile: bottom sheet
-              'max-lg:bottom-0 max-lg:left-0 max-lg:right-0 max-lg:h-[90vh] max-lg:rounded-t-2xl',
-            )}
-            role="dialog"
-            aria-label="Seneca conversation"
-            aria-modal="true"
-          >
-            {/* ── Header ── */}
-            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/[0.06] shrink-0">
-              <CompassSigil state={sigilState} size={18} accentColor={persona.accentColor} />
-              <span className="text-sm font-semibold text-white">Seneca</span>
-              {personaLabel && (
-                <span className="text-xs text-zinc-200">&middot; {personaLabel}</span>
-              )}
-
-              <div className="flex-1" />
-
-              {/* Clear conversation */}
-              {messages.length > 0 && (
-                <button
-                  type="button"
-                  onClick={onClearConversation}
-                  className={cn(
-                    'p-1.5 rounded-md transition-colors',
-                    'text-muted-foreground/40 hover:text-muted-foreground hover:bg-white/5',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                  )}
-                  aria-label="Clear conversation"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              )}
-
-              {/* Close */}
-              <button
-                type="button"
-                onClick={onClose}
-                className={cn(
-                  'p-1.5 rounded-md transition-colors',
-                  'text-muted-foreground/40 hover:text-muted-foreground hover:bg-white/5',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                )}
-                aria-label="Close Seneca"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            {/* ── Page context indicator ── */}
-            <div className="px-3 py-1.5 border-b border-white/[0.04] shrink-0">
-              <p className="text-[11px] text-white">
-                Now viewing: <span className="font-semibold">{ROUTE_LABELS[panelRoute]}</span>
-              </p>
-            </div>
-
-            {/* ── Content area ── */}
-            <div
-              ref={scrollRef}
-              className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent"
-            >
-              {/* Idle mode */}
-              {mode === 'idle' && (
-                <IdleContent
-                  panelRoute={panelRoute}
-                  isAuthenticated={isAuthenticated}
-                  quickActions={quickActions}
-                  anonOptions={anonOptions}
-                  onQuickAction={handleQuickAction}
-                  onAnonOption={handleAnonOption}
-                  cinematicPrimary={homepageCinematic?.queue.primary}
-                  cinematicSecondary={homepageCinematic?.queue.secondary}
-                  cinematicReasoning={homepageCinematic?.queue.meta.reasoning}
-                  cinematicSegment={segment}
-                  canRecordLifecycle={
-                    isAuthenticated &&
-                    !!(
-                      homepageCinematic?.identity.stakeAddress ?? homepageCinematic?.identity.userId
-                    )
-                  }
-                  onPrioritizationAction={handlePrioritizationAction}
-                  accentColor={persona.accentColor}
-                />
-              )}
-
-              {/* Conversation mode */}
-              {mode === 'conversation' && (
-                <ConversationContent
-                  messages={messagesWithMarkers}
-                  onEntityFocus={handleEntityFocus}
-                  routeChanged={routeChanged}
-                  routeLabel={ROUTE_LABELS[panelRoute]}
-                  accentColor={persona.accentColor}
-                  isStreaming={isStreaming}
-                  toolStatus={toolStatus}
-                  personaId={persona.id}
-                  onStartResearch={onStartResearch}
-                />
-              )}
-
-              {/* Research mode */}
-              {mode === 'research' && pendingQuery && (
-                <SenecaResearch question={pendingQuery} onBack={onReturnToIdle} />
-              )}
-
-              {/* Matching mode */}
-              {mode === 'matching' && (
-                <SenecaMatch
-                  onBack={onReturnToIdle}
-                  onStartConversation={(query) => {
-                    onReturnToIdle();
-                    // Brief delay to let mode transition settle before starting conversation
-                    setTimeout(() => onStartConversation(query), 100);
-                  }}
-                />
-              )}
-
-              {/* Search results (shown in idle mode when search has results) */}
-              {mode === 'idle' && senecaSearch.hasSearched && (
-                <SearchResultsContent
-                  results={senecaSearch.results}
-                  query={senecaSearch.query}
-                  isSearching={senecaSearch.isSearching}
-                  error={senecaSearch.error}
-                  onClear={senecaSearch.clearSearch}
-                  accentColor={persona.accentColor}
-                />
-              )}
-            </div>
-
-            {/* ── Input area ── */}
-            {(mode === 'idle' || mode === 'conversation') && (
-              <div className="shrink-0 border-t border-white/[0.06]">
-                <SenecaInput
-                  panelRoute={panelRoute}
-                  onSubmit={(query) => onStartConversation(query)}
-                  disabled={isStreaming}
-                />
-              </div>
-            )}
-          </motion.div>
-        </>
+        <motion.div
+          key="seneca-thread-panel"
+          initial={prefersReducedMotion ? false : { y: 24, scale: 0.96 }}
+          animate={prefersReducedMotion ? undefined : { y: 0, scale: 1 }}
+          exit={prefersReducedMotion ? undefined : { y: 16, scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          className={cn(
+            'fixed z-[60] flex flex-col overflow-hidden',
+            'bg-black/75 backdrop-blur-2xl border border-white/[0.08]',
+            'shadow-2xl shadow-black/40',
+            'bottom-20 right-6 w-[380px] max-h-[70vh] rounded-2xl',
+          )}
+          role="dialog"
+          aria-label="Seneca conversation"
+          aria-modal="true"
+        >
+          {panelContent}
+        </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function MotionSettingsGroup() {
+  const { userOverride, setUserOverride } = useMotionStrengthSetter();
+
+  const options: Array<{ value: MotionStrengthUserOverride; label: string }> = [
+    { value: 'auto', label: 'Auto' },
+    { value: 'full', label: 'Full' },
+    { value: 'suspended', label: 'Suspended' },
+  ];
+
+  return (
+    <div
+      className="shrink-0 border-b border-white/[0.04] px-3 py-3"
+      data-testid="seneca-motion-settings"
+    >
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/55">
+        Motion
+      </div>
+      <RadioGroup
+        value={userOverride}
+        onValueChange={(value) => {
+          if (value === 'auto' || value === 'full' || value === 'suspended') {
+            setUserOverride(value);
+          }
+        }}
+        className="grid grid-cols-3 gap-2"
+        aria-label="Motion"
+      >
+        {options.map((option) => (
+          <label
+            key={option.value}
+            className={cn(
+              'flex min-h-9 cursor-pointer items-center gap-2 rounded-md border px-2.5 py-2',
+              'text-xs text-white/70 transition-colors',
+              userOverride === option.value
+                ? 'border-primary/40 bg-primary/10 text-white'
+                : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]',
+            )}
+          >
+            <RadioGroupItem value={option.value} />
+            <span>{option.label}</span>
+          </label>
+        ))}
+      </RadioGroup>
+    </div>
   );
 }
 

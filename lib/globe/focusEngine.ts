@@ -310,7 +310,8 @@ export function deriveFromIntent(
   const ny = cy / dir;
   const nz = cz / dir;
 
-  const distance = deriveCameraDistance(resolvedIds.size, intent.cameraProximity);
+  const distance =
+    intent.cameraDistanceOverride ?? deriveCameraDistance(resolvedIds.size, intent.cameraProximity);
   const transitionSpeed = deriveTransitionSpeed(distance - prevDistance);
   const orbitSpeed = deriveOrbitSpeed(intent.cameraProximity, intent.orbitSpeedOverride);
 

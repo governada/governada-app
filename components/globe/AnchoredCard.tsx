@@ -1,7 +1,9 @@
 'use client';
 
 import { Html } from '@react-three/drei';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useViewportClass } from '@/hooks/useViewportClass';
+import { cn } from '@/lib/utils';
 
 export type AnchoredCardKind = 'team' | 'delta' | 'epoch' | 'civic' | 'action' | 'sentiment';
 
@@ -27,7 +29,9 @@ interface AnchoredCardProps {
   card: AnchoredCardDescriptor;
   nodeRects?: DOMRect[];
   onFold: (entry: FoldedAnchoredCardEntry) => void;
+  onSelect?: (card: AnchoredCardDescriptor) => void;
   autoDismissMs?: number;
+  engagementKey?: number;
 }
 
 interface AnchoredCardLayerProps {
@@ -35,6 +39,18 @@ interface AnchoredCardLayerProps {
   nodePositions?: Map<string, [number, number, number]>;
   onFold: (entry: FoldedAnchoredCardEntry) => void;
   autoDismissMs?: number;
+  engagedAnchorNodeId?: string | null;
+  engagementKey?: number;
+}
+
+interface AnchoredCardMobileStackProps {
+  cards: AnchoredCardDescriptor[];
+  onFold: (entry: FoldedAnchoredCardEntry) => void;
+  onSelect: (card: AnchoredCardDescriptor) => void;
+  autoDismissMs?: number;
+  engagedAnchorNodeId?: string | null;
+  engagementKey?: number;
+  foldBudget?: boolean;
 }
 
 const AUTO_DISMISS_MS = 35_000;
@@ -80,7 +96,10 @@ export function AnchoredCardLayer({
   nodePositions,
   onFold,
   autoDismissMs = AUTO_DISMISS_MS,
+  engagedAnchorNodeId,
+  engagementKey = 0,
 }: AnchoredCardLayerProps) {
+  const viewportClass = useViewportClass();
   const visibleCards = useMemo(() => applyAnchoredCardBudget(cards), [cards]);
   const budgetFoldedIds = useRef(new Set<string>());
 
@@ -91,6 +110,8 @@ export function AnchoredCardLayer({
       onFold(entry);
     }
   }, [cards, onFold]);
+
+  if (viewportClass === 'mobile') return null;
 
   return (
     <>
@@ -103,9 +124,55 @@ export function AnchoredCardLayer({
           }}
           onFold={onFold}
           autoDismissMs={autoDismissMs}
+          engagementKey={card.anchorNodeId === engagedAnchorNodeId ? engagementKey : 0}
         />
       ))}
     </>
+  );
+}
+
+export function AnchoredCardMobileStack({
+  cards,
+  onFold,
+  onSelect,
+  autoDismissMs = AUTO_DISMISS_MS,
+  engagedAnchorNodeId,
+  engagementKey = 0,
+  foldBudget = false,
+}: AnchoredCardMobileStackProps) {
+  const viewportClass = useViewportClass();
+  const visibleCards = useMemo(() => applyAnchoredCardBudget(cards), [cards]);
+  const budgetFoldedIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!foldBudget) return;
+    for (const entry of getBudgetFoldEntries(cards)) {
+      if (budgetFoldedIds.current.has(entry.id)) continue;
+      budgetFoldedIds.current.add(entry.id);
+      onFold(entry);
+    }
+  }, [cards, foldBudget, onFold]);
+
+  if (viewportClass !== 'mobile' || visibleCards.length === 0) return null;
+
+  return (
+    <div
+      className="fixed inset-x-0 bottom-0 z-50 pointer-events-none px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      data-testid="anchored-card-mobile-stack"
+    >
+      <div className="mx-auto flex max-h-[42vh] w-full max-w-md flex-col gap-2 overflow-y-auto rounded-t-md border border-white/10 bg-[#080b12]/72 p-2 shadow-2xl backdrop-blur-xl">
+        {visibleCards.map((card) => (
+          <AnchoredCardMobileItem
+            key={card.id}
+            card={card}
+            onFold={onFold}
+            onSelect={onSelect}
+            autoDismissMs={autoDismissMs}
+            engagementKey={card.anchorNodeId === engagedAnchorNodeId ? engagementKey : 0}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -113,14 +180,16 @@ export function AnchoredCard({
   card,
   nodeRects = [],
   onFold,
+  onSelect,
   autoDismissMs = AUTO_DISMISS_MS,
+  engagementKey = 0,
 }: AnchoredCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<'right' | 'left' | 'fade'>('right');
   const [dismissed, setDismissed] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const resetTimer = () => {
+  const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setDismissed(true);
@@ -132,16 +201,18 @@ export function AnchoredCard({
         reason: 'timer',
       });
     }, autoDismissMs);
-  };
+  }, [autoDismissMs, card.id, card.kind, card.title, onFold]);
 
   useEffect(() => {
     resetTimer();
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-    // resetTimer intentionally depends on the current card id/title/kind through closure.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card.id, autoDismissMs]);
+  }, [card.id, autoDismissMs, resetTimer]);
+
+  useEffect(() => {
+    if (engagementKey > 0) resetTimer();
+  }, [engagementKey, resetTimer]);
 
   useEffect(() => {
     if (!ref.current || nodeRects.length === 0) return;
@@ -162,6 +233,10 @@ export function AnchoredCard({
 
   const offset = placement === 'left' ? '-translate-x-[calc(100%+18px)]' : 'translate-x-[18px]';
   const opacity = placement === 'fade' ? 'opacity-0' : 'opacity-100';
+  const handleEngage = () => {
+    resetTimer();
+    onSelect?.(card);
+  };
 
   return (
     <Html
@@ -179,7 +254,7 @@ export function AnchoredCard({
         data-anchor-node-id={card.anchorNodeId}
         data-placement={placement}
         onMouseEnter={resetTimer}
-        onClick={resetTimer}
+        onClick={handleEngage}
       >
         <div className="text-[11px] font-semibold leading-snug text-white">{card.title}</div>
         {card.body && (
@@ -187,6 +262,69 @@ export function AnchoredCard({
         )}
       </div>
     </Html>
+  );
+}
+
+function AnchoredCardMobileItem({
+  card,
+  onFold,
+  onSelect,
+  autoDismissMs,
+  engagementKey,
+}: Required<Pick<AnchoredCardProps, 'card' | 'onFold' | 'autoDismissMs' | 'engagementKey'>> & {
+  onSelect: (card: AnchoredCardDescriptor) => void;
+}) {
+  const [dismissed, setDismissed] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setDismissed(true);
+      onFold({
+        id: card.id,
+        title: card.title,
+        kind: card.kind,
+        foldedAt: Date.now(),
+        reason: 'timer',
+      });
+    }, autoDismissMs);
+  }, [autoDismissMs, card.id, card.kind, card.title, onFold]);
+
+  useEffect(() => {
+    resetTimer();
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [card.id, resetTimer]);
+
+  useEffect(() => {
+    if (engagementKey > 0) resetTimer();
+  }, [engagementKey, resetTimer]);
+
+  if (dismissed) return null;
+
+  return (
+    <button
+      type="button"
+      className={cn(
+        'pointer-events-auto w-full rounded-md border border-white/10 bg-white/[0.06]',
+        'px-3 py-2 text-left shadow-lg transition-colors',
+        'hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+      )}
+      data-testid="anchored-card-mobile"
+      data-card-kind={card.kind}
+      data-anchor-node-id={card.anchorNodeId}
+      onClick={() => {
+        resetTimer();
+        onSelect(card);
+      }}
+    >
+      <span className="block text-[12px] font-semibold leading-snug text-white">{card.title}</span>
+      {card.body && (
+        <span className="mt-1 block text-[11px] leading-snug text-white/65">{card.body}</span>
+      )}
+    </button>
   );
 }
 

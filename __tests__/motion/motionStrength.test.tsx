@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  MOTION_STRENGTH_USER_OVERRIDE_KEY,
   MotionStrengthProvider,
   useMotionStrength,
   useMotionStrengthSetter,
@@ -58,22 +59,20 @@ function StrengthValue() {
 
 function StrengthControls() {
   const strength = useMotionStrength();
-  const { setStrength } = useMotionStrengthSetter();
+  const { userOverride, setUserOverride } = useMotionStrengthSetter();
 
   return (
     <div>
       <div data-testid="strength">{strength}</div>
-      <button type="button" onClick={() => setStrength(0.5)}>
-        half
+      <div data-testid="override">{userOverride}</div>
+      <button type="button" onClick={() => setUserOverride('auto')}>
+        auto
       </button>
-      <button type="button" onClick={() => setStrength(0)}>
-        zero
+      <button type="button" onClick={() => setUserOverride('full')}>
+        full
       </button>
-      <button type="button" onClick={() => setStrength(2)}>
-        too high
-      </button>
-      <button type="button" onClick={() => setStrength(-1)}>
-        too low
+      <button type="button" onClick={() => setUserOverride('suspended')}>
+        suspended
       </button>
     </div>
   );
@@ -113,7 +112,7 @@ describe('MotionStrengthProvider', () => {
     await waitFor(() => expect(screen.getByTestId('strength').textContent).toBe('0.05'));
   });
 
-  it('persists explicit strength changes and updates consumers', async () => {
+  it('persists full-motion override and updates consumers', async () => {
     mockMatchMedia(false);
 
     render(
@@ -122,14 +121,15 @@ describe('MotionStrengthProvider', () => {
       </MotionStrengthProvider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'half' }));
+    fireEvent.click(screen.getByRole('button', { name: 'full' }));
 
-    await waitFor(() => expect(screen.getByTestId('strength').textContent).toBe('0.5'));
-    expect(localStorage.getItem('governada_motion_strength')).toBe('0.5');
+    await waitFor(() => expect(screen.getByTestId('strength').textContent).toBe('1'));
+    expect(screen.getByTestId('override').textContent).toBe('full');
+    expect(localStorage.getItem(MOTION_STRENGTH_USER_OVERRIDE_KEY)).toBe('full');
   });
 
-  it('clamps explicit strength changes to the 0.0-1.0 range', async () => {
-    mockMatchMedia(false);
+  it('auto override continues to respect prefers-reduced-motion', async () => {
+    mockMatchMedia(true);
 
     render(
       <MotionStrengthProvider>
@@ -137,11 +137,9 @@ describe('MotionStrengthProvider', () => {
       </MotionStrengthProvider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'too high' }));
-    await waitFor(() => expect(screen.getByTestId('strength').textContent).toBe('1'));
-
-    fireEvent.click(screen.getByRole('button', { name: 'too low' }));
-    await waitFor(() => expect(screen.getByTestId('strength').textContent).toBe('0'));
+    fireEvent.click(screen.getByRole('button', { name: 'auto' }));
+    await waitFor(() => expect(screen.getByTestId('strength').textContent).toBe('0.05'));
+    expect(localStorage.getItem(MOTION_STRENGTH_USER_OVERRIDE_KEY)).toBe('auto');
   });
 
   it('persists fully suspended motion and restores it after remount', async () => {
@@ -153,10 +151,10 @@ describe('MotionStrengthProvider', () => {
       </MotionStrengthProvider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'zero' }));
+    fireEvent.click(screen.getByRole('button', { name: 'suspended' }));
 
     await waitFor(() => expect(screen.getByTestId('strength').textContent).toBe('0'));
-    expect(localStorage.getItem('governada_motion_strength')).toBe('0');
+    expect(localStorage.getItem(MOTION_STRENGTH_USER_OVERRIDE_KEY)).toBe('suspended');
 
     unmount();
 
@@ -167,5 +165,19 @@ describe('MotionStrengthProvider', () => {
     );
 
     await waitFor(() => expect(screen.getByTestId('strength').textContent).toBe('0'));
+  });
+
+  it('migrates a legacy zero-strength value to suspended', async () => {
+    mockMatchMedia(false);
+    localStorage.setItem('governada_motion_strength', '0');
+
+    render(
+      <MotionStrengthProvider>
+        <StrengthControls />
+      </MotionStrengthProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('strength').textContent).toBe('0'));
+    expect(screen.getByTestId('override').textContent).toBe('suspended');
   });
 });

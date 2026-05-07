@@ -154,6 +154,7 @@ export const GlobeConstellation = forwardRef<
   const cameraControlsRef = useRef<CameraControls>(null);
   const rotationAngleRef = useRef(0);
   const rotationSpeedRef = useRef(DEFAULT_ROTATION_SPEED);
+  const [layer1ReplayStartedAtMs] = useState(() => Date.now());
   const effectiveMotionStrength = clampMotionStrength(motionStrength);
   const userFlyInDone = useRef(false);
   const [ready, setReady] = useState(false);
@@ -379,8 +380,9 @@ export const GlobeConstellation = forwardRef<
         events: chainActivityEvents,
         nodes: sceneState.nodes,
         motionStrength: effectiveMotionStrength,
+        replayStartedAtMs: layer1ReplayStartedAtMs,
       }),
-    [chainActivityEvents, sceneState.nodes, effectiveMotionStrength],
+    [chainActivityEvents, sceneState.nodes, effectiveMotionStrength, layer1ReplayStartedAtMs],
   );
 
   const combinedActivityMap = useMemo(() => {

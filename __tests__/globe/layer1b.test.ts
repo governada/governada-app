@@ -5,6 +5,8 @@ import {
   buildLayer1RenderPlan,
   computeTreasuryAmberSaturation,
   getTreasuryAmberColor,
+  isLayer1ReplayVisible,
+  LAYER1_INITIAL_REPLAY_MS,
   RATIONALE_FLICKER_BASE_INTENSITY,
   RATIONALE_FLICKER_DURATION_MS,
   RATIONALE_FLICKER_EMISSIVE_BUMP,
@@ -54,6 +56,7 @@ describe('Layer 1b replay renderer plan', () => {
   });
 
   it('keeps Tim Q2.1 and Q2.3 visual values as named constants', () => {
+    expect(LAYER1_INITIAL_REPLAY_MS).toBe(60_000);
     expect(VOTE_PARTICLE_FADE_MS).toBe(500);
     expect(VOTE_PARTICLE_MIN_SCALE).toBe(1);
     expect(VOTE_PARTICLE_MAX_SCALE).toBe(2);
@@ -63,6 +66,92 @@ describe('Layer 1b replay renderer plan', () => {
     expect(VOTE_PARTICLE_ALPHA).toBe(0.8);
     expect(RATIONALE_FLICKER_SIZE_MULTIPLIER).toBe(1.6);
     expect(RATIONALE_FLICKER_BASE_INTENSITY).toBe(2);
+  });
+
+  it('does not render initial particles or flickers after the one-shot replay has expired', () => {
+    const events: ChainActivityEvent[] = [
+      {
+        type: 'vote_cast',
+        id: 'vote-drep-fixture',
+        timestamp: 100,
+        voterKind: 'drep',
+        voterNodeId: 'drep_abc123',
+        voterFullId: 'drep_abc123_full',
+        voterIdentityColor: '#06b6d4',
+        proposalNodeId: 'proposal-deadbeefcafe-0',
+        proposalKey: 'deadbeefcafefeed#0',
+        proposalTitle: 'Fixture proposal',
+        vote: 'Yes',
+        influenceLovelace: 1_000_000_000_000,
+      },
+      {
+        type: 'rationale_published',
+        id: 'rationale-fixture',
+        timestamp: 100,
+        drepNodeId: 'drep_abc123',
+        drepFullId: 'drep_abc123_full',
+        drepIdentityColor: '#06b6d4',
+        proposalNodeId: 'proposal-deadbeefcafe-0',
+        proposalKey: 'deadbeefcafefeed#0',
+        voteTxHash: 'vote-fixture',
+      },
+    ];
+
+    const plan = buildLayer1RenderPlan({ events, nodes, motionStrength: 1 });
+    const elapsedMs = 90_000;
+
+    expect(LAYER1_INITIAL_REPLAY_MS).toBe(60_000);
+    expect(plan.voteParticles).toHaveLength(1);
+    expect(plan.rationaleFlickers).toHaveLength(1);
+    expect(
+      isLayer1ReplayVisible(elapsedMs, plan.voteParticles[0].replayOffsetMs, VOTE_PARTICLE_FADE_MS),
+    ).toBe(false);
+    expect(
+      isLayer1ReplayVisible(
+        elapsedMs,
+        plan.rationaleFlickers[0].replayOffsetMs,
+        RATIONALE_FLICKER_DURATION_MS,
+      ),
+    ).toBe(false);
+  });
+
+  it('schedules live poll events from wall-clock arrival time after initial replay', () => {
+    const replayStartedAtMs = 1_700_000_000_000;
+    const observedAtMs = replayStartedAtMs + LAYER1_INITIAL_REPLAY_MS + 5_000;
+    const events: ChainActivityEvent[] = [
+      {
+        type: 'vote_cast',
+        id: 'vote-live-fixture',
+        timestamp: 200,
+        observedAtMs,
+        replayPhase: 'live',
+        voterKind: 'drep',
+        voterNodeId: 'drep_abc123',
+        voterFullId: 'drep_abc123_full',
+        voterIdentityColor: '#06b6d4',
+        proposalNodeId: 'proposal-deadbeefcafe-0',
+        proposalKey: 'deadbeefcafefeed#0',
+        proposalTitle: 'Fixture proposal',
+        vote: 'Yes',
+        influenceLovelace: 1_000_000_000_000,
+      },
+    ];
+
+    const plan = buildLayer1RenderPlan({
+      events,
+      nodes,
+      motionStrength: 1,
+      replayStartedAtMs,
+    });
+
+    expect(plan.voteParticles).toHaveLength(1);
+    expect(plan.voteParticles[0].replayOffsetMs).toBe(65_000);
+    expect(
+      isLayer1ReplayVisible(64_999, plan.voteParticles[0].replayOffsetMs, VOTE_PARTICLE_FADE_MS),
+    ).toBe(false);
+    expect(
+      isLayer1ReplayVisible(65_000, plan.voteParticles[0].replayOffsetMs, VOTE_PARTICLE_FADE_MS),
+    ).toBe(true);
   });
 
   it('plans identity-color, log-scaled vote particles on a gentle arc', () => {

@@ -2,7 +2,7 @@ import type { ChainActivityEvent } from '@/lib/chain/activityReplay';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 
 export const LAYER1_REPLAY_WINDOW_HOURS = 24;
-export const LAYER1_REPLAY_LOOP_MS = 3_000;
+export const LAYER1_INITIAL_REPLAY_MS = 60_000;
 
 export const VOTE_PARTICLE_FADE_MS = 500;
 export const VOTE_PARTICLE_MIN_SCALE = 1.0;
@@ -111,6 +111,19 @@ export function computeVotingWindowProgress(
   );
 }
 
+export function computeLayer1ReplayAgeMs(elapsedMs: number, replayOffsetMs: number): number {
+  return elapsedMs - replayOffsetMs;
+}
+
+export function isLayer1ReplayVisible(
+  elapsedMs: number,
+  replayOffsetMs: number,
+  fadeMs: number,
+): boolean {
+  const ageMs = computeLayer1ReplayAgeMs(elapsedMs, replayOffsetMs);
+  return ageMs >= 0 && ageMs <= fadeMs;
+}
+
 function stableBucket(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
@@ -134,10 +147,27 @@ function buildNodeLookup(nodes: ConstellationNode3D[]): Map<string, Constellatio
   return lookup;
 }
 
-function getReplayOffsetMs(timestamp: number, minTimestamp: number, maxTimestamp: number): number {
+function getInitialReplayOffsetMs(
+  timestamp: number,
+  minTimestamp: number,
+  maxTimestamp: number,
+): number {
   const span = Math.max(1, maxTimestamp - minTimestamp);
   const normalized = Math.max(0, Math.min(1, (timestamp - minTimestamp) / span));
-  return Math.round(normalized * Math.max(0, LAYER1_REPLAY_LOOP_MS - VOTE_PARTICLE_FADE_MS));
+  return Math.round(normalized * Math.max(0, LAYER1_INITIAL_REPLAY_MS - VOTE_PARTICLE_FADE_MS));
+}
+
+function getReplayOffsetMs(
+  event: ChainActivityEvent,
+  minTimestamp: number,
+  maxTimestamp: number,
+  replayStartedAtMs: number,
+): number {
+  if (event.replayPhase === 'live' && event.observedAtMs != null) {
+    return Math.max(0, event.observedAtMs - replayStartedAtMs);
+  }
+
+  return getInitialReplayOffsetMs(event.timestamp, minTimestamp, maxTimestamp);
 }
 
 function getArcControlPoint(
@@ -162,10 +192,12 @@ export function buildLayer1RenderPlan({
   events,
   nodes,
   motionStrength,
+  replayStartedAtMs = 0,
 }: {
   events: ChainActivityEvent[];
   nodes: ConstellationNode3D[];
   motionStrength: number;
+  replayStartedAtMs?: number;
 }): Layer1RenderPlan {
   const strength = clampMotionStrength(motionStrength);
   const nodeLookup = buildNodeLookup(nodes);
@@ -197,7 +229,7 @@ export function buildLayer1RenderPlan({
         control: getArcControlPoint(voter.position, proposal.position),
         color: event.voterIdentityColor,
         sizeMultiplier: scaleInfluenceToParticleSize(event.influenceLovelace),
-        replayOffsetMs: getReplayOffsetMs(event.timestamp, minTimestamp, maxTimestamp),
+        replayOffsetMs: getReplayOffsetMs(event, minTimestamp, maxTimestamp, replayStartedAtMs),
         alphaMultiplier: strength,
       });
       continue;
@@ -212,7 +244,7 @@ export function buildLayer1RenderPlan({
         id: event.id,
         position: drep.position,
         color: event.drepIdentityColor,
-        replayOffsetMs: getReplayOffsetMs(event.timestamp, minTimestamp, maxTimestamp),
+        replayOffsetMs: getReplayOffsetMs(event, minTimestamp, maxTimestamp, replayStartedAtMs),
         emissiveBump: RATIONALE_FLICKER_EMISSIVE_BUMP,
       });
       continue;

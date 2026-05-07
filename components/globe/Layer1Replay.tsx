@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
-  LAYER1_REPLAY_LOOP_MS,
+  computeLayer1ReplayAgeMs,
   RATIONALE_FLICKER_BASE_INTENSITY,
   RATIONALE_FLICKER_DURATION_MS,
   RATIONALE_FLICKER_SIZE_MULTIPLIER,
@@ -13,6 +13,7 @@ import {
   type Layer1RationaleFlickerPlan,
   type Layer1RenderPlan,
   type Layer1VoteParticlePlan,
+  isLayer1ReplayVisible,
 } from '@/lib/globe/layer1Constants';
 import { PULSE_FRAG, PULSE_VERT } from '@/lib/globe/shaders';
 
@@ -43,10 +44,6 @@ function setQuadraticBezierPosition(
     t * t * particle.to[2];
 
   positions.setXYZ(index, x, y, z);
-}
-
-function getReplayAgeMs(elapsedMs: number, replayOffsetMs: number): number {
-  return (elapsedMs - replayOffsetMs + LAYER1_REPLAY_LOOP_MS) % LAYER1_REPLAY_LOOP_MS;
 }
 
 function Layer1VoteParticles({ particles }: { particles: Layer1VoteParticlePlan[] }) {
@@ -82,13 +79,13 @@ function Layer1VoteParticles({ particles }: { particles: Layer1VoteParticlePlan[
     const alphas = geo.getAttribute('aAlpha') as THREE.BufferAttribute | null;
     if (!positions || !alphas) return;
 
-    const elapsedMs = (clock.getElapsedTime() * 1_000) % LAYER1_REPLAY_LOOP_MS;
+    const elapsedMs = clock.getElapsedTime() * 1_000;
 
     for (let i = 0; i < particles.length; i++) {
       const particle = particles[i];
-      const ageMs = getReplayAgeMs(elapsedMs, particle.replayOffsetMs);
+      const ageMs = computeLayer1ReplayAgeMs(elapsedMs, particle.replayOffsetMs);
 
-      if (ageMs > VOTE_PARTICLE_FADE_MS) {
+      if (!isLayer1ReplayVisible(elapsedMs, particle.replayOffsetMs, VOTE_PARTICLE_FADE_MS)) {
         alphas.setX(i, 0);
         continue;
       }
@@ -157,12 +154,14 @@ function Layer1RationaleFlickers({ flickers }: { flickers: Layer1RationaleFlicke
     const alphas = geo.getAttribute('aAlpha') as THREE.BufferAttribute | null;
     if (!alphas) return;
 
-    const elapsedMs = (clock.getElapsedTime() * 1_000) % LAYER1_REPLAY_LOOP_MS;
+    const elapsedMs = clock.getElapsedTime() * 1_000;
 
     for (let i = 0; i < flickers.length; i++) {
       const flicker = flickers[i];
-      const ageMs = getReplayAgeMs(elapsedMs, flicker.replayOffsetMs);
-      if (ageMs > RATIONALE_FLICKER_DURATION_MS) {
+      const ageMs = computeLayer1ReplayAgeMs(elapsedMs, flicker.replayOffsetMs);
+      if (
+        !isLayer1ReplayVisible(elapsedMs, flicker.replayOffsetMs, RATIONALE_FLICKER_DURATION_MS)
+      ) {
         alphas.setX(i, 0);
         continue;
       }

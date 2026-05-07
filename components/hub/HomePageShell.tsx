@@ -250,6 +250,7 @@ export async function HomePageShell({ filter, entity, mode, sort }: HomePageShel
           queue={cinematic.queue}
           identity={cinematic.identity}
           autoOpenFirstVisit={!isMatchWorkspace}
+          enableCinematicDispatch={false}
         />
         {isMatchWorkspace ? (
           <HomepageMatchWorkspace />

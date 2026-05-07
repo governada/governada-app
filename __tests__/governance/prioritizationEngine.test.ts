@@ -130,9 +130,36 @@ describe('prioritization engine selector', () => {
     expect(queue.primary.state).toBe('returning_quiet');
   });
 
+  it('routes delegated users with competing action signals away from cold-start', async () => {
+    const queue = await getCinematicState(
+      user({ delegatedDrepId: 'drep1xyz', isColdStart: false }),
+      governance({ actionItems: [actionItem()] }),
+    );
+
+    expect(queue.primary.state).toBe('action_required');
+  });
+
   it('returns action_required for role-scoped action items', async () => {
     const queue = await getCinematicState(
       user({ segment: 'drep' }),
+      governance({ actionItems: [actionItem()] }),
+    );
+
+    expect(queue.primary.state).toBe('action_required');
+  });
+
+  it('routes SPO personas with pending scope to action_required', async () => {
+    const queue = await getCinematicState(
+      user({ segment: 'spo', poolId: 'pool1xyz' }),
+      governance({ actionItems: [actionItem()] }),
+    );
+
+    expect(queue.primary.state).toBe('action_required');
+  });
+
+  it('routes CC personas with pending scope to action_required', async () => {
+    const queue = await getCinematicState(
+      user({ segment: 'cc', ccHotId: 'cc1xyz' }),
       governance({ actionItems: [actionItem()] }),
     );
 

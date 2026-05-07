@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { dispatchCinematicState } from '@/lib/globe/cinematicDispatcher';
+import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
+import { strengthForState } from '@/lib/globe/cinemaStrength';
 import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import type { HomepageCinematicIdentity } from '@/stores/senecaThreadStore';
@@ -10,6 +13,7 @@ interface HomepageSenecaBridgeProps {
   queue: PrioritizedQueue;
   identity: HomepageCinematicIdentity;
   autoOpenFirstVisit?: boolean;
+  enableCinematicDispatch?: boolean;
 }
 
 const AUTO_OPEN_STATES = new Set(['first_visit_anonymous']);
@@ -18,10 +22,12 @@ export function HomepageSenecaBridge({
   queue,
   identity,
   autoOpenFirstVisit = true,
+  enableCinematicDispatch = true,
 }: HomepageSenecaBridgeProps) {
   const setHomepageCinematic = useSenecaThreadStore((s) => s.setHomepageCinematic);
   const didAutoOpen = useRef(false);
   const lastCinemaStateKey = useRef<string | null>(null);
+  const lastDispatchedCinemaKey = useRef<string | null>(null);
 
   useEffect(() => {
     setHomepageCinematic({ queue, identity });
@@ -39,10 +45,36 @@ export function HomepageSenecaBridge({
       reasoning: queue.meta.reasoning,
       primary_item_id: queue.primary.id,
     });
+    captureSenecaInteraction({
+      kind: 'cinema_arrival_state',
+      state: queue.primary.state,
+      tier: strengthForState(queue.primary.state),
+      reasoning: queue.meta.reasoning,
+      primary_item_id: queue.primary.id,
+    });
   }, [queue.meta.reasoning, queue.primary.id, queue.primary.state]);
 
   useEffect(() => {
-    if (!autoOpenFirstVisit || didAutoOpen.current || !AUTO_OPEN_STATES.has(queue.primary.state)) {
+    if (!enableCinematicDispatch) return;
+
+    const key = `${queue.primary.id}:${queue.primary.state}:${queue.meta.reasoning}`;
+    if (lastDispatchedCinemaKey.current === key) return;
+    lastDispatchedCinemaKey.current = key;
+
+    dispatchCinematicState(queue.primary.state, queue.primary.payload, {
+      dispatch: dispatchGlobeCommand,
+      item: queue.primary,
+      meta: queue.meta,
+    });
+  }, [enableCinematicDispatch, queue.meta, queue.primary]);
+
+  useEffect(() => {
+    if (
+      enableCinematicDispatch ||
+      !autoOpenFirstVisit ||
+      didAutoOpen.current ||
+      !AUTO_OPEN_STATES.has(queue.primary.state)
+    ) {
       return;
     }
 
@@ -57,7 +89,13 @@ export function HomepageSenecaBridge({
       reasoning: queue.meta.reasoning,
       primary_item_id: queue.primary.id,
     });
-  }, [autoOpenFirstVisit, queue.meta.reasoning, queue.primary.id, queue.primary.state]);
+  }, [
+    autoOpenFirstVisit,
+    enableCinematicDispatch,
+    queue.meta.reasoning,
+    queue.primary.id,
+    queue.primary.state,
+  ]);
 
   return null;
 }

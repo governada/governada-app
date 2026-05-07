@@ -855,7 +855,7 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
                     )}
                   >
                     <span className="text-sm font-medium text-foreground">{opt.label}</span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">{opt.brief}</span>
+                    <span className="block text-xs text-foreground/90 mt-0.5">{opt.brief}</span>
                   </motion.button>
                 ))}
               </div>
@@ -1057,7 +1057,7 @@ function SenecaBubble({ children, delay = 0 }: { children: ReactNode; delay?: nu
       <div className="shrink-0 mt-0.5">
         <Compass className="h-3.5 w-3.5 text-primary/60" />
       </div>
-      <p className="text-sm text-foreground/80 leading-relaxed">{children}</p>
+      <p className="text-sm text-foreground leading-relaxed">{children}</p>
     </motion.div>
   );
 }

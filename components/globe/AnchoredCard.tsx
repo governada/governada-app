@@ -345,6 +345,7 @@ function AnchoredCardMobileItem({
         data-card-kind={card.kind}
         data-anchor-node-id={card.anchorNodeId}
         onMouseEnter={resetTimer}
+        onTouchStart={resetTimer}
       >
         {card.content}
       </div>

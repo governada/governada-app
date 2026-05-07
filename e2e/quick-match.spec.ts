@@ -1,13 +1,20 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Quick Match flow', () => {
-  test('deprecated /match alias redirects into the homepage match workspace', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => sessionStorage.setItem('governada-intro-seen', '1'));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+  });
+
+  test('deprecated /match alias redirects into the homepage fallback workspace', async ({
+    page,
+  }) => {
     await page.goto('/match', { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/[?&]mode=match/, { timeout: 30_000 });
     await expect(page.getByTestId('homepage-match-workspace')).toBeVisible();
   });
 
-  test('legacy query-string entry redirects into the canonical homepage workspace', async ({
+  test('legacy query-string entry redirects into the homepage fallback workspace', async ({
     page,
   }) => {
     await page.goto('/?match=true', { waitUntil: 'domcontentloaded' });

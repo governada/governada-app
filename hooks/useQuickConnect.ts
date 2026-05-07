@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useWallet } from '@/utils/wallet-context';
 import { posthog } from '@/lib/posthog';
+import { FUNNEL_EVENTS, trackFunnel } from '@/lib/funnel';
 
 /**
  * Preferred wallet order — matches WalletConnectModal.
@@ -99,6 +100,15 @@ export function useQuickConnect(): UseQuickConnectReturn {
 
         if (success) {
           posthog.capture('quick_connect_succeeded', { wallet_name: target });
+          // PostHog payload: { wallet_name, source }.
+          posthog.capture('wallet_connected', {
+            wallet_name: target,
+            source: 'quick_connect',
+          });
+          trackFunnel(FUNNEL_EVENTS.WALLET_CONNECTED, {
+            wallet_name: target,
+            source: 'quick_connect',
+          });
           return true;
         } else {
           setError('Authentication failed. Please try again.');

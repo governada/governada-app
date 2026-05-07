@@ -175,6 +175,7 @@ const EMPTY_STATE_LINE =
   'No representative aligns strongly with what you have told me. Either your posture is unusual — which is interesting in itself — or your answers conflict in ways worth examining. Shall we revisit?';
 const MATCH_REVEAL_CARD_ITEM_ID = 'match-reveal-card';
 const MATCH_REVEAL_CARD_STATE = 'returning_in_session' as const;
+const MATCH_NO_CANDIDATES_THRESHOLD = 40;
 
 export function buildAcknowledgement(topN: number, round: number): string {
   if (round === 0) return `${topN}. The field is thinning.`;
@@ -206,6 +207,28 @@ type MatchStep = number | 'loading' | 'revealing' | 'results' | 'empty' | 'error
 function getAnswerLabel(questionId: string, value: string): string {
   const q = MATCH_QUESTIONS.find((q) => q.id === questionId);
   return q?.options.find((o) => o.value === value)?.label ?? value;
+}
+
+function trimAnswersForTelemetry(answers: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(answers).map(([key, value]) => [key.slice(0, 60), value.slice(0, 120)]),
+  );
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300);
+}
+
+function getStatusCode(error: unknown): number {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'statusCode' in error &&
+    typeof error.statusCode === 'number'
+  ) {
+    return error.statusCode;
+  }
+  return 0;
 }
 
 /* ─── Component ─── */
@@ -314,6 +337,12 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
       previewRestoreRef.current = current;
       const hypotheticalAnswers = { ...answers, [questionId]: value };
       const hypotheticalAlignment = buildAlignmentFromAnswers(hypotheticalAnswers);
+      posthog.capture('match_option_preview_shown', {
+        question_id: questionId,
+        answer: value,
+        round: questionIndex + 1,
+        input_mode: isTouchDevice ? 'touch' : 'pointer',
+      });
       setSharedIntent({
         ...current,
         focusedIds: 'from-alignment',
@@ -325,7 +354,7 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
         ...MATCH_VISUALS,
       });
     },
-    [answers, stopOptionPreview],
+    [answers, isTouchDevice, stopOptionPreview],
   );
 
   const cancelLongPressTimer = useCallback(() => {
@@ -448,7 +477,14 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
 
             // Parallel cluster fetch (fail silently — graceful degradation)
             fetch('/api/governance/constellation/clusters')
-              .then((r) => (r.ok ? r.json() : null))
+              .then((r) => {
+                if (!r.ok) {
+                  throw Object.assign(new Error(`Cluster fetch failed with status ${r.status}`), {
+                    statusCode: r.status,
+                  });
+                }
+                return r.json();
+              })
               .then((clusterData) => {
                 if (clusterData?.clusters) {
                   const userVector = alignmentsToArray(alignmentScores);
@@ -456,7 +492,13 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
                   if (closest) setClusterContext(closest);
                 }
               })
-              .catch(() => {});
+              .catch((clusterError) => {
+                // PostHog payload: { error, statusCode }.
+                posthog.capture('cluster_fetch_failed', {
+                  error: getErrorMessage(clusterError),
+                  statusCode: getStatusCode(clusterError),
+                });
+              });
 
             posthog.capture('match_spatial_reveal_started');
           }
@@ -528,6 +570,11 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
             });
           }
         } else {
+          // PostHog payload: { answers, threshold }.
+          posthog.capture('match_no_candidates', {
+            answers: trimAnswersForTelemetry(finalAnswers),
+            threshold: MATCH_NO_CANDIDATES_THRESHOLD,
+          });
           setSharedIntent({
             focusedIds: new Set<string>(),
             dimStrength: 1.0,

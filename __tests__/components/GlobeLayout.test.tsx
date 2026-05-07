@@ -10,6 +10,7 @@ const replace = vi.fn();
 const startMatch = vi.fn();
 const executeGlobeCommand = vi.fn();
 const setHomepageAnchoredCards = vi.fn();
+const { posthogCaptureMock } = vi.hoisted(() => ({ posthogCaptureMock: vi.fn() }));
 let homepageCinematic: unknown = null;
 let viewportClass: 'mobile' | 'desktop' = 'desktop';
 let isTouchDevice = false;
@@ -138,7 +139,7 @@ vi.mock('@/lib/funnel', () => ({
 
 vi.mock('@/lib/posthog', () => ({
   posthog: {
-    capture: vi.fn(),
+    capture: posthogCaptureMock,
   },
 }));
 
@@ -239,6 +240,7 @@ describe('GlobeLayout deferred panels', () => {
     isTouchDevice = false;
     bridgeOptions = null;
     setHomepageAnchoredCards.mockClear();
+    posthogCaptureMock.mockClear();
   });
 
   afterEach(() => {
@@ -292,6 +294,14 @@ describe('GlobeLayout deferred panels', () => {
     expect(executeGlobeCommand).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'cinema:returning_quiet' }),
     );
+    expect(posthogCaptureMock).toHaveBeenCalledWith(
+      'cinema_arrival_state',
+      expect.objectContaining({
+        state: 'returning_quiet',
+        tier: 2,
+        interruptedByUser: false,
+      }),
+    );
 
     executeGlobeCommand.mockClear();
     homepageCinematic = makeHomepageCinematicSnapshot('action_required', 'action-fixture');
@@ -306,6 +316,10 @@ describe('GlobeLayout deferred panels', () => {
         }),
       ),
     );
+    expect(posthogCaptureMock).toHaveBeenCalledWith('cinema_state_interrupted', {
+      state: 'returning_quiet',
+      reasonCode: 'user_input',
+    });
     await waitFor(() =>
       expect(executeGlobeCommand).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'cinema:action_required' }),
@@ -322,12 +336,22 @@ describe('GlobeLayout deferred panels', () => {
     fireEvent.click(scene);
 
     await waitFor(() => expect(screen.getByTestId('globe-tooltip')).toBeTruthy());
+    expect(posthogCaptureMock).toHaveBeenCalledWith('tap_preview_shown', {
+      nodeId: 'drep_abc123',
+      nodeType: 'drep',
+      viewport: 'mobile',
+    });
     expect(screen.queryByTestId('entity-detail-sheet')).toBeNull();
 
     await waitForTouchDuplicateGuard();
     fireEvent.click(scene);
 
     await waitFor(() => expect(screen.getByTestId('entity-detail-sheet')).toBeTruthy());
+    expect(posthogCaptureMock).toHaveBeenCalledWith('tap_preview_completed', {
+      nodeId: 'drep_abc123',
+      nodeType: 'drep',
+      viewport: 'mobile',
+    });
   });
 
   it('uses anchored cards as the touch preview surface', async () => {
@@ -347,6 +371,12 @@ describe('GlobeLayout deferred panels', () => {
       ]);
     });
     await waitFor(() => expect(screen.getByTestId('anchored-card-mobile')).toBeTruthy());
+    expect(posthogCaptureMock).toHaveBeenCalledWith('anchored_card_surfaced', {
+      id: 'anchored-drep',
+      kind: 'action',
+      anchorNodeId: selectableNode.id,
+      autoDismissMs: null,
+    });
 
     fireEvent.click(scene);
 

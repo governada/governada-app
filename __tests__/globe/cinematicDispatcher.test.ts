@@ -1,4 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const posthogCapture = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/posthog', () => ({
+  posthog: { capture: posthogCapture },
+}));
+
 import {
   dispatchCinematicExit,
   dispatchCinematicState,
@@ -7,6 +14,10 @@ import {
 import type { GlobeCommand } from '@/lib/globe/types';
 
 describe('cinematicDispatcher', () => {
+  beforeEach(() => {
+    posthogCapture.mockClear();
+  });
+
   it('applies cinema strength on entry and routes to the state behavior command', () => {
     const dispatch = vi.fn<(command: GlobeCommand) => void>();
     const plan = dispatchCinematicState(
@@ -46,6 +57,12 @@ describe('cinematicDispatcher', () => {
         reasoning: 'role-scoped action',
       }),
     );
+    expect(posthogCapture).toHaveBeenCalledWith('cinema_arrival_state', {
+      state: 'action_required',
+      tier: 1,
+      reasoning: 'role-scoped action',
+      interruptedByUser: false,
+    });
   });
 
   it('fades layers back to quiet over 1.5 seconds on cinema exit', () => {
@@ -62,6 +79,35 @@ describe('cinematicDispatcher', () => {
         easing: 'ease-in-out',
       }),
     );
+  });
+
+  it('emits interrupted and completed cinema lifecycle telemetry', () => {
+    const dispatch = vi.fn<(command: GlobeCommand) => void>();
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+
+    dispatchCinematicState('returning_quiet', {}, { dispatch });
+    dispatchCinematicExit('returning_quiet', {
+      dispatch,
+      interruptionReason: 'user_input',
+    });
+
+    expect(posthogCapture).toHaveBeenCalledWith('cinema_state_interrupted', {
+      state: 'returning_quiet',
+      reasonCode: 'user_input',
+    });
+
+    posthogCapture.mockClear();
+    nowSpy.mockReturnValue(2_000);
+    dispatchCinematicState('action_required', {}, { dispatch });
+    nowSpy.mockReturnValue(2_250);
+    dispatchCinematicExit('action_required', { dispatch });
+
+    expect(posthogCapture).toHaveBeenCalledWith('cinema_state_completed', {
+      state: 'action_required',
+      durationMs: 250,
+    });
+
+    nowSpy.mockRestore();
   });
 
   it('hydrates Tier 0 payloads with the affected region before dispatch', async () => {

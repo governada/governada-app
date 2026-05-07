@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { posthog } from '@/lib/posthog';
+import { FUNNEL_EVENTS, trackFunnel } from '@/lib/funnel';
 
 interface WalletConnectModalProps {
   open: boolean;
@@ -61,6 +62,12 @@ function sortWallets(wallets: string[]): string[] {
     if (bIdx !== -1) return 1;
     return a.localeCompare(b);
   });
+}
+
+function captureWalletConnected(walletName: string | null, source: string) {
+  // PostHog payload: { wallet_name, source }.
+  posthog.capture('wallet_connected', { wallet_name: walletName, source });
+  trackFunnel(FUNNEL_EVENTS.WALLET_CONNECTED, { wallet_name: walletName, source });
 }
 
 export function WalletConnectModal({
@@ -140,6 +147,7 @@ export function WalletConnectModal({
           const success = await authenticate();
           if (success) {
             posthog.capture('wallet_authenticated', { wallet_name: selectedWallet });
+            captureWalletConnected(selectedWallet, 'wallet_modal_auto_auth');
             // On mobile, skip push prompt entirely to reduce steps
             setStep(skipPushPrompt || isMobile ? 'success' : 'push');
           }
@@ -178,6 +186,7 @@ export function WalletConnectModal({
       const success = await authenticate();
       if (success) {
         posthog.capture('wallet_authenticated', { wallet_name: selectedWallet });
+        captureWalletConnected(selectedWallet, 'wallet_modal_manual_sign');
         setStep(skipPushPrompt || isMobile ? 'success' : 'push');
       }
     } catch {

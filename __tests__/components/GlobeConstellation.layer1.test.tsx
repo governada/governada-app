@@ -8,6 +8,10 @@ import { DEFAULT_ROTATION_SPEED } from '@/lib/globe/types';
 
 const mockUseGovernanceConstellation = vi.fn();
 const mockUseChainActivityReplay = vi.fn();
+const { posthogCaptureMock, renderCanvasFallbackRef } = vi.hoisted(() => ({
+  posthogCaptureMock: vi.fn(),
+  renderCanvasFallbackRef: { current: false },
+}));
 
 function stripR3FHostElements(children: React.ReactNode) {
   return React.Children.toArray(children).filter(
@@ -21,12 +25,23 @@ function stripR3FHostElements(children: React.ReactNode) {
 }
 
 vi.mock('@react-three/fiber', () => ({
-  Canvas: ({ children, ...props }: { children: React.ReactNode }) => (
+  Canvas: ({
+    children,
+    fallback,
+    ...props
+  }: {
+    children: React.ReactNode;
+    fallback?: React.ReactNode;
+  }) => (
     <div data-testid="canvas" {...props}>
-      {stripR3FHostElements(children)}
+      {renderCanvasFallbackRef.current ? fallback : stripR3FHostElements(children)}
     </div>
   ),
   useFrame: vi.fn(),
+}));
+
+vi.mock('@/lib/posthog', () => ({
+  posthog: { capture: posthogCaptureMock },
 }));
 
 vi.mock('@react-three/drei', () => ({
@@ -188,8 +203,11 @@ const apiData: ConstellationApiData = {
 
 describe('GlobeConstellation Layer 1 wiring', () => {
   beforeEach(() => {
+    renderCanvasFallbackRef.current = false;
+    posthogCaptureMock.mockClear();
     mockUseGovernanceConstellation.mockReturnValue({ data: apiData });
     mockUseChainActivityReplay.mockReturnValue([]);
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => null);
   });
 
   afterEach(() => {
@@ -268,5 +286,22 @@ describe('GlobeConstellation Layer 1 wiring', () => {
     expect(screen.getByTestId('layer1-replay').dataset.particles).toBe('1');
     expect(screen.getByTestId('constellation-nodes').dataset.brightness).toBe('1');
     expect(screen.getByTestId('constellation-nodes').dataset.colorOverrides).toBe('1');
+  });
+
+  it('captures constellation_render_failed when the Canvas fallback renders', async () => {
+    renderCanvasFallbackRef.current = true;
+
+    render(<GlobeConstellation motionStrength={0.25} breathing />);
+
+    await waitFor(() =>
+      expect(posthogCaptureMock).toHaveBeenCalledWith(
+        'constellation_render_failed',
+        expect.objectContaining({
+          error: 'WebGL context unavailable',
+          webgl: 'none',
+          motionStrength: 0.25,
+        }),
+      ),
+    );
   });
 });

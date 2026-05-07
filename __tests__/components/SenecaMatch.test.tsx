@@ -9,12 +9,14 @@ const {
   setSharedIntentMock,
   useIsTouchDeviceMock,
   vibrateMock,
+  posthogCaptureMock,
 } = vi.hoisted(() => ({
   dispatchGlobeCommandMock: vi.fn(),
   getSharedIntentMock: vi.fn(),
   setSharedIntentMock: vi.fn(),
   useIsTouchDeviceMock: vi.fn(),
   vibrateMock: vi.fn(),
+  posthogCaptureMock: vi.fn(),
 }));
 
 let currentIntent: Record<string, unknown>;
@@ -41,7 +43,7 @@ vi.mock('next/link', () => ({
 }));
 
 vi.mock('posthog-js', () => ({
-  default: { capture: vi.fn() },
+  default: { capture: posthogCaptureMock },
 }));
 
 vi.mock('@/components/FeatureGate', () => ({
@@ -94,6 +96,7 @@ describe('SenecaMatch', () => {
     getSharedIntentMock.mockImplementation(() => currentIntent);
     setSharedIntentMock.mockClear();
     dispatchGlobeCommandMock.mockClear();
+    posthogCaptureMock.mockClear();
     vibrateMock.mockClear();
     useIsTouchDeviceMock.mockReturnValue(false);
     vi.stubGlobal('navigator', { vibrate: vibrateMock });
@@ -232,6 +235,13 @@ describe('SenecaMatch', () => {
     expect(setSharedIntentMock).toHaveBeenCalledWith(
       expect.objectContaining({ dimStrength: 1.0, forceActive: true }),
     );
+    expect(posthogCaptureMock).toHaveBeenCalledWith('match_no_candidates', {
+      answers: expect.objectContaining({
+        treasury: 'conservative',
+        protocol: 'caution',
+      }),
+      threshold: 40,
+    });
   });
 
   it('publishes the reveal card through the Phase 6 AnchoredCard command', async () => {

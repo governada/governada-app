@@ -2,9 +2,14 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const connectionMock = vi.fn();
+const headersMock = vi.fn();
 
 vi.mock('next/server', () => ({
   connection: connectionMock,
+}));
+
+vi.mock('next/headers', () => ({
+  headers: headersMock,
 }));
 
 vi.mock('next/font/google', () => ({
@@ -59,6 +64,8 @@ describe('RootLayout', () => {
   beforeEach(() => {
     connectionMock.mockReset();
     connectionMock.mockResolvedValue(undefined);
+    headersMock.mockReset();
+    headersMock.mockResolvedValue(new Headers([['x-nonce', 'test-nonce']]));
   });
 
   it('declares the root shell as request-bound', () => {
@@ -71,6 +78,7 @@ describe('RootLayout', () => {
     });
 
     expect(connectionMock).toHaveBeenCalledOnce();
+    expect(headersMock).toHaveBeenCalledOnce();
     expect(tree.type).toBe('html');
     expect(tree.props.lang).toBe('en');
   });

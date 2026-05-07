@@ -16,6 +16,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AdvisorMessage } from '@/lib/intelligence/streamAdvisor';
 import type { GlobeIntent } from '@/lib/intelligence/advisor';
+import type { PrioritizedQueue } from '@/types/cinematic';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -44,6 +45,16 @@ export interface ThreadMessage extends Omit<AdvisorMessage, 'role'> {
 
 export type SenecaMode = 'idle' | 'conversation' | 'research' | 'matching';
 
+export interface HomepageCinematicIdentity {
+  stakeAddress?: string | null;
+  userId?: string | null;
+}
+
+export interface HomepageCinematicSnapshot {
+  queue: PrioritizedQueue;
+  identity: HomepageCinematicIdentity;
+}
+
 // ---------------------------------------------------------------------------
 // State shape
 // ---------------------------------------------------------------------------
@@ -57,6 +68,8 @@ export interface SenecaThreadState {
   visitedPages: string[];
   /** Intent detected from user query — consumed by GlobeLayout to dispatch globe commands */
   pendingGlobeAction: GlobeIntent | null;
+  /** Homepage prioritization-engine output, published by the server shell bridge */
+  homepageCinematic: HomepageCinematicSnapshot | null;
 }
 
 export interface SenecaThreadActions {
@@ -75,6 +88,7 @@ export interface SenecaThreadActions {
   dispatchGlobeIntent: (intent: GlobeIntent) => void;
   /** Clear the pending globe action after consumption */
   consumeGlobeAction: () => void;
+  setHomepageCinematic: (snapshot: HomepageCinematicSnapshot | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -196,6 +210,7 @@ export const useSenecaThreadStore = create<SenecaThreadState & SenecaThreadActio
       currentPage: '',
       visitedPages: [],
       pendingGlobeAction: null,
+      homepageCinematic: null,
 
       // ----- Actions -----
 
@@ -299,6 +314,8 @@ export const useSenecaThreadStore = create<SenecaThreadState & SenecaThreadActio
       dispatchGlobeIntent: (intent) => set({ pendingGlobeAction: intent }),
 
       consumeGlobeAction: () => set({ pendingGlobeAction: null }),
+
+      setHomepageCinematic: (snapshot) => set({ homepageCinematic: snapshot }),
     }),
     {
       name: STORAGE_KEY,

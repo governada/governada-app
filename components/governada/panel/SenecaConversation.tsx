@@ -14,7 +14,9 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import { cn } from '@/lib/utils';
 import { dispatchGlobeCommand as dispatchGlobeCmd } from '@/lib/globe/globeCommandBus';
-import type { GlobeCommand } from '@/lib/globe/types';
+import { classifyIntent, getMechanicalAnswer } from '@/lib/seneca/intentRouter';
+import { getEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
+import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
 
 /** Heuristic: show "Go deeper" if response is substantive and query implies analysis. */
 const DEEP_QUERY_PATTERNS = /\b(compare|analyz|research|explain|how|why)\b/i;
@@ -55,6 +57,7 @@ export function SenecaConversation({
   const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
   const { segment } = useSegment();
   const { startResearch, executeIntent } = useSenecaThread();
+  const homepageCinematic = useSenecaThreadStore((s) => s.homepageCinematic);
   const daysRemaining = totalDays - day;
 
   useEffect(() => {
@@ -94,6 +97,7 @@ export function SenecaConversation({
       // For other intents (browse, focus, filter, votesplit, temporal),
       // the globe action is dispatched AND we still stream an AI response
       // so Seneca can contextualize what the user is seeing.
+      const senecaIntent = classifyIntent(text.trim());
 
       const userMsg: AdvisorMessage = {
         id: `user-${Date.now()}`,
@@ -106,6 +110,39 @@ export function SenecaConversation({
         role: 'assistant',
         content: '',
       };
+
+      if (senecaIntent === 'mechanical') {
+        const answer =
+          getMechanicalAnswer(text) ??
+          'That is a mechanics question. Name the control or term you want explained, and I will keep it plain.';
+        setMessages((prev) => [...prev, userMsg, { ...assistantMsg, content: answer }]);
+        captureSenecaInteraction({
+          kind: 'mechanical_question_answered',
+          question: text.trim(),
+          source: 'seneca_conversation',
+          panel_route: panelRoute,
+        });
+        return;
+      }
+
+      if (senecaIntent === 'interrogative') {
+        setMessages((prev) => [
+          ...prev,
+          userMsg,
+          {
+            ...assistantMsg,
+            content:
+              'I can begin narrowing the field. The spatial query path is still being connected, so for now I will hold this as a search intent.',
+          },
+        ]);
+        captureSenecaInteraction({
+          kind: 'interrogative_query_started',
+          query: text.trim(),
+          source: 'seneca_conversation',
+          panel_route: panelRoute,
+        });
+        return;
+      }
 
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
       setIsStreaming(true);
@@ -143,10 +180,32 @@ export function SenecaConversation({
           });
         },
         (error) => {
-          setStreamError(error);
+          const state = homepageCinematic?.queue.primary.state ?? 'returning_quiet';
+          setStreamError(null);
+          streamContentRef.current = getEvergreenFallback(state);
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            if (last?.role === 'assistant') {
+              updated[updated.length - 1] = { ...last, content: streamContentRef.current };
+            }
+            return updated;
+          });
+          captureSenecaInteraction({
+            kind: 'observational_observation_emitted',
+            source: 'evergreen_fallback',
+            state,
+            error: String(error),
+            panel_route: panelRoute,
+          });
           setIsStreaming(false);
         },
         () => {
+          captureSenecaInteraction({
+            kind: 'observational_observation_emitted',
+            source: 'advisor_stream',
+            panel_route: panelRoute,
+          });
           setIsStreaming(false);
         },
         abort.signal,
@@ -187,6 +246,9 @@ export function SenecaConversation({
       panelRoute,
       entityId,
       executeIntent,
+      homepageCinematic?.queue.primary.state,
+      router,
+      startResearch,
     ],
   );
 

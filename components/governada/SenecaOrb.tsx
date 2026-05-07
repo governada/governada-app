@@ -25,6 +25,7 @@ interface SenecaOrbProps {
   accentColor?: string;
   whisper?: string | null;
   onWhisperDismiss?: () => void;
+  pulse?: boolean;
   className?: string;
 }
 
@@ -34,6 +35,7 @@ export function SenecaOrb({
   accentColor,
   whisper,
   onWhisperDismiss,
+  pulse = false,
   className,
 }: SenecaOrbProps) {
   const prefersReducedMotion = useReducedMotion();
@@ -119,7 +121,7 @@ export function SenecaOrb({
         whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         className={cn(
-          'flex h-11 w-11 shrink-0 items-center justify-center',
+          'relative flex h-11 w-11 shrink-0 items-center justify-center',
           'rounded-full',
           'bg-black/50 backdrop-blur-xl',
           'border border-white/10',
@@ -130,6 +132,15 @@ export function SenecaOrb({
         role="button"
         aria-label="Open Seneca"
       >
+        {pulse && !prefersReducedMotion && (
+          <motion.span
+            className="pointer-events-none absolute -inset-1 rounded-full border border-white/30"
+            initial={{ opacity: 0.25, scale: 1 }}
+            animate={{ opacity: [0.2, 0.55, 0.2], scale: [1, 1.18, 1] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+            aria-hidden="true"
+          />
+        )}
         <CompassSigil state={sigilState} size={28} accentColor={accentColor} />
       </motion.button>
     </div>

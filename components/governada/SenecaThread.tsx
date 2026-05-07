@@ -18,6 +18,7 @@ import { SenecaResearch } from '@/components/governada/panel/SenecaResearch';
 import { SenecaInput } from '@/components/governada/panel/SenecaInput';
 import type { ThreadMessage } from '@/stores/senecaThreadStore';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
+import type { HomepageCinematicSnapshot } from '@/stores/senecaThreadStore';
 import type { PanelRoute, World } from '@/hooks/useSenecaThread';
 import { useEpochContext } from '@/hooks/useEpochContext';
 import { useSegment } from '@/components/providers/SegmentProvider';
@@ -28,8 +29,12 @@ import {
 } from '@/lib/intelligence/streamAdvisor';
 import { useSenecaMemory } from '@/hooks/useSenecaMemory';
 import { cn } from '@/lib/utils';
-import posthog from 'posthog-js';
+import { posthog } from '@/lib/posthog';
+import { postJson } from '@/lib/api/client';
 import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
+import { classifyIntent, getMechanicalAnswer } from '@/lib/seneca/intentRouter';
+import { getEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
+import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
 import {
   ROUTE_LABELS,
   getQuickActions,
@@ -41,7 +46,7 @@ import {
 import type { QuickAction, GuidedOption } from '@/components/governada/panel/SenecaIdle';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { ConversationContent } from '@/components/governada/panel/SenecaMessages';
-import { SearchInput, SearchResultsContent } from '@/components/governada/panel/SenecaSearchPanel';
+import { SearchResultsContent } from '@/components/governada/panel/SenecaSearchPanel';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +79,7 @@ interface SenecaThreadProps {
   onEntityFocus?: (entityType: string, entityId: string) => void;
   /** Whether user is authenticated (affects what's available) */
   isAuthenticated?: boolean;
+  homepageCinematic?: HomepageCinematicSnapshot | null;
 }
 
 // Constants and sub-components extracted to:
@@ -105,6 +111,7 @@ export function SenecaThread({
   onGlobeCommand,
   onEntityFocus,
   isAuthenticated,
+  homepageCinematic,
 }: SenecaThreadProps) {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
@@ -147,7 +154,7 @@ export function SenecaThread({
 
   useEffect(() => {
     if (isOpen && !wasOpenRef.current) {
-      posthog.capture('seneca_interaction', {
+      captureSenecaInteraction({
         kind: 'panel_opened',
         source: 'user',
         mode,
@@ -201,8 +208,6 @@ export function SenecaThread({
 
     const query = pendingQuery;
     setPendingQuery(undefined); // consume immediately — prevent double-fire
-    isStreamingRef.current = true;
-    setIsStreaming(true);
     setToolStatus(null);
     streamContentRef.current = '';
 
@@ -228,6 +233,7 @@ export function SenecaThread({
     }
 
     if (!isNavQuery) {
+      const intent = classifyIntent(query);
       // Normal user query — show the user message bubble
       const userMsg: ThreadMessage = {
         id: `user-${Date.now()}`,
@@ -236,13 +242,54 @@ export function SenecaThread({
         ts: Date.now(),
       };
       onAddMessage(userMsg);
-      posthog.capture('seneca_interaction', {
+      captureSenecaInteraction({
         kind: 'question_asked',
-        intent: 'observational',
+        intent,
         source: 'seneca_panel',
         panel_route: panelRoute,
       });
+
+      if (intent === 'mechanical') {
+        const answer =
+          getMechanicalAnswer(query) ??
+          'That is a mechanics question. The shortest path is to name the control, then ask again with the word you want defined.';
+        const assistantMsg: ThreadMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: answer,
+          ts: Date.now(),
+        };
+        onAddMessage(assistantMsg);
+        captureSenecaInteraction({
+          kind: 'mechanical_question_answered',
+          question: query,
+          source: 'seneca_panel',
+          panel_route: panelRoute,
+        });
+        return;
+      }
+
+      if (intent === 'interrogative') {
+        const assistantMsg: ThreadMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content:
+            'I can begin narrowing the field. The spatial query path is still being connected, so for now I will hold this as a search intent.',
+          ts: Date.now(),
+        };
+        onAddMessage(assistantMsg);
+        captureSenecaInteraction({
+          kind: 'interrogative_query_started',
+          query,
+          source: 'seneca_panel',
+          panel_route: panelRoute,
+        });
+        return;
+      }
     }
+
+    isStreamingRef.current = true;
+    setIsStreaming(true);
 
     // Always add the assistant placeholder
     const assistantMsg: ThreadMessage = {
@@ -287,13 +334,27 @@ export function SenecaThread({
         }
       },
       (error) => {
-        onUpdateLastAssistant(`_Error: ${error}. Please try again._`);
+        const state = homepageCinematic?.queue.primary.state ?? 'returning_quiet';
+        onUpdateLastAssistant(getEvergreenFallback(state));
+        captureSenecaInteraction({
+          kind: 'observational_observation_emitted',
+          source: 'evergreen_fallback',
+          state,
+          error: String(error),
+          panel_route: panelRoute,
+        });
         isStreamingRef.current = false;
         setIsStreaming(false);
       },
       () => {
         isStreamingRef.current = false;
         setIsStreaming(false);
+        captureSenecaInteraction({
+          kind: 'observational_observation_emitted',
+          source: 'advisor_stream',
+          state: homepageCinematic?.queue.primary.state,
+          panel_route: panelRoute,
+        });
         // 2B: Save conversation summary for memory continuity
         const conversationMessages = messagesRef.current
           .filter((m) => m.role === 'user' || m.role === 'assistant')
@@ -396,9 +457,9 @@ export function SenecaThread({
   // Quick action handler
   const handleQuickAction = useCallback(
     (action: QuickAction) => {
-      posthog.capture('seneca_interaction', {
-        kind: 'path_chosen',
-        path: action.href ?? action.query ?? action.label,
+      captureSenecaInteraction({
+        kind: 'quick_action_chosen',
+        choice: action.href ?? action.query ?? action.label,
         source: 'quick_action',
       });
       // Dispatch globe hint immediately so the globe reacts while Seneca processes
@@ -429,17 +490,64 @@ export function SenecaThread({
     [onStartConversation, onStartResearch, onStartMatch, router, onClose],
   );
 
+  const handlePrioritizationAction = useCallback(
+    async (
+      item: NonNullable<HomepageCinematicSnapshot>['queue']['primary'],
+      action: 'acknowledge' | 'dismiss',
+    ) => {
+      try {
+        await postJson('/api/governance/acknowledgments', {
+          action,
+          itemId: item.id,
+          ...(homepageCinematic?.identity.stakeAddress
+            ? { stakeAddress: homepageCinematic.identity.stakeAddress }
+            : {}),
+          ...(homepageCinematic?.identity.userId
+            ? { userIdOrStakeAddress: homepageCinematic.identity.userId }
+            : {}),
+        });
+        captureSenecaInteraction({
+          kind:
+            action === 'acknowledge'
+              ? 'prioritization_item_acknowledged'
+              : 'prioritization_item_dismissed',
+          item_id: item.id,
+          state: item.state,
+          source: 'seneca_panel',
+        });
+      } catch (error) {
+        captureSenecaInteraction({
+          kind: 'prioritization_item_lifecycle_failed',
+          action,
+          item_id: item.id,
+          state: item.state,
+          error: error instanceof Error ? error.message : String(error),
+          source: 'seneca_panel',
+        });
+      }
+    },
+    [homepageCinematic?.identity.stakeAddress, homepageCinematic?.identity.userId],
+  );
+
   // Semantic search
   const senecaSearch = useSenecaSearch();
 
   // Anon option handler
   const handleAnonOption = useCallback(
     (option: GuidedOption) => {
-      posthog.capture('seneca_interaction', {
-        kind: 'path_chosen',
-        path: option.href ?? option.query ?? option.label,
-        source: 'onboarding',
-      });
+      if (option.path) {
+        captureSenecaInteraction({
+          kind: 'path_chosen',
+          path: option.path,
+          source: 'onboarding',
+        });
+      } else {
+        captureSenecaInteraction({
+          kind: 'guided_option_chosen',
+          choice: option.href ?? option.query ?? option.label,
+          source: 'onboarding',
+        });
+      }
       switch (option.action) {
         case 'conversation':
           onStartConversation(option.query);
@@ -516,13 +624,13 @@ export function SenecaThread({
           {/* Panel */}
           <motion.div
             key="seneca-thread-panel"
-            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.96 }}
-            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
+            initial={prefersReducedMotion ? false : { y: 24, scale: 0.96 }}
+            animate={prefersReducedMotion ? undefined : { y: 0, scale: 1 }}
+            exit={prefersReducedMotion ? undefined : { y: 16, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             className={cn(
               // Shared
-              'fixed z-40 flex flex-col overflow-hidden',
+              'fixed z-[60] flex flex-col overflow-hidden',
               'bg-black/75 backdrop-blur-2xl border border-white/[0.08]',
               'shadow-2xl shadow-black/40',
               // Desktop: floating card
@@ -537,9 +645,9 @@ export function SenecaThread({
             {/* ── Header ── */}
             <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/[0.06] shrink-0">
               <CompassSigil state={sigilState} size={18} accentColor={persona.accentColor} />
-              <span className="text-sm font-semibold text-foreground/90">Seneca</span>
+              <span className="text-sm font-semibold text-white">Seneca</span>
               {personaLabel && (
-                <span className="text-xs text-muted-foreground/60">&middot; {personaLabel}</span>
+                <span className="text-xs text-zinc-200">&middot; {personaLabel}</span>
               )}
 
               <div className="flex-1" />
@@ -577,11 +685,8 @@ export function SenecaThread({
 
             {/* ── Page context indicator ── */}
             <div className="px-3 py-1.5 border-b border-white/[0.04] shrink-0">
-              <p className="text-[10px] text-muted-foreground/50 tracking-wide">
-                Now viewing:{' '}
-                <span className="text-muted-foreground/70 font-medium">
-                  {ROUTE_LABELS[panelRoute]}
-                </span>
+              <p className="text-[11px] text-white">
+                Now viewing: <span className="font-semibold">{ROUTE_LABELS[panelRoute]}</span>
               </p>
             </div>
 
@@ -599,6 +704,17 @@ export function SenecaThread({
                   anonOptions={anonOptions}
                   onQuickAction={handleQuickAction}
                   onAnonOption={handleAnonOption}
+                  cinematicPrimary={homepageCinematic?.queue.primary}
+                  cinematicSecondary={homepageCinematic?.queue.secondary}
+                  cinematicReasoning={homepageCinematic?.queue.meta.reasoning}
+                  cinematicSegment={segment}
+                  canRecordLifecycle={
+                    isAuthenticated &&
+                    !!(
+                      homepageCinematic?.identity.stakeAddress ?? homepageCinematic?.identity.userId
+                    )
+                  }
+                  onPrioritizationAction={handlePrioritizationAction}
                   accentColor={persona.accentColor}
                 />
               )}
@@ -651,21 +767,11 @@ export function SenecaThread({
             {/* ── Input area ── */}
             {(mode === 'idle' || mode === 'conversation') && (
               <div className="shrink-0 border-t border-white/[0.06]">
-                {isAuthenticated ? (
-                  /* Authenticated: full AI conversation input */
-                  <SenecaInput
-                    panelRoute={panelRoute}
-                    onSubmit={(query) => onStartConversation(query)}
-                    disabled={isStreaming}
-                  />
-                ) : (
-                  /* Anonymous: semantic search input (no AI API cost) */
-                  <SearchInput
-                    onSearch={(q) => senecaSearch.search(q)}
-                    isSearching={senecaSearch.isSearching}
-                    panelRoute={panelRoute}
-                  />
-                )}
+                <SenecaInput
+                  panelRoute={panelRoute}
+                  onSubmit={(query) => onStartConversation(query)}
+                  disabled={isStreaming}
+                />
               </div>
             )}
           </motion.div>

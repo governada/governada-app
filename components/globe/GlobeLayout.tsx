@@ -20,7 +20,14 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useMutation } from '@tanstack/react-query';
 import type { ConstellationRef } from '@/lib/globe/types';
-import type { ConstellationNode3D } from '@/lib/constellation/types';
+import type { ConstellationApiData, ConstellationNode3D } from '@/lib/constellation/types';
+import { useGovernanceConstellation } from '@/hooks/queries';
+import { computeGlobeLayout } from '@/lib/constellation/globe-layout';
+import {
+  CONSTELLATION_NODE_LIMITS,
+  hasPrecomputedConstellationNodes,
+  limitPrecomputedConstellationNodes,
+} from '@/lib/constellation/sceneNodes';
 import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
 import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useGlobeCommandListener } from '@/hooks/useGlobeCommandListener';
@@ -238,7 +245,7 @@ export function GlobeLayout({
   const { segment, drepId } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
   // Epoch context available via useEpochContext() in child components
-  const { use2D } = useDeviceCapability();
+  const { use2D, gpuTier } = useDeviceCapability();
 
   // ---------------------------------------------------------------------------
   // Homepage features: user node, proposals, entity detail, tooltips, match trigger
@@ -246,9 +253,20 @@ export function GlobeLayout({
 
   const { userNode, delegationBond } = useUserConstellationNode();
   const { proposalNodes } = useConstellationProposals();
+  const { data: constellationData } = useGovernanceConstellation();
 
   const anchoredNodePositions = useMemo(() => {
     const positions = new Map<string, [number, number, number]>();
+    if (constellationData) {
+      const typedData = constellationData as ConstellationApiData;
+      const baseNodes = hasPrecomputedConstellationNodes(typedData.nodes)
+        ? limitPrecomputedConstellationNodes(typedData.nodes, gpuTier)
+        : computeGlobeLayout(typedData.nodes, CONSTELLATION_NODE_LIMITS[gpuTier]).nodes;
+      for (const node of baseNodes) {
+        positions.set(node.id, node.position);
+        positions.set(node.fullId, node.position);
+      }
+    }
     for (const node of proposalNodes) {
       positions.set(node.id, node.position);
       positions.set(node.fullId, node.position);
@@ -258,7 +276,7 @@ export function GlobeLayout({
       positions.set(userNode.fullId, userNode.position);
     }
     return positions;
-  }, [proposalNodes, userNode]);
+  }, [constellationData, gpuTier, proposalNodes, userNode]);
 
   // Entity detail sheet state (bottom sheet for entity clicks on homepage)
   const [activeEntity, setActiveEntity] = useState<EntityRef | null>(

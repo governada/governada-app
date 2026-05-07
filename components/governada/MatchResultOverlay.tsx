@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { DelegateButton } from '@/components/DelegateButton';
+import { ConfidenceBar } from '@/components/matching/ConfidenceBar';
 import type { MatchResult, QuickMatchResponse } from '@/hooks/useQuickMatch';
 import type { AlignmentScores } from '@/lib/drepIdentity';
 
@@ -73,6 +74,7 @@ export function MatchResultOverlay({
   const prefersReducedMotion = useReducedMotion();
   const displayName = focusedMatch.drepName || focusedMatch.drepId.slice(0, 16) + '\u2026';
   const scorePercent = Math.round(focusedMatch.matchScore);
+  const confidence = result.confidenceBreakdown?.overall ?? 0;
 
   return (
     <AnimatePresence mode="popLayout">
@@ -82,20 +84,7 @@ export function MatchResultOverlay({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.97 }}
         transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-        className={cn(
-          // Desktop: compact card in lower portion, below the glowing match node
-          'fixed z-[60] w-full max-w-[360px] max-h-[50vh] overflow-y-auto',
-          'left-1/2 bottom-[6%] -translate-x-1/2',
-          // Mobile: bottom sheet
-          'max-lg:top-auto max-lg:bottom-0 max-lg:left-0 max-lg:right-0',
-          'max-lg:max-w-none max-lg:max-h-[60vh] max-lg:translate-x-0 max-lg:translate-y-0',
-          'max-lg:rounded-t-2xl max-lg:rounded-b-none',
-          // Card styling
-          'rounded-2xl border border-white/[0.1]',
-          'bg-black/85 backdrop-blur-2xl',
-          'shadow-2xl shadow-black/60',
-          'p-4',
-        )}
+        className={cn('w-full max-h-[min(70vh,640px)] overflow-y-auto p-1 text-foreground')}
       >
         {/* Close + back controls */}
         <div className="flex items-center justify-between mb-2">
@@ -195,7 +184,7 @@ export function MatchResultOverlay({
           {(focusedMatch.agreeDimensions.length > 0 ||
             focusedMatch.differDimensions.length > 0) && (
             <div className="flex flex-wrap gap-1.5">
-              {focusedMatch.agreeDimensions.map((d) => (
+              {focusedMatch.agreeDimensions.slice(0, 2).map((d) => (
                 <span
                   key={d}
                   className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-green-500/10 text-green-400"
@@ -203,7 +192,7 @@ export function MatchResultOverlay({
                   {d} ✓
                 </span>
               ))}
-              {focusedMatch.differDimensions.slice(0, 2).map((d) => (
+              {focusedMatch.differDimensions.slice(0, 1).map((d) => (
                 <span
                   key={d}
                   className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted/30 text-muted-foreground"
@@ -226,14 +215,28 @@ export function MatchResultOverlay({
               {focusedMatch.signatureInsight}
             </p>
           )}
+
+          <ConfidenceBar
+            confidence={confidence}
+            sources={result.confidenceBreakdown?.sources}
+            expandable={false}
+            showReferencePoints
+            className="rounded-md border border-white/10 bg-black/20 p-2"
+          />
         </div>
 
         {/* CTAs */}
-        <div className="flex gap-2 mt-3">
-          <DelegateButton drepId={focusedMatch.drepId} drepName={displayName} className="flex-1" />
+        <div className="grid gap-2 mt-3">
+          <DelegateButton drepId={focusedMatch.drepId} drepName={displayName} className="w-full" />
+          <Button size="default" asChild className="gap-1.5">
+            <Link href={`/match/vote?drepId=${encodeURIComponent(focusedMatch.drepId)}`}>
+              Strengthen with proposal voting
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          </Button>
           <Button variant="outline" size="default" asChild className="gap-1.5">
             <Link href={`/drep/${encodeURIComponent(focusedMatch.drepId)}`}>
-              Profile
+              Inspect deeper
               <ExternalLink className="h-3 w-3" />
             </Link>
           </Button>

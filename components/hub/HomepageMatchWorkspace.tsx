@@ -1,15 +1,62 @@
 'use client';
 
 import { ArrowLeft, Sparkles } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { GlobeLayout } from '@/components/globe/GlobeLayout';
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { QuickMatchExperience } from '@/components/matching/QuickMatchExperience';
 import { Button } from '@/components/ui/button';
+import { detectMatchCapabilityResult, type MatchCapabilityResult } from '@/lib/device/capability';
 import { encodeEntityParam } from '@/lib/homepage/parseEntityParam';
+import { posthog } from '@/lib/posthog';
 import type { MatchResult } from '@/hooks/useQuickMatch';
+import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 
 export function HomepageMatchWorkspace() {
+  const [capability, setCapability] = useState<MatchCapabilityResult | null>(null);
+
+  useEffect(() => {
+    const resolved = detectMatchCapabilityResult();
+    posthog.capture('match_capability_resolved', resolved);
+    if (resolved.capability === 'workspace_fallback') {
+      posthog.capture('mode_match_capability_workspace_fallback_count', {
+        reason: resolved.reason,
+      });
+    }
+    setCapability(resolved);
+  }, []);
+
+  if (!capability) {
+    return (
+      <section
+        className="min-h-[100dvh] bg-slate-950"
+        data-testid="match-capability-resolving"
+        aria-label="Resolving match experience"
+      />
+    );
+  }
+
+  if (capability.capability === 'cerebro') {
+    return <HomepageCerebroMatch />;
+  }
+
+  return <HomepageMatchWorkspaceFallback />;
+}
+
+function HomepageCerebroMatch() {
+  useEffect(() => {
+    useSenecaThreadStore.getState().startMatch();
+  }, []);
+
+  return (
+    <section data-testid="homepage-cerebro-match" aria-label="Cerebro match">
+      <GlobeLayout />
+    </section>
+  );
+}
+
+function HomepageMatchWorkspaceFallback() {
   const router = useRouter();
 
   const handleClose = useCallback(() => {

@@ -89,6 +89,42 @@ describe('AnchoredCard mobile stack', () => {
     expect(onFold).toHaveBeenCalledWith(expect.objectContaining({ id: 'timer', reason: 'timer' }));
   });
 
+  it('allows destination cards to opt out of auto-dismiss', () => {
+    const onFold = vi.fn();
+    render(
+      <AnchoredCardMobileStack
+        cards={[{ ...card('match'), kind: 'match', autoDismissMs: null }]}
+        onFold={onFold}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    vi.advanceTimersByTime(120_000);
+
+    expect(onFold).not.toHaveBeenCalled();
+    expect(screen.getByText('Card match')).toBeTruthy();
+  });
+
+  it('renders rich card content without wrapping it in a button', () => {
+    render(
+      <AnchoredCardMobileStack
+        cards={[
+          {
+            ...card('content'),
+            kind: 'match',
+            autoDismissMs: null,
+            content: <a href="/match/vote">Strengthen with proposal voting</a>,
+          },
+        ]}
+        onFold={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: /strengthen with proposal voting/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /strengthen with proposal voting/i })).toBeNull();
+  });
+
   it('opens the entity sheet callback when a stacked card is tapped', () => {
     const onSelect = vi.fn();
     render(<AnchoredCardMobileStack cards={[card('tap')]} onFold={vi.fn()} onSelect={onSelect} />);

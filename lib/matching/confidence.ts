@@ -88,6 +88,17 @@ const TARGETS = {
   treasuryJudgment: 5, // 5 treasury accountability judgments
 } as const;
 
+export const STRONG_SIGNAL_THRESHOLD = 70;
+
+export const VALUES_ONLY_BASELINE_INPUTS: ConfidenceInputs = {
+  quizAnswerCount: TARGETS.quizAnswers,
+  pollVoteCount: 0,
+  proposalTypesVoted: 0,
+  engagementActionCount: 0,
+  hasDelegation: false,
+  treasuryJudgmentCount: 0,
+};
+
 /* ─── Input data ───────────────────────────────────────── */
 
 export interface ConfidenceInputs {
@@ -184,6 +195,10 @@ export function calculateProgressiveConfidence(inputs: ConfidenceInputs): Confid
 
   return { overall, sources, nextAction };
 }
+
+export const VALUES_ONLY_BASELINE_CONFIDENCE = calculateProgressiveConfidence(
+  VALUES_ONLY_BASELINE_INPUTS,
+).overall;
 
 function sourceScore(current: number, target: number, weight: number): number {
   const ratio = Math.min(1, current / target);

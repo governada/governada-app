@@ -183,6 +183,48 @@ jobs:
           echo "Timed out waiting for Railway preview environment $RAILWAY_PREVIEW_ENV"
           exit 1
 
+      - name: Wait for Railway GitHub deployment status
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          for attempt in $(seq 1 90); do
+            STATUS="$(
+              npx --yes @railway/cli deployment list --limit 20 --json |
+                node -e "
+                  let input = '';
+                  process.stdin.on('data', (chunk) => input += chunk);
+                  process.stdin.on('end', () => {
+                    const deployments = JSON.parse(input);
+                    const match = (Array.isArray(deployments) ? deployments : [])
+                      .find((deployment) => deployment?.meta?.commitHash === process.env.EXPECTED_SHA);
+                    console.log(match?.status || 'missing');
+                  });
+                "
+            )"
+
+            case "$STATUS" in
+              SUCCESS)
+                echo "Railway GitHub deployment for $EXPECTED_SHA is successful"
+                exit 0
+                ;;
+              FAILED | CRASHED)
+                echo "Railway GitHub deployment for $EXPECTED_SHA ended with $STATUS"
+                exit 1
+                ;;
+              REMOVED)
+                echo "Railway GitHub deployment for $EXPECTED_SHA was removed before it could report success"
+                exit 1
+                ;;
+            esac
+
+            echo "Waiting for Railway GitHub deployment for $EXPECTED_SHA (status: $STATUS, attempt $attempt/90)"
+            sleep 10
+          done
+
+          echo "Timed out waiting for Railway GitHub deployment for $EXPECTED_SHA"
+          exit 1
+
       - name: Wire Railway preview Supabase branch
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}

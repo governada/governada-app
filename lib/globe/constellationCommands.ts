@@ -8,6 +8,7 @@
  */
 
 import type CameraControls from 'camera-controls';
+import * as THREE from 'three';
 import type { ConstellationRef, SceneState } from '@/lib/globe/types';
 import { DEFAULT_FOCUS, DEFAULT_ROTATION_SPEED } from '@/lib/globe/types';
 import type { ConstellationNode3D, FindMeTarget } from '@/lib/constellation/types';
@@ -672,6 +673,18 @@ export function createConstellationCommands(deps: CommandDeps): ConstellationRef
         },
         (options?.duration ?? 1.2) * 1000 + 200,
       );
+    },
+
+    getCameraSnapshot: () => {
+      const controls = cameraControlsRef.current;
+      if (!controls) return null;
+
+      const position = controls.getPosition(new THREE.Vector3());
+      const target = controls.getTarget(new THREE.Vector3());
+      return {
+        position: [position.x, position.y, position.z],
+        target: [target.x, target.y, target.z],
+      };
     },
 
     narrowTo: (nodeIds, options) => {

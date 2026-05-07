@@ -18,11 +18,19 @@
 import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { useMutation } from '@tanstack/react-query';
 import type { ConstellationRef } from '@/lib/globe/types';
 import type { ConstellationNode3D } from '@/lib/constellation/types';
 import { useSenecaGlobeBridge } from '@/hooks/useSenecaGlobeBridge';
 import { useSenecaThread } from '@/hooks/useSenecaThread';
 import { useGlobeCommandListener } from '@/hooks/useGlobeCommandListener';
+import {
+  CLUSTER_LINGER_MS,
+  CAMERA_IDLE_MS,
+  MOUSE_IDLE_MS,
+  isClusterWhisperCoolingDown,
+  useCameraIdle,
+} from '@/hooks/useCameraIdle';
 import { useSegment } from '@/components/providers/SegmentProvider';
 // useEpochContext available via child components
 import type { GlobeFilter } from '@/lib/globe/urlState';
@@ -48,6 +56,7 @@ import { GlobeControls } from './GlobeControls';
 import { ClusterLabels3D } from './ClusterLabels3D';
 import { ClusterNebulae } from './ClusterNebula';
 import { setClusterCache } from '@/lib/globe/behaviors/clusterBehavior';
+import { getSharedIntent } from '@/lib/globe/focusIntent';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { STORAGE_KEYS, readStoredValue } from '@/lib/persistence';
 import { useMotionStrength } from '@/lib/motion/motionStrength';
@@ -56,6 +65,8 @@ import {
   type AnchoredCardDescriptor,
   type FoldedAnchoredCardEntry,
 } from '@/components/globe/AnchoredCard';
+import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
+import type { HoverDetailLevel } from '@/components/governada/GlobeTooltip';
 
 const WorkspaceCards = dynamic(
   () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
@@ -103,6 +114,23 @@ const Constellation2D = dynamic(
 // ---------------------------------------------------------------------------
 
 const FILTER_CYCLE: (GlobeFilter | null)[] = [null, 'dreps', 'proposals', 'spos', 'cc'];
+const LAYER2_ACTIVE_STATES = new Set(['returning_quiet', 'returning_in_session']);
+// 3D constellation world units; beyond this the camera is not credibly over a cluster.
+const MAX_CLUSTER_TARGET_DISTANCE = 4;
+
+export function isLayer2CinematicStateEnabled(state: string | null | undefined) {
+  return LAYER2_ACTIVE_STATES.has(state ?? '');
+}
+
+interface ClusterLabel {
+  id: string;
+  name: string;
+  centroid3D: [number, number, number];
+  centroid6D: number[];
+  memberCount: number;
+  memberIds: string[];
+  dominantDimension?: string;
+}
 
 interface GlobeLayoutProps {
   children?: React.ReactNode;
@@ -155,15 +183,7 @@ export function GlobeLayout({
 
   // Cluster data for 3D labels (fetched once, flag-gated)
   const clusterFlagEnabled = useFeatureFlag('globe_alignment_layout');
-  const [clusterLabels, setClusterLabels] = useState<
-    Array<{
-      id: string;
-      name: string;
-      centroid3D: [number, number, number];
-      memberCount: number;
-      memberIds: string[];
-    }>
-  >([]);
+  const [clusterLabels, setClusterLabels] = useState<ClusterLabel[]>([]);
   useEffect(() => {
     if (!clusterFlagEnabled) return;
     fetch('/api/governance/constellation/clusters')
@@ -179,12 +199,15 @@ export function GlobeLayout({
               memberCount: number;
               memberIds: string[];
               centroid6D: number[];
+              dominantDimension: string;
             }) => ({
               id: c.id,
               name: c.name,
               centroid3D: c.centroid3D,
+              centroid6D: c.centroid6D,
               memberCount: c.memberCount,
               memberIds: c.memberIds,
+              dominantDimension: c.dominantDimension,
             }),
           ),
         );
@@ -255,11 +278,15 @@ export function GlobeLayout({
   // Tooltip hover state
   const [hoveredNode, setHoveredNode] = useState<ConstellationNode3D | null>(null);
   const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number } | null>(null);
+  const [hoverDetailLevel, setHoverDetailLevel] = useState<HoverDetailLevel>('overview');
 
   const handleNodeHoverScreen = useCallback(
     (node: ConstellationNode3D | null, pos: { x: number; y: number } | null) => {
       setHoveredNode(node);
       setHoverScreenPos(pos);
+      if (node?.nodeType === 'drep') {
+        setHoverDetailLevel(deriveHoverDetailLevel(globeRef.current));
+      }
     },
     [],
   );
@@ -374,6 +401,121 @@ export function GlobeLayout({
     setHighlightedNodeId(nodeId);
     globeRef.current?.highlightNode(nodeId);
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // Layer 2 idle drift + region-aware Seneca whisper
+  // ---------------------------------------------------------------------------
+
+  const cameraIdle = useCameraIdle({ mouseIdleMs: MOUSE_IDLE_MS, cameraIdleMs: CAMERA_IDLE_MS });
+  const cinematicState = seneca.homepageCinematic?.queue.primary.state;
+  const layer2Enabled = isLayer2CinematicStateEnabled(cinematicState);
+  const shouldShowHoverTooltip = !cinematicState || layer2Enabled;
+  const senecaIsOpen = seneca.isOpen;
+  const regionWhisperClusterId = seneca.regionSuggestionWhisper?.clusterId ?? null;
+  const homepageIdentity = seneca.homepageCinematic?.identity;
+  const setRegionSuggestionWhisper = seneca.setRegionSuggestionWhisper;
+  const lingerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lingerClusterRef = useRef<string | null>(null);
+  const driftActiveRef = useRef(false);
+
+  const { mutate: requestRegionSuggestion, isPending: regionSuggestionPending } = useMutation({
+    mutationFn: async ({
+      clusterId,
+      userContextRef,
+    }: {
+      clusterId: string;
+      userContextRef: string;
+    }) => {
+      const response = await fetch('/api/seneca/region-suggestion', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ clusterId, userContextRef }),
+      });
+      if (!response.ok) throw new Error('Failed to fetch region suggestion');
+      return response.json() as Promise<{
+        suggestion: string;
+        windowDays?: number | string | null;
+      }>;
+    },
+    onSuccess: (data, variables) => {
+      if (!data.suggestion) return;
+      setRegionSuggestionWhisper({ clusterId: variables.clusterId, text: data.suggestion });
+      captureSenecaInteraction({
+        kind: 'region_suggestion_shown',
+        clusterId: variables.clusterId,
+        dismissed: false,
+      });
+    },
+  });
+
+  useEffect(() => {
+    const clearLingerTimer = () => {
+      if (lingerTimerRef.current) {
+        clearTimeout(lingerTimerRef.current);
+        lingerTimerRef.current = null;
+      }
+      lingerClusterRef.current = null;
+    };
+
+    const stopDrift = () => {
+      if (!driftActiveRef.current) return;
+      driftActiveRef.current = false;
+      executeGlobeCommand({
+        type: 'cinematic',
+        state: { orbitSpeed: 0, transitionDuration: 0.8 },
+      });
+    };
+
+    if (!cameraIdle || !layer2Enabled || motionStrength === 0 || senecaIsOpen) {
+      clearLingerTimer();
+      stopDrift();
+      return clearLingerTimer;
+    }
+
+    if (!driftActiveRef.current) {
+      driftActiveRef.current = true;
+      executeGlobeCommand({ type: 'drift', motionStrength });
+    }
+
+    const snapshot = globeRef.current?.getCameraSnapshot();
+    const closestCluster = snapshot
+      ? findClosestCameraCluster(snapshot.target, clusterLabels)
+      : null;
+
+    if (!closestCluster || isClusterWhisperCoolingDown(closestCluster.id)) {
+      clearLingerTimer();
+      return clearLingerTimer;
+    }
+
+    if (
+      lingerClusterRef.current === closestCluster.id ||
+      regionSuggestionPending ||
+      regionWhisperClusterId === closestCluster.id
+    ) {
+      return clearLingerTimer;
+    }
+
+    clearLingerTimer();
+    lingerClusterRef.current = closestCluster.id;
+    lingerTimerRef.current = setTimeout(() => {
+      const userContextRef =
+        homepageIdentity?.userId ?? homepageIdentity?.stakeAddress ?? 'anonymous';
+      requestRegionSuggestion({ clusterId: closestCluster.id, userContextRef });
+    }, CLUSTER_LINGER_MS);
+
+    return clearLingerTimer;
+  }, [
+    cameraIdle,
+    clusterLabels,
+    executeGlobeCommand,
+    layer2Enabled,
+    motionStrength,
+    homepageIdentity,
+    regionSuggestionPending,
+    regionWhisperClusterId,
+    requestRegionSuggestion,
+    senecaIsOpen,
+  ]);
 
   // ---------------------------------------------------------------------------
   // List overlay controls
@@ -663,7 +805,12 @@ export function GlobeLayout({
       )}
 
       {/* Cursor-following tooltip */}
-      <GlobeTooltip node={hoveredNode} screenPos={hoverScreenPos} showMatchCta={!isAuthenticated} />
+      <GlobeTooltip
+        node={shouldShowHoverTooltip ? hoveredNode : null}
+        screenPos={hoverScreenPos}
+        showMatchCta={!isAuthenticated}
+        hoverDetailLevel={hoverDetailLevel}
+      />
 
       {/* Entity detail sheet â€” bottom sheet for entity clicks on homepage */}
       <EntityDetailSheet entity={activeEntity} onClose={handleEntityClose} />
@@ -755,4 +902,46 @@ function nodeToRoute(node: ConstellationNode3D): string | null {
     default:
       return null;
   }
+}
+
+function deriveHoverDetailLevel(globe: ConstellationRef | null): HoverDetailLevel {
+  const proximity = getSharedIntent().cameraProximity;
+  if (proximity === 'overview' || proximity === 'cluster' || proximity === 'tight') {
+    return proximity;
+  }
+  if (proximity === 'locked') return 'tight';
+
+  const snapshot = globe?.getCameraSnapshot();
+  if (!snapshot) return 'overview';
+
+  const distance = distance3D(snapshot.position, snapshot.target);
+  if (distance <= 6) return 'tight';
+  if (distance <= 11) return 'cluster';
+  return 'overview';
+}
+
+function findClosestCameraCluster(
+  cameraTarget: [number, number, number],
+  clusters: ClusterLabel[],
+): ClusterLabel | null {
+  if (clusters.length === 0) return null;
+
+  let closest = clusters[0];
+  let closestDistance = distance3D(cameraTarget, closest.centroid3D);
+
+  for (let index = 1; index < clusters.length; index += 1) {
+    const distance = distance3D(cameraTarget, clusters[index].centroid3D);
+    if (distance < closestDistance) {
+      closest = clusters[index];
+      closestDistance = distance;
+    }
+  }
+
+  if (closestDistance > MAX_CLUSTER_TARGET_DISTANCE) return null;
+
+  return closest;
+}
+
+function distance3D(a: [number, number, number], b: [number, number, number]) {
+  return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
 }

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const push = vi.fn();
@@ -173,7 +174,22 @@ vi.mock('@/components/globe/ClusterNebula', () => ({
   ClusterNebulae: () => <div data-testid="cluster-nebulae" />,
 }));
 
-import { GlobeLayout } from '@/components/globe/GlobeLayout';
+import { GlobeLayout, isLayer2CinematicStateEnabled } from '@/components/globe/GlobeLayout';
+
+function renderGlobeLayout(props: React.ComponentProps<typeof GlobeLayout> = {}) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+
+  return render(<GlobeLayout {...props} />, { wrapper: Wrapper });
+}
 
 describe('GlobeLayout deferred panels', () => {
   beforeEach(() => {
@@ -186,7 +202,7 @@ describe('GlobeLayout deferred panels', () => {
   });
 
   it('keeps overlay-only panels out of the initial homepage render', async () => {
-    render(<GlobeLayout />);
+    renderGlobeLayout();
 
     await waitFor(() => expect(screen.getByTestId('scene')).toBeTruthy());
     expect(screen.queryByTestId('list-overlay')).toBeNull();
@@ -200,7 +216,7 @@ describe('GlobeLayout deferred panels', () => {
   });
 
   it('loads the discovery overlay only when a filter is active', async () => {
-    render(<GlobeLayout initialFilter="dreps" />);
+    renderGlobeLayout({ initialFilter: 'dreps' });
 
     await waitFor(() => expect(screen.getByTestId('scene')).toBeTruthy());
     await waitFor(() => expect(screen.getByTestId('discovery-overlay')).toBeTruthy());
@@ -208,7 +224,7 @@ describe('GlobeLayout deferred panels', () => {
   });
 
   it('loads the entity detail sheet only when an entity is selected', async () => {
-    render(<GlobeLayout initialEntity="drep_abc123" />);
+    renderGlobeLayout({ initialEntity: 'drep_abc123' });
 
     await waitFor(() => expect(screen.getByTestId('scene')).toBeTruthy());
     await waitFor(() => expect(screen.getByTestId('entity-detail-sheet')).toBeTruthy());
@@ -217,7 +233,7 @@ describe('GlobeLayout deferred panels', () => {
 
   it('dispatches homepage cinema entry and exit through the local globe bridge', async () => {
     homepageCinematic = makeHomepageCinematicSnapshot('returning_quiet', 'quiet-fixture');
-    const { rerender } = render(<GlobeLayout />);
+    const { rerender } = renderGlobeLayout();
 
     await waitFor(() =>
       expect(executeGlobeCommand).toHaveBeenCalledWith(
@@ -250,6 +266,13 @@ describe('GlobeLayout deferred panels', () => {
         expect.objectContaining({ type: 'cinema:action_required' }),
       ),
     );
+  });
+
+  it('keeps Layer 2 idle effects gated to quiet returning states', () => {
+    expect(isLayer2CinematicStateEnabled('returning_quiet')).toBe(true);
+    expect(isLayer2CinematicStateEnabled('returning_in_session')).toBe(true);
+    expect(isLayer2CinematicStateEnabled('civic_event_tier_0')).toBe(false);
+    expect(isLayer2CinematicStateEnabled(null)).toBe(false);
   });
 });
 

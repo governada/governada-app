@@ -12,6 +12,50 @@ interface SenecaWhisperProps {
 
 const CYCLE_INTERVAL_MS = 15_000;
 
+interface SenecaOrbWhisperProps {
+  whisper: string;
+  onClick: () => void;
+  prefersReducedMotion: boolean | null;
+}
+
+export function SenecaOrbWhisper({
+  whisper,
+  onClick,
+  prefersReducedMotion,
+}: SenecaOrbWhisperProps) {
+  return (
+    <motion.button
+      key="whisper"
+      initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 8, scale: 0.95 }}
+      animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0, scale: 1 }}
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 8, scale: 0.95 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      onClick={onClick}
+      className={[
+        'relative max-w-[280px] max-[1023px]:max-w-[calc(100vw-80px)]',
+        'rounded-xl px-3 py-2',
+        'bg-black/50 backdrop-blur-xl',
+        'border border-white/10',
+        'text-sm text-white/80',
+        'cursor-pointer',
+        'hover:border-white/20 hover:text-white/90',
+        'transition-colors duration-150',
+      ].join(' ')}
+      aria-live="polite"
+    >
+      {whisper}
+      <span
+        className={[
+          'absolute top-1/2 -right-1.5 -translate-y-1/2',
+          'h-3 w-3 rotate-45',
+          'bg-black/50 border-r border-t border-white/10',
+        ].join(' ')}
+        aria-hidden="true"
+      />
+    </motion.button>
+  );
+}
+
 export function SenecaWhisper({ onExpand, className }: SenecaWhisperProps) {
   const { insightMap, isLoading, isEnabled } = useHubInsights();
   const [currentIndex, setCurrentIndex] = useState(0);

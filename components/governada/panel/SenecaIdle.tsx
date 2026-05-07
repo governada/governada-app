@@ -341,7 +341,7 @@ export function IdleContent({
             </div>
             <div className="space-y-2">
               {firstVisitBriefing.moves.map((move) => (
-                <p key={move.id} className="text-sm text-foreground/80 leading-relaxed">
+                <p key={move.id} className="text-sm text-zinc-100 leading-relaxed">
                   {move.text}
                 </p>
               ))}
@@ -363,7 +363,7 @@ export function IdleContent({
                 }
                 className={cn(
                   'w-full rounded-lg border border-white/10 px-3 py-2 text-left',
-                  'text-sm text-foreground/85 hover:border-white/20 hover:bg-white/5',
+                  'text-sm text-zinc-100 hover:border-white/20 hover:bg-white/5',
                   'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 )}
               >
@@ -397,9 +397,7 @@ export function IdleContent({
             <div className="shrink-0 mt-0.5">
               <CompassSigil state="idle" size={14} accentColor={accentColor} />
             </div>
-            <p className="text-sm text-foreground/80 leading-relaxed">
-              {IDLE_BRIEFINGS[panelRoute]}
-            </p>
+            <p className="text-sm text-zinc-100 leading-relaxed">{IDLE_BRIEFINGS[panelRoute]}</p>
           </motion.div>
         </>
       )}
@@ -421,7 +419,7 @@ export function IdleContent({
                   'px-3 py-1.5 rounded-full text-xs font-medium',
                   'border border-white/[0.08] bg-white/[0.04]',
                   'hover:bg-white/[0.08] hover:border-white/[0.12]',
-                  'text-foreground/70 hover:text-foreground/90',
+                  'text-zinc-100 hover:text-white',
                   'transition-colors min-h-[32px]',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 )}
@@ -438,7 +436,7 @@ export function IdleContent({
                   'px-3 py-1.5 rounded-full text-xs font-medium',
                   'border border-white/[0.08] bg-white/[0.04]',
                   'hover:bg-white/[0.08] hover:border-white/[0.12]',
-                  'text-foreground/70 hover:text-foreground/90',
+                  'text-zinc-100 hover:text-white',
                   'transition-colors min-h-[32px]',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 )}
@@ -450,9 +448,7 @@ export function IdleContent({
 
       {cinematicSecondary.length > 0 && (
         <div className="space-y-2 border-t border-white/[0.06] pt-3">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground/50">
-            Still in view
-          </p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-300">Still in view</p>
           {cinematicSecondary.slice(0, 3).map((item) => (
             <CinematicStateCard
               key={item.id}
@@ -490,13 +486,13 @@ function CinematicStateCard({
         compact ? 'px-2.5 py-2' : 'px-3 py-2.5',
       )}
     >
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground/50">
+      <p className="text-[10px] uppercase tracking-wide text-zinc-300">
         {item.state.replace(/_/g, ' ')}
       </p>
-      <p className={cn('mt-1 text-foreground/80 leading-relaxed', compact ? 'text-xs' : 'text-sm')}>
+      <p className={cn('mt-1 text-zinc-100 leading-relaxed', compact ? 'text-xs' : 'text-sm')}>
         {getEvergreenFallback(item.state)}
       </p>
-      {reasoning && <p className="mt-2 text-[11px] text-muted-foreground/60">{reasoning}</p>}
+      {reasoning && <p className="mt-2 text-[11px] text-zinc-300">{reasoning}</p>}
       <LifecycleActions
         item={item}
         canRecordLifecycle={canRecordLifecycle}

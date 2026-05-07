@@ -685,11 +685,9 @@ export function SenecaThread({
 
             {/* ── Page context indicator ── */}
             <div className="px-3 py-1.5 border-b border-white/[0.04] shrink-0">
-              <p className="text-[10px] text-muted-foreground/50 tracking-wide">
+              <p className="text-[10px] text-zinc-300 tracking-wide">
                 Now viewing:{' '}
-                <span className="text-muted-foreground/70 font-medium">
-                  {ROUTE_LABELS[panelRoute]}
-                </span>
+                <span className="text-zinc-100 font-medium">{ROUTE_LABELS[panelRoute]}</span>
               </p>
             </div>
 

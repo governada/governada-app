@@ -159,7 +159,7 @@ jobs:
             RAILWAY_PROJECT_ID="f661dbdf-91e0-4a46-81d8-51f345679e56"
           fi
 
-          npx --yes @railway/cli link \
+          npx --yes @railway/cli@4.42.0 link \
             --project "$RAILWAY_PROJECT_ID" \
             --environment "$RAILWAY_PREVIEW_ENV" \
             --service governada-app
@@ -170,7 +170,7 @@ jobs:
           RAILWAY_PREVIEW_ENV: app-pr-${{ github.event.pull_request.number }}
         run: |
           for attempt in $(seq 1 60); do
-            if npx --yes @railway/cli environment list --json \
+            if npx --yes @railway/cli@4.42.0 environment list --json \
               | node -e "let input=''; process.stdin.on('data', c => input += c); process.stdin.on('end', () => { const parsed = JSON.parse(input); const found = (parsed.environments || []).some((env) => env.name === process.env.RAILWAY_PREVIEW_ENV); process.exit(found ? 0 : 1); });"; then
               echo "Railway preview environment $RAILWAY_PREVIEW_ENV is ready"
               exit 0
@@ -190,11 +190,15 @@ jobs:
         run: |
           for attempt in $(seq 1 90); do
             STATUS="$(
-              npx --yes @railway/cli deployment list --limit 20 --json |
+              npx --yes @railway/cli@4.42.0 deployment list --limit 20 --json |
                 node -e "
                   let input = '';
                   process.stdin.on('data', (chunk) => input += chunk);
                   process.stdin.on('end', () => {
+                    if (!input.trim()) {
+                      console.log('missing');
+                      return;
+                    }
                     const deployments = JSON.parse(input);
                     const match = (Array.isArray(deployments) ? deployments : [])
                       .find((deployment) => deployment?.meta?.commitHash === process.env.EXPECTED_SHA);
@@ -242,7 +246,7 @@ jobs:
             exit 1
           fi
 
-          npx --yes @railway/cli variable set \
+          npx --yes @railway/cli@4.42.0 variable set \
             -e "$RAILWAY_PREVIEW_ENV" \
             -s governada-app \
             "NEXT_PUBLIC_SUPABASE_URL=$PREVIEW_SUPABASE_URL" \

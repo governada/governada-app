@@ -1,6 +1,7 @@
 import type { AnchoredCardDescriptor, AnchoredCardKind } from '@/components/globe/AnchoredCard';
 import type { BehaviorContext, GlobeBehavior } from '@/lib/globe/behaviors/types';
 import { getSharedIntent, setSharedIntent } from '@/lib/globe/focusIntent';
+import { deriveCameraDistance } from '@/lib/globe/focusEngine';
 import type {
   CinematicArrivalCommand,
   CinematicCommandType,
@@ -89,7 +90,7 @@ export function focusNodes(
   if (ids.length === 0) return;
 
   const viewportClass = getViewportClassSnapshot();
-  const adjustedOptions = mobileAdjustFocusOptions(options, viewportClass);
+  const adjustedOptions = mobileAdjustFocusOptions(options, viewportClass, ids.length);
   const focusedIds = new Set(ids);
   const intensities = new Map(ids.map((id) => [id, adjustedOptions.intensity ?? 1]));
 
@@ -98,6 +99,7 @@ export function focusNodes(
     intensities,
     flyToFocus: adjustedOptions.fly ?? true,
     cameraProximity: adjustedOptions.proximity ?? (ids.length === 1 ? 'tight' : 'cluster'),
+    cameraDistanceOverride: adjustedOptions.cameraDistanceOverride,
     dimStrength: adjustedOptions.dimStrength ?? 0.55,
     focusColor: adjustedOptions.focusColor,
     focusSizeBoost: adjustedOptions.focusSizeBoost ?? 1.18,
@@ -168,11 +170,18 @@ export function mobileAdjustCamera(
 
 export function mobileAdjustFocusOptions<
   T extends Partial<FocusIntent> & { proximity?: FocusIntent['cameraProximity'] },
->(options: T, viewportClass: ViewportClass = getViewportClassSnapshot()): T {
+>(
+  options: T,
+  viewportClass: ViewportClass = getViewportClassSnapshot(),
+  focusCount = 1,
+): T & Pick<FocusIntent, 'cameraDistanceOverride' | 'transitionDuration'> {
   if (viewportClass !== 'mobile') return options;
+  const desktopProximity = options.proximity ?? (focusCount === 1 ? 'tight' : 'cluster');
+  const desktopDistance = deriveCameraDistance(focusCount, desktopProximity);
   return {
     ...options,
-    proximity: lessAggressiveProximity(options.proximity),
+    proximity: lessAggressiveProximity(desktopProximity),
+    cameraDistanceOverride: halveTraversal(desktopDistance, CAMERA_NEUTRAL_DISTANCE),
     transitionDuration: clampMobileTransition(
       options.transitionDuration ?? MOBILE_MAX_TRANSITION_SECONDS,
     ),

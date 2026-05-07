@@ -270,6 +270,8 @@ export interface FocusIntent {
   // --- Camera hints (reactive engine derives final position) ---
   /** Camera proximity level — engine derives distance from focus count if omitted */
   cameraProximity?: 'overview' | 'cluster' | 'tight' | 'locked';
+  /** Explicit camera distance override for producers that need tighter traversal control */
+  cameraDistanceOverride?: number;
   /** Should camera fly to the focus centroid? (default: true when focusedIds changes) */
   flyToFocus?: boolean;
   /** Camera approach angle variation (radians) — prevents same-angle repetition */

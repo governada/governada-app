@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AnchoredCardLayer,
@@ -7,12 +7,14 @@ import {
   type AnchoredCardDescriptor,
 } from '@/components/globe/AnchoredCard';
 
+let viewportClass: 'mobile' | 'desktop' = 'mobile';
+
 vi.mock('@react-three/drei', () => ({
   Html: ({ children }: { children: React.ReactNode }) => <div data-testid="html">{children}</div>,
 }));
 
 vi.mock('@/hooks/useViewportClass', () => ({
-  useViewportClass: () => 'mobile',
+  useViewportClass: () => viewportClass,
 }));
 
 function card(id: string): AnchoredCardDescriptor {
@@ -28,12 +30,14 @@ function card(id: string): AnchoredCardDescriptor {
 
 describe('AnchoredCard mobile stack', () => {
   beforeEach(() => {
+    viewportClass = 'mobile';
     vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    cleanup();
   });
 
   it('renders the visible cards in a viewport-bottom DOM stack on mobile', () => {
@@ -55,6 +59,13 @@ describe('AnchoredCard mobile stack', () => {
     render(<AnchoredCardLayer cards={[card('one')]} onFold={vi.fn()} />);
 
     expect(screen.queryByTestId('html')).toBeNull();
+  });
+
+  it('keeps the mobile DOM stack out of the desktop path', () => {
+    viewportClass = 'desktop';
+    render(<AnchoredCardMobileStack cards={[card('one')]} onFold={vi.fn()} onSelect={vi.fn()} />);
+
+    expect(screen.queryByTestId('anchored-card-mobile-stack')).toBeNull();
   });
 
   it('preserves auto-dismiss for mobile cards', () => {

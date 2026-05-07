@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  focusNodes,
   mobileAdjustCamera,
   mobileAdjustFocusOptions,
   pathIntersectsBoundingSphere,
 } from '@/lib/globe/behaviors/cinematic/shared';
 import { createFirstVisitAnonymousBehavior } from '@/lib/globe/behaviors/cinematic/firstVisitAnonymousBehavior';
+import { getSharedIntent, setSharedIntent } from '@/lib/globe/focusIntent';
 import { makeCinemaCommand, makeCtx } from './testUtils';
 
 function mockMobileViewport() {
@@ -76,14 +78,27 @@ describe('mobile camera dial-back', () => {
   });
 
   it('dials back focus proximity on mobile', () => {
-    expect(mobileAdjustFocusOptions({ proximity: 'tight' }, 'mobile')).toEqual({
-      proximity: 'cluster',
-      transitionDuration: 1.5,
-    });
-    expect(mobileAdjustFocusOptions({ proximity: 'cluster' }, 'mobile')).toEqual({
-      proximity: 'overview',
-      transitionDuration: 1.5,
-    });
+    const tight = mobileAdjustFocusOptions({ proximity: 'tight' }, 'mobile', 1);
+    expect(tight.proximity).toBe('cluster');
+    expect(tight.cameraDistanceOverride).toBe(9.5);
+    expect(tight.transitionDuration).toBe(1.5);
+
+    const cluster = mobileAdjustFocusOptions({ proximity: 'cluster' }, 'mobile', 10);
+    expect(cluster.proximity).toBe('overview');
+    expect(cluster.cameraDistanceOverride).toBeCloseTo(9.333, 3);
+    expect(cluster.transitionDuration).toBe(1.5);
+  });
+
+  it('applies mobile distance override through focus-based cinema intent', () => {
+    mockMobileViewport();
+    setSharedIntent({ focusedIds: null });
+
+    focusNodes(['proposal-abcdef123456-0'], { proximity: 'tight', pulse: true });
+
+    const intent = getSharedIntent();
+    expect(intent.cameraProximity).toBe('cluster');
+    expect(intent.cameraDistanceOverride).toBe(9.5);
+    expect(intent.transitionDuration).toBe(1.5);
   });
 
   it('applies the helper through a representative cinematic behavior', () => {

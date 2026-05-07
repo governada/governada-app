@@ -1,12 +1,29 @@
 import * as React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AnchoredCardDescriptor } from '@/components/globe/AnchoredCard';
+import type { ConstellationNode3D } from '@/lib/constellation/types';
 
 const push = vi.fn();
 const replace = vi.fn();
 const startMatch = vi.fn();
 const executeGlobeCommand = vi.fn();
 let homepageCinematic: unknown = null;
+let viewportClass: 'mobile' | 'desktop' = 'desktop';
+let isTouchDevice = false;
+let bridgeOptions: { onAnchoredCards?: (cards: AnchoredCardDescriptor[]) => void } | null = null;
+
+const selectableNode = {
+  id: 'drep_abc123',
+  fullId: 'drep_abc123',
+  label: 'Ada DRep',
+  nodeType: 'drep',
+  alignments: [50, 50, 50, 50, 50, 50],
+  position: [1, 0, 0],
+  activity: 0.5,
+  clusterId: null,
+  neighbors: [],
+} as unknown as ConstellationNode3D;
 
 vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType<any> }>) => {
@@ -39,10 +56,21 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/hooks/useSenecaGlobeBridge', () => ({
-  useSenecaGlobeBridge: () => ({
-    handleNodeClick: vi.fn(),
-    executeGlobeCommand,
-  }),
+  useSenecaGlobeBridge: (
+    _globeRef: unknown,
+    options?: { onAnchoredCards?: (cards: AnchoredCardDescriptor[]) => void },
+  ) => {
+    bridgeOptions = options ?? null;
+    return {
+      handleNodeClick: vi.fn(),
+      executeGlobeCommand,
+    };
+  },
+}));
+
+vi.mock('@/hooks/useViewportClass', () => ({
+  useViewportClass: () => viewportClass,
+  useIsTouchDevice: () => isTouchDevice,
 }));
 
 vi.mock('@/hooks/useSenecaThread', () => ({
@@ -121,7 +149,17 @@ vi.mock('@/lib/globe/behaviors/clusterBehavior', () => ({
 }));
 
 vi.mock('@/components/ConstellationScene', () => ({
-  ConstellationScene: React.forwardRef((_props, _ref) => <div data-testid="scene" />),
+  ConstellationScene: React.forwardRef(
+    (props: { onNodeSelect?: (node: ConstellationNode3D) => void }, _ref) => (
+      <button
+        type="button"
+        data-testid="scene"
+        onClick={() => props.onNodeSelect?.(selectableNode)}
+      >
+        scene
+      </button>
+    ),
+  ),
 }));
 
 vi.mock('@/components/globe/Constellation2D', () => ({
@@ -179,9 +217,13 @@ describe('GlobeLayout deferred panels', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     homepageCinematic = null;
+    viewportClass = 'desktop';
+    isTouchDevice = false;
+    bridgeOptions = null;
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
   });
 
@@ -251,6 +293,52 @@ describe('GlobeLayout deferred panels', () => {
       ),
     );
   });
+
+  it('uses touch first-tap preview and second-tap entity sheet', async () => {
+    viewportClass = 'mobile';
+    isTouchDevice = true;
+    render(<GlobeLayout />);
+
+    const scene = await screen.findByTestId('scene');
+    fireEvent.click(scene);
+
+    await waitFor(() => expect(screen.getByTestId('globe-tooltip')).toBeTruthy());
+    expect(screen.queryByTestId('entity-detail-sheet')).toBeNull();
+
+    await waitForTouchDuplicateGuard();
+    fireEvent.click(scene);
+
+    await waitFor(() => expect(screen.getByTestId('entity-detail-sheet')).toBeTruthy());
+  });
+
+  it('uses anchored cards as the touch preview surface', async () => {
+    viewportClass = 'mobile';
+    isTouchDevice = true;
+    render(<GlobeLayout />);
+
+    const scene = await screen.findByTestId('scene');
+    act(() => {
+      bridgeOptions?.onAnchoredCards?.([
+        {
+          id: 'anchored-drep',
+          kind: 'action',
+          title: 'Review Ada DRep',
+          anchorNodeId: selectableNode.id,
+        },
+      ]);
+    });
+    await waitFor(() => expect(screen.getByTestId('anchored-card-mobile')).toBeTruthy());
+
+    fireEvent.click(scene);
+
+    expect(screen.queryByTestId('globe-tooltip')).toBeNull();
+    expect(screen.getByTestId('anchored-card-mobile')).toBeTruthy();
+
+    await waitForTouchDuplicateGuard();
+    fireEvent.click(scene);
+
+    await waitFor(() => expect(screen.getByTestId('entity-detail-sheet')).toBeTruthy());
+  });
 });
 
 function makeHomepageCinematicSnapshot(state: 'returning_quiet' | 'action_required', id: string) {
@@ -272,4 +360,8 @@ function makeHomepageCinematicSnapshot(state: 'returning_quiet' | 'action_requir
       },
     },
   };
+}
+
+function waitForTouchDuplicateGuard() {
+  return new Promise((resolve) => setTimeout(resolve, 300));
 }

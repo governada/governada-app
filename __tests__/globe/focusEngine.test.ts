@@ -289,6 +289,23 @@ describe('deriveFromIntent', () => {
     expect(output.camera!.distance).toBe(5); // tight proximity
   });
 
+  it('honors explicit camera distance overrides', () => {
+    const output = deriveFromIntent(
+      {
+        focusedIds: new Set(['drep-0']),
+        cameraProximity: 'cluster',
+        cameraDistanceOverride: 9.5,
+        flyToFocus: true,
+      },
+      nodes,
+      0,
+      14,
+    );
+
+    expect(output.camera).not.toBeNull();
+    expect(output.camera!.distance).toBe(9.5);
+  });
+
   it('skips camera when flyToFocus is false', () => {
     const output = deriveFromIntent(
       { focusedIds: new Set(['drep-0']), flyToFocus: false },

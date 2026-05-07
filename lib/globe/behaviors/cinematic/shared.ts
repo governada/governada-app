@@ -6,18 +6,40 @@ import type {
   CinematicCommandType,
   GlobeCommand,
 } from '@/lib/globe/types';
+import type { FocusIntent } from '@/lib/globe/types';
 import {
   proposalNodeId,
   governanceNodeId,
   readTier0TriggersFromPayload,
   type SerializedTier0AffectedRegion,
 } from '@/lib/governance/tier0AffectedRegion';
+import { getViewportClassSnapshot, type ViewportClass } from '@/hooks/useViewportClass';
 
 export interface CinematicBehaviorConfig {
   id: string;
   commandType: CinematicCommandType;
   run: (command: CinematicArrivalCommand, ctx: BehaviorContext) => void;
 }
+
+type Vec3 = [number, number, number];
+
+export interface MobileCameraNode {
+  id: string;
+  position: Vec3;
+  radius?: number;
+  scale?: number;
+}
+
+export interface MobileCameraOptions {
+  origin?: Vec3;
+  targetNodeId?: string;
+  nodes?: MobileCameraNode[];
+}
+
+const CAMERA_NEUTRAL_DISTANCE = 14;
+const MOBILE_TRAVERSAL_MULTIPLIER = 0.5;
+const MOBILE_MAX_TRANSITION_SECONDS = 1.5;
+const DEFAULT_NODE_BOUNDING_RADIUS = 0.55;
 
 export function createCinematicBehavior(config: CinematicBehaviorConfig): GlobeBehavior {
   return {
@@ -37,15 +59,17 @@ export function createCinematicBehavior(config: CinematicBehaviorConfig): GlobeB
 }
 
 export function establishCamera(ctx: BehaviorContext, dollyTarget = 18): void {
-  ctx.dispatch({
-    type: 'cinematic',
-    state: {
-      orbitSpeed: 0.003,
-      dollyTarget,
-      dimTarget: 0,
-      transitionDuration: 1.5,
-    },
-  });
+  ctx.dispatch(
+    mobileAdjustCamera({
+      type: 'cinematic',
+      state: {
+        orbitSpeed: 0.003,
+        dollyTarget,
+        dimTarget: 0,
+        transitionDuration: 1.5,
+      },
+    }),
+  );
 }
 
 export function focusNodes(
@@ -58,29 +82,167 @@ export function focusNodes(
     focusSizeBoost?: number;
     intensity?: number;
     fly?: boolean;
+    transitionDuration?: number;
   } = {},
 ): void {
   const ids = nodeIds.filter(Boolean);
   if (ids.length === 0) return;
 
+  const viewportClass = getViewportClassSnapshot();
+  const adjustedOptions = mobileAdjustFocusOptions(options, viewportClass);
   const focusedIds = new Set(ids);
-  const intensities = new Map(ids.map((id) => [id, options.intensity ?? 1]));
+  const intensities = new Map(ids.map((id) => [id, adjustedOptions.intensity ?? 1]));
 
   setSharedIntent({
     focusedIds,
     intensities,
-    flyToFocus: options.fly ?? true,
-    cameraProximity: options.proximity ?? (ids.length === 1 ? 'tight' : 'cluster'),
-    dimStrength: options.dimStrength ?? 0.55,
-    focusColor: options.focusColor,
-    focusSizeBoost: options.focusSizeBoost ?? 1.18,
-    bloomIntensity: options.pulse ? 1.1 : 0.7,
+    flyToFocus: adjustedOptions.fly ?? true,
+    cameraProximity: adjustedOptions.proximity ?? (ids.length === 1 ? 'tight' : 'cluster'),
+    dimStrength: adjustedOptions.dimStrength ?? 0.55,
+    focusColor: adjustedOptions.focusColor,
+    focusSizeBoost: adjustedOptions.focusSizeBoost ?? 1.18,
+    bloomIntensity: adjustedOptions.pulse ? 1.1 : 0.7,
     atmosphereTemperature: 0.45,
-    transitionDuration: 1.5,
+    transitionDuration: Math.min(adjustedOptions.transitionDuration ?? 1.5, 1.5),
     easingCurve: 'ease-in-out',
-    pulsingNodeIds: options.pulse ? focusedIds : undefined,
-    pulseFrequency: options.pulse ? 1.1 : undefined,
+    pulsingNodeIds: adjustedOptions.pulse ? focusedIds : undefined,
+    pulseFrequency: adjustedOptions.pulse ? 1.1 : undefined,
   });
+}
+
+export function mobileAdjustCamera(
+  command: GlobeCommand,
+  viewportClass: ViewportClass = getViewportClassSnapshot(),
+  options: MobileCameraOptions = {},
+): GlobeCommand {
+  if (viewportClass !== 'mobile') return command;
+
+  switch (command.type) {
+    case 'cinematic':
+      return {
+        ...command,
+        state: {
+          ...command.state,
+          dollyTarget:
+            command.state.dollyTarget === undefined
+              ? undefined
+              : halveTraversal(command.state.dollyTarget, CAMERA_NEUTRAL_DISTANCE),
+          transitionDuration:
+            command.state.transitionDuration === undefined
+              ? undefined
+              : clampMobileTransition(command.state.transitionDuration),
+        },
+      };
+
+    case 'flyToPosition': {
+      const nextTarget = wouldFlyThrough(command.target, options)
+        ? orbitAroundTarget(command.target)
+        : command.target;
+      return {
+        ...command,
+        target: nextTarget,
+        distance:
+          command.distance === undefined
+            ? command.distance
+            : halveTraversal(command.distance, CAMERA_NEUTRAL_DISTANCE),
+        duration:
+          command.duration === undefined
+            ? command.duration
+            : clampMobileTransition(command.duration),
+      };
+    }
+
+    case 'zoomOut':
+      return {
+        ...command,
+        distance:
+          command.distance === undefined
+            ? command.distance
+            : halveTraversal(command.distance, CAMERA_NEUTRAL_DISTANCE),
+      };
+
+    default:
+      return command;
+  }
+}
+
+export function mobileAdjustFocusOptions<
+  T extends Partial<FocusIntent> & { proximity?: FocusIntent['cameraProximity'] },
+>(options: T, viewportClass: ViewportClass = getViewportClassSnapshot()): T {
+  if (viewportClass !== 'mobile') return options;
+  return {
+    ...options,
+    proximity: lessAggressiveProximity(options.proximity),
+    transitionDuration: clampMobileTransition(
+      options.transitionDuration ?? MOBILE_MAX_TRANSITION_SECONDS,
+    ),
+  };
+}
+
+export function pathIntersectsBoundingSphere(
+  origin: Vec3,
+  target: Vec3,
+  sphereCenter: Vec3,
+  radius: number,
+): boolean {
+  const [ox, oy, oz] = origin;
+  const [tx, ty, tz] = target;
+  const [cx, cy, cz] = sphereCenter;
+  const dx = tx - ox;
+  const dy = ty - oy;
+  const dz = tz - oz;
+  const lengthSq = dx * dx + dy * dy + dz * dz;
+  if (lengthSq === 0) {
+    return distance(origin, sphereCenter) <= radius;
+  }
+
+  const t = Math.max(0, Math.min(1, ((cx - ox) * dx + (cy - oy) * dy + (cz - oz) * dz) / lengthSq));
+  const closest: Vec3 = [ox + dx * t, oy + dy * t, oz + dz * t];
+  return distance(closest, sphereCenter) <= radius;
+}
+
+function wouldFlyThrough(target: Vec3, options: MobileCameraOptions): boolean {
+  if (!options.nodes?.length) return false;
+  const origin = options.origin ?? [0, 3, CAMERA_NEUTRAL_DISTANCE];
+  return options.nodes.some((node) => {
+    if (node.id === options.targetNodeId) return false;
+    const radius = node.radius ?? Math.max(DEFAULT_NODE_BOUNDING_RADIUS, (node.scale ?? 1) * 1.4);
+    return pathIntersectsBoundingSphere(origin, target, node.position, radius);
+  });
+}
+
+function orbitAroundTarget(target: Vec3): Vec3 {
+  const angle = Math.PI / 5;
+  const [x, y, z] = target;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [x * cos - z * sin, y + 0.8, x * sin + z * cos];
+}
+
+function halveTraversal(value: number, neutral: number): number {
+  return neutral + (value - neutral) * MOBILE_TRAVERSAL_MULTIPLIER;
+}
+
+function clampMobileTransition(value: number): number {
+  return Math.min(value, MOBILE_MAX_TRANSITION_SECONDS);
+}
+
+function lessAggressiveProximity(
+  proximity: FocusIntent['cameraProximity'],
+): FocusIntent['cameraProximity'] {
+  switch (proximity) {
+    case 'locked':
+    case 'tight':
+      return 'cluster';
+    case 'cluster':
+      return 'overview';
+    default:
+      return proximity;
+  }
+}
+
+function distance(a: Vec3, b: Vec3): number {
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 }
 
 export function ambientCluster(): void {
@@ -166,6 +328,12 @@ export function tier0LocusNodeIds(payload: unknown): string[] {
   const first = readTier0TriggersFromPayload(payload)[0];
   if (!first) return ['tier-0-event'];
   return [proposalNodeId(first.proposalTxHash, first.proposalIndex)];
+}
+
+export function tier0LocusHrefFromPayload(payload: unknown): string | undefined {
+  const first = readTier0TriggersFromPayload(payload)[0];
+  if (!first) return undefined;
+  return `/proposal/${first.proposalTxHash}/${first.proposalIndex}`;
 }
 
 export function tier0AffectedRegionFromPayload(

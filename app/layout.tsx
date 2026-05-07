@@ -15,6 +15,7 @@ import { GovernadaShell } from '@/components/governada/GovernadaShell';
 import { GovernanceFontProvider } from '@/components/GovernanceFontProvider';
 import { LocaleProvider } from '@/components/providers/LocaleProvider';
 import { DEFAULT_LOCALE, RTL_LOCALES } from '@/lib/i18n/config';
+import { MotionStrengthProvider } from '@/lib/motion/motionStrength';
 
 // DD05 route-owned locale contract:
 // - Unprefixed routes render canonical English HTML at the document boundary.
@@ -135,7 +136,9 @@ export default async function RootLayout({
                 Skip to main content
               </a>
               <GovernanceFontProvider />
-              <GovernadaShell>{children}</GovernadaShell>
+              <MotionStrengthProvider>
+                <GovernadaShell>{children}</GovernadaShell>
+              </MotionStrengthProvider>
               <CommandProvider />
               <Toaster />
               <InstallPrompt />

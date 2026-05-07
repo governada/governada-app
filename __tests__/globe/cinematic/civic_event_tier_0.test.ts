@@ -38,6 +38,18 @@ describe('civicEventTier0Behavior', () => {
     );
     expectPanel(ctx.dispatch, 'civic_briefing', true);
     expectCards(ctx.dispatch, 1);
+    const cardsCommand = ctx.dispatch.mock.calls.find(
+      ([command]) => command.type === 'anchoredCards',
+    )?.[0];
+    expect(cardsCommand).toEqual(
+      expect.objectContaining({
+        cards: [
+          expect.objectContaining({
+            href: '/proposal/abcdef1234567890/0',
+          }),
+        ],
+      }),
+    );
   });
 
   it('brightens the resolved Tier 0 affected region when the payload is hydrated', () => {

@@ -53,9 +53,12 @@ import { STORAGE_KEYS, readStoredValue } from '@/lib/persistence';
 import { useMotionStrength } from '@/lib/motion/motionStrength';
 import {
   AnchoredCardLayer,
+  AnchoredCardMobileStack,
   type AnchoredCardDescriptor,
   type FoldedAnchoredCardEntry,
 } from '@/components/globe/AnchoredCard';
+import { setSharedIntent } from '@/lib/globe/focusIntent';
+import { useIsTouchDevice } from '@/hooks/useViewportClass';
 
 const WorkspaceCards = dynamic(
   () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
@@ -144,6 +147,7 @@ export function GlobeLayout({
   const bridge = useSenecaGlobeBridge(globeRef, bridgeOptions);
   const { handleNodeClick: bridgeNodeClick, executeGlobeCommand } = bridge;
   const motionStrength = useMotionStrength();
+  const isTouchDevice = useIsTouchDevice();
   const lastHomepageCinemaKey = useRef<string | null>(null);
   const activeHomepageCinema = useRef<{
     key: string;
@@ -255,14 +259,95 @@ export function GlobeLayout({
   // Tooltip hover state
   const [hoveredNode, setHoveredNode] = useState<ConstellationNode3D | null>(null);
   const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number } | null>(null);
+  const [previewedNodeId, setPreviewedNodeId] = useState<string | null>(null);
+  const [previewExpiresAt, setPreviewExpiresAt] = useState<number | null>(null);
+  const [anchoredCardEngagement, setAnchoredCardEngagement] = useState<{
+    nodeId: string | null;
+    key: number;
+  }>({ nodeId: null, key: 0 });
+  const lastTouchSelectRef = useRef<{ nodeId: string; at: number } | null>(null);
 
   const handleNodeHoverScreen = useCallback(
     (node: ConstellationNode3D | null, pos: { x: number; y: number } | null) => {
+      if (isTouchDevice) return;
       setHoveredNode(node);
       setHoverScreenPos(pos);
     },
-    [],
+    [isTouchDevice],
   );
+
+  const bumpAnchoredCardTimer = useCallback((nodeId: string) => {
+    setAnchoredCardEngagement((current) => ({ nodeId, key: current.key + 1 }));
+  }, []);
+
+  const handleTouchNodePreview = useCallback(
+    (node: ConstellationNode3D) => {
+      // TODO(Phase 5): compose the 350ms match-candidate long-press preview with this touch branch.
+      const now = Date.now();
+      const nodeId = node.id;
+      if (
+        lastTouchSelectRef.current?.nodeId === nodeId &&
+        now - lastTouchSelectRef.current.at < 250
+      ) {
+        return;
+      }
+      lastTouchSelectRef.current = { nodeId, at: now };
+
+      const samePreviewActive =
+        previewedNodeId === nodeId && previewExpiresAt !== null && now < previewExpiresAt;
+      const hasAnchoredCard = anchoredCards.some(
+        (card) => card.anchorNodeId === node.id || card.anchorNodeId === node.fullId,
+      );
+
+      if (samePreviewActive) {
+        if (hasAnchoredCard) bumpAnchoredCardTimer(node.id);
+        const entityParam = nodeToEntityParam(node);
+        if (entityParam) handleEntitySelect(entityParam);
+        setPreviewedNodeId(null);
+        setPreviewExpiresAt(null);
+        setHoveredNode(null);
+        setHoverScreenPos(null);
+        return;
+      }
+
+      setPreviewedNodeId(nodeId);
+      setPreviewExpiresAt(now + 5_000);
+      setSharedIntent({
+        focusedIds: new Set([node.id]),
+        intensities: new Map([[node.id, 1]]),
+        dimStrength: 0.7,
+        flyToFocus: false,
+        cameraProximity: 'locked',
+        focusColor: '#fbbf24',
+        focusSizeBoost: 1.25,
+        transitionDuration: 0.25,
+      });
+
+      if (hasAnchoredCard) {
+        bumpAnchoredCardTimer(node.id);
+        setHoveredNode(null);
+        setHoverScreenPos(null);
+        return;
+      }
+
+      setHoveredNode(node);
+      setHoverScreenPos(getTouchPreviewPosition());
+    },
+    [anchoredCards, bumpAnchoredCardTimer, handleEntitySelect, previewExpiresAt, previewedNodeId],
+  );
+
+  useEffect(() => {
+    if (!previewedNodeId || previewExpiresAt === null) return;
+    const delay = Math.max(0, previewExpiresAt - Date.now());
+    const timeout = setTimeout(() => {
+      setPreviewedNodeId(null);
+      setPreviewExpiresAt(null);
+      setHoveredNode(null);
+      setHoverScreenPos(null);
+      setSharedIntent({ focusedIds: null });
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, [previewExpiresAt, previewedNodeId]);
 
   // SinceLastVisit state (auth only)
   const [previousVisitAt, setPreviousVisitAt] = useState<string | null>(null);
@@ -319,36 +404,31 @@ export function GlobeLayout({
 
   const handleNodeSelect = useCallback(
     (node: ConstellationNode3D) => {
+      if (isTouchDevice) {
+        handleTouchNodePreview(node);
+        return;
+      }
+
       bridgeNodeClick(node);
       // On homepage (/), open entity detail sheet instead of navigating to /g/ route
       if (pathname === '/') {
-        const nodeType = node.nodeType ?? 'drep';
-        let entityParam: string;
-        if (nodeType === 'proposal') {
-          const lastUnderscore = node.id.lastIndexOf('_');
-          if (lastUnderscore > 0) {
-            entityParam = encodeEntityParam(
-              'proposal',
-              node.id.slice(0, lastUnderscore),
-              node.id.slice(lastUnderscore + 1),
-            );
-          } else {
-            entityParam = encodeEntityParam('proposal', node.id, '0');
-          }
-        } else if (nodeType === 'cc') {
-          entityParam = encodeEntityParam('cc', node.id);
-        } else if (nodeType === 'spo') {
-          entityParam = encodeEntityParam('pool', node.id);
-        } else {
-          entityParam = encodeEntityParam('drep', node.id);
-        }
+        const entityParam = nodeToEntityParam(node);
         handleEntitySelect(entityParam);
       } else {
         const route = nodeToRoute(node);
         if (route) router.push(route);
       }
     },
-    [router, bridgeNodeClick, pathname, handleEntitySelect],
+    [router, bridgeNodeClick, pathname, handleEntitySelect, isTouchDevice, handleTouchNodePreview],
+  );
+
+  const handleAnchoredCardSelect = useCallback(
+    (card: AnchoredCardDescriptor) => {
+      bumpAnchoredCardTimer(card.anchorNodeId);
+      const entityParam = cardToEntityParam(card);
+      if (entityParam) handleEntitySelect(entityParam);
+    },
+    [bumpAnchoredCardTimer, handleEntitySelect],
   );
 
   const handlePanelClose = useCallback(() => {
@@ -615,10 +695,21 @@ export function GlobeLayout({
               cards={anchoredCards}
               nodePositions={anchoredNodePositions}
               onFold={handleFoldAnchoredCard}
+              engagedAnchorNodeId={anchoredCardEngagement.nodeId}
+              engagementKey={anchoredCardEngagement.key}
             />
           </ConstellationScene>
         )}
       </div>
+
+      <AnchoredCardMobileStack
+        cards={anchoredCards}
+        onFold={handleFoldAnchoredCard}
+        onSelect={handleAnchoredCardSelect}
+        engagedAnchorNodeId={anchoredCardEngagement.nodeId}
+        engagementKey={anchoredCardEngagement.key}
+        foldBudget={use2D}
+      />
 
       {/* Cluster labels moved inside Canvas as children of ConstellationScene */}
 
@@ -734,6 +825,73 @@ function intentEntityRoute(entityType: string, entityId: string): string | null 
     default:
       return null;
   }
+}
+
+function getTouchPreviewPosition(): { x: number; y: number } {
+  if (typeof window === 'undefined') return { x: 0, y: 0 };
+  return { x: window.innerWidth / 2, y: window.innerHeight * 0.36 };
+}
+
+function nodeToEntityParam(node: ConstellationNode3D): string {
+  const nodeType = node.nodeType ?? 'drep';
+  if (nodeType === 'proposal') {
+    const id = node.fullId || node.id;
+    const lastUnderscore = id.lastIndexOf('_');
+    if (lastUnderscore > 0) {
+      return encodeEntityParam(
+        'proposal',
+        id.slice(0, lastUnderscore),
+        id.slice(lastUnderscore + 1),
+      );
+    }
+    return encodeEntityParam('proposal', id, '0');
+  }
+  if (nodeType === 'cc') return encodeEntityParam('cc', node.fullId || node.id);
+  if (nodeType === 'spo') return encodeEntityParam('pool', node.fullId || node.id);
+  return encodeEntityParam('drep', node.fullId || node.id);
+}
+
+function cardToEntityParam(card: AnchoredCardDescriptor): string | null {
+  const hrefProposal = card.href?.match(/\/proposal\/([^/]+)\/(\d+)/);
+  if (hrefProposal) {
+    return encodeEntityParam('proposal', hrefProposal[1], hrefProposal[2]);
+  }
+
+  const hrefDrep = card.href?.match(/\/drep\/([^/?#]+)/);
+  if (hrefDrep) return encodeEntityParam('drep', decodeURIComponent(hrefDrep[1]));
+
+  const hrefPool = card.href?.match(/\/pool\/([^/?#]+)/);
+  if (hrefPool) return encodeEntityParam('pool', decodeURIComponent(hrefPool[1]));
+
+  const hrefCc = card.href?.match(/\/committee\/([^/?#]+)/);
+  if (hrefCc) return encodeEntityParam('cc', decodeURIComponent(hrefCc[1]));
+
+  const anchor = card.anchorNodeId;
+  if (anchor.startsWith('proposal_')) {
+    const lastUnderscore = anchor.lastIndexOf('_');
+    if (lastUnderscore > 'proposal_'.length) {
+      return encodeEntityParam(
+        'proposal',
+        anchor.slice('proposal_'.length, lastUnderscore),
+        anchor.slice(lastUnderscore + 1),
+      );
+    }
+  }
+  if (anchor.startsWith('drep_')) return encodeEntityParam('drep', anchor.slice('drep_'.length));
+  if (anchor.startsWith('spo_')) return encodeEntityParam('pool', anchor.slice('spo_'.length));
+  if (anchor.startsWith('pool_')) return encodeEntityParam('pool', anchor.slice('pool_'.length));
+  if (anchor.startsWith('cc_')) return encodeEntityParam('cc', anchor.slice('cc_'.length));
+
+  if (
+    anchor.startsWith('proposal-') ||
+    anchor.startsWith('user-') ||
+    anchor.startsWith('action-') ||
+    anchor === 'proposal-pending'
+  ) {
+    return null;
+  }
+
+  return encodeEntityParam('drep', anchor);
 }
 
 /** Map a constellation node to its /g/ route */

@@ -5,6 +5,7 @@ import {
   focusNodes,
   makeCard,
   tier0AffectedRegionFromPayload,
+  tier0LocusHrefFromPayload,
   tier0LocusNodeIds,
 } from './shared';
 import type { ConstellationRef } from '@/lib/globe/types';
@@ -15,6 +16,7 @@ export function createCivicEventTier0Behavior(_getGlobe?: () => ConstellationRef
     commandType: 'cinema:civic_event_tier_0',
     run(command, ctx) {
       const locus = tier0LocusNodeIds(command.payload);
+      const locusHref = tier0LocusHrefFromPayload(command.payload);
       const affectedRegion = tier0AffectedRegionFromPayload(command.payload);
       const affectedNodeIds = affectedRegion?.affectedNodeIds.length
         ? affectedRegion.affectedNodeIds
@@ -37,6 +39,7 @@ export function createCivicEventTier0Behavior(_getGlobe?: () => ConstellationRef
           title: 'Civic event',
           body: 'The polity has spoken. Personal items are waiting in Seneca.',
           anchorNodeId: locus[0],
+          href: locusHref,
         }),
       ]);
     },

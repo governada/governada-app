@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { GlowBar } from '@/components/ui/GlowBar';
-import type { ConfidenceSource } from '@/lib/matching/confidence';
+import {
+  STRONG_SIGNAL_THRESHOLD,
+  VALUES_ONLY_BASELINE_CONFIDENCE,
+  type ConfidenceSource,
+} from '@/lib/matching/confidence';
 
 /* ─── Source colors ────────────────────────────────────── */
 
@@ -14,6 +18,7 @@ const SOURCE_COLORS: Record<string, string> = {
   proposalDiversity: 'bg-purple-500',
   engagement: 'bg-amber-500',
   delegation: 'bg-cyan-500',
+  treasuryJudgment: 'bg-orange-500',
 };
 
 const SOURCE_GLOW: Record<string, string> = {
@@ -22,6 +27,7 @@ const SOURCE_GLOW: Record<string, string> = {
   proposalDiversity: '#a855f7',
   engagement: '#f59e0b',
   delegation: '#06b6d4',
+  treasuryJudgment: '#f97316',
 };
 
 const SOURCE_TEXT_COLORS: Record<string, string> = {
@@ -30,6 +36,7 @@ const SOURCE_TEXT_COLORS: Record<string, string> = {
   proposalDiversity: 'text-purple-500',
   engagement: 'text-amber-500',
   delegation: 'text-cyan-500',
+  treasuryJudgment: 'text-orange-500',
 };
 
 /* ─── Types ────────────────────────────────────────────── */
@@ -41,6 +48,8 @@ interface ConfidenceBarProps {
   sources?: ConfidenceSource[];
   /** Whether to show expandable source breakdown */
   expandable?: boolean;
+  /** Renders the spec's honest-baseline references around the current score. */
+  showReferencePoints?: boolean;
   className?: string;
 }
 
@@ -96,6 +105,7 @@ function ProgressiveConfidenceBar({
   confidence,
   sources,
   expandable = true,
+  showReferencePoints = false,
   className,
 }: ConfidenceBarProps) {
   const [expanded, setExpanded] = useState(false);
@@ -192,6 +202,54 @@ function ProgressiveConfidenceBar({
           ))}
         </div>
       )}
+
+      {showReferencePoints && <ConfidenceReferencePoints current={confidence} />}
+    </div>
+  );
+}
+
+function ConfidenceReferencePoints({ current }: { current: number }) {
+  const references = [
+    {
+      key: 'baseline',
+      label: 'values-only baseline',
+      value: VALUES_ONLY_BASELINE_CONFIDENCE,
+    },
+    {
+      key: 'current',
+      label: 'current score',
+      value: current,
+    },
+    {
+      key: 'strong',
+      label: 'strong working signal',
+      value: STRONG_SIGNAL_THRESHOLD,
+    },
+  ];
+
+  return (
+    <div
+      className="grid grid-cols-3 gap-2 pt-1"
+      data-testid="confidence-reference-points"
+      aria-label="Confidence reference points"
+    >
+      {references.map((reference) => (
+        <div
+          key={reference.key}
+          className={cn(
+            'rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5',
+            reference.key === 'current' && 'border-primary/30 bg-primary/10',
+          )}
+        >
+          <div className="text-[10px] font-medium leading-tight text-foreground/80">
+            {reference.label}
+          </div>
+          <div className="mt-0.5 text-[10px] leading-none text-muted-foreground">
+            <span className="align-baseline text-[11px] tabular-nums">{reference.value}</span>
+            <span className="align-sub text-[8px]">%</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

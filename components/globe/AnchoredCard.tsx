@@ -1,21 +1,31 @@
 'use client';
 
 import { Html } from '@react-three/drei';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useViewportClass } from '@/hooks/useViewportClass';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import { cn } from '@/lib/utils';
 
-export type AnchoredCardKind = 'team' | 'delta' | 'epoch' | 'civic' | 'action' | 'sentiment';
+export type AnchoredCardKind =
+  | 'team'
+  | 'delta'
+  | 'epoch'
+  | 'civic'
+  | 'action'
+  | 'sentiment'
+  | 'match';
 
 export interface AnchoredCardDescriptor {
   id: string;
   kind: AnchoredCardKind;
   title: string;
   body?: string;
+  content?: ReactNode;
   anchorNodeId: string;
   position?: [number, number, number];
   href?: string;
+  className?: string;
+  autoDismissMs?: number | null;
 }
 
 export interface FoldedAnchoredCardEntry {
@@ -31,7 +41,7 @@ interface AnchoredCardProps {
   nodeRects?: DOMRect[];
   onFold: (entry: FoldedAnchoredCardEntry) => void;
   onSelect?: (card: AnchoredCardDescriptor) => void;
-  autoDismissMs?: number;
+  autoDismissMs?: number | null;
   engagementKey?: number;
 }
 
@@ -39,7 +49,7 @@ interface AnchoredCardLayerProps {
   cards: AnchoredCardDescriptor[];
   nodePositions?: Map<string, [number, number, number]>;
   onFold: (entry: FoldedAnchoredCardEntry) => void;
-  autoDismissMs?: number;
+  autoDismissMs?: number | null;
   engagedAnchorNodeId?: string | null;
   engagementKey?: number;
 }
@@ -48,7 +58,7 @@ interface AnchoredCardMobileStackProps {
   cards: AnchoredCardDescriptor[];
   onFold: (entry: FoldedAnchoredCardEntry) => void;
   onSelect: (card: AnchoredCardDescriptor) => void;
-  autoDismissMs?: number;
+  autoDismissMs?: number | null;
   engagedAnchorNodeId?: string | null;
   engagementKey?: number;
   foldBudget?: boolean;
@@ -124,7 +134,7 @@ export function AnchoredCardLayer({
             position: nodePositions?.get(card.anchorNodeId) ?? card.position ?? DEFAULT_POSITION,
           }}
           onFold={onFold}
-          autoDismissMs={autoDismissMs}
+          autoDismissMs={card.autoDismissMs === undefined ? autoDismissMs : card.autoDismissMs}
           engagementKey={card.anchorNodeId === engagedAnchorNodeId ? engagementKey : 0}
         />
       ))}
@@ -169,7 +179,7 @@ export function AnchoredCardMobileStack({
             card={card}
             onFold={onFold}
             onSelect={onSelect}
-            autoDismissMs={autoDismissMs}
+            autoDismissMs={card.autoDismissMs === undefined ? autoDismissMs : card.autoDismissMs}
             engagementKey={card.anchorNodeId === engagedAnchorNodeId ? engagementKey : 0}
           />
         ))}
@@ -193,6 +203,10 @@ export function AnchoredCard({
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    if (autoDismissMs === null) {
+      timerRef.current = null;
+      return;
+    }
     timerRef.current = setTimeout(() => {
       setDismissed(true);
       onFold({
@@ -250,7 +264,12 @@ export function AnchoredCard({
     >
       <div
         ref={ref}
-        className={`${offset} ${opacity} w-[min(280px,72vw)] rounded-md border border-white/15 bg-[#10131b]/90 px-3 py-2 text-left shadow-2xl backdrop-blur transition-opacity duration-300`}
+        className={cn(
+          offset,
+          opacity,
+          'w-[min(280px,72vw)] rounded-md border border-white/15 bg-[#10131b]/90 px-3 py-2 text-left shadow-2xl backdrop-blur transition-opacity duration-300',
+          card.className,
+        )}
         data-testid="anchored-card"
         data-card-kind={card.kind}
         data-anchor-node-id={card.anchorNodeId}
@@ -258,9 +277,13 @@ export function AnchoredCard({
         onMouseEnter={resetTimer}
         onClick={handleEngage}
       >
-        <div className="text-[11px] font-semibold leading-snug text-white">{card.title}</div>
-        {card.body && (
-          <div className="mt-1 text-[10px] leading-snug text-white/60">{card.body}</div>
+        {card.content ?? (
+          <>
+            <div className="text-[11px] font-semibold leading-snug text-white">{card.title}</div>
+            {card.body && (
+              <div className="mt-1 text-[10px] leading-snug text-white/60">{card.body}</div>
+            )}
+          </>
         )}
       </div>
     </Html>
@@ -281,6 +304,10 @@ function AnchoredCardMobileItem({
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    if (autoDismissMs === null) {
+      timerRef.current = null;
+      return;
+    }
     timerRef.current = setTimeout(() => {
       setDismissed(true);
       onFold({
@@ -305,6 +332,25 @@ function AnchoredCardMobileItem({
   }, [engagementKey, resetTimer]);
 
   if (dismissed) return null;
+
+  if (card.content) {
+    return (
+      <div
+        className={cn(
+          'pointer-events-auto w-full rounded-md border border-white/10 bg-white/[0.06]',
+          'px-3 py-2 text-left shadow-lg',
+          card.className,
+        )}
+        data-testid="anchored-card-mobile"
+        data-card-kind={card.kind}
+        data-anchor-node-id={card.anchorNodeId}
+        onMouseEnter={resetTimer}
+        onTouchStart={resetTimer}
+      >
+        {card.content}
+      </div>
+    );
+  }
 
   return (
     <button

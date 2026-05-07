@@ -58,6 +58,8 @@ test.describe('Critical public journeys', () => {
   });
 
   test('homepage match workspace can reach a live result state', async ({ page }) => {
+    await page.addInitScript(() => sessionStorage.setItem('governada-intro-seen', '1'));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/?mode=match', { waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('homepage-match-workspace')).toBeVisible({ timeout: 15_000 });
 

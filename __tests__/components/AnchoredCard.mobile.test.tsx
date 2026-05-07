@@ -89,6 +89,72 @@ describe('AnchoredCard mobile stack', () => {
     expect(onFold).toHaveBeenCalledWith(expect.objectContaining({ id: 'timer', reason: 'timer' }));
   });
 
+  it('allows destination cards to opt out of auto-dismiss', () => {
+    const onFold = vi.fn();
+    render(
+      <AnchoredCardMobileStack
+        cards={[{ ...card('match'), kind: 'match', autoDismissMs: null }]}
+        onFold={onFold}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    vi.advanceTimersByTime(120_000);
+
+    expect(onFold).not.toHaveBeenCalled();
+    expect(screen.getByText('Card match')).toBeTruthy();
+  });
+
+  it('renders rich card content without wrapping it in a button', () => {
+    render(
+      <AnchoredCardMobileStack
+        cards={[
+          {
+            ...card('content'),
+            kind: 'match',
+            autoDismissMs: null,
+            content: <a href="/match/vote">Strengthen with proposal voting</a>,
+          },
+        ]}
+        onFold={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: /strengthen with proposal voting/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /strengthen with proposal voting/i })).toBeNull();
+  });
+
+  it('resets rich card auto-dismiss on mobile touch interaction', () => {
+    const onFold = vi.fn();
+    render(
+      <AnchoredCardMobileStack
+        cards={[
+          {
+            ...card('content-timer'),
+            kind: 'match',
+            autoDismissMs: 1000,
+            content: <a href="/match/vote">Strengthen with proposal voting</a>,
+          },
+        ]}
+        onFold={onFold}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    vi.advanceTimersByTime(900);
+    fireEvent.touchStart(screen.getByTestId('anchored-card-mobile'));
+    vi.advanceTimersByTime(999);
+
+    expect(onFold).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+
+    expect(onFold).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'content-timer', reason: 'timer' }),
+    );
+  });
+
   it('opens the entity sheet callback when a stacked card is tapped', () => {
     const onSelect = vi.fn();
     render(<AnchoredCardMobileStack cards={[card('tap')]} onFold={vi.fn()} onSelect={onSelect} />);

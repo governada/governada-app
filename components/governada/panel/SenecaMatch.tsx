@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useCallback, useRef, useEffect, type ReactNode, type TouchEvent } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, Compass, ExternalLink, Sparkles, Loader2, Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -13,7 +12,7 @@ import type { AlignmentScores } from '@/lib/drepIdentity';
 import type { GlobeCommand } from '@/lib/globe/types';
 import { DEFAULT_INTENT, MATCH_COLOR } from '@/lib/globe/types';
 import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
-import { setSharedIntent } from '@/lib/globe/focusIntent';
+import { getSharedIntent, setSharedIntent } from '@/lib/globe/focusIntent';
 import type { QuickMatchResponse, MatchResult } from '@/hooks/useQuickMatch';
 import { MatchResultOverlay } from '@/components/governada/MatchResultOverlay';
 import {
@@ -24,6 +23,7 @@ import {
 import { runSequence, flattenSequence, type SequenceHandle } from '@/lib/globe/sequencer';
 import { computeUserNodePosition, findClosestCluster } from '@/lib/globe/userNodePlacement';
 import { useFeatureFlag } from '@/components/FeatureGate';
+import { useIsTouchDevice } from '@/hooks/useViewportClass';
 // Personality label infrastructure — available for Tier 2 (personality in results overlay)
 // import { getPersonalityLabel, getDominantDimension, getIdentityColor } from '@/lib/drepIdentity';
 import posthog from 'posthog-js';
@@ -167,20 +167,19 @@ const MATCH_VISUALS = {
   emissiveRange: { base: 0.5, intensityFactor: 0.35, max: 1.4 },
   atmosphereWarmColor: '#cc8844',
   bloomIntensity: 0.3,
+  // Spec C2: Layer 1a keeps its living drift while Layer 1b dampens during Cerebro.
   driftEnabled: true,
 } as const;
 
-/* ─── Seneca acknowledgement messages (evocative, matching globe visual) ─── */
+const EMPTY_STATE_LINE =
+  'No representative aligns strongly with what you have told me. Either your posture is unusual — which is interesting in itself — or your answers conflict in ways worth examining. Shall we revisit?';
+const MATCH_REVEAL_CARD_ITEM_ID = 'match-reveal-card';
+const MATCH_REVEAL_CARD_STATE = 'returning_in_session' as const;
 
-const ACKNOWLEDGEMENTS = [
-  'The field is shifting. I can see clusters forming around your priorities\u2026',
-  'Narrowing in. A pattern is emerging among the representatives\u2026',
-  'Almost there. I see a clear cluster of aligned representatives\u2026',
-  'The constellation is tightening around your values\u2026',
-  'Risk tolerance tells me a lot. Your neighborhood is becoming clear\u2026',
-  'Engagement style narrows it further. Just one more\u2026',
-  'Locking on to your best matches\u2026',
-];
+export function buildAcknowledgement(topN: number, round: number): string {
+  if (round === 0) return `${topN}. The field is thinning.`;
+  return `${topN}. The field is thinning.`;
+}
 
 function getConfidenceLabel(answeredCount: number): { label: string; pct: number } {
   if (answeredCount >= 7) return { label: 'Deep match', pct: 95 };
@@ -200,7 +199,7 @@ interface SenecaMatchProps {
   onStartConversation?: (query: string) => void;
 }
 
-type MatchStep = number | 'loading' | 'revealing' | 'results' | 'error';
+type MatchStep = number | 'loading' | 'revealing' | 'results' | 'empty' | 'error';
 
 /* ─── Answer label lookup ─── */
 
@@ -214,6 +213,7 @@ function getAnswerLabel(questionId: string, value: string): string {
 export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
   const prefersReducedMotion = useReducedMotion();
   const spatialMatch = useFeatureFlag('globe_spatial_match');
+  const isTouchDevice = useIsTouchDevice();
   const [step, setStep] = useState<MatchStep>(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<QuickMatchResponse | null>(null);
@@ -221,6 +221,12 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
   const [, setExpandedMatch] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const previewRestoreRef = useRef<ReturnType<typeof getSharedIntent> | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchPreviewActiveRef = useRef(false);
+  const suppressNextClickRef = useRef(false);
+  const matchRevealCardPublishedRef = useRef(false);
 
   // Overlay state for celebratory #1 match card (rendered via portal)
   const [overlayState, setOverlayState] = useState<{
@@ -251,6 +257,20 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
   useEffect(
     () => () => {
       clearPendingTimers();
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+      longPressStartRef.current = null;
+      previewRestoreRef.current = null;
+      touchPreviewActiveRef.current = false;
+      if (matchRevealCardPublishedRef.current) {
+        dispatchGlobeCommand({
+          type: 'anchoredCards',
+          state: MATCH_REVEAL_CARD_STATE,
+          itemId: MATCH_REVEAL_CARD_ITEM_ID,
+          cards: [],
+        });
+      }
+      matchRevealCardPublishedRef.current = false;
       sequenceHandleRef.current?.cancel();
       sequenceHandleRef.current = null;
       setSharedIntent(DEFAULT_INTENT);
@@ -275,6 +295,87 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
     dispatchGlobeCommand(cmd);
   }, []);
 
+  const stopOptionPreview = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStartRef.current = null;
+    touchPreviewActiveRef.current = false;
+    if (!previewRestoreRef.current) return;
+    setSharedIntent(previewRestoreRef.current);
+    previewRestoreRef.current = null;
+  }, []);
+
+  const startOptionPreview = useCallback(
+    (questionId: string, value: string, questionIndex: number) => {
+      if (previewRestoreRef.current) stopOptionPreview();
+      const current = getSharedIntent();
+      previewRestoreRef.current = current;
+      const hypotheticalAnswers = { ...answers, [questionId]: value };
+      const hypotheticalAlignment = buildAlignmentFromAnswers(hypotheticalAnswers);
+      setSharedIntent({
+        ...current,
+        focusedIds: 'from-alignment',
+        alignmentVector: alignmentsToArray(hypotheticalAlignment),
+        topN: TOP_N_PER_ROUND[questionIndex] ?? 5,
+        dimStrength: 0.85,
+        nodeTypeFilter: 'drep',
+        flyToFocus: false,
+        ...MATCH_VISUALS,
+      });
+    },
+    [answers, stopOptionPreview],
+  );
+
+  const cancelLongPressTimer = useCallback(() => {
+    if (!longPressTimerRef.current) return;
+    clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  }, []);
+
+  const handleOptionTouchStart = useCallback(
+    (
+      event: TouchEvent<HTMLButtonElement>,
+      questionId: string,
+      value: string,
+      questionIndex: number,
+    ) => {
+      if (!isTouchDevice) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      stopOptionPreview();
+      longPressStartRef.current = { x: touch.clientX, y: touch.clientY };
+      longPressTimerRef.current = setTimeout(() => {
+        longPressTimerRef.current = null;
+        touchPreviewActiveRef.current = true;
+        suppressNextClickRef.current = true;
+        startOptionPreview(questionId, value, questionIndex);
+        navigator.vibrate?.(10);
+      }, 350);
+    },
+    [isTouchDevice, startOptionPreview, stopOptionPreview],
+  );
+
+  const handleOptionTouchMove = useCallback(
+    (event: TouchEvent<HTMLButtonElement>) => {
+      if (!isTouchDevice || !longPressStartRef.current) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      const dx = touch.clientX - longPressStartRef.current.x;
+      const dy = touch.clientY - longPressStartRef.current.y;
+      if (Math.hypot(dx, dy) <= 10) return;
+      cancelLongPressTimer();
+      if (touchPreviewActiveRef.current) stopOptionPreview();
+    },
+    [cancelLongPressTimer, isTouchDevice, stopOptionPreview],
+  );
+
+  const handleOptionTouchEnd = useCallback(() => {
+    cancelLongPressTimer();
+    if (touchPreviewActiveRef.current) stopOptionPreview();
+  }, [cancelLongPressTimer, stopOptionPreview]);
+
   // Auto-start the globe match choreography on mount.
   // CRITICAL: Send matchStart as a DIRECT command, not wrapped in a sequence.
   // If wrapped in a sequence, the choreographer schedules it via setTimeout(0),
@@ -293,6 +394,7 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
       scanProgress: 0,
       cameraProximity: 'overview',
       flyToFocus: true,
+      // Spec C2: keep Layer 1a drifting slowly while the match layer dampens.
       orbitSpeedOverride: 0.015,
       ...MATCH_VISUALS,
       atmosphereTemperature: 0.3,
@@ -300,75 +402,6 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
     posthog.capture('match_started', { source: 'seneca_panel' });
     posthog.capture('match_cerebro_entered');
   }, [prefersReducedMotion]);
-
-  // Handle answer selection
-  const handleAnswer = useCallback(
-    (questionId: string, value: string, questionIndex: number) => {
-      const newAnswers = { ...answers, [questionId]: value };
-      setAnswers(newAnswers);
-
-      posthog.capture('match_answer_selected', {
-        round: questionIndex + 1,
-        question_id: questionId,
-        answer: value,
-      });
-
-      // Build alignment vector and dispatch choreographed sequence
-      const alignment = buildAlignmentFromAnswers(newAnswers);
-      const vector = alignmentsToArray(alignment);
-      const topN = TOP_N_PER_ROUND[questionIndex] ?? 5;
-      lastAlignmentRef.current = vector;
-
-      posthog.capture('match_narrowing_round', {
-        round: questionIndex + 1,
-        remaining_count: topN,
-      });
-
-      // Cerebro: compute user's evolving position for progressive placement
-      const userPos = computeUserNodePosition(alignment);
-
-      // Progressive mood: bloom and emissive evolve with each answer
-      const progress = SCAN_PROGRESS_PER_ROUND[questionIndex] ?? 0.95;
-      const bloomForPhase = 0.3 + progress * 1.2; // 0.3 → 1.5 across rounds
-      const emissiveForPhase = {
-        base: 0.5 + progress * 0.5, // 0.5 → 1.0
-        intensityFactor: 0.35 + progress * 0.5, // 0.35 → 0.85
-        max: 1.4 + progress * 0.6, // 1.4 → 2.0
-      };
-
-      // Reactive: update focus intent — engine derives FocusState + camera
-      // User node placed progressively (Cerebro first-person navigation)
-      setSharedIntent({
-        focusedIds: 'from-alignment',
-        alignmentVector: vector,
-        topN,
-        dimStrength: 0.7,
-        nodeTypeFilter: 'drep',
-        scanProgress: progress,
-        cameraProximity: questionIndex >= 4 ? 'tight' : 'cluster',
-        flyToFocus: true,
-        approachAngle: prefersReducedMotion ? undefined : DIVE_ANGLES[questionIndex],
-        ...MATCH_VISUALS,
-        bloomIntensity: bloomForPhase,
-        emissiveRange: emissiveForPhase,
-        driftEnabled: true,
-        // Progressive user node: citizen sees their position evolving with each answer
-        userNode:
-          questionIndex >= 2 ? { position: userPos, intensity: 0.3 + progress * 0.7 } : null,
-      });
-
-      // Advance to next question or submit — snappy transitions
-      if (questionIndex < TOTAL_QUESTIONS - 1) {
-        scheduleTimer(() => setStep(questionIndex + 1), 350);
-      } else {
-        scheduleTimer(() => {
-          setStep('loading');
-          submitMatch(newAnswers);
-        }, 400);
-      }
-    },
-    [answers, sendGlobeCommand, prefersReducedMotion, scheduleTimer, spatialMatch], // eslint-disable-line react-hooks/exhaustive-deps
-  );
 
   // Submit answers to API
   const submitMatch = useCallback(
@@ -495,7 +528,14 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
             });
           }
         } else {
-          setStep('results');
+          setSharedIntent({
+            focusedIds: new Set<string>(),
+            dimStrength: 1.0,
+            nodeTypeFilter: 'drep',
+            forceActive: true,
+            ...MATCH_VISUALS,
+          });
+          setStep('empty');
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
@@ -503,7 +543,77 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
         setStep('error');
       }
     },
-    [sendGlobeCommand, prefersReducedMotion, scheduleTimer],
+    [sendGlobeCommand, prefersReducedMotion, scheduleTimer, spatialMatch],
+  );
+
+  // Handle answer selection
+  const handleAnswer = useCallback(
+    (questionId: string, value: string, questionIndex: number) => {
+      stopOptionPreview();
+      const newAnswers = { ...answers, [questionId]: value };
+      setAnswers(newAnswers);
+
+      posthog.capture('match_answer_selected', {
+        round: questionIndex + 1,
+        question_id: questionId,
+        answer: value,
+      });
+
+      // Build alignment vector and dispatch choreographed sequence
+      const alignment = buildAlignmentFromAnswers(newAnswers);
+      const vector = alignmentsToArray(alignment);
+      const topN = TOP_N_PER_ROUND[questionIndex] ?? 5;
+      lastAlignmentRef.current = vector;
+
+      posthog.capture('match_narrowing_round', {
+        round: questionIndex + 1,
+        remaining_count: topN,
+      });
+
+      // Cerebro: compute user's evolving position for progressive placement
+      const userPos = computeUserNodePosition(alignment);
+
+      // Progressive mood: bloom and emissive evolve with each answer
+      const progress = SCAN_PROGRESS_PER_ROUND[questionIndex] ?? 0.95;
+      const bloomForPhase = 0.3 + progress * 1.2; // 0.3 → 1.5 across rounds
+      const emissiveForPhase = {
+        base: 0.5 + progress * 0.5, // 0.5 → 1.0
+        intensityFactor: 0.35 + progress * 0.5, // 0.35 → 0.85
+        max: 1.4 + progress * 0.6, // 1.4 → 2.0
+      };
+
+      // Reactive: update focus intent — engine derives FocusState + camera
+      // User node placed progressively (Cerebro first-person navigation)
+      setSharedIntent({
+        focusedIds: 'from-alignment',
+        alignmentVector: vector,
+        topN,
+        dimStrength: 0.7,
+        nodeTypeFilter: 'drep',
+        scanProgress: progress,
+        cameraProximity: questionIndex >= 4 ? 'tight' : 'cluster',
+        flyToFocus: true,
+        approachAngle: prefersReducedMotion ? undefined : DIVE_ANGLES[questionIndex],
+        ...MATCH_VISUALS,
+        bloomIntensity: bloomForPhase,
+        emissiveRange: emissiveForPhase,
+        driftEnabled: true,
+        // Progressive user node: citizen sees their position evolving with each answer
+        userNode:
+          questionIndex >= 2 ? { position: userPos, intensity: 0.3 + progress * 0.7 } : null,
+      });
+
+      // Advance to next question or submit — snappy transitions
+      if (questionIndex < TOTAL_QUESTIONS - 1) {
+        scheduleTimer(() => setStep(questionIndex + 1), 350);
+      } else {
+        scheduleTimer(() => {
+          setStep('loading');
+          submitMatch(newAnswers);
+        }, 400);
+      }
+    },
+    [answers, stopOptionPreview, prefersReducedMotion, scheduleTimer, submitMatch],
   );
 
   // "Match me now" — early exit with collected answers
@@ -550,6 +660,59 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
     }
     posthog.capture('match_restarted');
   }, [sendGlobeCommand, clearPendingTimers, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (!result || !overlayState) {
+      if (matchRevealCardPublishedRef.current) {
+        sendGlobeCommand({
+          type: 'anchoredCards',
+          state: MATCH_REVEAL_CARD_STATE,
+          itemId: MATCH_REVEAL_CARD_ITEM_ID,
+          cards: [],
+        });
+        matchRevealCardPublishedRef.current = false;
+      }
+      return;
+    }
+
+    const handleBackToTop = () => {
+      const topMatch = result.matches[0];
+      if (!topMatch) return;
+      sendGlobeCommand({ type: 'matchFlyTo', nodeId: topMatch.drepId });
+      scheduleTimer(() => {
+        setOverlayState({ focusedMatch: topMatch, focusedRank: 1, isTopMatch: true });
+      }, 1500);
+    };
+
+    matchRevealCardPublishedRef.current = true;
+    sendGlobeCommand({
+      type: 'anchoredCards',
+      state: MATCH_REVEAL_CARD_STATE,
+      itemId: MATCH_REVEAL_CARD_ITEM_ID,
+      cards: [
+        {
+          id: MATCH_REVEAL_CARD_ITEM_ID,
+          kind: 'match',
+          title: `${overlayState.focusedMatch.drepName ?? 'Matched DRep'} result`,
+          anchorNodeId: overlayState.focusedMatch.drepId,
+          autoDismissMs: null,
+          className: 'w-[min(390px,88vw)] bg-[#080b12]/94 px-3 py-3',
+          content: (
+            <MatchResultOverlay
+              result={result}
+              focusedMatch={overlayState.focusedMatch}
+              focusedRank={overlayState.focusedRank}
+              isTopMatch={overlayState.isTopMatch}
+              onBackToTop={handleBackToTop}
+              onDismiss={() => setOverlayState(null)}
+              clusterContext={spatialMatch ? clusterContext : undefined}
+              spatialMode={!!spatialMatch}
+            />
+          ),
+        },
+      ],
+    });
+  }, [clusterContext, overlayState, result, scheduleTimer, sendGlobeCommand, spatialMatch]);
 
   // Current question index
   const currentQIndex = typeof step === 'number' ? step : -1;
@@ -615,7 +778,11 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
         )}
 
         {/* Loading/revealing/results past answers strip */}
-        {(step === 'loading' || step === 'revealing' || step === 'results' || step === 'error') &&
+        {(step === 'loading' ||
+          step === 'revealing' ||
+          step === 'results' ||
+          step === 'empty' ||
+          step === 'error') &&
           Object.keys(answers).length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3 shrink-0">
               {MATCH_QUESTIONS.map((q) => {
@@ -646,8 +813,8 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
             >
               {step === 0 && (
                 <SenecaBubble delay={0}>
-                  A few questions to find your governance match. You can match early after the first
-                  two.
+                  Representation begins with knowing what you want represented. Let&apos;s start
+                  there.
                 </SenecaBubble>
               )}
               <SenecaBubble delay={step === 0 ? 0.15 : 0}>
@@ -661,7 +828,26 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
                     initial={prefersReducedMotion ? false : { opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.06, duration: 0.2 }}
-                    onClick={() => handleAnswer(MATCH_QUESTIONS[step].id, opt.value, step)}
+                    onMouseEnter={() => {
+                      if (!isTouchDevice)
+                        startOptionPreview(MATCH_QUESTIONS[step].id, opt.value, step);
+                    }}
+                    onMouseLeave={() => {
+                      if (!isTouchDevice) stopOptionPreview();
+                    }}
+                    onTouchStart={(event) =>
+                      handleOptionTouchStart(event, MATCH_QUESTIONS[step].id, opt.value, step)
+                    }
+                    onTouchMove={handleOptionTouchMove}
+                    onTouchEnd={handleOptionTouchEnd}
+                    onTouchCancel={handleOptionTouchEnd}
+                    onClick={() => {
+                      if (suppressNextClickRef.current) {
+                        suppressNextClickRef.current = false;
+                        return;
+                      }
+                      handleAnswer(MATCH_QUESTIONS[step].id, opt.value, step);
+                    }}
                     className={cn(
                       'w-full rounded-xl border px-4 py-2.5 text-left transition-all min-h-[44px]',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
@@ -669,7 +855,7 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
                     )}
                   >
                     <span className="text-sm font-medium text-foreground">{opt.label}</span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">{opt.brief}</span>
+                    <span className="block text-xs text-foreground/90 mt-0.5">{opt.brief}</span>
                   </motion.button>
                 ))}
               </div>
@@ -721,7 +907,9 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 }}
                 >
-                  <SenecaBubble>{ACKNOWLEDGEMENTS[step - 1]}</SenecaBubble>
+                  <SenecaBubble>
+                    {buildAcknowledgement(TOP_N_PER_ROUND[step - 1] ?? 5, step - 1)}
+                  </SenecaBubble>
                 </motion.div>
               )}
             </motion.div>
@@ -736,7 +924,12 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
               exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
               className="flex flex-col flex-1 items-center justify-center gap-3"
             >
-              <SenecaBubble>{ACKNOWLEDGEMENTS[TOTAL_QUESTIONS - 1]}</SenecaBubble>
+              <SenecaBubble>
+                {buildAcknowledgement(
+                  TOP_N_PER_ROUND[TOTAL_QUESTIONS - 1] ?? 5,
+                  TOTAL_QUESTIONS - 1,
+                )}
+              </SenecaBubble>
               <div className="flex items-center gap-2 py-4">
                 <Loader2 className="h-4 w-4 animate-spin text-primary/60" />
                 <span className="text-xs text-muted-foreground">
@@ -795,6 +988,29 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
             </motion.div>
           )}
 
+          {/* Empty */}
+          {step === 'empty' && (
+            <motion.div
+              key="empty"
+              initial={prefersReducedMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col flex-1 justify-center gap-3"
+            >
+              <SenecaBubble>{EMPTY_STATE_LINE}</SenecaBubble>
+              <button
+                onClick={handleRestart}
+                className={cn(
+                  'w-full rounded-xl border border-white/10 bg-white/5',
+                  'hover:bg-white/10 px-4 py-2.5 text-sm text-foreground',
+                  'transition-colors min-h-[44px]',
+                )}
+              >
+                Revisit
+              </button>
+            </motion.div>
+          )}
+
           {/* Results */}
           {step === 'results' && result && (
             <motion.div
@@ -821,31 +1037,7 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
         </AnimatePresence>
       </div>
 
-      {/* Celebratory match overlay — rendered via portal to escape panel bounds */}
-      {overlayState &&
-        result &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <MatchResultOverlay
-            result={result}
-            focusedMatch={overlayState.focusedMatch}
-            focusedRank={overlayState.focusedRank}
-            isTopMatch={overlayState.isTopMatch}
-            onBackToTop={() => {
-              const topMatch = result.matches[0];
-              if (topMatch) {
-                sendGlobeCommand({ type: 'matchFlyTo', nodeId: topMatch.drepId });
-                scheduleTimer(() => {
-                  setOverlayState({ focusedMatch: topMatch, focusedRank: 1, isTopMatch: true });
-                }, 1500);
-              }
-            }}
-            onDismiss={() => setOverlayState(null)}
-            clusterContext={spatialMatch ? clusterContext : undefined}
-            spatialMode={!!spatialMatch}
-          />,
-          document.body,
-        )}
+      {/* Match reveal card is published to the Phase 6 AnchoredCard layer. */}
     </div>
   );
 }
@@ -865,7 +1057,7 @@ function SenecaBubble({ children, delay = 0 }: { children: ReactNode; delay?: nu
       <div className="shrink-0 mt-0.5">
         <Compass className="h-3.5 w-3.5 text-primary/60" />
       </div>
-      <p className="text-sm text-foreground/80 leading-relaxed">{children}</p>
+      <p className="text-sm text-foreground leading-relaxed">{children}</p>
     </motion.div>
   );
 }
@@ -921,9 +1113,7 @@ function MatchResults({
       {/* Seneca message */}
       <div className="shrink-0">
         <SenecaBubble>
-          {spatialMode
-            ? 'This is where you belong in Cardano\u2019s governance. Explore your neighborhood \u2014 ask me anything.'
-            : 'Your #1 match is on the globe. Here are your other top matches \u2014 tap any to explore.'}
+          Here is who fits. Now examine them properly — alignment is a beginning, not a verdict.
         </SenecaBubble>
       </div>
 

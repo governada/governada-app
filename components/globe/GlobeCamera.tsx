@@ -18,13 +18,15 @@ import { AXIAL_TILT } from '@/lib/globe/types';
  */
 export function IdleCameraWobble({
   controlsRef,
+  motionStrength = 1,
 }: {
   controlsRef: React.RefObject<CameraControls | null>;
+  motionStrength?: number;
 }) {
   useFrame(() => {
     if (!controlsRef.current) return;
     // Constant slow rotation — no sinusoidal sway
-    controlsRef.current.azimuthAngle += 0.00015;
+    controlsRef.current.azimuthAngle += 0.00015 * motionStrength;
   });
   return null;
 }
@@ -99,12 +101,14 @@ export function ConstellationGroup({
   speedRef,
   breathing,
   urgency,
+  motionStrength = 1,
   children,
 }: {
   rotationRef: React.RefObject<number>;
   speedRef: React.RefObject<number>;
   breathing?: boolean;
   urgency?: number;
+  motionStrength?: number;
   children: React.ReactNode;
 }) {
   const groupRef = useRef<THREE.Group>(null);
@@ -113,7 +117,7 @@ export function ConstellationGroup({
   useFrame(({ clock }, delta) => {
     if (groupRef.current) {
       // Smooth rotation speed transitions — eased start/stop instead of abrupt
-      const targetSpeed = speedRef.current;
+      const targetSpeed = speedRef.current * motionStrength;
       currentSpeedRef.current +=
         (targetSpeed - currentSpeedRef.current) * (1 - Math.pow(0.01, delta));
       rotationRef.current += delta * currentSpeedRef.current;
@@ -134,7 +138,7 @@ export function ConstellationGroup({
             : phase < 0.2
               ? Math.sin(((phase - 0.1) * Math.PI) / 0.1) * 0.0015
               : 0;
-        groupRef.current.scale.setScalar(1 + beat);
+        groupRef.current.scale.setScalar(1 + beat * motionStrength);
       }
     }
   });

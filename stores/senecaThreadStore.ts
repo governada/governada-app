@@ -14,6 +14,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { AnchoredCardDescriptor } from '@/components/globe/AnchoredCard';
 import type { AdvisorMessage } from '@/lib/intelligence/streamAdvisor';
 import type { GlobeIntent } from '@/lib/intelligence/advisor';
 import type { PrioritizedQueue } from '@/types/cinematic';
@@ -75,6 +76,8 @@ export interface SenecaThreadState {
   pendingGlobeAction: GlobeIntent | null;
   /** Homepage prioritization-engine output, published by the server shell bridge */
   homepageCinematic: HomepageCinematicSnapshot | null;
+  /** Active homepage anchored cards, folded into Seneca on mobile when the sheet is open. */
+  homepageAnchoredCards: AnchoredCardDescriptor[];
   /** Soft Layer 2 region suggestion surfaced through the orb whisper */
   regionSuggestionWhisper: RegionSuggestionWhisper | null;
 }
@@ -96,6 +99,7 @@ export interface SenecaThreadActions {
   /** Clear the pending globe action after consumption */
   consumeGlobeAction: () => void;
   setHomepageCinematic: (snapshot: HomepageCinematicSnapshot | null) => void;
+  setHomepageAnchoredCards: (cards: AnchoredCardDescriptor[]) => void;
   setRegionSuggestionWhisper: (whisper: RegionSuggestionWhisper | null) => void;
 }
 
@@ -219,6 +223,7 @@ export const useSenecaThreadStore = create<SenecaThreadState & SenecaThreadActio
       visitedPages: [],
       pendingGlobeAction: null,
       homepageCinematic: null,
+      homepageAnchoredCards: [],
       regionSuggestionWhisper: null,
 
       // ----- Actions -----
@@ -325,6 +330,8 @@ export const useSenecaThreadStore = create<SenecaThreadState & SenecaThreadActio
       consumeGlobeAction: () => set({ pendingGlobeAction: null }),
 
       setHomepageCinematic: (snapshot) => set({ homepageCinematic: snapshot }),
+
+      setHomepageAnchoredCards: (cards) => set({ homepageAnchoredCards: cards }),
 
       setRegionSuggestionWhisper: (whisper) => set({ regionSuggestionWhisper: whisper }),
     }),

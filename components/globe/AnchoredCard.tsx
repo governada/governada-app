@@ -3,6 +3,7 @@
 import { Html } from '@react-three/drei';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useViewportClass } from '@/hooks/useViewportClass';
+import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import { cn } from '@/lib/utils';
 
 export type AnchoredCardKind = 'team' | 'delta' | 'epoch' | 'civic' | 'action' | 'sentiment';
@@ -141,6 +142,7 @@ export function AnchoredCardMobileStack({
   foldBudget = false,
 }: AnchoredCardMobileStackProps) {
   const viewportClass = useViewportClass();
+  const isSenecaOpen = useSenecaThreadStore((s) => s.isOpen);
   const visibleCards = useMemo(() => applyAnchoredCardBudget(cards), [cards]);
   const budgetFoldedIds = useRef(new Set<string>());
 
@@ -153,11 +155,11 @@ export function AnchoredCardMobileStack({
     }
   }, [cards, foldBudget, onFold]);
 
-  if (viewportClass !== 'mobile' || visibleCards.length === 0) return null;
+  if (viewportClass !== 'mobile' || isSenecaOpen || visibleCards.length === 0) return null;
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-50 pointer-events-none px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className="fixed inset-x-0 bottom-[var(--governada-bottom-nav-height)] z-50 pointer-events-none px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       data-testid="anchored-card-mobile-stack"
     >
       <div className="mx-auto flex max-h-[42vh] w-full max-w-md flex-col gap-2 overflow-y-auto rounded-t-md border border-white/10 bg-[#080b12]/72 p-2 shadow-2xl backdrop-blur-xl">

@@ -18,6 +18,7 @@ import type {
   HomepageCinematicSnapshot,
   RegionSuggestionWhisper,
 } from '@/stores/senecaThreadStore';
+import type { AnchoredCardDescriptor } from '@/components/globe/AnchoredCard';
 import type { SenecaPersona } from '@/lib/intelligence/senecaPersonas';
 import { getPersonaForRoute } from '@/lib/intelligence/senecaPersonas';
 import type { ThreadMessage } from '@/stores/senecaThreadStore';
@@ -108,6 +109,7 @@ export interface UseSenecaThreadResult {
   visitedPages: string[];
   pendingGlobeAction: GlobeIntent | null;
   homepageCinematic: HomepageCinematicSnapshot | null;
+  homepageAnchoredCards: AnchoredCardDescriptor[];
   regionSuggestionWhisper: RegionSuggestionWhisper | null;
 
   // Actions
@@ -148,6 +150,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
 
   const pendingGlobeAction = useSenecaThreadStore((s) => s.pendingGlobeAction);
   const homepageCinematic = useSenecaThreadStore((s) => s.homepageCinematic);
+  const homepageAnchoredCards = useSenecaThreadStore((s) => s.homepageAnchoredCards);
   const regionSuggestionWhisper = useSenecaThreadStore((s) => s.regionSuggestionWhisper);
 
   const setOpen = useSenecaThreadStore((s) => s.setOpen);
@@ -229,6 +232,7 @@ export function useSenecaThread(): UseSenecaThreadResult {
     visitedPages,
     pendingGlobeAction,
     homepageCinematic,
+    homepageAnchoredCards,
     regionSuggestionWhisper,
 
     // Actions

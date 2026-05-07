@@ -9,6 +9,7 @@ const push = vi.fn();
 const replace = vi.fn();
 const startMatch = vi.fn();
 const executeGlobeCommand = vi.fn();
+const setHomepageAnchoredCards = vi.fn();
 let homepageCinematic: unknown = null;
 let viewportClass: 'mobile' | 'desktop' = 'desktop';
 let isTouchDevice = false;
@@ -117,13 +118,14 @@ vi.mock('@/hooks/useConstellationProposals', () => ({
   }),
 }));
 
-vi.mock('@/stores/senecaThreadStore', () => ({
-  useSenecaThreadStore: {
-    getState: () => ({
-      startMatch,
-    }),
-  },
-}));
+vi.mock('@/stores/senecaThreadStore', () => {
+  const useSenecaThreadStore = (selector: (state: unknown) => unknown) =>
+    selector({ setHomepageAnchoredCards });
+  useSenecaThreadStore.getState = () => ({
+    startMatch,
+  });
+  return { useSenecaThreadStore };
+});
 
 vi.mock('@/components/FeatureGate', () => ({
   useFeatureFlag: () => false,
@@ -236,6 +238,7 @@ describe('GlobeLayout deferred panels', () => {
     viewportClass = 'desktop';
     isTouchDevice = false;
     bridgeOptions = null;
+    setHomepageAnchoredCards.mockClear();
   });
 
   afterEach(() => {

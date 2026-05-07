@@ -69,6 +69,7 @@ import {
 import { useIsTouchDevice } from '@/hooks/useViewportClass';
 import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
 import type { HoverDetailLevel } from '@/components/governada/GlobeTooltip';
+import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 
 const WorkspaceCards = dynamic(
   () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
@@ -154,6 +155,7 @@ export function GlobeLayout({
   const searchParams = useSearchParams();
   const seneca = useSenecaThread();
   const [anchoredCards, setAnchoredCards] = useState<AnchoredCardDescriptor[]>([]);
+  const setHomepageAnchoredCards = useSenecaThreadStore((s) => s.setHomepageAnchoredCards);
   const [, setFoldedAnchoredCards] = useState<FoldedAnchoredCardEntry[]>([]);
   const handleAnchoredCards = useCallback((cards: AnchoredCardDescriptor[]) => {
     // The prioritization engine yields one primary surface at a time; this keeps
@@ -173,6 +175,14 @@ export function GlobeLayout({
   );
   const bridge = useSenecaGlobeBridge(globeRef, bridgeOptions);
   const { handleNodeClick: bridgeNodeClick, executeGlobeCommand } = bridge;
+
+  useEffect(() => {
+    setHomepageAnchoredCards(anchoredCards);
+  }, [anchoredCards, setHomepageAnchoredCards]);
+
+  useEffect(() => {
+    return () => setHomepageAnchoredCards([]);
+  }, [setHomepageAnchoredCards]);
   const motionStrength = useMotionStrength();
   const isTouchDevice = useIsTouchDevice();
   const lastHomepageCinemaKey = useRef<string | null>(null);

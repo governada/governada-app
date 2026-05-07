@@ -6,6 +6,7 @@ import {
   AnchoredCardMobileStack,
   type AnchoredCardDescriptor,
 } from '@/components/globe/AnchoredCard';
+import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 
 let viewportClass: 'mobile' | 'desktop' = 'mobile';
 
@@ -31,6 +32,7 @@ function card(id: string): AnchoredCardDescriptor {
 describe('AnchoredCard mobile stack', () => {
   beforeEach(() => {
     viewportClass = 'mobile';
+    useSenecaThreadStore.setState({ isOpen: false });
     vi.useFakeTimers();
   });
 
@@ -63,6 +65,14 @@ describe('AnchoredCard mobile stack', () => {
 
   it('keeps the mobile DOM stack out of the desktop path', () => {
     viewportClass = 'desktop';
+    render(<AnchoredCardMobileStack cards={[card('one')]} onFold={vi.fn()} onSelect={vi.fn()} />);
+
+    expect(screen.queryByTestId('anchored-card-mobile-stack')).toBeNull();
+  });
+
+  it('hides the bottom stack when the mobile Seneca sheet is open', () => {
+    useSenecaThreadStore.setState({ isOpen: true });
+
     render(<AnchoredCardMobileStack cards={[card('one')]} onFold={vi.fn()} onSelect={vi.fn()} />);
 
     expect(screen.queryByTestId('anchored-card-mobile-stack')).toBeNull();

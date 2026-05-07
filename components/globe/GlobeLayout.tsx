@@ -15,7 +15,7 @@
  *   z-40: SenecaOrb + SenecaThread
  */
 
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import type { ConstellationRef } from '@/lib/globe/types';
@@ -38,6 +38,11 @@ import {
 } from '@/lib/homepage/parseEntityParam';
 import { trackFunnel, FUNNEL_EVENTS } from '@/lib/funnel';
 import { posthog } from '@/lib/posthog';
+import {
+  dispatchCinematicExit,
+  dispatchCinematicState,
+  resolveCinematicPayload,
+} from '@/lib/globe/cinematicDispatcher';
 import { ListOverlay } from './ListOverlay';
 import { GlobeControls } from './GlobeControls';
 import { ClusterLabels3D } from './ClusterLabels3D';
@@ -46,6 +51,11 @@ import { setClusterCache } from '@/lib/globe/behaviors/clusterBehavior';
 import { useFeatureFlag } from '@/components/FeatureGate';
 import { STORAGE_KEYS, readStoredValue } from '@/lib/persistence';
 import { useMotionStrength } from '@/lib/motion/motionStrength';
+import {
+  AnchoredCardLayer,
+  type AnchoredCardDescriptor,
+  type FoldedAnchoredCardEntry,
+} from '@/components/globe/AnchoredCard';
 
 const WorkspaceCards = dynamic(
   () => import('./WorkspaceCards').then((m) => ({ default: m.WorkspaceCards })),
@@ -113,9 +123,32 @@ export function GlobeLayout({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const seneca = useSenecaThread();
-  const bridge = useSenecaGlobeBridge(globeRef);
+  const [anchoredCards, setAnchoredCards] = useState<AnchoredCardDescriptor[]>([]);
+  const [, setFoldedAnchoredCards] = useState<FoldedAnchoredCardEntry[]>([]);
+  const handleAnchoredCards = useCallback((cards: AnchoredCardDescriptor[]) => {
+    // The prioritization engine yields one primary surface at a time; this keeps
+    // card kinds homogeneous instead of mixing delta/action/sentiment cards.
+    setAnchoredCards(cards);
+  }, []);
+  const handleFoldAnchoredCard = useCallback((entry: FoldedAnchoredCardEntry) => {
+    setAnchoredCards((current) => current.filter((card) => card.id !== entry.id));
+    setFoldedAnchoredCards((current) => [...current.filter((card) => card.id !== entry.id), entry]);
+  }, []);
+  const bridgeOptions = useMemo(
+    () => ({
+      onAnchoredCards: handleAnchoredCards,
+      onFoldAnchoredCard: handleFoldAnchoredCard,
+    }),
+    [handleAnchoredCards, handleFoldAnchoredCard],
+  );
+  const bridge = useSenecaGlobeBridge(globeRef, bridgeOptions);
   const { handleNodeClick: bridgeNodeClick, executeGlobeCommand } = bridge;
   const motionStrength = useMotionStrength();
+  const lastHomepageCinemaKey = useRef<string | null>(null);
+  const activeHomepageCinema = useRef<{
+    key: string;
+    state: Parameters<typeof dispatchCinematicExit>[0];
+  } | null>(null);
 
   // Listen for globe commands from Seneca (via centralized command bus)
   useGlobeCommandListener(bridge);
@@ -177,6 +210,19 @@ export function GlobeLayout({
 
   const { userNode, delegationBond } = useUserConstellationNode();
   const { proposalNodes } = useConstellationProposals();
+
+  const anchoredNodePositions = useMemo(() => {
+    const positions = new Map<string, [number, number, number]>();
+    for (const node of proposalNodes) {
+      positions.set(node.id, node.position);
+      positions.set(node.fullId, node.position);
+    }
+    if (userNode) {
+      positions.set(userNode.id, userNode.position);
+      positions.set(userNode.fullId, userNode.position);
+    }
+    return positions;
+  }, [proposalNodes, userNode]);
 
   // Entity detail sheet state (bottom sheet for entity clicks on homepage)
   const [activeEntity, setActiveEntity] = useState<EntityRef | null>(
@@ -481,6 +527,51 @@ export function GlobeLayout({
 
   // Globe commands from Seneca already handled by useGlobeCommandListener above
 
+  useEffect(() => {
+    const snapshot = seneca.homepageCinematic;
+    if (!snapshot) {
+      if (activeHomepageCinema.current) {
+        dispatchCinematicExit(activeHomepageCinema.current.state, {
+          dispatch: executeGlobeCommand,
+          baseMotionStrength: motionStrength,
+        });
+      }
+      activeHomepageCinema.current = null;
+      lastHomepageCinemaKey.current = null;
+      return;
+    }
+
+    const key = `${snapshot.queue.primary.id}:${snapshot.queue.primary.state}:${snapshot.queue.meta.reasoning}`;
+    if (lastHomepageCinemaKey.current === key && activeHomepageCinema.current?.key === key) return;
+
+    if (activeHomepageCinema.current) {
+      dispatchCinematicExit(activeHomepageCinema.current.state, {
+        dispatch: executeGlobeCommand,
+        baseMotionStrength: motionStrength,
+      });
+    }
+
+    lastHomepageCinemaKey.current = key;
+    let cancelled = false;
+
+    void resolveCinematicPayload(snapshot.queue.primary.state, snapshot.queue.primary.payload).then(
+      (payload) => {
+        if (cancelled) return;
+        dispatchCinematicState(snapshot.queue.primary.state, payload, {
+          dispatch: executeGlobeCommand,
+          item: snapshot.queue.primary,
+          meta: snapshot.queue.meta,
+          baseMotionStrength: motionStrength,
+        });
+        activeHomepageCinema.current = { key, state: snapshot.queue.primary.state };
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [executeGlobeCommand, motionStrength, seneca.homepageCinematic]);
+
   // ---------------------------------------------------------------------------
   // Seneca whisper
   // ---------------------------------------------------------------------------
@@ -520,6 +611,11 @@ export function GlobeLayout({
                 <ClusterNebulae clusters={clusterLabels} />
               </>
             )}
+            <AnchoredCardLayer
+              cards={anchoredCards}
+              nodePositions={anchoredNodePositions}
+              onFold={handleFoldAnchoredCard}
+            />
           </ConstellationScene>
         )}
       </div>

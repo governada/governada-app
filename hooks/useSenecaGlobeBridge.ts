@@ -14,10 +14,13 @@ import type { ConstellationNode3D } from '@/lib/constellation/types';
 import { createChoreographer, type Choreography } from '@/lib/globe/choreographer';
 import {
   registerBehavior,
+  registerBehaviors,
   unregisterBehavior,
+  unregisterBehaviors,
   executeBehavior,
 } from '@/lib/globe/behaviors/registry';
 import type { BehaviorContext } from '@/lib/globe/behaviors/types';
+import { CINEMATIC_BEHAVIOR_IDS, createCinematicBehaviors } from '@/lib/globe/behaviors/cinematic';
 import { createMatchBehavior } from '@/lib/globe/behaviors/matchBehavior';
 import { createVoteSplitBehavior } from '@/lib/globe/behaviors/voteSplitBehavior';
 import { createTopicWarmBehavior } from '@/lib/globe/behaviors/topicWarmBehavior';
@@ -26,6 +29,14 @@ import { createDiscoveryBehavior } from '@/lib/globe/behaviors/discoveryBehavior
 import { createSpatialMatchBehavior } from '@/lib/globe/behaviors/spatialMatchBehavior';
 import { createFocusControlBehavior } from '@/lib/globe/behaviors/focusControlBehavior';
 import { createConsideringBehavior } from '@/lib/globe/behaviors/consideringBehavior';
+import type {
+  AnchoredCardDescriptor,
+  FoldedAnchoredCardEntry,
+} from '@/components/globe/AnchoredCard';
+import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
+import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
+import type { CinemaStrengthPlan } from '@/lib/globe/cinemaStrength';
+import type { CinematicState } from '@/types/cinematic';
 
 // GlobeCommand is now canonically defined in lib/globe/types.ts.
 // Re-export for backwards compatibility — existing imports of GlobeCommand from this file still work.
@@ -38,12 +49,24 @@ export interface GlobeBridgeResult {
   executeGlobeCommand: (command: GlobeCommand) => void;
 }
 
+export interface GlobeBridgeOptions {
+  onAnchoredCards?: (cards: AnchoredCardDescriptor[]) => void;
+  onFoldAnchoredCard?: (entry: FoldedAnchoredCardEntry) => void;
+  onCinemaStrength?: (state: {
+    cinematicState: CinematicState;
+    plan: CinemaStrengthPlan;
+    phase: 'enter' | 'exit';
+    transitionMs: number;
+  }) => void;
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
 export function useSenecaGlobeBridge(
   globeRef: RefObject<ConstellationRef | null>,
+  options: GlobeBridgeOptions = {},
 ): GlobeBridgeResult {
   // Lazy-initialized choreographer for cancellable sequence execution
   const choreographerRef = useRef<ReturnType<typeof createChoreographer> | null>(null);
@@ -62,6 +85,7 @@ export function useSenecaGlobeBridge(
     registerBehavior(createSpatialMatchBehavior());
     registerBehavior(createFocusControlBehavior(getGlobe));
     registerBehavior(createConsideringBehavior());
+    registerBehaviors(createCinematicBehaviors(getGlobe));
     return () => {
       unregisterBehavior('match');
       unregisterBehavior('voteSplit');
@@ -71,6 +95,7 @@ export function useSenecaGlobeBridge(
       unregisterBehavior('spatialMatch');
       unregisterBehavior('focusControl');
       unregisterBehavior('considering');
+      unregisterBehaviors(CINEMATIC_BEHAVIOR_IDS);
     };
   }, [globeRef]);
 
@@ -99,6 +124,44 @@ export function useSenecaGlobeBridge(
 
   const executeGlobeCommand = useCallback(
     (command: GlobeCommand) => {
+      switch (command.type) {
+        case 'anchoredCards':
+          options.onAnchoredCards?.(command.cards);
+          return;
+
+        case 'foldAnchoredCard':
+          options.onFoldAnchoredCard?.(command.entry);
+          return;
+
+        case 'cinemaStrength':
+          applyCinemaStrengthDomState(command);
+          options.onCinemaStrength?.({
+            cinematicState: command.state,
+            plan: command.plan,
+            phase: command.phase,
+            transitionMs: command.transitionMs,
+          });
+          return;
+
+        case 'senecaPanel': {
+          const store = useSenecaThreadStore.getState();
+          const wasOpen = store.isOpen;
+          store.setMode('idle');
+          store.setOpen(command.open);
+          if (command.open && !wasOpen) {
+            captureSenecaInteraction({
+              kind: 'panel_auto_opened',
+              source: 'homepage_cinematic',
+              state: command.state,
+              reasoning: command.reasoning,
+              primary_item_id: command.itemId,
+              presentation: command.presentation,
+            });
+          }
+          return;
+        }
+      }
+
       const globe = globeRef.current;
       if (!globe) {
         // Buffer commands until globe mounts (dynamic import timing)
@@ -170,8 +233,21 @@ export function useSenecaGlobeBridge(
           break;
       }
     },
-    [globeRef],
+    [globeRef, options],
   );
 
   return { handleNodeClick, executeGlobeCommand };
+}
+
+function applyCinemaStrengthDomState(command: Extract<GlobeCommand, { type: 'cinemaStrength' }>) {
+  if (typeof document === 'undefined') return;
+
+  const root = document.documentElement;
+  root.dataset.cinemaState = command.state;
+  root.dataset.cinemaStrength = command.strength;
+  root.dataset.cinemaPhase = command.phase;
+  root.style.setProperty('--governada-layer-1a-strength', String(command.plan.layer1a));
+  root.style.setProperty('--governada-layer-1b-strength', String(command.plan.layer1b));
+  root.style.setProperty('--governada-layer-2-suspended', command.plan.layer2Suspended ? '1' : '0');
+  root.style.setProperty('--governada-cinema-transition-ms', String(command.transitionMs));
 }

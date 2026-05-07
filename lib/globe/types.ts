@@ -10,6 +10,12 @@ import type {
   ConstellationEdge3D,
   FindMeTarget,
 } from '@/lib/constellation/types';
+import type {
+  AnchoredCardDescriptor,
+  FoldedAnchoredCardEntry,
+} from '@/components/globe/AnchoredCard';
+import type { CinemaStrength, CinemaStrengthPlan } from '@/lib/globe/cinemaStrength';
+import type { CinematicState } from '@/types/cinematic';
 
 export type { FindMeTarget };
 
@@ -93,6 +99,18 @@ export interface CinematicStateInput {
   dimTarget?: number;
   /** How many seconds this transition should take (0.4 - 2.0) */
   transitionDuration?: number;
+}
+
+export type CinematicCommandType = `cinema:${CinematicState}`;
+
+export interface CinematicArrivalCommand {
+  type: CinematicCommandType;
+  cinematicState: CinematicState;
+  itemId: string;
+  payload: unknown;
+  reasoning: string;
+  strength: CinemaStrength;
+  strengthPlan: CinemaStrengthPlan;
 }
 
 // Match focus color — declared early because DEFAULT_FOCUS references it
@@ -411,7 +429,50 @@ export type GlobeCommand =
   /** Place match-derived user node on the globe (spatial match reveal) */
   | { type: 'placeUserNode'; position: [number, number, number]; intensity: number }
   /** Sustained breathing pulse on nodes Seneca is evaluating */
-  | { type: 'considering'; nodeIds: string[] };
+  | { type: 'considering'; nodeIds: string[] }
+  /** Phase 6 arrival-matrix behavior command */
+  | CinematicArrivalCommand
+  /** Apply or clear cinema-strength demotion tiers during arrival/exit */
+  | {
+      type: 'cinemaStrength';
+      phase: 'enter' | 'exit';
+      state: CinematicState;
+      strength: CinemaStrength;
+      plan: CinemaStrengthPlan;
+      transitionMs: number;
+      easing: 'ease-in-out';
+      reasoning: string;
+    }
+  /** Open or close the global Seneca panel as part of a cinema arrival */
+  | {
+      type: 'senecaPanel';
+      open: boolean;
+      state: CinematicState;
+      itemId: string;
+      reasoning: string;
+      presentation:
+        | 'first_visit_briefing'
+        | 'team_briefing'
+        | 'delta_briefing'
+        | 'epoch_recap'
+        | 'cold_start'
+        | 'civic_briefing'
+        | 'action_queue'
+        | 'sentiment_prompt'
+        | 'closed';
+    }
+  /** Surface budgeted cards anchored to constellation nodes */
+  | {
+      type: 'anchoredCards';
+      state: CinematicState;
+      itemId: string;
+      cards: AnchoredCardDescriptor[];
+    }
+  /** Fold an anchored card back into Seneca's secondary list */
+  | {
+      type: 'foldAnchoredCard';
+      entry: FoldedAnchoredCardEntry;
+    };
 
 // ---------------------------------------------------------------------------
 // Color constants

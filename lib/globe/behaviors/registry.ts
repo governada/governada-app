@@ -21,9 +21,21 @@ export function registerBehavior(behavior: GlobeBehavior): void {
   }
 }
 
+export function registerBehaviors(nextBehaviors: GlobeBehavior[]): void {
+  for (const behavior of nextBehaviors) {
+    registerBehavior(behavior);
+  }
+}
+
 export function unregisterBehavior(id: string): void {
   const idx = behaviors.findIndex((b) => b.id === id);
   if (idx >= 0) behaviors.splice(idx, 1);
+}
+
+export function unregisterBehaviors(ids: readonly string[]): void {
+  for (const id of ids) {
+    unregisterBehavior(id);
+  }
 }
 
 /**

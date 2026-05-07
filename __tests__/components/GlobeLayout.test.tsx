@@ -6,6 +6,7 @@ const push = vi.fn();
 const replace = vi.fn();
 const startMatch = vi.fn();
 const executeGlobeCommand = vi.fn();
+let homepageCinematic: unknown = null;
 
 vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType<any> }>) => {
@@ -50,6 +51,7 @@ vi.mock('@/hooks/useSenecaThread', () => ({
     consumeGlobeAction: vi.fn(),
     isOpen: false,
     close: vi.fn(),
+    homepageCinematic,
   }),
 }));
 
@@ -176,6 +178,7 @@ import { GlobeLayout } from '@/components/globe/GlobeLayout';
 describe('GlobeLayout deferred panels', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    homepageCinematic = null;
   });
 
   afterEach(() => {
@@ -211,4 +214,62 @@ describe('GlobeLayout deferred panels', () => {
     await waitFor(() => expect(screen.getByTestId('entity-detail-sheet')).toBeTruthy());
     expect(screen.queryByTestId('discovery-overlay')).toBeNull();
   });
+
+  it('dispatches homepage cinema entry and exit through the local globe bridge', async () => {
+    homepageCinematic = makeHomepageCinematicSnapshot('returning_quiet', 'quiet-fixture');
+    const { rerender } = render(<GlobeLayout />);
+
+    await waitFor(() =>
+      expect(executeGlobeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'cinemaStrength',
+          phase: 'enter',
+          state: 'returning_quiet',
+        }),
+      ),
+    );
+    expect(executeGlobeCommand).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'cinema:returning_quiet' }),
+    );
+
+    executeGlobeCommand.mockClear();
+    homepageCinematic = makeHomepageCinematicSnapshot('action_required', 'action-fixture');
+    rerender(<GlobeLayout />);
+
+    await waitFor(() =>
+      expect(executeGlobeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'cinemaStrength',
+          phase: 'exit',
+          state: 'returning_quiet',
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(executeGlobeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'cinema:action_required' }),
+      ),
+    );
+  });
 });
+
+function makeHomepageCinematicSnapshot(state: 'returning_quiet' | 'action_required', id: string) {
+  return {
+    identity: { segment: 'anonymous' },
+    queue: {
+      primary: {
+        id,
+        tier: state === 'action_required' ? 1 : 2,
+        kind: state === 'action_required' ? 'crisp' : 'informational',
+        state,
+        surfaced_at: '2026-05-06T00:00:00.000Z',
+        payload: state === 'action_required' ? { items: [] } : {},
+      },
+      secondary: [],
+      meta: {
+        reasoning: `${id} reasoning`,
+        generatedAt: '2026-05-06T00:00:00.000Z',
+      },
+    },
+  };
+}

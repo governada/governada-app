@@ -37,6 +37,8 @@ import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import type { CinemaStrengthPlan } from '@/lib/globe/cinemaStrength';
 import type { CinematicState } from '@/types/cinematic';
+import { createDriftBehavior } from '@/lib/globe/behaviors/driftBehavior';
+import { dispatchCameraActivity } from '@/hooks/useCameraIdle';
 
 // GlobeCommand is now canonically defined in lib/globe/types.ts.
 // Re-export for backwards compatibility — existing imports of GlobeCommand from this file still work.
@@ -86,6 +88,7 @@ export function useSenecaGlobeBridge(
     registerBehavior(createFocusControlBehavior(getGlobe));
     registerBehavior(createConsideringBehavior());
     registerBehaviors(createCinematicBehaviors(getGlobe));
+    registerBehavior(createDriftBehavior());
     return () => {
       unregisterBehavior('match');
       unregisterBehavior('voteSplit');
@@ -96,6 +99,7 @@ export function useSenecaGlobeBridge(
       unregisterBehavior('focusControl');
       unregisterBehavior('considering');
       unregisterBehaviors(CINEMATIC_BEHAVIOR_IDS);
+      unregisterBehavior('drift');
     };
   }, [globeRef]);
 
@@ -163,6 +167,9 @@ export function useSenecaGlobeBridge(
       }
 
       const globe = globeRef.current;
+      if (commandMovesCamera(command)) {
+        dispatchCameraActivity();
+      }
       if (!globe) {
         // Buffer commands until globe mounts (dynamic import timing)
         commandQueueRef.current.push(command);
@@ -250,4 +257,23 @@ function applyCinemaStrengthDomState(command: Extract<GlobeCommand, { type: 'cin
   root.style.setProperty('--governada-layer-1b-strength', String(command.plan.layer1b));
   root.style.setProperty('--governada-layer-2-suspended', command.plan.layer2Suspended ? '1' : '0');
   root.style.setProperty('--governada-cinema-transition-ms', String(command.transitionMs));
+}
+
+function commandMovesCamera(command: GlobeCommand): boolean {
+  switch (command.type) {
+    case 'flyTo':
+    case 'matchFlyTo':
+    case 'scan':
+    case 'sequence':
+    case 'zoomOut':
+    case 'highlightCluster':
+    case 'flyToPosition':
+    case 'narrowTo':
+    case 'showNeighborhood':
+    case 'showControversy':
+    case 'showActiveEntities':
+      return true;
+    default:
+      return false;
+  }
 }

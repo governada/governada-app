@@ -12,9 +12,24 @@ interface GlobeTooltipProps {
   screenPos: { x: number; y: number } | null;
   /** Show "Find your match" CTA for anonymous users */
   showMatchCta?: boolean;
+  hoverDetailLevel?: HoverDetailLevel;
+}
+
+export type HoverDetailLevel = 'overview' | 'cluster' | 'tight';
+
+export function getDRepHoverFields(hoverDetailLevel: HoverDetailLevel) {
+  return {
+    showName: true,
+    showScore: hoverDetailLevel === 'cluster' || hoverDetailLevel === 'tight',
+    showIdentity: hoverDetailLevel === 'tight',
+    showDominantAlignment: hoverDetailLevel === 'tight',
+    showActions: hoverDetailLevel === 'tight',
+  };
 }
 
 const OFFSET = 16;
+const ACTION_BTN =
+  'text-[10px] px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-compass-teal/70 hover:text-compass-teal transition-colors';
 
 function formatAda(amount: number): string {
   if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}B`;
@@ -23,19 +38,8 @@ function formatAda(amount: number): string {
   return String(amount);
 }
 
-// ---------------------------------------------------------------------------
-// Action button style
-// ---------------------------------------------------------------------------
-const ACTION_BTN =
-  'text-[10px] px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-compass-teal/70 hover:text-compass-teal transition-colors';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function dispatchResearch(node: ConstellationNode3D) {
   dispatchGlobeCommand({ type: 'pulse', nodeId: node.id });
-  // Also open Seneca thread with a contextual query
   const label =
     node.nodeType === 'drep'
       ? 'DRep'
@@ -67,20 +71,21 @@ function getProfileHref(node: ConstellationNode3D): string {
   }
 }
 
-// ---------------------------------------------------------------------------
 /**
  * Cursor-following tooltip for globe node hover.
  * Shows entity-specific details for DReps, SPOs, and CC members.
  * Optionally shows a "Find your match" CTA for anonymous users.
  */
-export function GlobeTooltip({ node, screenPos, showMatchCta }: GlobeTooltipProps) {
+export function GlobeTooltip({
+  node,
+  screenPos,
+  showMatchCta,
+  hoverDetailLevel = 'overview',
+}: GlobeTooltipProps) {
   const prefersReducedMotion = useReducedMotion();
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
 
-  // -------------------------------------------------------------------------
-  // Position calculation
-  // -------------------------------------------------------------------------
   useEffect(() => {
     if (!screenPos || !node) {
       setPosition(null);
@@ -115,9 +120,6 @@ export function GlobeTooltip({ node, screenPos, showMatchCta }: GlobeTooltipProp
     window.dispatchEvent(new CustomEvent('startSenecaMatch'));
   }, []);
 
-  // -------------------------------------------------------------------------
-  // Action handlers
-  // -------------------------------------------------------------------------
   const handleResearch = useCallback(() => {
     if (!node) return;
     dispatchResearch(node);
@@ -157,69 +159,66 @@ export function GlobeTooltip({ node, screenPos, showMatchCta }: GlobeTooltipProp
             'rounded-xl border border-white/10 bg-black/85 backdrop-blur-md',
             'px-4 py-3 shadow-2xl max-w-[280px]',
           )}
-          style={{
-            left: position.x,
-            top: position.y,
-          }}
+          style={{ left: position.x, top: position.y }}
         >
-          {/* Name */}
           <p className="text-sm font-semibold text-white truncate">{displayName}</p>
 
-          {/* Entity-specific details */}
-          {node.nodeType === 'drep' && <DRepTooltipContent node={node} />}
+          {node.nodeType === 'drep' && (
+            <DRepTooltipContent node={node} hoverDetailLevel={hoverDetailLevel} />
+          )}
           {node.nodeType === 'spo' && <SPOTooltipContent node={node} />}
           {node.nodeType === 'cc' && <CCTooltipContent node={node} />}
           {node.nodeType === 'proposal' && <ProposalTooltipContent node={node} />}
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-            {node.nodeType === 'drep' && (
-              <>
-                <button onClick={handleResearch} className={ACTION_BTN}>
-                  Research
-                </button>
-                <button onClick={handleCompare} className={ACTION_BTN}>
-                  Compare
-                </button>
-                <button onClick={handleDelegate} className={ACTION_BTN}>
-                  Delegate
-                </button>
-              </>
-            )}
-            {node.nodeType === 'proposal' && (
-              <>
-                <button onClick={handleReview} className={ACTION_BTN}>
-                  Review
-                </button>
-                <button onClick={handleResearch} className={ACTION_BTN}>
-                  Research
-                </button>
-              </>
-            )}
-            {node.nodeType === 'spo' && (
-              <>
-                <button onClick={handleResearch} className={ACTION_BTN}>
-                  Research
-                </button>
-                <button onClick={handleViewProfile} className={ACTION_BTN}>
-                  View Profile
-                </button>
-              </>
-            )}
-            {node.nodeType === 'cc' && (
-              <>
-                <button onClick={handleResearch} className={ACTION_BTN}>
-                  Research
-                </button>
-                <button onClick={handleViewProfile} className={ACTION_BTN}>
-                  View Profile
-                </button>
-              </>
-            )}
-          </div>
+          {shouldShowActions(node, hoverDetailLevel) && (
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              {node.nodeType === 'drep' && (
+                <>
+                  <button onClick={handleResearch} className={ACTION_BTN}>
+                    Research
+                  </button>
+                  <button onClick={handleCompare} className={ACTION_BTN}>
+                    Compare
+                  </button>
+                  <button onClick={handleDelegate} className={ACTION_BTN}>
+                    Delegate
+                  </button>
+                </>
+              )}
+              {node.nodeType === 'proposal' && (
+                <>
+                  <button onClick={handleReview} className={ACTION_BTN}>
+                    Review
+                  </button>
+                  <button onClick={handleResearch} className={ACTION_BTN}>
+                    Research
+                  </button>
+                </>
+              )}
+              {node.nodeType === 'spo' && (
+                <>
+                  <button onClick={handleResearch} className={ACTION_BTN}>
+                    Research
+                  </button>
+                  <button onClick={handleViewProfile} className={ACTION_BTN}>
+                    View Profile
+                  </button>
+                </>
+              )}
+              {node.nodeType === 'cc' && (
+                <>
+                  <button onClick={handleResearch} className={ACTION_BTN}>
+                    Research
+                  </button>
+                  <button onClick={handleViewProfile} className={ACTION_BTN}>
+                    View Profile
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
-          {/* Match CTA for anonymous users */}
-          {showMatchCta && node.nodeType === 'drep' && (
+          {showMatchCta && node.nodeType === 'drep' && hoverDetailLevel === 'tight' && (
             <button
               onClick={handleMatchClick}
               className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary/15 border border-primary/20 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/25 transition-colors"
@@ -234,27 +233,54 @@ export function GlobeTooltip({ node, screenPos, showMatchCta }: GlobeTooltipProp
   );
 }
 
-function DRepTooltipContent({ node }: { node: ConstellationNode3D }) {
+function DRepTooltipContent({
+  node,
+  hoverDetailLevel,
+}: {
+  node: ConstellationNode3D;
+  hoverDetailLevel: HoverDetailLevel;
+}) {
+  const fields = getDRepHoverFields(hoverDetailLevel);
   return (
     <>
       <div className="flex items-center gap-3 mt-1 text-xs text-white/60">
-        <span className="text-teal-400">DRep</span>
-        <span>
-          Score <strong className="text-white/90">{node.score}</strong>
-        </span>
-      </div>
-      <div className="flex items-center gap-3 mt-0.5 text-xs text-white/50">
-        {node.adaAmount != null && node.adaAmount > 0 && (
+        {fields.showIdentity && <span className="text-teal-400">DRep</span>}
+        {fields.showScore && (
           <span>
-            <strong className="text-white/80">{formatAda(node.adaAmount)}</strong> &#8371; delegated
+            Score <strong className="text-white/90">{node.score}</strong>
           </span>
         )}
-        {node.delegatorCount != null && node.delegatorCount > 0 && (
-          <span>{node.delegatorCount.toLocaleString()} delegators</span>
+        {fields.showDominantAlignment && node.dominant && (
+          <span className="text-white/45">{formatDominantAlignment(node.dominant)}</span>
         )}
       </div>
+      {fields.showIdentity && (
+        <div className="flex items-center gap-3 mt-0.5 text-xs text-white/50">
+          {node.adaAmount != null && node.adaAmount > 0 && (
+            <span>
+              <strong className="text-white/80">{formatAda(node.adaAmount)}</strong> &#8371;
+              delegated
+            </span>
+          )}
+          {node.delegatorCount != null && node.delegatorCount > 0 && (
+            <span>{node.delegatorCount.toLocaleString()} delegators</span>
+          )}
+        </div>
+      )}
     </>
   );
+}
+
+function shouldShowActions(node: ConstellationNode3D, hoverDetailLevel: HoverDetailLevel) {
+  return node.nodeType !== 'drep' || getDRepHoverFields(hoverDetailLevel).showActions;
+}
+
+function formatDominantAlignment(dominant: string) {
+  return dominant
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/_/g, ' ')
+    .trim()
+    .replace(/^./, (char) => char.toUpperCase());
 }
 
 function SPOTooltipContent({ node }: { node: ConstellationNode3D }) {

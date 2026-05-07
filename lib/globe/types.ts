@@ -60,8 +60,15 @@ export interface ConstellationRef {
     target: [number, number, number],
     options?: { distance?: number; duration?: number },
   ) => Promise<void>;
+  /** Snapshot current camera position and target for proximity-aware UI */
+  getCameraSnapshot: () => CameraSnapshot | null;
   /** Focus on specific node IDs — dims others, flies to centroid */
   narrowTo: (nodeIds: string[], options?: NarrowToOptions) => void;
+}
+
+export interface CameraSnapshot {
+  position: [number, number, number];
+  target: [number, number, number];
 }
 
 export interface NarrowToOptions {
@@ -404,6 +411,8 @@ export type GlobeCommand =
   | { type: 'flash'; nodeId: string }
   /** Cinematic state — smooth per-frame camera orbit + node transitions */
   | { type: 'cinematic'; state: CinematicStateInput }
+  /** Idle-camera drift around current target */
+  | { type: 'drift'; motionStrength: number }
   /** Highlight a governance faction cluster — dims non-members, glows members */
   | { type: 'highlightCluster'; clusterId: string }
   /** Fly camera to an arbitrary 3D position (region, cluster centroid, empty space) */

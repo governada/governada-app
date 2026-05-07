@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { CompassSigil } from '@/components/governada/CompassSigil';
+import { SenecaOrbWhisper } from '@/components/hub/hud/SenecaWhisper';
 
 /**
  * Mirrors the SigilState type from CompassSigil.
@@ -25,6 +26,7 @@ interface SenecaOrbProps {
   accentColor?: string;
   whisper?: string | null;
   onWhisperDismiss?: () => void;
+  onWhisperClick?: () => void;
   pulse?: boolean;
   className?: string;
 }
@@ -35,6 +37,7 @@ export function SenecaOrb({
   accentColor,
   whisper,
   onWhisperDismiss,
+  onWhisperClick,
   pulse = false,
   className,
 }: SenecaOrbProps) {
@@ -63,9 +66,13 @@ export function SenecaOrb({
   }, [whisper, onWhisperDismiss]);
 
   const handleWhisperClick = useCallback(() => {
+    if (onWhisperClick) {
+      onWhisperClick();
+      return;
+    }
     onWhisperDismiss?.();
     onClick();
-  }, [onClick, onWhisperDismiss]);
+  }, [onClick, onWhisperClick, onWhisperDismiss]);
 
   return (
     <div
@@ -79,36 +86,11 @@ export function SenecaOrb({
       {/* Whisper bubble — positioned to the left of the orb */}
       <AnimatePresence>
         {whisper && (
-          <motion.button
-            key="whisper"
-            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 8, scale: 0.95 }}
-            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0, scale: 1 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 8, scale: 0.95 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
+          <SenecaOrbWhisper
+            whisper={whisper}
             onClick={handleWhisperClick}
-            className={cn(
-              'relative max-w-[280px] max-[1023px]:max-w-[calc(100vw-80px)]',
-              'rounded-xl px-3 py-2',
-              'bg-black/50 backdrop-blur-xl',
-              'border border-white/10',
-              'text-sm text-white/80',
-              'cursor-pointer',
-              'hover:border-white/20 hover:text-white/90',
-              'transition-colors duration-150',
-            )}
-            aria-live="polite"
-          >
-            {whisper}
-            {/* Speech bubble tail pointing right toward orb */}
-            <span
-              className={cn(
-                'absolute top-1/2 -right-1.5 -translate-y-1/2',
-                'h-3 w-3 rotate-45',
-                'bg-black/50 border-r border-t border-white/10',
-              )}
-              aria-hidden="true"
-            />
-          </motion.button>
+            prefersReducedMotion={prefersReducedMotion}
+          />
         )}
       </AnimatePresence>
 

@@ -25,9 +25,12 @@ import { useWhisper } from '@/hooks/useWhisper';
 import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
 import { useSenecaProactiveWhispers } from '@/hooks/useSenecaProactiveWhispers';
 import { useEpochContext } from '@/hooks/useEpochContext';
+import { markClusterWhisperDismissed } from '@/hooks/useCameraIdle';
 import { LegalLinks } from './LegalLinks';
 import { DiscoveryHub } from '@/components/discovery/DiscoveryHub';
 import { SpotlightProvider } from '@/components/discovery/SpotlightProvider';
+import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
+import { posthog } from '@/lib/posthog';
 
 const SenecaOrb = dynamic(
   () =>
@@ -163,8 +166,26 @@ function SenecaOrbAndThread({
   const { currentWhisper: proactiveWhisper, dismissWhisper: dismissProactive } =
     useSenecaProactiveWhispers(isAuthenticated, !isStudioMode);
 
-  const currentWhisper = proactiveWhisper ?? templateWhisper;
+  const regionWhisper = seneca.regionSuggestionWhisper;
+  const currentWhisper = regionWhisper?.text ?? proactiveWhisper ?? templateWhisper;
   const dismissWhisper = proactiveWhisper ? dismissProactive : dismissTemplate;
+
+  const dismissRegionWhisper = useCallback(() => {
+    if (!regionWhisper) return;
+
+    markClusterWhisperDismissed(regionWhisper.clusterId);
+    seneca.setRegionSuggestionWhisper(null);
+    posthog.capture('seneca_whisper_dismissed', {
+      whisper: regionWhisper.text,
+      source: 'region_suggestion',
+      clusterId: regionWhisper.clusterId,
+    });
+    captureSenecaInteraction({
+      kind: 'region_suggestion_dismissed',
+      clusterId: regionWhisper.clusterId,
+      dismissed: true,
+    });
+  }, [regionWhisper, seneca]);
 
   const sigilState =
     seneca.mode === 'matching'
@@ -192,7 +213,8 @@ function SenecaOrbAndThread({
           sigilState={isStudioMode ? 'idle' : sigilState}
           accentColor={seneca.persona.accentColor}
           whisper={isStudioMode || seneca.isOpen ? null : currentWhisper}
-          onWhisperDismiss={dismissWhisper}
+          onWhisperDismiss={regionWhisper ? dismissRegionWhisper : dismissWhisper}
+          onWhisperClick={regionWhisper ? dismissRegionWhisper : undefined}
           pulse={pulse}
         />
       )}

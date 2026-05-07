@@ -9,6 +9,7 @@ import { MotionStrengthProvider } from '@/lib/motion/motionStrength';
 import { getValidatedSessionFromCookies } from '@/lib/navigation/session';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
+import { logger } from '@/lib/logger';
 import { getCinematicState } from '@/lib/governance/prioritizationEngine';
 import { getTier0Triggers } from '@/lib/governance/tier0Triggers';
 import { recordHomepageVisit } from '@/lib/governance/visitState';
@@ -78,7 +79,11 @@ async function readPrioritizationAcknowledgmentsSafe(
 ): Promise<PrioritizationAcknowledgment[]> {
   try {
     return await readPrioritizationAcknowledgments(identifier);
-  } catch {
+  } catch (error) {
+    logger.warn('Homepage prioritization acknowledgment read failed', {
+      context: 'homepage-cinematic',
+      error,
+    });
     return [];
   }
 }
@@ -89,7 +94,11 @@ async function recordHomepageVisitSafe(
 ): ReturnType<typeof recordHomepageVisit> {
   try {
     return await recordHomepageVisit({ stakeAddress, now });
-  } catch {
+  } catch (error) {
+    logger.warn('Homepage visit tracking failed', {
+      context: 'homepage-cinematic',
+      error,
+    });
     return { tracked: false, visitStarted: false, state: null };
   }
 }
@@ -97,7 +106,11 @@ async function recordHomepageVisitSafe(
 async function getTier0TriggersSafe(now: Date): Promise<Tier0Trigger[]> {
   try {
     return await getTier0Triggers(now);
-  } catch {
+  } catch (error) {
+    logger.warn('Homepage Tier 0 trigger read failed', {
+      context: 'homepage-cinematic',
+      error,
+    });
     return [];
   }
 }

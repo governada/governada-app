@@ -29,11 +29,12 @@ import {
 } from '@/lib/intelligence/streamAdvisor';
 import { useSenecaMemory } from '@/hooks/useSenecaMemory';
 import { cn } from '@/lib/utils';
-import posthog from 'posthog-js';
+import { posthog } from '@/lib/posthog';
 import { postJson } from '@/lib/api/client';
 import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
 import { classifyIntent, getMechanicalAnswer } from '@/lib/seneca/intentRouter';
 import { getEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
+import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
 import {
   ROUTE_LABELS,
   getQuickActions,
@@ -153,7 +154,7 @@ export function SenecaThread({
 
   useEffect(() => {
     if (isOpen && !wasOpenRef.current) {
-      posthog.capture('seneca_interaction', {
+      captureSenecaInteraction({
         kind: 'panel_opened',
         source: 'user',
         mode,
@@ -241,7 +242,7 @@ export function SenecaThread({
         ts: Date.now(),
       };
       onAddMessage(userMsg);
-      posthog.capture('seneca_interaction', {
+      captureSenecaInteraction({
         kind: 'question_asked',
         intent,
         source: 'seneca_panel',
@@ -259,7 +260,7 @@ export function SenecaThread({
           ts: Date.now(),
         };
         onAddMessage(assistantMsg);
-        posthog.capture('seneca_interaction', {
+        captureSenecaInteraction({
           kind: 'mechanical_question_answered',
           question: query,
           source: 'seneca_panel',
@@ -277,7 +278,7 @@ export function SenecaThread({
           ts: Date.now(),
         };
         onAddMessage(assistantMsg);
-        posthog.capture('seneca_interaction', {
+        captureSenecaInteraction({
           kind: 'interrogative_query_started',
           query,
           source: 'seneca_panel',
@@ -335,11 +336,11 @@ export function SenecaThread({
       (error) => {
         const state = homepageCinematic?.queue.primary.state ?? 'returning_quiet';
         onUpdateLastAssistant(getEvergreenFallback(state));
-        posthog.capture('seneca_interaction', {
+        captureSenecaInteraction({
           kind: 'observational_observation_emitted',
           source: 'evergreen_fallback',
           state,
-          error,
+          error: String(error),
           panel_route: panelRoute,
         });
         isStreamingRef.current = false;
@@ -348,7 +349,7 @@ export function SenecaThread({
       () => {
         isStreamingRef.current = false;
         setIsStreaming(false);
-        posthog.capture('seneca_interaction', {
+        captureSenecaInteraction({
           kind: 'observational_observation_emitted',
           source: 'advisor_stream',
           state: homepageCinematic?.queue.primary.state,
@@ -456,9 +457,9 @@ export function SenecaThread({
   // Quick action handler
   const handleQuickAction = useCallback(
     (action: QuickAction) => {
-      posthog.capture('seneca_interaction', {
-        kind: 'path_chosen',
-        path: action.href ?? action.query ?? action.label,
+      captureSenecaInteraction({
+        kind: 'quick_action_chosen',
+        choice: action.href ?? action.query ?? action.label,
         source: 'quick_action',
       });
       // Dispatch globe hint immediately so the globe reacts while Seneca processes
@@ -505,7 +506,7 @@ export function SenecaThread({
             ? { userIdOrStakeAddress: homepageCinematic.identity.userId }
             : {}),
         });
-        posthog.capture('seneca_interaction', {
+        captureSenecaInteraction({
           kind:
             action === 'acknowledge'
               ? 'prioritization_item_acknowledged'
@@ -515,7 +516,7 @@ export function SenecaThread({
           source: 'seneca_panel',
         });
       } catch (error) {
-        posthog.capture('seneca_interaction', {
+        captureSenecaInteraction({
           kind: 'prioritization_item_lifecycle_failed',
           action,
           item_id: item.id,
@@ -534,11 +535,19 @@ export function SenecaThread({
   // Anon option handler
   const handleAnonOption = useCallback(
     (option: GuidedOption) => {
-      posthog.capture('seneca_interaction', {
-        kind: 'path_chosen',
-        path: option.path ?? option.href ?? option.query ?? option.label,
-        source: 'onboarding',
-      });
+      if (option.path) {
+        captureSenecaInteraction({
+          kind: 'path_chosen',
+          path: option.path,
+          source: 'onboarding',
+        });
+      } else {
+        captureSenecaInteraction({
+          kind: 'guided_option_chosen',
+          choice: option.href ?? option.query ?? option.label,
+          source: 'onboarding',
+        });
+      }
       switch (option.action) {
         case 'conversation':
           onStartConversation(option.query);
@@ -621,7 +630,7 @@ export function SenecaThread({
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             className={cn(
               // Shared
-              'fixed z-40 flex flex-col overflow-hidden',
+              'fixed z-[60] flex flex-col overflow-hidden',
               'bg-black/75 backdrop-blur-2xl border border-white/[0.08]',
               'shadow-2xl shadow-black/40',
               // Desktop: floating card

@@ -10,13 +10,13 @@ export const EVERGREEN_FALLBACKS: Record<CinematicState, string> = {
   returning_quiet:
     'The constellation is quiet. No civic event, personal delta, or action queue item is strong enough to take the room.',
   returning_significant_delta:
-    "Something in your representative's record changed since your last visit. The engine marked it significant; the details matter more than the headline.",
+    "Something in your representative's record changed since your last visit. The shift is large enough to deserve a closer look when the details return.",
   returning_epoch:
     'A new epoch has begun since your last visit. The shape is familiar, but the ledger has moved.',
   returning_cold_start:
     'Your representative is recently elected. I will have more to say about their record as it develops.',
   civic_event_tier_0:
-    'A Tier 0 civic event is active. The homepage is giving that change precedence over personal signals.',
+    'A major governance change is active. Until it settles, it outweighs the quieter personal signals.',
   action_required:
     'There is work attached to your role in governance. The queue is not decorative; it marks decisions still within reach.',
   sentiment_opportunity:

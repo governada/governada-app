@@ -14,9 +14,9 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import { cn } from '@/lib/utils';
 import { dispatchGlobeCommand as dispatchGlobeCmd } from '@/lib/globe/globeCommandBus';
-import { posthog } from '@/lib/posthog';
 import { classifyIntent, getMechanicalAnswer } from '@/lib/seneca/intentRouter';
 import { getEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
+import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
 
 /** Heuristic: show "Go deeper" if response is substantive and query implies analysis. */
 const DEEP_QUERY_PATTERNS = /\b(compare|analyz|research|explain|how|why)\b/i;
@@ -57,6 +57,7 @@ export function SenecaConversation({
   const { epoch, day, totalDays, activeProposalCount } = useEpochContext();
   const { segment } = useSegment();
   const { startResearch, executeIntent } = useSenecaThread();
+  const homepageCinematic = useSenecaThreadStore((s) => s.homepageCinematic);
   const daysRemaining = totalDays - day;
 
   useEffect(() => {
@@ -115,7 +116,7 @@ export function SenecaConversation({
           getMechanicalAnswer(text) ??
           'That is a mechanics question. Name the control or term you want explained, and I will keep it plain.';
         setMessages((prev) => [...prev, userMsg, { ...assistantMsg, content: answer }]);
-        posthog.capture('seneca_interaction', {
+        captureSenecaInteraction({
           kind: 'mechanical_question_answered',
           question: text.trim(),
           source: 'seneca_conversation',
@@ -134,7 +135,7 @@ export function SenecaConversation({
               'I can begin narrowing the field. The spatial query path is still being connected, so for now I will hold this as a search intent.',
           },
         ]);
-        posthog.capture('seneca_interaction', {
+        captureSenecaInteraction({
           kind: 'interrogative_query_started',
           query: text.trim(),
           source: 'seneca_conversation',
@@ -179,8 +180,9 @@ export function SenecaConversation({
           });
         },
         (error) => {
+          const state = homepageCinematic?.queue.primary.state ?? 'returning_quiet';
           setStreamError(null);
-          streamContentRef.current = getEvergreenFallback('returning_quiet');
+          streamContentRef.current = getEvergreenFallback(state);
           setMessages((prev) => {
             const updated = [...prev];
             const last = updated[updated.length - 1];
@@ -189,17 +191,17 @@ export function SenecaConversation({
             }
             return updated;
           });
-          posthog.capture('seneca_interaction', {
+          captureSenecaInteraction({
             kind: 'observational_observation_emitted',
             source: 'evergreen_fallback',
-            state: 'returning_quiet',
-            error,
+            state,
+            error: String(error),
             panel_route: panelRoute,
           });
           setIsStreaming(false);
         },
         () => {
-          posthog.capture('seneca_interaction', {
+          captureSenecaInteraction({
             kind: 'observational_observation_emitted',
             source: 'advisor_stream',
             panel_route: panelRoute,
@@ -244,6 +246,7 @@ export function SenecaConversation({
       panelRoute,
       entityId,
       executeIntent,
+      homepageCinematic?.queue.primary.state,
       router,
       startResearch,
     ],

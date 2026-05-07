@@ -37,7 +37,7 @@ export const ROUTE_LABELS: Record<PanelRoute, string> = {
 // ---------------------------------------------------------------------------
 
 const IDLE_BRIEFINGS: Record<PanelRoute, string> = {
-  hub: "Cardano governance is happening right now. Representatives are voting on proposals that shape the ecosystem's future. I can help you explore what's at stake — or find who should represent your ADA.",
+  hub: 'Cardano governance is visible here as representatives, proposals, and citizens leave records in common view.',
   proposal:
     "Every proposal carries consequences that outlast the epoch it was written in. I can walk you through what this one means, who's voted, and why it matters.",
   drep: 'This representative has a story written in on-chain votes. I can show you their record, their alignment, and how they compare to others you might consider.',
@@ -378,17 +378,15 @@ export function IdleContent({
             onPrioritizationAction={onPrioritizationAction}
           />
         </motion.div>
+      ) : cinematicPrimary ? (
+        <CinematicStateCard
+          item={cinematicPrimary}
+          reasoning={cinematicReasoning}
+          canRecordLifecycle={canRecordLifecycle}
+          onPrioritizationAction={onPrioritizationAction}
+        />
       ) : (
         <>
-          {cinematicPrimary && (
-            <CinematicStateCard
-              item={cinematicPrimary}
-              reasoning={cinematicReasoning}
-              canRecordLifecycle={canRecordLifecycle}
-              onPrioritizationAction={onPrioritizationAction}
-            />
-          )}
-
           {/* Narrated briefing */}
           <motion.div
             initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}

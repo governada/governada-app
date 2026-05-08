@@ -45,6 +45,17 @@ describe('useQuickConnect', () => {
     expect(connect).toHaveBeenCalledWith('lace');
     expect(authenticate).toHaveBeenCalledWith(connection);
     expect(result.current.error).toBeNull();
+    expect(posthogCapture).toHaveBeenCalledWith('quick_connect_succeeded', {
+      wallet_name: 'lace',
+    });
+    expect(posthogCapture).not.toHaveBeenCalledWith(
+      'wallet_connected',
+      expect.objectContaining({ source: 'quick_connect' }),
+    );
+    expect(posthogCapture).not.toHaveBeenCalledWith(
+      'funnel_wallet_connected',
+      expect.objectContaining({ source: 'quick_connect' }),
+    );
   });
 
   it('surfaces a connection failure when connect returns null', async () => {

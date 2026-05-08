@@ -73,8 +73,9 @@ import {
   type AnchoredCardDescriptor,
   type FoldedAnchoredCardEntry,
 } from '@/components/globe/AnchoredCard';
-import { useIsTouchDevice } from '@/hooks/useViewportClass';
+import { useIsTouchDevice, useViewportClass } from '@/hooks/useViewportClass';
 import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
+import { captureHomepageTiming } from '@/lib/telemetry/perfMarks';
 import type { HoverDetailLevel } from '@/components/governada/GlobeTooltip';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 
@@ -164,14 +165,35 @@ export function GlobeLayout({
   const [anchoredCards, setAnchoredCards] = useState<AnchoredCardDescriptor[]>([]);
   const setHomepageAnchoredCards = useSenecaThreadStore((s) => s.setHomepageAnchoredCards);
   const [, setFoldedAnchoredCards] = useState<FoldedAnchoredCardEntry[]>([]);
+  const surfacedAnchoredCardIds = useRef<Set<string>>(new Set());
+  const hoverPreviewSeenIds = useRef<Set<string>>(new Set());
+  const tapPreviewSeenIds = useRef<Set<string>>(new Set());
+  const didTrackInteractive = useRef(false);
   const handleAnchoredCards = useCallback((cards: AnchoredCardDescriptor[]) => {
     // The prioritization engine yields one primary surface at a time; this keeps
     // card kinds homogeneous instead of mixing delta/action/sentiment cards.
     setAnchoredCards(cards);
+    for (const card of cards) {
+      if (surfacedAnchoredCardIds.current.has(card.id)) continue;
+      surfacedAnchoredCardIds.current.add(card.id);
+      // PostHog payload: { id, kind, anchorNodeId, autoDismissMs }.
+      posthog.capture('anchored_card_surfaced', {
+        id: card.id,
+        kind: card.kind,
+        anchorNodeId: card.anchorNodeId,
+        autoDismissMs: card.autoDismissMs ?? null,
+      });
+    }
   }, []);
   const handleFoldAnchoredCard = useCallback((entry: FoldedAnchoredCardEntry) => {
     setAnchoredCards((current) => current.filter((card) => card.id !== entry.id));
     setFoldedAnchoredCards((current) => [...current.filter((card) => card.id !== entry.id), entry]);
+    // PostHog payload: { id, kind, reason }.
+    posthog.capture('anchored_card_dismissed', {
+      id: entry.id,
+      kind: entry.kind,
+      reason: entry.reason,
+    });
   }, []);
   const bridgeOptions = useMemo(
     () => ({
@@ -191,6 +213,7 @@ export function GlobeLayout({
     return () => setHomepageAnchoredCards([]);
   }, [setHomepageAnchoredCards]);
   const motionStrength = useMotionStrength();
+  const viewportClass = useViewportClass();
   const isTouchDevice = useIsTouchDevice();
   const lastHomepageCinemaKey = useRef<string | null>(null);
   const activeHomepageCinema = useRef<{
@@ -207,7 +230,14 @@ export function GlobeLayout({
   useEffect(() => {
     if (!clusterFlagEnabled) return;
     fetch('/api/governance/constellation/clusters')
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!r.ok) {
+          throw Object.assign(new Error(`Cluster fetch failed with status ${r.status}`), {
+            statusCode: r.status,
+          });
+        }
+        return r.json();
+      })
       .then((data) => {
         if (!data?.clusters) return;
         setClusterLabels(
@@ -239,7 +269,14 @@ export function GlobeLayout({
           })),
         );
       })
-      .catch(() => {});
+      .catch((error) => {
+        // PostHog payload: { error, statusCode, source }.
+        posthog.capture('cluster_fetch_failed', {
+          error: getErrorMessage(error),
+          statusCode: getStatusCode(error),
+          source: 'homepage',
+        });
+      });
   }, [clusterFlagEnabled]);
 
   const { segment, drepId } = useSegment();
@@ -323,8 +360,23 @@ export function GlobeLayout({
       if (isTouchDevice) return;
       setHoveredNode(node);
       setHoverScreenPos(pos);
-      if (node?.nodeType === 'drep') {
-        setHoverDetailLevel(deriveHoverDetailLevel(globeRef.current));
+      if (node) {
+        const nodeType = node.nodeType ?? 'drep';
+        const detailLevel =
+          nodeType === 'drep' ? deriveHoverDetailLevel(globeRef.current) : 'overview';
+        if (nodeType === 'drep') {
+          setHoverDetailLevel(detailLevel);
+        }
+        const hoverKey = `${nodeType}:${node.fullId || node.id}`;
+        if (!hoverPreviewSeenIds.current.has(hoverKey)) {
+          hoverPreviewSeenIds.current.add(hoverKey);
+          // PostHog payload: { nodeId, nodeType, detailLevel }.
+          posthog.capture('hover_preview_shown', {
+            nodeId: node.fullId || node.id,
+            nodeType,
+            detailLevel,
+          });
+        }
       }
     },
     [isTouchDevice],
@@ -354,6 +406,11 @@ export function GlobeLayout({
       );
 
       if (samePreviewActive) {
+        posthog.capture('tap_preview_completed', {
+          nodeId,
+          nodeType: node.nodeType ?? 'drep',
+          viewport: viewportClass,
+        });
         if (hasAnchoredCard) bumpAnchoredCardTimer(node.id);
         const entityParam = nodeToEntityParam(node);
         if (entityParam) handleEntitySelect(entityParam);
@@ -366,6 +423,15 @@ export function GlobeLayout({
 
       setPreviewedNodeId(nodeId);
       setPreviewExpiresAt(now + 5_000);
+      if (!tapPreviewSeenIds.current.has(nodeId)) {
+        tapPreviewSeenIds.current.add(nodeId);
+        // PostHog payload: { nodeId, nodeType, viewport }.
+        posthog.capture('tap_preview_shown', {
+          nodeId,
+          nodeType: node.nodeType ?? 'drep',
+          viewport: viewportClass,
+        });
+      }
       setSharedIntent({
         focusedIds: new Set([node.id]),
         intensities: new Map([[node.id, 1]]),
@@ -387,7 +453,14 @@ export function GlobeLayout({
       setHoveredNode(node);
       setHoverScreenPos(getTouchPreviewPosition());
     },
-    [anchoredCards, bumpAnchoredCardTimer, handleEntitySelect, previewExpiresAt, previewedNodeId],
+    [
+      anchoredCards,
+      bumpAnchoredCardTimer,
+      handleEntitySelect,
+      previewExpiresAt,
+      previewedNodeId,
+      viewportClass,
+    ],
   );
 
   useEffect(() => {
@@ -448,13 +521,23 @@ export function GlobeLayout({
   const initialFocusDone = useRef(false);
 
   const handleGlobeReady = useCallback(() => {
+    if (pathname === '/' && !didTrackInteractive.current) {
+      didTrackInteractive.current = true;
+      const emitInteractive = () =>
+        captureHomepageTiming('time_to_interactive', { viewport: viewportClass });
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(emitInteractive);
+      } else {
+        emitInteractive();
+      }
+    }
     if (initialFocusDone.current) return;
     initialFocusDone.current = true;
     const entityFocus = deriveEntityFocusFromPath(pathname);
     if (entityFocus) {
       globeRef.current?.flyToNode(entityFocus);
     }
-  }, [pathname]);
+  }, [pathname, viewportClass]);
 
   const handleNodeSelect = useCallback(
     (node: ConstellationNode3D) => {
@@ -478,6 +561,11 @@ export function GlobeLayout({
 
   const handleAnchoredCardSelect = useCallback(
     (card: AnchoredCardDescriptor) => {
+      posthog.capture('anchored_card_selected', {
+        id: card.id,
+        kind: card.kind,
+        anchorNodeId: card.anchorNodeId,
+      });
       bumpAnchoredCardTimer(card.anchorNodeId);
       const entityParam = cardToEntityParam(card);
       if (entityParam) handleEntitySelect(entityParam);
@@ -797,6 +885,7 @@ export function GlobeLayout({
       dispatchCinematicExit(activeHomepageCinema.current.state, {
         dispatch: executeGlobeCommand,
         baseMotionStrength: motionStrength,
+        interruptionReason: snapshot.queue.primary.tier === 0 ? 'tier_0_supersede' : 'user_input',
       });
     }
 
@@ -806,6 +895,7 @@ export function GlobeLayout({
     void resolveCinematicPayload(snapshot.queue.primary.state, snapshot.queue.primary.payload).then(
       (payload) => {
         if (cancelled) return;
+        captureHomepageTiming('time_to_cinema_fire', { state: snapshot.queue.primary.state });
         dispatchCinematicState(snapshot.queue.primary.state, payload, {
           dispatch: executeGlobeCommand,
           item: snapshot.queue.primary,
@@ -1066,6 +1156,22 @@ function cardToEntityParam(card: AnchoredCardDescriptor): string | null {
   }
 
   return encodeEntityParam('drep', anchor);
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300);
+}
+
+function getStatusCode(error: unknown): number {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'statusCode' in error &&
+    typeof error.statusCode === 'number'
+  ) {
+    return error.statusCode;
+  }
+  return 0;
 }
 
 /** Map a constellation node to its /g/ route */

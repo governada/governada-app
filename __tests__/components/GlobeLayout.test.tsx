@@ -10,9 +10,11 @@ const replace = vi.fn();
 const startMatch = vi.fn();
 const executeGlobeCommand = vi.fn();
 const setHomepageAnchoredCards = vi.fn();
+const { posthogCaptureMock } = vi.hoisted(() => ({ posthogCaptureMock: vi.fn() }));
 let homepageCinematic: unknown = null;
 let viewportClass: 'mobile' | 'desktop' = 'desktop';
 let isTouchDevice = false;
+let featureFlags = new Map<string, boolean>();
 let bridgeOptions: { onAnchoredCards?: (cards: AnchoredCardDescriptor[]) => void } | null = null;
 
 const selectableNode = {
@@ -128,7 +130,7 @@ vi.mock('@/stores/senecaThreadStore', () => {
 });
 
 vi.mock('@/components/FeatureGate', () => ({
-  useFeatureFlag: () => false,
+  useFeatureFlag: (flag: string) => featureFlags.get(flag) ?? false,
 }));
 
 vi.mock('@/lib/funnel', () => ({
@@ -138,7 +140,7 @@ vi.mock('@/lib/funnel', () => ({
 
 vi.mock('@/lib/posthog', () => ({
   posthog: {
-    capture: vi.fn(),
+    capture: posthogCaptureMock,
   },
 }));
 
@@ -153,11 +155,21 @@ vi.mock('@/lib/globe/behaviors/clusterBehavior', () => ({
 
 vi.mock('@/components/ConstellationScene', () => ({
   ConstellationScene: React.forwardRef(
-    (props: { onNodeSelect?: (node: ConstellationNode3D) => void }, _ref) => (
+    (
+      props: {
+        onNodeSelect?: (node: ConstellationNode3D) => void;
+        onNodeHoverScreen?: (
+          node: ConstellationNode3D | null,
+          pos: { x: number; y: number } | null,
+        ) => void;
+      },
+      _ref,
+    ) => (
       <button
         type="button"
         data-testid="scene"
         onClick={() => props.onNodeSelect?.(selectableNode)}
+        onMouseEnter={() => props.onNodeHoverScreen?.(selectableNode, { x: 20, y: 30 })}
       >
         scene
       </button>
@@ -237,12 +249,15 @@ describe('GlobeLayout deferred panels', () => {
     homepageCinematic = null;
     viewportClass = 'desktop';
     isTouchDevice = false;
+    featureFlags = new Map();
     bridgeOptions = null;
     setHomepageAnchoredCards.mockClear();
+    posthogCaptureMock.mockClear();
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     cleanup();
   });
 
@@ -292,6 +307,14 @@ describe('GlobeLayout deferred panels', () => {
     expect(executeGlobeCommand).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'cinema:returning_quiet' }),
     );
+    expect(posthogCaptureMock).toHaveBeenCalledWith(
+      'cinema_arrival_state',
+      expect.objectContaining({
+        state: 'returning_quiet',
+        tier: 2,
+        interruptedByUser: false,
+      }),
+    );
 
     executeGlobeCommand.mockClear();
     homepageCinematic = makeHomepageCinematicSnapshot('action_required', 'action-fixture');
@@ -306,6 +329,10 @@ describe('GlobeLayout deferred panels', () => {
         }),
       ),
     );
+    expect(posthogCaptureMock).toHaveBeenCalledWith('cinema_state_interrupted', {
+      state: 'returning_quiet',
+      reasonCode: 'user_input',
+    });
     await waitFor(() =>
       expect(executeGlobeCommand).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'cinema:action_required' }),
@@ -322,12 +349,22 @@ describe('GlobeLayout deferred panels', () => {
     fireEvent.click(scene);
 
     await waitFor(() => expect(screen.getByTestId('globe-tooltip')).toBeTruthy());
+    expect(posthogCaptureMock).toHaveBeenCalledWith('tap_preview_shown', {
+      nodeId: 'drep_abc123',
+      nodeType: 'drep',
+      viewport: 'mobile',
+    });
     expect(screen.queryByTestId('entity-detail-sheet')).toBeNull();
 
     await waitForTouchDuplicateGuard();
     fireEvent.click(scene);
 
     await waitFor(() => expect(screen.getByTestId('entity-detail-sheet')).toBeTruthy());
+    expect(posthogCaptureMock).toHaveBeenCalledWith('tap_preview_completed', {
+      nodeId: 'drep_abc123',
+      nodeType: 'drep',
+      viewport: 'mobile',
+    });
   });
 
   it('uses anchored cards as the touch preview surface', async () => {
@@ -347,6 +384,12 @@ describe('GlobeLayout deferred panels', () => {
       ]);
     });
     await waitFor(() => expect(screen.getByTestId('anchored-card-mobile')).toBeTruthy());
+    expect(posthogCaptureMock).toHaveBeenCalledWith('anchored_card_surfaced', {
+      id: 'anchored-drep',
+      kind: 'action',
+      anchorNodeId: selectableNode.id,
+      autoDismissMs: null,
+    });
 
     fireEvent.click(scene);
 
@@ -357,6 +400,41 @@ describe('GlobeLayout deferred panels', () => {
     fireEvent.click(scene);
 
     await waitFor(() => expect(screen.getByTestId('entity-detail-sheet')).toBeTruthy());
+  });
+
+  it('captures hover preview telemetry on desktop', async () => {
+    renderGlobeLayout();
+
+    const scene = await screen.findByTestId('scene');
+    fireEvent.mouseEnter(scene);
+
+    expect(posthogCaptureMock).toHaveBeenCalledWith('hover_preview_shown', {
+      nodeId: 'drep_abc123',
+      nodeType: 'drep',
+      detailLevel: 'tight',
+    });
+  });
+
+  it('captures homepage cluster fetch failures with source attribution', async () => {
+    featureFlags.set('globe_alignment_layout', true);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      }),
+    );
+
+    renderGlobeLayout();
+
+    await waitFor(() =>
+      expect(posthogCaptureMock).toHaveBeenCalledWith('cluster_fetch_failed', {
+        error: 'Cluster fetch failed with status 503',
+        statusCode: 503,
+        source: 'homepage',
+      }),
+    );
   });
 
   it('keeps Layer 2 idle effects gated to quiet returning states', () => {

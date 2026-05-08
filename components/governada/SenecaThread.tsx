@@ -33,9 +33,10 @@ import { cn } from '@/lib/utils';
 import { posthog } from '@/lib/posthog';
 import { postJson } from '@/lib/api/client';
 import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
-import { classifyIntent, getMechanicalAnswer } from '@/lib/seneca/intentRouter';
+import { classifyIntent, getMechanicalAnswer, type SenecaIntent } from '@/lib/seneca/intentRouter';
 import { getEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
 import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
+import { captureHomepageTiming } from '@/lib/telemetry/perfMarks';
 import {
   ROUTE_LABELS,
   getQuickActions,
@@ -171,10 +172,31 @@ export function SenecaThread({
         source: 'user',
         mode,
         panel_route: panelRoute,
+        viewport: viewportClass,
       });
     }
     wasOpenRef.current = isOpen;
-  }, [isOpen, mode, panelRoute]);
+  }, [isOpen, mode, panelRoute, viewportClass]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname === '/') {
+      captureHomepageTiming('time_to_seneca_ready');
+    }
+  }, []);
+
+  const handlePanelDismiss = useCallback(
+    (source: 'close_button' | 'escape_key' | 'sheet_dismiss') => {
+      captureSenecaInteraction({
+        kind: 'panel_dismissed',
+        source,
+        mode,
+        panel_route: panelRoute,
+        viewport: viewportClass,
+      });
+      onClose();
+    },
+    [mode, onClose, panelRoute, viewportClass],
+  );
 
   // 2C: Navigation-aware context — auto-fire advisor response on route change
   const pendingNavRef = useRef<{
@@ -226,6 +248,7 @@ export function SenecaThread({
     // 2C: Detect navigation-triggered queries (format: [nav:routeName])
     const isNavQuery = /^\[nav:[^\]]+\]$/.test(query);
     const navEvent = isNavQuery ? pendingNavRef.current : null;
+    const turnIntent: SenecaIntent = isNavQuery ? 'observational' : classifyIntent(query);
     if (isNavQuery) pendingNavRef.current = null; // consume
 
     // Snapshot history before adding new messages
@@ -245,7 +268,6 @@ export function SenecaThread({
     }
 
     if (!isNavQuery) {
-      const intent = classifyIntent(query);
       // Normal user query — show the user message bubble
       const userMsg: ThreadMessage = {
         id: `user-${Date.now()}`,
@@ -256,12 +278,12 @@ export function SenecaThread({
       onAddMessage(userMsg);
       captureSenecaInteraction({
         kind: 'question_asked',
-        intent,
+        intent: turnIntent,
         source: 'seneca_panel',
         panel_route: panelRoute,
       });
 
-      if (intent === 'mechanical') {
+      if (turnIntent === 'mechanical') {
         const answer =
           getMechanicalAnswer(query) ??
           'That is a mechanics question. The shortest path is to name the control, then ask again with the word you want defined.';
@@ -273,7 +295,14 @@ export function SenecaThread({
         };
         onAddMessage(assistantMsg);
         captureSenecaInteraction({
+          kind: 'mechanical_question_asked',
+          question_type: getMechanicalQuestionType(query),
+          source: 'seneca_panel',
+          panel_route: panelRoute,
+        });
+        captureSenecaInteraction({
           kind: 'mechanical_question_answered',
+          question_type: getMechanicalQuestionType(query),
           question: query,
           source: 'seneca_panel',
           panel_route: panelRoute,
@@ -281,7 +310,7 @@ export function SenecaThread({
         return;
       }
 
-      if (intent === 'interrogative') {
+      if (turnIntent === 'interrogative') {
         const assistantMsg: ThreadMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
@@ -347,12 +376,24 @@ export function SenecaThread({
       },
       (error) => {
         const state = homepageCinematic?.queue.primary.state ?? 'returning_quiet';
+        // PostHog payload: { error, intent, panel_route }.
+        posthog.capture('seneca_answer_failed', {
+          error: getErrorMessage(error),
+          intent: turnIntent,
+          panel_route: panelRoute,
+        });
         onUpdateLastAssistant(getEvergreenFallback(state));
         captureSenecaInteraction({
           kind: 'observational_observation_emitted',
           source: 'evergreen_fallback',
           state,
           error: String(error),
+          panel_route: panelRoute,
+        });
+        captureSenecaInteraction({
+          kind: 'observation_surfaced',
+          source: 'evergreen_fallback',
+          state,
           panel_route: panelRoute,
         });
         isStreamingRef.current = false;
@@ -363,6 +404,12 @@ export function SenecaThread({
         setIsStreaming(false);
         captureSenecaInteraction({
           kind: 'observational_observation_emitted',
+          source: 'advisor_stream',
+          state: homepageCinematic?.queue.primary.state,
+          panel_route: panelRoute,
+        });
+        captureSenecaInteraction({
+          kind: 'observation_surfaced',
           source: 'advisor_stream',
           state: homepageCinematic?.queue.primary.state,
           panel_route: panelRoute,
@@ -459,12 +506,12 @@ export function SenecaThread({
     if (!isOpen) return;
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        onClose();
+        handlePanelDismiss('escape_key');
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [handlePanelDismiss, isOpen]);
 
   // Quick action handler
   const handleQuickAction = useCallback(
@@ -551,6 +598,13 @@ export function SenecaThread({
         captureSenecaInteraction({
           kind: 'path_chosen',
           path: option.path,
+          label: option.label,
+          source: 'onboarding',
+        });
+        captureSenecaInteraction({
+          kind: 'guided_path_taken',
+          path: option.path,
+          label: option.label,
           source: 'onboarding',
         });
       } else {
@@ -662,7 +716,7 @@ export function SenecaThread({
 
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => handlePanelDismiss('close_button')}
           className={cn(
             'p-1.5 rounded-md transition-colors',
             'text-muted-foreground/40 hover:text-muted-foreground hover:bg-white/5',
@@ -765,7 +819,7 @@ export function SenecaThread({
 
   if (viewportClass === 'mobile') {
     return (
-      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Sheet open={isOpen} onOpenChange={(open) => !open && handlePanelDismiss('sheet_dismiss')}>
         <SheetContent
           side="bottom"
           showCloseButton={false}
@@ -807,6 +861,20 @@ export function SenecaThread({
   );
 }
 
+function getMechanicalQuestionType(query: string): string {
+  const normalized = query
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, '_')
+    .replace(/^_+|_+$/gu, '')
+    .slice(0, 64);
+  return normalized || 'unknown';
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300);
+}
+
 function MotionSettingsGroup() {
   const { userOverride, setUserOverride } = useMotionStrengthSetter();
 
@@ -828,6 +896,12 @@ function MotionSettingsGroup() {
         value={userOverride}
         onValueChange={(value) => {
           if (value === 'auto' || value === 'full' || value === 'suspended') {
+            captureSenecaInteraction({
+              kind: 'motion_setting_changed',
+              source: 'seneca_settings',
+              from: userOverride,
+              to: value,
+            });
             setUserOverride(value);
           }
         }}

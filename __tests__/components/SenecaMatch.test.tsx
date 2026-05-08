@@ -9,12 +9,14 @@ const {
   setSharedIntentMock,
   useIsTouchDeviceMock,
   vibrateMock,
+  posthogCaptureMock,
 } = vi.hoisted(() => ({
   dispatchGlobeCommandMock: vi.fn(),
   getSharedIntentMock: vi.fn(),
   setSharedIntentMock: vi.fn(),
   useIsTouchDeviceMock: vi.fn(),
   vibrateMock: vi.fn(),
+  posthogCaptureMock: vi.fn(),
 }));
 
 let currentIntent: Record<string, unknown>;
@@ -41,7 +43,7 @@ vi.mock('next/link', () => ({
 }));
 
 vi.mock('posthog-js', () => ({
-  default: { capture: vi.fn() },
+  default: { capture: posthogCaptureMock },
 }));
 
 vi.mock('@/components/FeatureGate', () => ({
@@ -94,6 +96,7 @@ describe('SenecaMatch', () => {
     getSharedIntentMock.mockImplementation(() => currentIntent);
     setSharedIntentMock.mockClear();
     dispatchGlobeCommandMock.mockClear();
+    posthogCaptureMock.mockClear();
     vibrateMock.mockClear();
     useIsTouchDeviceMock.mockReturnValue(false);
     vi.stubGlobal('navigator', { vibrate: vibrateMock });
@@ -232,6 +235,13 @@ describe('SenecaMatch', () => {
     expect(setSharedIntentMock).toHaveBeenCalledWith(
       expect.objectContaining({ dimStrength: 1.0, forceActive: true }),
     );
+    expect(posthogCaptureMock).toHaveBeenCalledWith('match_no_candidates', {
+      answers: expect.objectContaining({
+        treasury: 'conservative',
+        protocol: 'caution',
+      }),
+      threshold: 40,
+    });
   });
 
   it('publishes the reveal card through the Phase 6 AnchoredCard command', async () => {
@@ -323,5 +333,82 @@ describe('SenecaMatch', () => {
         );
       }),
     ).toBe(true);
+  });
+
+  it('captures match cluster fetch failures with source attribution', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/governance/constellation/clusters')) {
+        return Promise.resolve({ ok: false, status: 502, json: async () => ({}) });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          matches: [
+            {
+              drepId: 'drep1match',
+              drepName: 'Aurelia DRep',
+              drepScore: 88,
+              matchScore: 77,
+              identityColor: '#f59e0b',
+              personalityLabel: 'Pragmatic Builder',
+              alignments: {
+                treasuryConservative: 50,
+                treasuryGrowth: 50,
+                decentralization: 50,
+                security: 50,
+                innovation: 50,
+                transparency: 50,
+              },
+              agreeDimensions: ['Fiscal', 'Transparency'],
+              differDimensions: ['Security'],
+            },
+          ],
+          nearMisses: [],
+          userAlignments: {
+            treasuryConservative: 50,
+            treasuryGrowth: 50,
+            decentralization: 50,
+            security: 50,
+            innovation: 50,
+            transparency: 50,
+          },
+          personalityLabel: 'Pragmatic Builder',
+          identityColor: '#ffffff',
+          confidenceBreakdown: { overall: 20, sources: [], nextAction: null },
+        }),
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderMatch();
+
+    const answers = [
+      /Protect it/i,
+      /Stability first/i,
+      /Non-negotiable/i,
+      /Spread widely/i,
+      /Voter apathy/i,
+      /Regular updates/i,
+      /Developer tooling/i,
+    ];
+
+    for (const label of answers) {
+      fireEvent.click(screen.getByRole('button', { name: label }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(450);
+      });
+    }
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(posthogCaptureMock).toHaveBeenCalledWith('cluster_fetch_failed', {
+      error: 'Cluster fetch failed with status 502',
+      statusCode: 502,
+      source: 'match',
+    });
   });
 });

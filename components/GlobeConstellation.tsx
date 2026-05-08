@@ -37,6 +37,7 @@ import {
   ConstellationGroup,
 } from '@/components/globe/GlobeCamera';
 import type { ConstellationApiData, ConstellationNode3D } from '@/lib/constellation/types';
+import { posthog } from '@/lib/posthog';
 
 // ConstellationRef is now imported directly from '@/lib/globe/types' by all consumers
 
@@ -114,6 +115,23 @@ interface GlobeConstellationProps {
    *  Decorative/background globe instances should set this to false to prevent
    *  multiple engine ticks fighting over the shared window globals. */
   engineEnabled?: boolean;
+}
+
+function ConstellationRenderFailure({
+  reason,
+  motionStrength,
+}: {
+  reason: string;
+  motionStrength: number;
+}) {
+  const capturedRef = useRef(false);
+  useEffect(() => {
+    if (capturedRef.current) return;
+    capturedRef.current = true;
+    captureConstellationRenderFailure(new Error(reason), motionStrength);
+  }, [motionStrength, reason]);
+
+  return null;
 }
 
 // FocusState, SceneState, constants, and focus bridge functions are now imported from lib/globe/
@@ -517,6 +535,12 @@ export const GlobeConstellation = forwardRef<
         <Canvas
           dpr={dpr}
           camera={{ position: effectiveCamera, fov: 60 }}
+          fallback={
+            <ConstellationRenderFailure
+              reason="WebGL context unavailable"
+              motionStrength={effectiveMotionStrength}
+            />
+          }
           gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
           style={{
             position: 'absolute',
@@ -686,3 +710,30 @@ export const GlobeConstellation = forwardRef<
 // Node and SPO shaders imported from lib/globe/shaders.ts
 // ConstellationNodes + NodePoints extracted to components/globe/NodePoints.tsx
 // IdleCameraWobble, CinematicCamera, ConstellationGroup imported at top of file
+
+function captureConstellationRenderFailure(error: Error, motionStrength: number): void {
+  // PostHog payload: { error, browser, webgl, motionStrength }.
+  posthog.capture('constellation_render_failed', {
+    error: error.message.slice(0, 300),
+    browser: getBrowserLabel(),
+    webgl: detectWebglSupport(),
+    motionStrength,
+  });
+}
+
+function getBrowserLabel(): string {
+  if (typeof navigator === 'undefined') return 'unknown';
+  return navigator.userAgent.slice(0, 160);
+}
+
+function detectWebglSupport(): 'webgl' | 'webgl2' | 'none' {
+  if (typeof document === 'undefined') return 'none';
+  try {
+    const canvas = document.createElement('canvas');
+    if (canvas.getContext('webgl2')) return 'webgl2';
+    if (canvas.getContext('webgl')) return 'webgl';
+  } catch {
+    return 'none';
+  }
+  return 'none';
+}

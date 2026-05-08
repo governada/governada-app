@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { posthog } from '@/lib/posthog';
 import { emitDiscoveryEvent } from '@/lib/discovery/events';
+import { markHomepageViewed } from '@/lib/telemetry/perfMarks';
 
 const FIRST_VISIT_STORAGE_KEY = 'governada_first_visit_seen';
+const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 interface PageViewTrackerProps {
   event: string;
@@ -28,6 +30,12 @@ function captureFirstVisit() {
 }
 
 export function PageViewTracker({ event, properties, discoveryEvent }: PageViewTrackerProps) {
+  useBrowserLayoutEffect(() => {
+    if (event === 'homepage_viewed') {
+      markHomepageViewed();
+    }
+  }, [event]);
+
   useEffect(() => {
     if (event === 'homepage_viewed') {
       captureFirstVisit();

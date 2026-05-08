@@ -74,6 +74,34 @@ if [ "$hook_mode" -eq 1 ]; then
     body_file=$(printf '%s\n' "$command" | sed -nE 's/.*--body-file[= ]([^ ]+).*/\1/p' | head -1 | tr -d "'\"")
     TEXT_SOURCES+=("$body_file")
   fi
+
+  # Detect commits targeting a different working tree than the hook's CWD.
+  # The hook lives at <app-repo-root>/.claude/hooks/ and only enforces app-repo
+  # feature-plan discipline. Without this block, commits reached via
+  # `cd <path> && git commit` or `git -C <path> commit` get evaluated against
+  # the hook's own CWD instead of the commit's actual target — producing false
+  # positives on cross-repo commits (e.g., brain repo) and on commits to
+  # worktrees of the same repo where the main checkout has unrelated state.
+  app_repo_root=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)
+  target_dir=""
+  if printf '%s\n' "$command" | grep -Eq '(^|[[:space:]]|;|&&|\|\|)cd[[:space:]]+'; then
+    target_dir=$(printf '%s\n' "$command" | sed -nE 's/.*(^|[[:space:]]|;|&&|\|\|)cd[[:space:]]+([^[:space:]]+).*/\2/p' | head -1 | tr -d "'\"")
+  elif printf '%s\n' "$command" | grep -Eq 'git[[:space:]]+-C[[:space:]]+'; then
+    target_dir=$(printf '%s\n' "$command" | sed -nE 's/.*git[[:space:]]+-C[[:space:]]+([^[:space:]]+).*/\1/p' | head -1 | tr -d "'\"")
+  fi
+  if [ -n "$target_dir" ] && [ -n "$app_repo_root" ]; then
+    target_repo_root=$(cd "$target_dir" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || echo "")
+    if [ -n "$target_repo_root" ]; then
+      if [ "$target_repo_root" != "$app_repo_root" ]; then
+        # Different repo entirely (e.g., brain repo). Hook doesn't apply.
+        exit 0
+      fi
+      # Same repo, possibly different worktree. cd into target so the
+      # change-counting git diff/status checks below see the worktree's
+      # actual state, not whatever CWD the hook inherited.
+      cd "$target_dir" 2>/dev/null || true
+    fi
+  fi
 fi
 
 changed_files=$(

@@ -20,7 +20,11 @@ vi.mock('@/lib/koios', () => ({
   blockTimeToEpoch: vi.fn(() => 100),
 }));
 
-import { acknowledgeItem, dismissItem } from '@/lib/governance/acknowledgments';
+import {
+  acknowledgeItem,
+  dismissItem,
+  type ItemLifecycleRecord,
+} from '@/lib/governance/acknowledgments';
 import {
   countMissedVotesSincePriorVisit,
   getCinematicState,
@@ -298,17 +302,8 @@ describe('prioritization lifecycle writes', () => {
   });
 
   it('acknowledgeItem writes an acknowledgment row', async () => {
-    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-    const upsert = vi.fn().mockResolvedValue({ error: null });
-    const query = {
-      select: vi.fn(() => query),
-      eq: vi.fn(() => query),
-      maybeSingle,
-      upsert,
-    };
-    mockGetSupabaseAdmin.mockReturnValue({
-      from: vi.fn(() => query),
-    });
+    const { rpc } = mockLifecycleMergeRpc();
+    mockGetSupabaseAdmin.mockReturnValue({ rpc });
 
     const record = await acknowledgeItem({
       userIdOrStakeAddress: 'stake1',
@@ -322,8 +317,11 @@ describe('prioritization lifecycle writes', () => {
       acknowledged_at: NOW,
       dismissed_at: null,
     });
-    expect(upsert).toHaveBeenCalledWith(record, {
-      onConflict: 'user_id_or_stake_address,item_id',
+    expect(rpc).toHaveBeenCalledWith('ack_dismiss_merge', {
+      p_user_id_or_stake_address: 'stake1',
+      p_item_id: 'item1',
+      p_ack_at: NOW,
+      p_dismiss_at: null,
     });
   });
 
@@ -334,17 +332,8 @@ describe('prioritization lifecycle writes', () => {
       acknowledged_at: null,
       dismissed_at: '2026-05-06T13:30:00.000Z',
     };
-    const maybeSingle = vi.fn().mockResolvedValue({ data: existing, error: null });
-    const upsert = vi.fn().mockResolvedValue({ error: null });
-    const query = {
-      select: vi.fn(() => query),
-      eq: vi.fn(() => query),
-      maybeSingle,
-      upsert,
-    };
-    mockGetSupabaseAdmin.mockReturnValue({
-      from: vi.fn(() => query),
-    });
+    const { rpc } = mockLifecycleMergeRpc([existing]);
+    mockGetSupabaseAdmin.mockReturnValue({ rpc });
 
     const record = await acknowledgeItem({
       userIdOrStakeAddress: 'stake1',
@@ -359,17 +348,8 @@ describe('prioritization lifecycle writes', () => {
   });
 
   it('dismissItem writes a dismissal row', async () => {
-    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-    const upsert = vi.fn().mockResolvedValue({ error: null });
-    const query = {
-      select: vi.fn(() => query),
-      eq: vi.fn(() => query),
-      maybeSingle,
-      upsert,
-    };
-    mockGetSupabaseAdmin.mockReturnValue({
-      from: vi.fn(() => query),
-    });
+    const { rpc } = mockLifecycleMergeRpc();
+    mockGetSupabaseAdmin.mockReturnValue({ rpc });
 
     const record = await dismissItem({
       userIdOrStakeAddress: 'stake1',
@@ -383,8 +363,11 @@ describe('prioritization lifecycle writes', () => {
       acknowledged_at: null,
       dismissed_at: NOW,
     });
-    expect(upsert).toHaveBeenCalledWith(record, {
-      onConflict: 'user_id_or_stake_address,item_id',
+    expect(rpc).toHaveBeenCalledWith('ack_dismiss_merge', {
+      p_user_id_or_stake_address: 'stake1',
+      p_item_id: 'item1',
+      p_ack_at: null,
+      p_dismiss_at: NOW,
     });
   });
 
@@ -395,17 +378,8 @@ describe('prioritization lifecycle writes', () => {
       acknowledged_at: '2026-05-06T13:30:00.000Z',
       dismissed_at: null,
     };
-    const maybeSingle = vi.fn().mockResolvedValue({ data: existing, error: null });
-    const upsert = vi.fn().mockResolvedValue({ error: null });
-    const query = {
-      select: vi.fn(() => query),
-      eq: vi.fn(() => query),
-      maybeSingle,
-      upsert,
-    };
-    mockGetSupabaseAdmin.mockReturnValue({
-      from: vi.fn(() => query),
-    });
+    const { rpc } = mockLifecycleMergeRpc([existing]);
+    mockGetSupabaseAdmin.mockReturnValue({ rpc });
 
     const record = await dismissItem({
       userIdOrStakeAddress: 'stake1',
@@ -416,6 +390,23 @@ describe('prioritization lifecycle writes', () => {
     expect(record).toMatchObject({
       acknowledged_at: existing.acknowledged_at,
       dismissed_at: NOW,
+    });
+  });
+
+  it('preserves concurrent acknowledge and dismiss timestamps through the merge RPC', async () => {
+    const { rpc, records } = mockLifecycleMergeRpc();
+    mockGetSupabaseAdmin.mockReturnValue({ rpc });
+    const ackAt = '2026-05-06T13:45:00.000Z';
+    const dismissAt = '2026-05-06T13:46:00.000Z';
+
+    await Promise.all([
+      acknowledgeItem({ userIdOrStakeAddress: 'stake1', itemId: 'item1', at: ackAt }),
+      dismissItem({ userIdOrStakeAddress: 'stake1', itemId: 'item1', at: dismissAt }),
+    ]);
+
+    expect(records.get('stake1:item1')).toMatchObject({
+      acknowledged_at: ackAt,
+      dismissed_at: dismissAt,
     });
   });
 
@@ -673,4 +664,40 @@ function mockMissedVoteSource({
 
   mockGetSupabaseAdmin.mockReturnValue({ from });
   return { proposalQuery, votesQuery, from };
+}
+
+interface AckDismissMergeArgs {
+  p_user_id_or_stake_address: string;
+  p_item_id: string;
+  p_ack_at: string | null;
+  p_dismiss_at: string | null;
+}
+
+function lifecycleKey(userIdOrStakeAddress: string, itemId: string): string {
+  return `${userIdOrStakeAddress}:${itemId}`;
+}
+
+function mockLifecycleMergeRpc(initial: ItemLifecycleRecord[] = []) {
+  const records = new Map(
+    initial.map((record) => [
+      lifecycleKey(record.user_id_or_stake_address, record.item_id),
+      { ...record },
+    ]),
+  );
+
+  const rpc = vi.fn(async (_functionName: string, args: AckDismissMergeArgs) => {
+    await Promise.resolve();
+    const key = lifecycleKey(args.p_user_id_or_stake_address, args.p_item_id);
+    const existing = records.get(key);
+    const record: ItemLifecycleRecord = {
+      user_id_or_stake_address: args.p_user_id_or_stake_address,
+      item_id: args.p_item_id,
+      acknowledged_at: args.p_ack_at ?? existing?.acknowledged_at ?? null,
+      dismissed_at: args.p_dismiss_at ?? existing?.dismissed_at ?? null,
+    };
+    records.set(key, record);
+    return { data: [record], error: null };
+  });
+
+  return { rpc, records };
 }

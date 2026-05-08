@@ -62,6 +62,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Verify no brain/ files
+        run: |
+          BRAIN_FILES=$(git diff --diff-filter=A --name-only origin/main...HEAD -- 'brain/**')
+          if [ -n "$BRAIN_FILES" ]; then
+            echo "ERROR: PR adds files under brain/ — use governada-brain/ for the canonical brain repo."
+            echo "Files:"
+            echo "$BRAIN_FILES"
+            echo ""
+            echo "If you intended to add a plan or note, place it in governada-brain/plans/ in the brain repo."
+            echo "If this is a Codex working note, keep it local — do not commit to this repo."
+            exit 1
+          fi
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.CI_NODE_VERSION }}

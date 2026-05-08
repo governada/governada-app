@@ -14,6 +14,7 @@ import {
   buildRegionSuggestionContext,
   type RegionSuggestionContext,
 } from '@/lib/seneca/regionSuggestion';
+import { logSenecaOutput } from '@/lib/seneca/outputLog';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,13 @@ export const POST = withRouteHandler(
         suggestion,
         windowDays: context.cluster.treasuryBehavior?.windowDays ?? null,
       };
+    });
+
+    void logSenecaOutput({
+      intent: 'observational',
+      outputText: payload.suggestion,
+      source: 'region_suggestion',
+      userContextIdentifier: session?.walletAddress ?? userId,
     });
 
     return NextResponse.json(payload);

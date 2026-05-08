@@ -1,4 +1,5 @@
 import type { UserCinematicContext } from '@/types/cinematic';
+import { logSenecaOutput, type SenecaOutputLogger } from '@/lib/seneca/outputLog';
 
 export type BriefingMoveId = 'name_what' | 'explain_position' | 'offer_paths';
 export type BriefingPathId = 'a' | 'b' | 'c';
@@ -67,4 +68,27 @@ export function buildFirstVisitBriefing(
     moves: [...FIRST_VISIT_BRIEFING_MOVES],
     paths: [...FIRST_VISIT_BRIEFING_PATHS],
   };
+}
+
+export async function logFirstVisitBriefing(
+  briefing: BriefingPayload,
+  {
+    userContextIdentifier,
+    logger = logSenecaOutput,
+  }: {
+    userContextIdentifier?: string | null;
+    logger?: SenecaOutputLogger;
+  } = {},
+): Promise<void> {
+  await Promise.all(
+    briefing.moves.map((move) =>
+      logger({
+        intent: 'observational',
+        outputText: move.text,
+        source: 'idle_briefing',
+        userContextIdentifier,
+        cinematicState: briefing.state,
+      }),
+    ),
+  );
 }

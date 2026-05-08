@@ -7,12 +7,13 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { CompassSigil } from '@/components/governada/CompassSigil';
 import type { PanelRoute } from '@/hooks/useSenecaThread';
-import { buildFirstVisitBriefing } from '@/lib/seneca/firstVisitBriefing';
+import { buildFirstVisitBriefing, logFirstVisitBriefing } from '@/lib/seneca/firstVisitBriefing';
 import type { BriefingPathId } from '@/lib/seneca/firstVisitBriefing';
-import { getEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
+import { getEvergreenFallback, logEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
+import { logSenecaOutput } from '@/lib/seneca/outputLog';
 import { cn } from '@/lib/utils';
 import type { UserSegment } from '@/components/providers/SegmentProvider';
 import type { CinematicState, PrioritizedItem } from '@/types/cinematic';
@@ -356,6 +357,7 @@ export function IdleContent({
   cinematicAnchoredCards = [],
   cinematicReasoning,
   cinematicSegment = 'anonymous',
+  userContextIdentifier,
   panelOpen,
   canRecordLifecycle,
   onPrioritizationAction,
@@ -372,6 +374,7 @@ export function IdleContent({
   cinematicAnchoredCards?: AnchoredCardDescriptor[];
   cinematicReasoning?: string;
   cinematicSegment?: UserSegment;
+  userContextIdentifier?: string | null;
   panelOpen?: boolean;
   canRecordLifecycle?: boolean;
   onPrioritizationAction?: (item: PrioritizedItem, action: 'acknowledge' | 'dismiss') => void;
@@ -393,6 +396,39 @@ export function IdleContent({
     cinematicPrimary?.state === 'first_visit_anonymous'
       ? buildFirstVisitBriefing({ segment: cinematicSegment })
       : null;
+  const loggedIdleOutputKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const identity = userContextIdentifier ?? null;
+
+    if (firstVisitBriefing) {
+      const key = `first-visit:${identity ?? 'anonymous'}:${firstVisitBriefing.moves
+        .map((move) => move.id)
+        .join(',')}`;
+      if (loggedIdleOutputKeyRef.current === key) return;
+      loggedIdleOutputKeyRef.current = key;
+      void logFirstVisitBriefing(firstVisitBriefing, { userContextIdentifier: identity });
+      return;
+    }
+
+    if (cinematicPrimary) {
+      const key = `evergreen:${identity ?? 'anonymous'}:${cinematicPrimary.id}:${cinematicPrimary.state}`;
+      if (loggedIdleOutputKeyRef.current === key) return;
+      loggedIdleOutputKeyRef.current = key;
+      void logEvergreenFallback(cinematicPrimary.state, { userContextIdentifier: identity });
+      return;
+    }
+
+    const key = `route-idle:${identity ?? 'anonymous'}:${panelRoute}`;
+    if (loggedIdleOutputKeyRef.current === key) return;
+    loggedIdleOutputKeyRef.current = key;
+    void logSenecaOutput({
+      intent: 'observational',
+      outputText: IDLE_BRIEFINGS[panelRoute],
+      source: 'idle_briefing',
+      userContextIdentifier: identity,
+    });
+  }, [cinematicPrimary, firstVisitBriefing, panelRoute, userContextIdentifier]);
 
   return (
     <div className="px-3 py-3 space-y-3">

@@ -1,3 +1,5 @@
+import { logSenecaOutput, type SenecaOutputLogger } from '@/lib/seneca/outputLog';
+
 export type SenecaIntent = 'observational' | 'interrogative' | 'mechanical';
 
 export interface MechanicalAnswer {
@@ -108,6 +110,44 @@ export function getMechanicalAnswer(userInput: string): string | null {
   }
 
   return null;
+}
+
+export async function logMechanicalAnswerOutput(
+  userInput: string,
+  answer: string,
+  {
+    userContextIdentifier,
+    logger = logSenecaOutput,
+  }: {
+    userContextIdentifier?: string | null;
+    logger?: SenecaOutputLogger;
+  } = {},
+): Promise<void> {
+  await logger({
+    intent: 'mechanical',
+    outputText: answer,
+    source: 'mechanical_answer',
+    userContextIdentifier,
+  });
+}
+
+export async function logSenecaIntentOutput({
+  intent,
+  outputText,
+  userContextIdentifier,
+  logger = logSenecaOutput,
+}: {
+  intent: Exclude<SenecaIntent, 'mechanical'>;
+  outputText: string;
+  userContextIdentifier?: string | null;
+  logger?: SenecaOutputLogger;
+}): Promise<void> {
+  await logger({
+    intent,
+    outputText,
+    source: 'observation_emitted',
+    userContextIdentifier,
+  });
 }
 
 function normalizeQuestion(value: string): string {

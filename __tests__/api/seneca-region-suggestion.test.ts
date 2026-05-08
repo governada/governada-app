@@ -16,6 +16,7 @@ const getAnthropicClientMock = vi.fn(
     messages: { create: claudeCreateMock },
   }),
 );
+const logSenecaOutputMock = vi.fn(async () => ({ ok: true }));
 const getRedisMock = vi.fn(() => ({}));
 const rateLimitMock = vi.fn(async () => ({ success: true, remaining: 9 }));
 const slidingWindowMock = vi.fn(() => ({ kind: 'sliding-window' }));
@@ -60,6 +61,10 @@ vi.mock('@upstash/ratelimit', () => ({
 vi.mock('@/lib/ai', () => ({
   MODELS: { HAIKU: 'claude-haiku-test' },
   getAnthropicClient: getAnthropicClientMock,
+}));
+
+vi.mock('@/lib/seneca/outputLog', () => ({
+  logSenecaOutput: logSenecaOutputMock,
 }));
 
 vi.mock('@/lib/seneca/regionSuggestion', async () => {
@@ -154,6 +159,12 @@ describe('seneca region suggestion API', () => {
       }),
     );
     expect(slidingWindowMock).toHaveBeenCalledWith(10, '60 s');
+    expect(logSenecaOutputMock).toHaveBeenCalledWith({
+      intent: 'observational',
+      outputText: 'Your strongest match in this cluster scores 84%.',
+      source: 'region_suggestion',
+      userContextIdentifier: 'addr_test',
+    });
   });
 
   it('normalizes anonymous cache keys so userContextRef cannot bust cache', async () => {

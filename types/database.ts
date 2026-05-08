@@ -4249,6 +4249,30 @@ export type Database = {
           },
         ];
       };
+      prioritization_acknowledgments: {
+        Row: {
+          acknowledged_at: string | null;
+          dismissed_at: string | null;
+          id: string;
+          item_id: string;
+          user_id_or_stake_address: string;
+        };
+        Insert: {
+          acknowledged_at?: string | null;
+          dismissed_at?: string | null;
+          id?: string;
+          item_id: string;
+          user_id_or_stake_address: string;
+        };
+        Update: {
+          acknowledged_at?: string | null;
+          dismissed_at?: string | null;
+          id?: string;
+          item_id?: string;
+          user_id_or_stake_address?: string;
+        };
+        Relationships: [];
+      };
       profile_views: {
         Row: {
           drep_id: string;
@@ -4756,30 +4780,6 @@ export type Database = {
           proposal_tx_hash?: string;
           updated_at?: string;
           user_id?: string;
-        };
-        Relationships: [];
-      };
-      prioritization_acknowledgments: {
-        Row: {
-          acknowledged_at: string | null;
-          dismissed_at: string | null;
-          id: string;
-          item_id: string;
-          user_id_or_stake_address: string;
-        };
-        Insert: {
-          acknowledged_at?: string | null;
-          dismissed_at?: string | null;
-          id?: string;
-          item_id: string;
-          user_id_or_stake_address: string;
-        };
-        Update: {
-          acknowledged_at?: string | null;
-          dismissed_at?: string | null;
-          id?: string;
-          item_id?: string;
-          user_id_or_stake_address?: string;
         };
         Relationships: [];
       };
@@ -5750,6 +5750,86 @@ export type Database = {
           message_count?: number;
           summary?: string;
           user_id?: string;
+        };
+        Relationships: [];
+      };
+      seneca_drift_log: {
+        Row: {
+          could_columnist_write: boolean;
+          created_at: string;
+          id: string;
+          intent: string;
+          is_calibration_set: boolean;
+          literary_word_earns_keep: boolean;
+          output_id: string | null;
+          output_text: string;
+          reasoning: string;
+          references_data: boolean;
+          score: number;
+        };
+        Insert: {
+          could_columnist_write: boolean;
+          created_at?: string;
+          id?: string;
+          intent: string;
+          is_calibration_set?: boolean;
+          literary_word_earns_keep: boolean;
+          output_id?: string | null;
+          output_text: string;
+          reasoning: string;
+          references_data: boolean;
+          score: number;
+        };
+        Update: {
+          could_columnist_write?: boolean;
+          created_at?: string;
+          id?: string;
+          intent?: string;
+          is_calibration_set?: boolean;
+          literary_word_earns_keep?: boolean;
+          output_id?: string | null;
+          output_text?: string;
+          reasoning?: string;
+          references_data?: boolean;
+          score?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'seneca_drift_log_output_id_fkey';
+            columns: ['output_id'];
+            isOneToOne: false;
+            referencedRelation: 'seneca_outputs';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      seneca_outputs: {
+        Row: {
+          cinematic_state: string | null;
+          created_at: string;
+          id: string;
+          intent: string;
+          output_text: string;
+          source: string;
+          user_context_hash: string | null;
+        };
+        Insert: {
+          cinematic_state?: string | null;
+          created_at?: string;
+          id?: string;
+          intent: string;
+          output_text: string;
+          source: string;
+          user_context_hash?: string | null;
+        };
+        Update: {
+          cinematic_state?: string | null;
+          created_at?: string;
+          id?: string;
+          intent?: string;
+          output_text?: string;
+          source?: string;
+          user_context_hash?: string | null;
         };
         Relationships: [];
       };
@@ -7165,6 +7245,30 @@ export type Database = {
           },
         ];
       };
+      user_visit_state: {
+        Row: {
+          id: string;
+          last_epoch_visited: number | null;
+          last_visit_at: string;
+          prior_visit_at: string | null;
+          stake_address: string | null;
+        };
+        Insert: {
+          id?: string;
+          last_epoch_visited?: number | null;
+          last_visit_at: string;
+          prior_visit_at?: string | null;
+          stake_address?: string | null;
+        };
+        Update: {
+          id?: string;
+          last_epoch_visited?: number | null;
+          last_visit_at?: string;
+          prior_visit_at?: string | null;
+          stake_address?: string | null;
+        };
+        Relationships: [];
+      };
       user_wallets: {
         Row: {
           drep_id: string | null;
@@ -7208,30 +7312,6 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
-      };
-      user_visit_state: {
-        Row: {
-          id: string;
-          last_epoch_visited: number | null;
-          last_visit_at: string;
-          prior_visit_at: string | null;
-          stake_address: string | null;
-        };
-        Insert: {
-          id?: string;
-          last_epoch_visited?: number | null;
-          last_visit_at: string;
-          prior_visit_at?: string | null;
-          stake_address?: string | null;
-        };
-        Update: {
-          id?: string;
-          last_epoch_visited?: number | null;
-          last_visit_at?: string;
-          prior_visit_at?: string | null;
-          stake_address?: string | null;
-        };
-        Relationships: [];
       };
       users: {
         Row: {
@@ -7544,23 +7624,6 @@ export type Database = {
       embedding_similarity: {
         Args: { embedding_a: string; embedding_b: string };
         Returns: number;
-      };
-      get_cluster_treasury_behavior: {
-        Args: { drep_ids: string[] };
-        Returns: {
-          approved_180d: number | null;
-          approved_30d: number | null;
-          approved_90d: number | null;
-          approved_all_time: number | null;
-          proposals_180d: number | null;
-          proposals_30d: number | null;
-          proposals_90d: number | null;
-          proposals_all_time: number | null;
-          yes_180d: number | null;
-          yes_30d: number | null;
-          yes_90d: number | null;
-          yes_all_time: number | null;
-        }[];
       };
       match_embeddings: {
         Args: {

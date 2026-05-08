@@ -64,6 +64,7 @@ import { updatePassagePredictions } from '@/inngest/functions/update-passage-pre
 import { backfillGhi } from '@/inngest/functions/backfill-ghi';
 import { runSystemsAutomationSweep } from '@/inngest/functions/run-systems-automation-sweep';
 import { generateSystemsReviewDraft } from '@/inngest/functions/generate-systems-review-draft';
+import { senecaEvalNightly } from '@/inngest/functions/seneca-eval-nightly';
 export const { GET, POST, PUT } = serve({
   client: inngest,
   // Self-hosted: tell the Inngest server to reach this app via Railway private network
@@ -134,5 +135,6 @@ export const { GET, POST, PUT } = serve({
     backfillGhi,
     runSystemsAutomationSweep,
     generateSystemsReviewDraft,
+    senecaEvalNightly,
   ],
 });

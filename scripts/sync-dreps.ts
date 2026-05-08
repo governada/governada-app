@@ -16,6 +16,7 @@ interface SupabaseDRepRow {
   id: string;
   metadata: any;
   info: any;
+  is_active: boolean;
   votes: any[];
   score: number;
   participation_rate: number;
@@ -74,6 +75,7 @@ async function syncDReps() {
         anchorUrl: drep.anchorUrl,
         epochVoteCounts: drep.epochVoteCounts,
       },
+      is_active: drep.isActive,
       votes: [], // Note: We don't cache full votes array for space reasons
       score: drep.drepScore,
       participation_rate: drep.participationRate,

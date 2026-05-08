@@ -58,6 +58,7 @@ interface DRepRowInfo {
 interface SupabaseDRepRow {
   id: string;
   info: DRepRowInfo | null;
+  is_active: boolean;
   score: number;
   participation_rate: number;
   rationale_rate: number;
@@ -133,7 +134,7 @@ function transformSupabaseRowToDRep(row: SupabaseDRepRow): EnrichedDRep {
     yesVotes: info.yesVotes || 0,
     noVotes: info.noVotes || 0,
     abstainVotes: info.abstainVotes || 0,
-    isActive: info.isActive || false,
+    isActive: row.is_active,
     anchorUrl: info.anchorUrl || null,
     anchorHash: row.anchor_hash || null,
     metadata: row.metadata || null,
@@ -1699,9 +1700,9 @@ export async function getLeaderboard(
     const { data, error } = await supabase
       .from('dreps')
       .select(
-        'id, score, size_tier, info, effective_participation, rationale_rate, reliability_score',
+        'id, score, size_tier, info, is_active, effective_participation, rationale_rate, reliability_score',
       )
-      .not('info->isActive', 'eq', false)
+      .eq('is_active', true)
       .order(orderCol, { ascending: false })
       .limit(Math.min(50, limit));
 

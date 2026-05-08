@@ -85,10 +85,7 @@ export async function prepareDelegatorSnapshot(): Promise<{
   const currentEpoch = blockTimeToEpoch(Math.floor(Date.now() / 1000));
 
   // Get active DReps
-  const { data: dreps } = await supabase
-    .from('dreps')
-    .select('id')
-    .filter('info->>isActive', 'eq', 'true');
+  const { data: dreps } = await supabase.from('dreps').select('id').eq('is_active', true);
 
   if (!dreps?.length) return null;
 
@@ -191,12 +188,12 @@ export async function finalizeDelegatorSnapshot(
   const syncLog = new SyncLogger(supabase, 'delegator_snapshots');
   await syncLog.start();
 
-  const { data: dreps } = await supabase
+  const { count: drepCount } = await supabase
     .from('dreps')
     .select('id', { count: 'exact', head: true })
-    .filter('info->>isActive', 'eq', 'true');
+    .eq('is_active', true);
 
-  const totalDreps = dreps?.length ?? totalProcessed;
+  const totalDreps = drepCount ?? totalProcessed;
 
   await supabase.from('snapshot_completeness_log').upsert(
     {

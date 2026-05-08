@@ -30,6 +30,7 @@ interface SupabaseDRepRow {
   id: string;
   metadata: Record<string, unknown>;
   info: Record<string, unknown>;
+  is_active: boolean;
   votes: unknown[];
   score: number;
   participation_rate: number;
@@ -248,6 +249,7 @@ export async function phaseFetchDReps(
                   votingPowerLovelace: bf.amount,
                   isActive: bf.active && !bf.retired && !bf.expired,
                 },
+                is_active: bf.active && !bf.retired && !bf.expired,
                 last_synced_at: new Date().toISOString(),
               })
               .eq('id', bf.drep_id);
@@ -423,6 +425,7 @@ export async function phaseUpsertDReps(
         anchorUrl: drep.anchorUrl,
         epochVoteCounts: drep.epochVoteCounts,
       },
+      is_active: drep.isActive,
       votes: [],
       score: drep.drepScore,
       participation_rate: drep.participationRate,

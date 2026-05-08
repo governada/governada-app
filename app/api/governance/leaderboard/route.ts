@@ -26,7 +26,7 @@ export const GET = withRouteHandler(
     let query = supabase
       .from('dreps')
       .select(
-        'id, score, size_tier, info, effective_participation, rationale_rate, reliability_score, profile_completeness',
+        'id, score, size_tier, info, is_active, effective_participation, rationale_rate, reliability_score, profile_completeness',
       )
       .order('score', { ascending: false })
       .limit(limit);
@@ -44,7 +44,7 @@ export const GET = withRouteHandler(
       name: displayName(d),
       score: d.score ?? 0,
       sizeTier: d.size_tier,
-      isActive: d.info?.isActive ?? false,
+      isActive: d.is_active,
       participation: d.effective_participation ?? 0,
       rationale: d.rationale_rate ?? 0,
       reliability: d.reliability_score ?? 0,

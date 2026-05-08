@@ -297,7 +297,7 @@ export const POST = withRouteHandler(async (request) => {
       'id, info, score, effective_participation_v3, rationale_rate, current_tier, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
     )
     .not('alignment_treasury_conservative', 'is', null)
-    .eq('info->>isActive', 'true');
+    .eq('is_active', true);
 
   if (!dreps?.length) {
     return NextResponse.json({

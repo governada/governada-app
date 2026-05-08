@@ -168,7 +168,7 @@ async function checkTier1(): Promise<CheckResult[]> {
     const { count: ourActive } = await supabase
       .from('dreps')
       .select('id', { count: 'exact', head: true })
-      .not('info->isActive', 'eq', false);
+      .eq('is_active', true);
     results.push(
       compareCount(
         'Total active DReps',
@@ -310,7 +310,7 @@ async function checkTier2(): Promise<CheckResult[]> {
   // --- Top DRep voting power spot-check ---
   const { data: topDReps } = await supabase
     .from('dreps')
-    .select('id, info')
+    .select('id, info, is_active')
     .not('info->votingPower', 'is', null)
     .order('score', { ascending: false })
     .limit(20);
@@ -337,7 +337,7 @@ async function checkTier2(): Promise<CheckResult[]> {
         );
 
         // Also check registration status
-        const ourActive = (drep.info as Record<string, unknown>)?.isActive !== false;
+        const ourActive = drep.is_active !== false;
         const theirActive = bfDrep.active && !bfDrep.retired && !bfDrep.expired;
         if (ourActive !== theirActive) {
           results.push({

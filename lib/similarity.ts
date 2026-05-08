@@ -160,7 +160,7 @@ async function enrichSimilarDReps(
 
   const { data: drepRows } = await supabase
     .from('dreps')
-    .select('id, info, score')
+    .select('id, info, score, is_active')
     .in(
       'id',
       similarities.map((s) => s.drepId),
@@ -176,7 +176,7 @@ async function enrichSimilarDReps(
       infoMap.set(d.id, {
         name: (info.name as string) || null,
         score: Number(d.score) || 0,
-        isActive: (info.isActive as boolean) ?? true,
+        isActive: d.is_active ?? true,
         delegatorCount: (info.delegatorCount as number) ?? 0,
       });
     }
@@ -189,14 +189,14 @@ async function enrichSimilarDReps(
       return info?.name != null;
     })
     .map((s) => {
-      const info = infoMap.get(s.drepId)!;
+      const profile = infoMap.get(s.drepId)!;
       return {
         drepId: s.drepId,
-        name: info.name,
-        score: info.score,
+        name: profile.name,
+        score: profile.score,
         similarity: Math.round(s.similarity * 100),
-        isActive: info.isActive,
-        delegatorCount: info.delegatorCount,
+        isActive: profile.isActive,
+        delegatorCount: profile.delegatorCount,
       };
     });
 }

@@ -48,10 +48,12 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
           ),
         supabase
           .from('dreps')
-          .select('id, score, info')
+          .select('id, score, info, is_active')
           .order('score', { ascending: false })
           .limit(50),
-        supabase.from('dreps').select('id, score, effective_participation, rationale_rate, info'),
+        supabase
+          .from('dreps')
+          .select('id, score, effective_participation, rationale_rate, info, is_active'),
       ]);
 
     const allVotes = allVotesRes.data ?? [];
@@ -138,9 +140,7 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
 
     // --- Insight 3: Top DRep agreement rate ---
     {
-      const top10 = topDreps
-        .filter((d) => (d.info as Record<string, unknown> | null)?.isActive)
-        .slice(0, 10);
+      const top10 = topDreps.filter((d) => d.is_active).slice(0, 10);
       if (top10.length >= 5) {
         const topIds = new Set(top10.map((d) => d.id));
         const topVotes = allVotes.filter((v) => topIds.has(v.drep_id));
@@ -193,9 +193,7 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
 
     // --- Insight 4: Voting power concentration ---
     {
-      const activeDreps = allDreps.filter(
-        (d) => (d.info as Record<string, unknown> | null)?.isActive,
-      );
+      const activeDreps = allDreps.filter((d) => d.is_active);
       const powers = activeDreps
         .map((d) =>
           parseInt(
@@ -370,9 +368,7 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
 
     // --- Insight 8: Score-vote correlation (high vs low scorers disagree) ---
     {
-      const activeDreps = allDreps.filter(
-        (d) => (d.info as Record<string, unknown> | null)?.isActive && d.score != null,
-      );
+      const activeDreps = allDreps.filter((d) => d.is_active && d.score != null);
       const highScorers = new Set(activeDreps.filter((d) => (d.score ?? 0) >= 70).map((d) => d.id));
       const lowScorers = new Set(activeDreps.filter((d) => (d.score ?? 0) < 40).map((d) => d.id));
 

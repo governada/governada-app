@@ -13,10 +13,11 @@ export const GET = withRouteHandler(
     const { data: dreps } = await supabase
       .from('dreps')
       .select('id, info')
-      .not('info->isActive', 'is', null)
-      .limit(1000);
+      .eq('is_active', true)
+      // PostgREST defaults to 1000 rows; EDI needs the full active DRep set.
+      .limit(5000);
 
-    const activeDreps = (dreps ?? []).filter((d) => d.info?.isActive);
+    const activeDreps = dreps ?? [];
     const votingPowers = activeDreps
       .map((d) => parseInt(d.info?.votingPowerLovelace || '0', 10))
       .filter((v: number) => v > 0);

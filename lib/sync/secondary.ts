@@ -29,7 +29,7 @@ export async function executeSecondarySync(): Promise<Record<string, unknown>> {
       const step1Result = await Promise.allSettled([
         (async () => {
           const dreps = await fetchAll<{ id: string; info: unknown }>(() =>
-            supabase.from('dreps').select('id, info').filter('info->>isActive', 'eq', 'true'),
+            supabase.from('dreps').select('id, info').eq('is_active', true),
           );
 
           if (!dreps.length) return 0;

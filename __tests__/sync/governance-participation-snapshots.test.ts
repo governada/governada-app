@@ -7,7 +7,11 @@ import {
 type QueryError = { message: string } | null;
 type QueryResponse = { count?: number | null; data: unknown[] | null; error: QueryError };
 type MaybeSingleResponse = { data: Record<string, unknown> | null; error: QueryError };
-type DrepInfoFixture = { id?: string; info: Record<string, unknown> | null };
+type DrepInfoFixture = {
+  id?: string;
+  info: Record<string, unknown> | null;
+  is_active?: boolean;
+};
 type VoteFixture = { drep_id: string | null; has_rationale: boolean };
 type UpsertRecord = { payload: Record<string, unknown>; table: string };
 
@@ -66,15 +70,20 @@ class FakeSelectBuilder {
       return { data: [], error: null };
     }
 
-    const rows =
+    let rows =
       this.state.drepInfoRows?.map((row, index) => ({
         id: row.id ?? `drep${index + 1}`,
         info: row.info,
+        is_active: row.is_active ?? true,
       })) ??
       Array.from({ length: this.state.totalDreps }, (_, index) => ({
         id: `drep${index + 1}`,
         info: { votingPowerLovelace: String((index + 1) * 100) },
+        is_active: true,
       }));
+    if (this.filters.get('is_active') === true) {
+      rows = rows.filter((row) => row.is_active);
+    }
     return { data: rows.slice(from, to + 1), error: null };
   }
 
@@ -114,7 +123,7 @@ class FakeSelectBuilder {
 
 function createFakeSupabase(options: {
   completenessInsertError?: string;
-  drepInfoRows?: Array<Record<string, unknown> | null>;
+  drepInfoRows?: DrepInfoFixture[];
   existingEpochs?: number[];
   snapshotInsertError?: string;
   totalDreps?: number;
@@ -122,14 +131,10 @@ function createFakeSupabase(options: {
 }) {
   const state: FakeState = {
     completenessInsertError: options.completenessInsertError,
-    drepInfoRows: options.drepInfoRows?.map((info, index) => ({
-      id:
-        info && typeof info.id === 'string'
-          ? info.id
-          : typeof info?.drepId === 'string'
-            ? info.drepId
-            : `drep${index + 1}`,
-      info,
+    drepInfoRows: options.drepInfoRows?.map((row, index) => ({
+      id: row.id ?? `drep${index + 1}`,
+      info: row.info,
+      is_active: row.is_active ?? true,
     })),
     existingEpochs: new Set(options.existingEpochs ?? []),
     snapshotInsertError: options.snapshotInsertError,
@@ -171,11 +176,11 @@ describe('governance participation snapshot helpers', () => {
   it('creates a missing participation snapshot from source vote and DRep data', async () => {
     const { client, state } = createFakeSupabase({
       drepInfoRows: [
-        { votingPowerLovelace: '100' },
-        { votingPowerLovelace: '200', isActive: true },
-        { votingPowerLovelace: '300', isActive: false },
-        { votingPowerLovelace: '400' },
-        { votingPowerLovelace: '500' },
+        { info: { votingPowerLovelace: '100' }, is_active: true },
+        { info: { votingPowerLovelace: '200' }, is_active: true },
+        { info: { votingPowerLovelace: '300' }, is_active: false },
+        { info: { votingPowerLovelace: '400' }, is_active: true },
+        { info: { votingPowerLovelace: '500' }, is_active: true },
       ],
       votesByEpoch: {
         628: [

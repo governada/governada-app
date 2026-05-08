@@ -26,7 +26,7 @@ export const GET = withRouteHandler(async (request) => {
     supabase
       .from('dreps')
       .select('score')
-      .not('info->isActive', 'eq', false)
+      .eq('is_active', true)
       .order('score', { ascending: false }),
   ]);
 

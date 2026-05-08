@@ -115,7 +115,7 @@ export const checkNotifications = inngest.createFunction(
       const { data: allDreps } = await supabase
         .from('dreps')
         .select('id, score')
-        .not('info->isActive', 'eq', false)
+        .eq('is_active', true)
         .order('score', { ascending: false });
 
       return {

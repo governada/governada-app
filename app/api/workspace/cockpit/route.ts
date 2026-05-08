@@ -56,7 +56,7 @@ export const GET = withRouteHandler(async (request) => {
     admin
       .from('dreps')
       .select('id, score')
-      .not('info->isActive', 'eq', false)
+      .eq('is_active', true)
       .order('score', { ascending: false }),
 
     // 4. Score history (last 14 snapshots)

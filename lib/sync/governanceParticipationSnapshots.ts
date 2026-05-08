@@ -69,10 +69,6 @@ function getVotingPowerLovelace(info: Record<string, unknown> | null): bigint {
   return BigInt(0);
 }
 
-function isActiveDrepInfo(info: Record<string, unknown> | null): boolean {
-  return info?.isActive !== false;
-}
-
 async function ensureGovernanceParticipationCompletenessLog(
   supabase: SupabaseAdminClient,
   epoch: number,
@@ -132,7 +128,9 @@ export async function ensureGovernanceParticipationSnapshot(
 
   const [votersResult, drepInfoRows, rationaleResult] = await Promise.all([
     supabase.from('drep_votes').select('drep_id').eq('epoch_no', epoch),
-    fetchAll<DrepPowerInfoRow>(() => supabase.from('dreps').select('id, info')),
+    fetchAll<DrepPowerInfoRow>(() =>
+      supabase.from('dreps').select('id, info').eq('is_active', true),
+    ),
     supabase
       .from('drep_votes')
       .select('vote_tx_hash', { count: 'exact', head: true })
@@ -143,8 +141,7 @@ export async function ensureGovernanceParticipationSnapshot(
   assertNoQueryError('drep_votes participation query', votersResult.error);
   assertNoQueryError('drep_votes rationale query', rationaleResult.error);
 
-  const activeDrepInfoRows = drepInfoRows.filter((row) => isActiveDrepInfo(row.info));
-  const activeDrepIds = new Set(activeDrepInfoRows.map((row) => row.id));
+  const activeDrepIds = new Set(drepInfoRows.map((row) => row.id));
   const voterRows = (votersResult.data ?? []) as DrepVoteRow[];
   const uniqueVoters = new Set(
     voterRows
@@ -156,11 +153,11 @@ export async function ensureGovernanceParticipationSnapshot(
   );
 
   const activeDreps = uniqueVoters.size;
-  const totalDreps = activeDrepInfoRows.length || 1;
+  const totalDreps = drepInfoRows.length || 1;
   const totalVotes = voterRows.length;
   const participationRate = roundPercent(activeDreps, totalDreps);
   const rationaleRate = roundPercent(rationaleResult.count ?? 0, totalVotes);
-  const totalVotingPower = activeDrepInfoRows.reduce(
+  const totalVotingPower = drepInfoRows.reduce(
     (sum, row) => sum + getVotingPowerLovelace(row.info),
     BigInt(0),
   );

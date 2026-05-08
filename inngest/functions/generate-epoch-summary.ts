@@ -438,10 +438,7 @@ export const generateEpochSummary = inngest.createFunction(
         // DRep participation: count DReps who voted this epoch vs total active
         const [votersResult, totalDrepsResult] = await Promise.all([
           supabase.from('drep_votes').select('drep_id').eq('epoch_no', epoch),
-          supabase
-            .from('dreps')
-            .select('id', { count: 'exact', head: true })
-            .not('info->isActive', 'eq', false),
+          supabase.from('dreps').select('id', { count: 'exact', head: true }).eq('is_active', true),
         ]);
 
         const uniqueVoters = new Set((votersResult.data || []).map((v) => v.drep_id)).size;

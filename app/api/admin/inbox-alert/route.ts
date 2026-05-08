@@ -50,7 +50,7 @@ export const GET = withRouteHandler(async (request) => {
   const activeDrepsRes = await supabase
     .from('dreps')
     .select('id', { count: 'exact', head: true })
-    .filter('info->>isActive', 'eq', 'true');
+    .eq('is_active', true);
   const totalActiveDreps = activeDrepsRes.count ?? 0;
 
   if (totalActiveDreps === 0 && alerts.length === 0) {

@@ -252,7 +252,7 @@ export const GET = withRouteHandler(async () => {
     supabase
       .from('dreps')
       .select('id', { count: 'exact', head: true })
-      .eq('info->>isActive', 'true'),
+      .eq('is_active', true),
     supabase
       .from('treasury_snapshots')
       .select('balance_lovelace')

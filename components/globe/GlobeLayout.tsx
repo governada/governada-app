@@ -112,7 +112,7 @@ const Constellation2D = dynamic(
 );
 
 const LAYER2_ACTIVE_STATES = new Set(['returning_quiet', 'returning_in_session']);
-// 3D constellation world units; beyond this the camera is not credibly over a cluster.
+// Four 3D world units is close enough to count as focused on a cluster; tune post-launch if seneca_whisper_dismissed_immediately spikes.
 const MAX_CLUSTER_TARGET_DISTANCE = 4;
 
 export function isLayer2CinematicStateEnabled(state: string | null | undefined) {
@@ -582,24 +582,17 @@ export function GlobeLayout({
   const shouldShowHoverTooltip = !cinematicState || layer2Enabled;
   const senecaIsOpen = seneca.isOpen;
   const regionWhisperClusterId = seneca.regionSuggestionWhisper?.clusterId ?? null;
-  const homepageIdentity = seneca.homepageCinematic?.identity;
   const setRegionSuggestionWhisper = seneca.setRegionSuggestionWhisper;
   const lingerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lingerClusterRef = useRef<string | null>(null);
   const driftActiveRef = useRef(false);
 
   const { mutate: requestRegionSuggestion, isPending: regionSuggestionPending } = useMutation({
-    mutationFn: async ({
-      clusterId,
-      userContextRef,
-    }: {
-      clusterId: string;
-      userContextRef: string;
-    }) => {
+    mutationFn: async ({ clusterId }: { clusterId: string }) => {
       const response = await fetch('/api/seneca/region-suggestion', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ clusterId, userContextRef }),
+        body: JSON.stringify({ clusterId }),
       });
       if (!response.ok) throw new Error('Failed to fetch region suggestion');
       return response.json() as Promise<{
@@ -668,9 +661,7 @@ export function GlobeLayout({
     clearLingerTimer();
     lingerClusterRef.current = closestCluster.id;
     lingerTimerRef.current = setTimeout(() => {
-      const userContextRef =
-        homepageIdentity?.userId ?? homepageIdentity?.stakeAddress ?? 'anonymous';
-      requestRegionSuggestion({ clusterId: closestCluster.id, userContextRef });
+      requestRegionSuggestion({ clusterId: closestCluster.id });
     }, CLUSTER_LINGER_MS);
 
     return clearLingerTimer;
@@ -680,7 +671,6 @@ export function GlobeLayout({
     executeGlobeCommand,
     layer2Enabled,
     motionStrength,
-    homepageIdentity,
     regionSuggestionPending,
     regionWhisperClusterId,
     requestRegionSuggestion,

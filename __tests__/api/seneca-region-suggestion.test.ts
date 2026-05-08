@@ -127,7 +127,7 @@ describe('seneca region suggestion API', () => {
     const response = await POST(
       new NextRequest('http://localhost/api/seneca/region-suggestion', {
         method: 'POST',
-        body: JSON.stringify({ clusterId: 'cluster-1', userContextRef: 'stake_test' }),
+        body: JSON.stringify({ clusterId: 'cluster-1' }),
       }),
     );
 
@@ -167,13 +167,13 @@ describe('seneca region suggestion API', () => {
     });
   });
 
-  it('normalizes anonymous cache keys so userContextRef cannot bust cache', async () => {
+  it('derives anonymous cache keys server-side so request noise cannot bust cache', async () => {
     getSessionMock.mockResolvedValueOnce(null);
     const { POST } = await import('@/app/api/seneca/region-suggestion/route');
     const response = await POST(
       new NextRequest('http://localhost/api/seneca/region-suggestion', {
         method: 'POST',
-        body: JSON.stringify({ clusterId: 'cluster-1', userContextRef: 'nonce-a' }),
+        body: JSON.stringify({ clusterId: 'cluster-1', clientNonce: 'nonce-a' }),
       }),
     );
 

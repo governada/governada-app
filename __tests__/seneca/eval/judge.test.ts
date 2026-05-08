@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const claudeCreateMock = vi.fn();
 const getAnthropicClientMock = vi.fn(async () => ({
@@ -11,6 +11,11 @@ vi.mock('@/lib/ai', () => ({
 }));
 
 describe('judgeOutput', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     getAnthropicClientMock.mockResolvedValue({
@@ -55,6 +60,7 @@ describe('judgeOutput', () => {
       1,
       expect.objectContaining({
         model: 'claude-sonnet-test',
+        max_tokens: 350,
         system: expect.stringContaining('Observational Rubric'),
       }),
     );
@@ -65,6 +71,46 @@ describe('judgeOutput', () => {
         system: expect.stringContaining('Mechanical'),
       }),
     );
+  });
+
+  it('retries transient Anthropic errors with backoff before scoring', async () => {
+    const { judgeOutput } = await import('@/lib/seneca/eval/judge');
+    const transientError = Object.assign(new Error('bad gateway'), { status: 502 });
+    const setTimeoutSpy = vi
+      .spyOn(global, 'setTimeout')
+      .mockImplementation((handler: Parameters<typeof setTimeout>[0]) => {
+        if (typeof handler === 'function') handler();
+        return 0 as unknown as ReturnType<typeof setTimeout>;
+      });
+    claudeCreateMock
+      .mockRejectedValueOnce(transientError)
+      .mockRejectedValueOnce(transientError)
+      .mockResolvedValueOnce({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              referencesData: true,
+              literaryWordEarnsKeep: true,
+              couldColumnistWrite: true,
+              reasoning: 'Recovered after transient provider errors without truncating reasoning.',
+            }),
+          },
+        ],
+      });
+
+    await expect(
+      judgeOutput('The quiet cluster has two new rationales.', 'observational'),
+    ).resolves.toEqual({
+      referencesData: true,
+      literaryWordEarnsKeep: true,
+      couldColumnistWrite: true,
+      score: 3,
+      reasoning: 'Recovered after transient provider errors without truncating reasoning.',
+    });
+    expect(claudeCreateMock).toHaveBeenCalledTimes(3);
+    expect(setTimeoutSpy).toHaveBeenNthCalledWith(1, expect.any(Function), 250);
+    expect(setTimeoutSpy).toHaveBeenNthCalledWith(2, expect.any(Function), 1_000);
   });
 
   it('handles Anthropic API errors as score-zero judge failures', async () => {

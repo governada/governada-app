@@ -33,8 +33,14 @@ import { cn } from '@/lib/utils';
 import { posthog } from '@/lib/posthog';
 import { postJson } from '@/lib/api/client';
 import { dispatchGlobeCommand } from '@/lib/globe/globeCommandBus';
-import { classifyIntent, getMechanicalAnswer, type SenecaIntent } from '@/lib/seneca/intentRouter';
-import { getEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
+import {
+  classifyIntent,
+  getMechanicalAnswer,
+  logMechanicalAnswerOutput,
+  logSenecaIntentOutput,
+  type SenecaIntent,
+} from '@/lib/seneca/intentRouter';
+import { getEvergreenFallback, logEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
 import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
 import { captureHomepageTiming } from '@/lib/telemetry/perfMarks';
 import {
@@ -129,6 +135,8 @@ export function SenecaThread({
   const viewportClass = useViewportClass();
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevRouteRef = useRef<PanelRoute>(panelRoute);
+  const userContextIdentifier =
+    homepageCinematic?.identity.stakeAddress ?? homepageCinematic?.identity.userId ?? null;
   const wasOpenRef = useRef(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -294,6 +302,7 @@ export function SenecaThread({
           ts: Date.now(),
         };
         onAddMessage(assistantMsg);
+        void logMechanicalAnswerOutput(query, answer, { userContextIdentifier });
         captureSenecaInteraction({
           kind: 'mechanical_question_asked',
           question_type: getMechanicalQuestionType(query),
@@ -319,6 +328,11 @@ export function SenecaThread({
           ts: Date.now(),
         };
         onAddMessage(assistantMsg);
+        void logSenecaIntentOutput({
+          intent: 'interrogative',
+          outputText: assistantMsg.content,
+          userContextIdentifier,
+        });
         captureSenecaInteraction({
           kind: 'interrogative_query_started',
           query,
@@ -382,7 +396,9 @@ export function SenecaThread({
           intent: turnIntent,
           panel_route: panelRoute,
         });
-        onUpdateLastAssistant(getEvergreenFallback(state));
+        const fallback = getEvergreenFallback(state);
+        onUpdateLastAssistant(fallback);
+        void logEvergreenFallback(state, { userContextIdentifier });
         captureSenecaInteraction({
           kind: 'observational_observation_emitted',
           source: 'evergreen_fallback',
@@ -402,6 +418,11 @@ export function SenecaThread({
       () => {
         isStreamingRef.current = false;
         setIsStreaming(false);
+        void logSenecaIntentOutput({
+          intent: 'observational',
+          outputText: streamContentRef.current,
+          userContextIdentifier,
+        });
         captureSenecaInteraction({
           kind: 'observational_observation_emitted',
           source: 'advisor_stream',
@@ -756,6 +777,7 @@ export function SenecaThread({
             panelOpen={isOpen}
             cinematicReasoning={homepageCinematic?.queue.meta.reasoning}
             cinematicSegment={segment}
+            userContextIdentifier={userContextIdentifier}
             canRecordLifecycle={
               isAuthenticated &&
               !!(homepageCinematic?.identity.stakeAddress ?? homepageCinematic?.identity.userId)

@@ -1,4 +1,5 @@
 import type { CinematicState } from '@/types/cinematic';
+import { logSenecaOutput, type SenecaOutputLogger } from '@/lib/seneca/outputLog';
 
 export const EVERGREEN_FALLBACKS: Record<CinematicState, string> = {
   first_visit_anonymous:
@@ -25,4 +26,23 @@ export const EVERGREEN_FALLBACKS: Record<CinematicState, string> = {
 
 export function getEvergreenFallback(state: CinematicState): string {
   return EVERGREEN_FALLBACKS[state];
+}
+
+export async function logEvergreenFallback(
+  state: CinematicState,
+  {
+    userContextIdentifier,
+    logger = logSenecaOutput,
+  }: {
+    userContextIdentifier?: string | null;
+    logger?: SenecaOutputLogger;
+  } = {},
+): Promise<void> {
+  await logger({
+    intent: 'observational',
+    outputText: getEvergreenFallback(state),
+    source: 'evergreen_fallback',
+    userContextIdentifier,
+    cinematicState: state,
+  });
 }

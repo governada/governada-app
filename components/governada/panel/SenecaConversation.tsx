@@ -14,8 +14,13 @@ import { useSegment } from '@/components/providers/SegmentProvider';
 import { useSenecaThreadStore } from '@/stores/senecaThreadStore';
 import { cn } from '@/lib/utils';
 import { dispatchGlobeCommand as dispatchGlobeCmd } from '@/lib/globe/globeCommandBus';
-import { classifyIntent, getMechanicalAnswer } from '@/lib/seneca/intentRouter';
-import { getEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
+import {
+  classifyIntent,
+  getMechanicalAnswer,
+  logMechanicalAnswerOutput,
+  logSenecaIntentOutput,
+} from '@/lib/seneca/intentRouter';
+import { getEvergreenFallback, logEvergreenFallback } from '@/lib/seneca/evergreenFallbacks';
 import { captureSenecaInteraction } from '@/lib/seneca/telemetry';
 
 /** Heuristic: show "Go deeper" if response is substantive and query implies analysis. */
@@ -59,6 +64,8 @@ export function SenecaConversation({
   const { startResearch, executeIntent } = useSenecaThread();
   const homepageCinematic = useSenecaThreadStore((s) => s.homepageCinematic);
   const daysRemaining = totalDays - day;
+  const userContextIdentifier =
+    homepageCinematic?.identity.stakeAddress ?? homepageCinematic?.identity.userId ?? null;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -116,6 +123,7 @@ export function SenecaConversation({
           getMechanicalAnswer(text) ??
           'That is a mechanics question. Name the control or term you want explained, and I will keep it plain.';
         setMessages((prev) => [...prev, userMsg, { ...assistantMsg, content: answer }]);
+        void logMechanicalAnswerOutput(text, answer, { userContextIdentifier });
         captureSenecaInteraction({
           kind: 'mechanical_question_answered',
           question: text.trim(),
@@ -126,15 +134,21 @@ export function SenecaConversation({
       }
 
       if (senecaIntent === 'interrogative') {
+        const answer =
+          'I can begin narrowing the field. The spatial query path is still being connected, so for now I will hold this as a search intent.';
         setMessages((prev) => [
           ...prev,
           userMsg,
           {
             ...assistantMsg,
-            content:
-              'I can begin narrowing the field. The spatial query path is still being connected, so for now I will hold this as a search intent.',
+            content: answer,
           },
         ]);
+        void logSenecaIntentOutput({
+          intent: 'interrogative',
+          outputText: answer,
+          userContextIdentifier,
+        });
         captureSenecaInteraction({
           kind: 'interrogative_query_started',
           query: text.trim(),
@@ -183,6 +197,7 @@ export function SenecaConversation({
           const state = homepageCinematic?.queue.primary.state ?? 'returning_quiet';
           setStreamError(null);
           streamContentRef.current = getEvergreenFallback(state);
+          void logEvergreenFallback(state, { userContextIdentifier });
           setMessages((prev) => {
             const updated = [...prev];
             const last = updated[updated.length - 1];
@@ -201,6 +216,11 @@ export function SenecaConversation({
           setIsStreaming(false);
         },
         () => {
+          void logSenecaIntentOutput({
+            intent: 'observational',
+            outputText: streamContentRef.current,
+            userContextIdentifier,
+          });
           captureSenecaInteraction({
             kind: 'observational_observation_emitted',
             source: 'advisor_stream',
@@ -249,6 +269,7 @@ export function SenecaConversation({
       homepageCinematic?.queue.primary.state,
       router,
       startResearch,
+      userContextIdentifier,
     ],
   );
 

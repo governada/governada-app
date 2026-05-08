@@ -5,7 +5,6 @@ import { cached } from '@/lib/redis';
 import { extractAlignments, alignmentsToArray, getDominantDimension } from '@/lib/drepIdentity';
 import { detectClusters } from '@/lib/globe/clusterDetection';
 import { nameAllClusters, type ClusterName } from '@/lib/globe/clusterNaming';
-import { getFeatureFlag } from '@/lib/featureFlags';
 import type { LayoutInput } from '@/lib/constellation/globe-layout';
 
 export const dynamic = 'force-dynamic';
@@ -32,11 +31,6 @@ const CACHE_KEY = 'clusters:constellation:latest';
 const CACHE_TTL = 3600; // 1 hour
 
 export const GET = withRouteHandler(async () => {
-  const enabled = await getFeatureFlag('globe_alignment_layout', false);
-  if (!enabled) {
-    return NextResponse.json({ clusters: [], silhouetteScore: 0, k: 0 });
-  }
-
   const payload = await cached<ClustersPayload>(CACHE_KEY, CACHE_TTL, async () => {
     return computeClusters();
   });

@@ -435,14 +435,6 @@ export function buildPreviewVotes(): TablesInsert<'drep_votes'>[] {
 function buildFeatureFlags(): TablesInsert<'feature_flags'>[] {
   return [
     {
-      key: 'globe_alignment_layout',
-      enabled: true,
-      category: 'Preview',
-      description: 'Enabled by synthetic preview seed for homepage constellation verification.',
-      targeting: { seed: SEED_MARKER } as Json,
-      updated_at: SEEDED_AT,
-    },
-    {
       key: 'globe_homepage_v2',
       enabled: true,
       category: 'Preview',

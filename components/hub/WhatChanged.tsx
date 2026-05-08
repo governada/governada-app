@@ -20,7 +20,7 @@ interface WhatChangedData {
 }
 
 /**
- * WhatChanged — shown at top of CitizenHub when the user returns after being away.
+ * WhatChanged — shown when the user returns after being away.
  *
  * Uses localStorage to track the last visit time and compares against
  * the current epoch from the API. Auto-dismisses when user interacts.

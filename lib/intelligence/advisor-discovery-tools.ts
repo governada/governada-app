@@ -29,16 +29,6 @@ export async function executeHighlightCluster(
   try {
     // Read cluster data directly from Redis cache (same key the clusters API writes to)
     const { cached } = await import('@/lib/redis');
-    const { getFeatureFlag } = await import('@/lib/featureFlags');
-
-    const enabled = await getFeatureFlag('globe_alignment_layout', false);
-    if (!enabled) {
-      return {
-        result:
-          'Cluster detection is currently unavailable. The globe spatially groups DReps by governance alignment — DReps who share similar priorities appear near each other in the constellation.',
-        globeCommands: [],
-      };
-    }
 
     // Use cached() with same key as the clusters API route — hits Redis without HTTP roundtrip
     const data = await cached<{

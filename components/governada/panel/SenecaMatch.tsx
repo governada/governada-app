@@ -22,7 +22,6 @@ import {
 } from '@/lib/globe/matchChoreography';
 import { runSequence, flattenSequence, type SequenceHandle } from '@/lib/globe/sequencer';
 import { computeUserNodePosition, findClosestCluster } from '@/lib/globe/userNodePlacement';
-import { useFeatureFlag } from '@/components/FeatureGate';
 import { useIsTouchDevice } from '@/hooks/useViewportClass';
 // Personality label infrastructure — available for Tier 2 (personality in results overlay)
 // import { getPersonalityLabel, getDominantDimension, getIdentityColor } from '@/lib/drepIdentity';
@@ -235,7 +234,6 @@ function getStatusCode(error: unknown): number {
 
 export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
   const prefersReducedMotion = useReducedMotion();
-  const spatialMatch = useFeatureFlag('globe_spatial_match');
   const isTouchDevice = useIsTouchDevice();
   const [step, setStep] = useState<MatchStep>(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -469,40 +467,37 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
         if (data.matches.length > 0) {
           const topMatches = data.matches.slice(0, 5).map((m) => ({ nodeId: m.drepId }));
 
-          // Spatial match: compute user position + fetch cluster context
-          if (spatialMatch) {
-            const alignmentScores = buildAlignmentFromAnswers(finalAnswers);
-            const pos = computeUserNodePosition(alignmentScores);
-            userPositionRef.current = pos;
+          const alignmentScores = buildAlignmentFromAnswers(finalAnswers);
+          const pos = computeUserNodePosition(alignmentScores);
+          userPositionRef.current = pos;
 
-            // Parallel cluster fetch (fail silently — graceful degradation)
-            fetch('/api/governance/constellation/clusters')
-              .then((r) => {
-                if (!r.ok) {
-                  throw Object.assign(new Error(`Cluster fetch failed with status ${r.status}`), {
-                    statusCode: r.status,
-                  });
-                }
-                return r.json();
-              })
-              .then((clusterData) => {
-                if (clusterData?.clusters) {
-                  const userVector = alignmentsToArray(alignmentScores);
-                  const closest = findClosestCluster(userVector, clusterData.clusters);
-                  if (closest) setClusterContext(closest);
-                }
-              })
-              .catch((clusterError) => {
-                // PostHog payload: { error, statusCode, source }.
-                posthog.capture('cluster_fetch_failed', {
-                  error: getErrorMessage(clusterError),
-                  statusCode: getStatusCode(clusterError),
-                  source: 'match',
+          // Parallel cluster fetch (fail silently — graceful degradation)
+          fetch('/api/governance/constellation/clusters')
+            .then((r) => {
+              if (!r.ok) {
+                throw Object.assign(new Error(`Cluster fetch failed with status ${r.status}`), {
+                  statusCode: r.status,
                 });
+              }
+              return r.json();
+            })
+            .then((clusterData) => {
+              if (clusterData?.clusters) {
+                const userVector = alignmentsToArray(alignmentScores);
+                const closest = findClosestCluster(userVector, clusterData.clusters);
+                if (closest) setClusterContext(closest);
+              }
+            })
+            .catch((clusterError) => {
+              // PostHog payload: { error, statusCode, source }.
+              posthog.capture('cluster_fetch_failed', {
+                error: getErrorMessage(clusterError),
+                statusCode: getStatusCode(clusterError),
+                source: 'match',
               });
+            });
 
-            posthog.capture('match_spatial_reveal_started');
-          }
+          posthog.capture('match_spatial_reveal_started');
 
           // Clear reactive engine before reveal — sequencer locks the engine
           setSharedIntent(DEFAULT_INTENT);
@@ -510,7 +505,7 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
           if (prefersReducedMotion) {
             // Skip countdown — go straight to results
             setStep('results');
-            if (spatialMatch && userPositionRef.current) {
+            if (userPositionRef.current) {
               sendGlobeCommand({
                 type: 'placeUserNode',
                 position: userPositionRef.current,
@@ -537,15 +532,14 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
             setStep('revealing');
             posthog.capture('match_countdown_viewed');
 
-            const revealCmd =
-              spatialMatch && userPositionRef.current
-                ? buildSpatialRevealSequence(
-                    topMatches,
-                    lastAlignmentRef.current,
-                    0,
-                    userPositionRef.current,
-                  )
-                : buildRevealSequence(topMatches, lastAlignmentRef.current, 0);
+            const revealCmd = userPositionRef.current
+              ? buildSpatialRevealSequence(
+                  topMatches,
+                  lastAlignmentRef.current,
+                  0,
+                  userPositionRef.current,
+                )
+              : buildRevealSequence(topMatches, lastAlignmentRef.current, 0);
 
             const handle = runSequence(flattenSequence(revealCmd), dispatchGlobeCommand);
             sequenceHandleRef.current = handle;
@@ -566,7 +560,7 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
               posthog.capture('match_reveal_completed', {
                 match_count: topMatches.length,
                 top_match_score: data.matches[0]?.matchScore ?? 0,
-                spatial: !!spatialMatch,
+                spatial: true,
               });
             });
           }
@@ -591,7 +585,7 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
         setStep('error');
       }
     },
-    [sendGlobeCommand, prefersReducedMotion, scheduleTimer, spatialMatch],
+    [sendGlobeCommand, prefersReducedMotion, scheduleTimer],
   );
 
   // Handle answer selection
@@ -753,14 +747,14 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
               isTopMatch={overlayState.isTopMatch}
               onBackToTop={handleBackToTop}
               onDismiss={() => setOverlayState(null)}
-              clusterContext={spatialMatch ? clusterContext : undefined}
-              spatialMode={!!spatialMatch}
+              clusterContext={clusterContext ?? undefined}
+              spatialMode
             />
           ),
         },
       ],
     });
-  }, [clusterContext, overlayState, result, scheduleTimer, sendGlobeCommand, spatialMatch]);
+  }, [clusterContext, overlayState, result, scheduleTimer, sendGlobeCommand]);
 
   // Current question index
   const currentQIndex = typeof step === 'number' ? step : -1;
@@ -1077,7 +1071,7 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
                 onFocusOverlay={(match, rank) =>
                   setOverlayState({ focusedMatch: match, focusedRank: rank, isTopMatch: false })
                 }
-                spatialMode={!!spatialMatch}
+                spatialMode
                 onStartConversation={onStartConversation}
               />
             </motion.div>

@@ -189,7 +189,7 @@ async function missedVoteDeltaFromStoredVotes(
   if (typeof userContext.missedVotesCount === 'number') return null;
   if (!userContext.claimedDrepId) return null;
 
-  const missedVotesCount = await countMissedVotesSinceLastVisit({
+  const missedVotesCount = await countMissedVotesSincePriorVisit({
     claimedDrepId: userContext.claimedDrepId,
     sinceVisitAt: userContext.visitState?.priorVisitAt ?? null,
     sinceEpoch: userContext.lastEpochVisited ?? null,
@@ -351,7 +351,7 @@ function quietCandidate(userContext: UserCinematicContext, surfacedAt: string): 
   );
 }
 
-export async function countMissedVotesSinceLastVisit(input: {
+export async function countMissedVotesSincePriorVisit(input: {
   claimedDrepId: string;
   sinceVisitAt?: string | Date | null;
   sinceEpoch?: number | null;

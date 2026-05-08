@@ -9,7 +9,6 @@
  *
  * Z-layer stack:
  *   z-0:  ConstellationScene (full viewport)
- *   z-20: GlobeControls (floating top-left)
  *   z-25: ListOverlay (left panel)
  *   z-30: PanelOverlay (right panel â€” entity detail)
  *   z-40: SenecaOrb + SenecaThread
@@ -59,13 +58,10 @@ import {
   resolveCinematicPayload,
 } from '@/lib/globe/cinematicDispatcher';
 import { ListOverlay } from './ListOverlay';
-import { GlobeControls } from './GlobeControls';
 import { ClusterLabels3D } from './ClusterLabels3D';
 import { ClusterNebulae } from './ClusterNebula';
 import { setClusterCache } from '@/lib/globe/behaviors/clusterBehavior';
 import { getSharedIntent, setSharedIntent } from '@/lib/globe/focusIntent';
-import { useFeatureFlag } from '@/components/FeatureGate';
-import { STORAGE_KEYS, readStoredValue } from '@/lib/persistence';
 import { useMotionStrength } from '@/lib/motion/motionStrength';
 import {
   AnchoredCardLayer,
@@ -100,11 +96,6 @@ const EntityDetailSheet = dynamic(
   { ssr: false },
 );
 
-const SinceLastVisit = dynamic(
-  () => import('@/components/SinceLastVisit').then((m) => ({ default: m.SinceLastVisit })),
-  { ssr: false },
-);
-
 const DiscoveryOverlay = dynamic(
   () => import('@/components/hub/DiscoveryOverlay').then((m) => ({ default: m.DiscoveryOverlay })),
   { ssr: false },
@@ -120,11 +111,6 @@ const Constellation2D = dynamic(
   { ssr: false },
 );
 
-// ---------------------------------------------------------------------------
-// Filter cycle order for keyboard shortcut
-// ---------------------------------------------------------------------------
-
-const FILTER_CYCLE: (GlobeFilter | null)[] = [null, 'dreps', 'proposals', 'spos', 'cc'];
 const LAYER2_ACTIVE_STATES = new Set(['returning_quiet', 'returning_in_session']);
 // 3D constellation world units; beyond this the camera is not credibly over a cluster.
 const MAX_CLUSTER_TARGET_DISTANCE = 4;
@@ -224,11 +210,9 @@ export function GlobeLayout({
   // Listen for globe commands from Seneca (via centralized command bus)
   useGlobeCommandListener(bridge);
 
-  // Cluster data for 3D labels (fetched once, flag-gated)
-  const clusterFlagEnabled = useFeatureFlag('globe_alignment_layout');
+  // Cluster data for canonical 3D labels.
   const [clusterLabels, setClusterLabels] = useState<ClusterLabel[]>([]);
   useEffect(() => {
-    if (!clusterFlagEnabled) return;
     fetch('/api/governance/constellation/clusters')
       .then((r) => {
         if (!r.ok) {
@@ -277,9 +261,9 @@ export function GlobeLayout({
           source: 'homepage',
         });
       });
-  }, [clusterFlagEnabled]);
+  }, []);
 
-  const { segment, drepId } = useSegment();
+  const { segment } = useSegment();
   const isAuthenticated = segment !== 'anonymous';
   // Epoch context available via useEpochContext() in child components
   const { use2D, gpuTier } = useDeviceCapability();
@@ -476,15 +460,6 @@ export function GlobeLayout({
     return () => clearTimeout(timeout);
   }, [previewExpiresAt, previewedNodeId]);
 
-  // SinceLastVisit state (auth only)
-  const [previousVisitAt, setPreviousVisitAt] = useState<string | null>(null);
-  // drepId already destructured from useSegment() above
-  useEffect(() => {
-    if (typeof window === 'undefined' || !isAuthenticated) return;
-    const ts = readStoredValue(STORAGE_KEYS.lastVisit);
-    if (ts) setPreviousVisitAt(new Date(Number(ts)).toISOString());
-  }, [isAuthenticated]);
-
   // Funnel tracking for anonymous users
   useEffect(() => {
     if (!isAuthenticated) {
@@ -497,7 +472,7 @@ export function GlobeLayout({
   // ---------------------------------------------------------------------------
 
   const urlFilter = (searchParams.get('filter') ?? initialFilter ?? null) as GlobeFilter | null;
-  // ListOverlay is only opened explicitly via keyboard shortcut (L) or GlobeControls button.
+  // ListOverlay is opened by Seneca-mediated browse/filter intents.
   // DiscoveryOverlay handles all filter-driven browsing from URL params.
   // Previously, both opened simultaneously on ?filter= navigation, creating duplicate panels.
   const [listOpen, setListOpen] = useState(false);
@@ -732,17 +707,6 @@ export function GlobeLayout({
     [searchParams, pathname, router],
   );
 
-  const handleToggleList = useCallback(() => {
-    setListOpen((prev) => !prev);
-  }, []);
-
-  const handleCycleFilter = useCallback(() => {
-    const idx = FILTER_CYCLE.indexOf(filter);
-    const next = FILTER_CYCLE[(idx + 1) % FILTER_CYCLE.length];
-    handleFilterChange(next);
-    if (next && !listOpen) setListOpen(true);
-  }, [filter, listOpen, handleFilterChange]);
-
   const handleResetGlobe = useCallback(() => {
     globeRef.current?.resetCamera();
     setListOpen(false);
@@ -756,29 +720,6 @@ export function GlobeLayout({
     globeRef.current?.highlightNode(null);
     setHighlightedNodeId(null);
   }, []);
-
-  // ---------------------------------------------------------------------------
-  // Keyboard shortcuts
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // Ignore if typing in an input
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-        return;
-
-      if (e.key === 'l' || e.key === 'L') {
-        e.preventDefault();
-        handleToggleList();
-      } else if (e.key === 'f' || e.key === 'F') {
-        e.preventDefault();
-        handleCycleFilter();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [handleToggleList, handleCycleFilter]);
 
   // ---------------------------------------------------------------------------
   // Seneca intent â†’ Globe dispatch
@@ -977,17 +918,6 @@ export function GlobeLayout({
         {children}
       </section>
 
-      {/* Globe controls â€” z-20: floating top-left */}
-      <div className="absolute top-20 left-4 z-20 pointer-events-auto">
-        <GlobeControls
-          listOpen={listOpen}
-          onToggleList={handleToggleList}
-          activeFilter={filter}
-          onCycleFilter={handleCycleFilter}
-          onResetGlobe={handleResetGlobe}
-        />
-      </div>
-
       {/* List overlay â€” z-25: left side panel */}
       <ListOverlay
         isOpen={listOpen}
@@ -1033,13 +963,6 @@ export function GlobeLayout({
           bridge.executeGlobeCommand({ type: 'clear' });
         }}
       />
-
-      {/* Since last visit â€” compact activity summary for returning authenticated users */}
-      {previousVisitAt && isAuthenticated && (
-        <div className="fixed bottom-[calc(theme(spacing.6)+14rem)] left-6 z-40 w-[min(440px,calc(100vw-3rem))] max-md:bottom-[calc(14rem)] max-md:left-4 max-md:right-4 max-md:w-auto">
-          <SinceLastVisit previousVisitAt={previousVisitAt} delegatedDrepId={drepId} />
-        </div>
-      )}
 
       {/* Seneca companion provided by GovernadaShell (app-wide) â€” no duplication here */}
     </div>

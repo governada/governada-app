@@ -14,7 +14,6 @@ const { posthogCaptureMock } = vi.hoisted(() => ({ posthogCaptureMock: vi.fn() }
 let homepageCinematic: unknown = null;
 let viewportClass: 'mobile' | 'desktop' = 'desktop';
 let isTouchDevice = false;
-let featureFlags = new Map<string, boolean>();
 let bridgeOptions: { onAnchoredCards?: (cards: AnchoredCardDescriptor[]) => void } | null = null;
 
 const selectableNode = {
@@ -129,10 +128,6 @@ vi.mock('@/stores/senecaThreadStore', () => {
   return { useSenecaThreadStore };
 });
 
-vi.mock('@/components/FeatureGate', () => ({
-  useFeatureFlag: (flag: string) => featureFlags.get(flag) ?? false,
-}));
-
 vi.mock('@/lib/funnel', () => ({
   FUNNEL_EVENTS: { LANDING_VIEWED: 'landing_viewed' },
   trackFunnel: vi.fn(),
@@ -205,17 +200,9 @@ vi.mock('@/components/hub/EntityDetailSheet', () => ({
     entity ? <div data-testid="entity-detail-sheet" /> : null,
 }));
 
-vi.mock('@/components/SinceLastVisit', () => ({
-  SinceLastVisit: () => <div data-testid="since-last-visit" />,
-}));
-
 vi.mock('@/components/hub/DiscoveryOverlay', () => ({
   DiscoveryOverlay: ({ filter }: { filter: string | null }) =>
     filter ? <div data-testid="discovery-overlay" /> : null,
-}));
-
-vi.mock('@/components/globe/GlobeControls', () => ({
-  GlobeControls: () => <div data-testid="globe-controls" />,
 }));
 
 vi.mock('@/components/globe/ClusterLabels3D', () => ({
@@ -249,7 +236,6 @@ describe('GlobeLayout deferred panels', () => {
     homepageCinematic = null;
     viewportClass = 'desktop';
     isTouchDevice = false;
-    featureFlags = new Map();
     bridgeOptions = null;
     setHomepageAnchoredCards.mockClear();
     posthogCaptureMock.mockClear();
@@ -270,9 +256,7 @@ describe('GlobeLayout deferred panels', () => {
     expect(screen.queryByTestId('entity-detail-sheet')).toBeNull();
     expect(screen.queryByTestId('globe-tooltip')).toBeNull();
 
-    fireEvent.keyDown(window, { key: 'l' });
-
-    await waitFor(() => expect(screen.getByTestId('list-overlay')).toBeTruthy());
+    expect(screen.queryByTestId('list-overlay')).toBeNull();
   });
 
   it('loads the discovery overlay only when a filter is active', async () => {
@@ -416,7 +400,6 @@ describe('GlobeLayout deferred panels', () => {
   });
 
   it('captures homepage cluster fetch failures with source attribution', async () => {
-    featureFlags.set('globe_alignment_layout', true);
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({

@@ -22,7 +22,7 @@ vi.mock('@/lib/koios', () => ({
 
 import { acknowledgeItem, dismissItem } from '@/lib/governance/acknowledgments';
 import {
-  countMissedVotesSinceLastVisit,
+  countMissedVotesSincePriorVisit,
   getCinematicState,
 } from '@/lib/governance/prioritizationEngine';
 import { MAJOR_TREASURY_WITHDRAWAL_ADA_FLOOR } from '@/lib/governance/tier0Triggers';
@@ -576,7 +576,7 @@ describe('missed vote counting', () => {
     mockGetSupabaseAdmin.mockReturnValue({ from });
 
     await expect(
-      countMissedVotesSinceLastVisit({ claimedDrepId: 'drep1xyz', sinceEpoch: 99 }),
+      countMissedVotesSincePriorVisit({ claimedDrepId: 'drep1xyz', sinceEpoch: 99 }),
     ).resolves.toBe(2);
   });
 

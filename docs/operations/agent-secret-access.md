@@ -21,16 +21,32 @@ Service account:
 
 Vault scope:
 
-- Contains only non-production preview/staging credentials and the GitHub App credential approved in Addendum #4.
-- Production credentials are never in this vault and are structurally inaccessible to the service account.
+- Contains only non-production preview/staging credentials, non-production Supabase automation credentials, and the GitHub App credential approved in Addendum #4.
+- Production credentials and production database URLs are never approved for agent runtime use and are structurally inaccessible to the service account.
 - The doctor treats obvious production/admin item names as blockers, but the monthly manual vault audit is the definitive control.
 
 ## Items In Vault
 
-| Item                        | Fields                                                                       | Scope                                                                                           |
-| --------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `governada-posthog-staging` | `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_PROJECT_ID`, `NEXT_PUBLIC_POSTHOG_HOST` | PostHog dev/staging project read/query access.                                                  |
-| `governada-agent-app`       | `client_id`, `installation_id`, `private_key`                                | GitHub App installed only on `governada/app` for API operations and guarded branch publication. |
+| Item                            | Operational fields                                                                                                                                                                                                                                                                      | Scope                                                                                           |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `governada-agent-app`           | `app_id`, `client_id`, `installation_id`, `private_key`                                                                                                                                                                                                                                 | GitHub App installed only on `governada/app` for API operations and guarded branch publication. |
+| `governada-posthog-staging`     | `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_POSTHOG_KEY`, `POSTHOG_DEV_PROJECT_TOKEN`, `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_PROJECT_ID`                                                                                                                                                    | PostHog dev/staging telemetry, preview wiring, and read/query access.                           |
+| `governada-staging-environment` | `ANTHROPIC_API_KEY`, `CRON_SECRET`, `ENVIRONMENT`, `GOVERNADA_DELEGATION_MODE`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `SESSION_SECRET`, `SUPABASE_SECRET_KEY`, `UPSTASH_*` | Staging app runtime and local agent verification credentials.                                   |
+| `governada-supabase-automation` | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PREVIEW_ACCESS_TOKEN`, `SUPABASE_PREVIEW_PARENT_PROJECT_REF`, `SUPABASE_STAGING_DATABASE_URL`, `SUPABASE_STAGING_PROJECT_REF`                                                                                                                        | Supabase typegen, staging schema work, and preview-branch support.                              |
+| `governada-preview-environment` | `AUTO_TEARDOWN`, `ENVIRONMENT`, `GOVERNADA_DELEGATION_MODE`, `NEXT_PUBLIC_SITE_URL`, `POSTHOG_DEV_PROJECT_TOKEN`, `PR_BASE_ENVIRONMENT`, `SUPABASE_BRANCH`                                                                                                                              | Preview environment metadata and CI wiring support.                                             |
+
+Empty boilerplate fields such as `username`, `credential`, and `notesPlain` are not runtime credentials. Production-named Supabase fields, empty URL templates, and static preview metadata are not referenced from `.env.local.refs`.
+
+## Repo Reference File
+
+`.env.local.refs` contains 1Password references only. It is safe to commit because it never stores raw values, but resolving any write-capable credential still follows the normal approval boundaries in `AGENTS.md`.
+
+References included for new worktrees:
+
+- GitHub App lane: `GOVERNADA_GITHUB_CLIENT_ID_OP_REF`, `GOVERNADA_GITHUB_INSTALLATION_ID_OP_REF`, `GOVERNADA_GITHUB_APP_PRIVATE_KEY_OP_REF`.
+- Staging app runtime: `ANTHROPIC_API_KEY_OP_REF`, Supabase URL/publishable/secret refs, PostHog public key/host refs, `NEXT_PUBLIC_SITE_URL_OP_REF`, `CRON_SECRET_OP_REF`, `SESSION_SECRET_OP_REF`, and Upstash refs.
+- Supabase automation: `SUPABASE_ACCESS_TOKEN_OP_REF`, `SUPABASE_PREVIEW_ACCESS_TOKEN_OP_REF`, `SUPABASE_PREVIEW_PARENT_PROJECT_REF_OP_REF`, `SUPABASE_STAGING_PROJECT_REF_OP_REF`, and `SUPABASE_STAGING_DATABASE_URL_OP_REF`.
+- PostHog staging: `POSTHOG_PERSONAL_API_KEY_OP_REF`, `POSTHOG_PROJECT_ID_OP_REF`, and `POSTHOG_DEV_PROJECT_TOKEN_OP_REF`.
 
 The old `governada-app-agent` user token item is being decommissioned by Tim after the Addendum #4 PR merges. Expanding the App's repository access, permissions, or vault contents requires an explicit ADR addendum, not a vault-content change.
 
@@ -215,13 +231,14 @@ Always pause for Tim's explicit approval before:
 
 1. Confirm service account `governada-agent-automation` exists.
 2. Confirm it is scoped only to `Governada-Agent`.
-3. Confirm `Governada-Agent` contains `governada-posthog-staging` and `governada-agent-app`; during the transition it may also contain the soon-to-be-decommissioned old token item until Tim removes it after merge.
-4. Confirm the PostHog token is dev/staging project read/query scope, not production and not admin.
-5. Confirm the GitHub App is installed only on `governada/app` with Contents:read+write, Pull requests:read+write, Metadata:read, Actions:read, and Workflows:read.
-6. Confirm `/Users/tim/dev/agent-runtime/env/governada-agent.env` exists with mode `600`.
-7. Run `npm run op:agent-doctor`.
-8. Run `npm run env:doctor`.
-9. Run `npm run gh:auth-status`.
+3. Confirm `Governada-Agent` contains only the approved items listed in [Items In Vault](#items-in-vault); during the transition it may also contain the soon-to-be-decommissioned old token item until Tim removes it after merge.
+4. Confirm the PostHog tokens are dev/staging project scope, not production and not admin.
+5. Confirm Supabase refs are staging/preview automation only, with no production database URL or admin token referenced from `.env.local.refs`.
+6. Confirm the GitHub App is installed only on `governada/app` with Contents:read+write, Pull requests:read+write, Metadata:read, Actions:read, and Workflows:read.
+7. Confirm `/Users/tim/dev/agent-runtime/env/governada-agent.env` exists with mode `600`.
+8. Run `npm run op:agent-doctor`.
+9. Run `npm run env:doctor`.
+10. Run `npm run gh:auth-status`.
 
 ## References
 

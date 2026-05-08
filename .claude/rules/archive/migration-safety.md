@@ -53,6 +53,8 @@ All database migrations MUST follow this safety procedure:
 
 Production data restores (backfilling missing rows, recomputing derived data, repairing corrupt records) require explicit user approval AND must follow the "tested function, not raw SQL" pattern.
 
+Related cleanup: when migration or restore work ships through a PR preview, the orchestrator closeout in `governada-brain/agents/homepage-orchestrator.md` requires deleting that PR's Supabase preview branch via MCP `delete_branch`, even if project auto-cleanup is configured.
+
 ### The pattern
 
 1. **Factor the operation into a function in `lib/`.** Not a one-off SQL string in chat. Not a Supabase MCP `execute_sql` call with arbitrary SQL. A typed, tested, idempotent function with a clear signature.

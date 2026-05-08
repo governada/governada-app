@@ -373,4 +373,15 @@ describe('seneca region suggestion API', () => {
     expect(migration).toContain("interval '180 days'");
     expect(migration).toContain('proposals_all_time');
   });
+
+  it('tightens cluster treasury approval to majority-yes semantics', async () => {
+    const migration = await readFile(
+      'supabase/migrations/20260508042713_region_suggestion_treasury_majority.sql',
+      'utf8',
+    );
+
+    expect(migration).not.toContain('bool_or');
+    expect(migration).toContain("count(distinct v.drep_id) filter (where v.vote = 'Yes')");
+    expect(migration).toContain('(yes_count::numeric / nullif(total_count, 0)) >= 0.5');
+  });
 });

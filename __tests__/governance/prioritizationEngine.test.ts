@@ -67,6 +67,7 @@ function actionItem(overrides: Partial<PrioritizedItem> = {}): PrioritizedItem {
 describe('prioritization engine selector', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetSupabaseAdmin.mockReset();
   });
 
   it('returns first_visit_anonymous for anonymous visitors', async () => {
@@ -106,6 +107,40 @@ describe('prioritization engine selector', () => {
     expect(queue.primary.state).toBe('returning_significant_delta');
   });
 
+  it('returns returning_significant_delta when a claimed DRep missed closed votes since last visit', async () => {
+    const { votesQuery } = mockMissedVoteSource({
+      proposals: Array.from({ length: 4 }, (_, index) =>
+        proposal(`closed-${index}`, { ratified_epoch: 100 }),
+      ),
+      votes: [],
+    });
+
+    const queue = await getCinematicState(
+      user({ claimedDrepId: 'drep1claimed', lastEpochVisited: 99 }),
+      governance(),
+    );
+
+    expect(queue.primary.state).toBe('returning_significant_delta');
+    expect(votesQuery.eq).toHaveBeenCalledWith('drep_id', 'drep1claimed');
+  });
+
+  it('returns returning_significant_delta when a delegated citizen has missed closed votes', async () => {
+    const { votesQuery } = mockMissedVoteSource({
+      proposals: Array.from({ length: 4 }, (_, index) =>
+        proposal(`delegated-closed-${index}`, { expired_epoch: 100 }),
+      ),
+      votes: [],
+    });
+
+    const queue = await getCinematicState(
+      user({ delegatedDrepId: 'drep1delegated', lastEpochVisited: 99 }),
+      governance(),
+    );
+
+    expect(queue.primary.state).toBe('returning_significant_delta');
+    expect(votesQuery.eq).toHaveBeenCalledWith('drep_id', 'drep1delegated');
+  });
+
   it('returns returning_epoch when the user crossed an epoch since last visit', async () => {
     const queue = await getCinematicState(
       user({ currentEpoch: 101, lastEpochVisited: 100 }),
@@ -116,6 +151,7 @@ describe('prioritization engine selector', () => {
   });
 
   it('returns returning_cold_start for delegated users without enough signal yet', async () => {
+    mockMissedVoteSource({ proposals: [], votes: [] });
     const queue = await getCinematicState(
       user({ delegatedDrepId: 'drep1xyz', isColdStart: true }),
       governance(),
@@ -125,6 +161,7 @@ describe('prioritization engine selector', () => {
   });
 
   it('keeps delegated returning users quiet when they are not cold-start', async () => {
+    mockMissedVoteSource({ proposals: [], votes: [] });
     const queue = await getCinematicState(user({ delegatedDrepId: 'drep1xyz' }), governance());
 
     expect(queue.primary.state).toBe('returning_quiet');
@@ -132,7 +169,7 @@ describe('prioritization engine selector', () => {
 
   it('routes delegated users with competing action signals away from cold-start', async () => {
     const queue = await getCinematicState(
-      user({ delegatedDrepId: 'drep1xyz', isColdStart: false }),
+      user({ delegatedDrepId: 'drep1xyz', isColdStart: false, missedVotesCount: 0 }),
       governance({ actionItems: [actionItem()] }),
     );
 
@@ -257,6 +294,7 @@ describe('prioritization engine selector', () => {
 describe('prioritization lifecycle writes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetSupabaseAdmin.mockReset();
   });
 
   it('acknowledgeItem writes an acknowledgment row', async () => {
@@ -386,6 +424,7 @@ describe('prioritization lifecycle writes', () => {
       user({
         isColdStart: true,
         delegatedDrepId: 'drep1xyz',
+        missedVotesCount: 0,
         acknowledgments: [
           {
             item_id: 'returning-cold-start',
@@ -408,6 +447,7 @@ describe('prioritization lifecycle writes', () => {
 describe('homepage visit tracking', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetSupabaseAdmin.mockReset();
   });
 
   it('does not track anonymous visitors', async () => {
@@ -545,42 +585,92 @@ describe('homepage visit tracking', () => {
 describe('missed vote counting', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetSupabaseAdmin.mockReset();
   });
 
   it('counts DRep-votable proposals without a matching vote since last visit', async () => {
-    const proposalQuery = {
-      select: vi.fn(() => proposalQuery),
-      gte: vi.fn().mockResolvedValue({
-        data: [
-          { tx_hash: 'p1', proposal_index: 0, proposal_type: 'TreasuryWithdrawals' },
-          { tx_hash: 'p2', proposal_index: 0, proposal_type: 'HardForkInitiation' },
-          { tx_hash: 'p3', proposal_index: 0, proposal_type: 'InfoAction' },
-        ],
-        error: null,
-      }),
-    };
-    const votesQuery = {
-      select: vi.fn(() => votesQuery),
-      eq: vi.fn(() => votesQuery),
-      in: vi.fn().mockResolvedValue({
-        data: [{ proposal_tx_hash: 'p1', proposal_index: 0 }],
-        error: null,
-      }),
-    };
-    const from = vi.fn((table: string) => {
-      if (table === 'proposals') return proposalQuery;
-      if (table === 'drep_votes') return votesQuery;
-      throw new Error(`Unexpected table ${table}`);
+    const { proposalQuery } = mockMissedVoteSource({
+      proposals: [
+        proposal('p1', { ratified_epoch: 100 }),
+        proposal('p2', { dropped_epoch: 100, proposal_type: 'HardForkInitiation' }),
+        proposal('p3', { expired_epoch: 100, proposal_type: 'InfoAction' }),
+      ],
+      votes: [{ proposal_tx_hash: 'p1', proposal_index: 0 }],
     });
 
-    mockGetSupabaseAdmin.mockReturnValue({ from });
+    await expect(
+      countMissedVotesSincePriorVisit({ drepId: 'drep1xyz', sinceEpoch: 99 }),
+    ).resolves.toBe(2);
+    expect(proposalQuery.or).toHaveBeenCalledWith(
+      'ratified_epoch.not.is.null,dropped_epoch.not.is.null,expired_epoch.not.is.null,enacted_epoch.not.is.null',
+    );
+  });
+
+  it('returns zero when only open unvoted proposals remain after the closed-proposal filter', async () => {
+    const { proposalQuery, votesQuery } = mockMissedVoteSource({
+      proposals: [],
+      votes: [],
+    });
 
     await expect(
-      countMissedVotesSincePriorVisit({ claimedDrepId: 'drep1xyz', sinceEpoch: 99 }),
-    ).resolves.toBe(2);
+      countMissedVotesSincePriorVisit({ drepId: 'drep1xyz', sinceEpoch: 99 }),
+    ).resolves.toBe(0);
+    expect(proposalQuery.or).toHaveBeenCalledWith(
+      'ratified_epoch.not.is.null,dropped_epoch.not.is.null,expired_epoch.not.is.null,enacted_epoch.not.is.null',
+    );
+    expect(votesQuery.select).not.toHaveBeenCalled();
   });
 
   it('keeps the Phase 1 treasury threshold as the 1M ADA floor', () => {
     expect(MAJOR_TREASURY_WITHDRAWAL_ADA_FLOOR).toBe(1_000_000);
   });
 });
+
+function proposal(
+  txHash: string,
+  overrides: Partial<{
+    proposal_index: number;
+    proposal_type: string;
+    ratified_epoch: number | null;
+    dropped_epoch: number | null;
+    expired_epoch: number | null;
+    enacted_epoch: number | null;
+  }> = {},
+) {
+  return {
+    tx_hash: txHash,
+    proposal_index: overrides.proposal_index ?? 0,
+    proposal_type: overrides.proposal_type ?? 'TreasuryWithdrawals',
+    ratified_epoch: overrides.ratified_epoch ?? null,
+    dropped_epoch: overrides.dropped_epoch ?? null,
+    expired_epoch: overrides.expired_epoch ?? null,
+    enacted_epoch: overrides.enacted_epoch ?? null,
+  };
+}
+
+function mockMissedVoteSource({
+  proposals,
+  votes,
+}: {
+  proposals: ReturnType<typeof proposal>[];
+  votes: Array<{ proposal_tx_hash: string; proposal_index: number }>;
+}) {
+  const proposalQuery = {
+    select: vi.fn(() => proposalQuery),
+    gte: vi.fn(() => proposalQuery),
+    or: vi.fn().mockResolvedValue({ data: proposals, error: null }),
+  };
+  const votesQuery = {
+    select: vi.fn(() => votesQuery),
+    eq: vi.fn(() => votesQuery),
+    in: vi.fn().mockResolvedValue({ data: votes, error: null }),
+  };
+  const from = vi.fn((table: string) => {
+    if (table === 'proposals') return proposalQuery;
+    if (table === 'drep_votes') return votesQuery;
+    throw new Error(`Unexpected table ${table}`);
+  });
+
+  mockGetSupabaseAdmin.mockReturnValue({ from });
+  return { proposalQuery, votesQuery, from };
+}

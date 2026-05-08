@@ -14,6 +14,7 @@ const { posthogCaptureMock } = vi.hoisted(() => ({ posthogCaptureMock: vi.fn() }
 let homepageCinematic: unknown = null;
 let viewportClass: 'mobile' | 'desktop' = 'desktop';
 let isTouchDevice = false;
+let featureFlags = new Map<string, boolean>();
 let bridgeOptions: { onAnchoredCards?: (cards: AnchoredCardDescriptor[]) => void } | null = null;
 
 const selectableNode = {
@@ -129,7 +130,7 @@ vi.mock('@/stores/senecaThreadStore', () => {
 });
 
 vi.mock('@/components/FeatureGate', () => ({
-  useFeatureFlag: () => false,
+  useFeatureFlag: (flag: string) => featureFlags.get(flag) ?? false,
 }));
 
 vi.mock('@/lib/funnel', () => ({
@@ -154,11 +155,21 @@ vi.mock('@/lib/globe/behaviors/clusterBehavior', () => ({
 
 vi.mock('@/components/ConstellationScene', () => ({
   ConstellationScene: React.forwardRef(
-    (props: { onNodeSelect?: (node: ConstellationNode3D) => void }, _ref) => (
+    (
+      props: {
+        onNodeSelect?: (node: ConstellationNode3D) => void;
+        onNodeHoverScreen?: (
+          node: ConstellationNode3D | null,
+          pos: { x: number; y: number } | null,
+        ) => void;
+      },
+      _ref,
+    ) => (
       <button
         type="button"
         data-testid="scene"
         onClick={() => props.onNodeSelect?.(selectableNode)}
+        onMouseEnter={() => props.onNodeHoverScreen?.(selectableNode, { x: 20, y: 30 })}
       >
         scene
       </button>
@@ -238,6 +249,7 @@ describe('GlobeLayout deferred panels', () => {
     homepageCinematic = null;
     viewportClass = 'desktop';
     isTouchDevice = false;
+    featureFlags = new Map();
     bridgeOptions = null;
     setHomepageAnchoredCards.mockClear();
     posthogCaptureMock.mockClear();
@@ -245,6 +257,7 @@ describe('GlobeLayout deferred panels', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     cleanup();
   });
 
@@ -387,6 +400,41 @@ describe('GlobeLayout deferred panels', () => {
     fireEvent.click(scene);
 
     await waitFor(() => expect(screen.getByTestId('entity-detail-sheet')).toBeTruthy());
+  });
+
+  it('captures hover preview telemetry on desktop', async () => {
+    renderGlobeLayout();
+
+    const scene = await screen.findByTestId('scene');
+    fireEvent.mouseEnter(scene);
+
+    expect(posthogCaptureMock).toHaveBeenCalledWith('hover_preview_shown', {
+      nodeId: 'drep_abc123',
+      nodeType: 'drep',
+      detailLevel: 'tight',
+    });
+  });
+
+  it('captures homepage cluster fetch failures with source attribution', async () => {
+    featureFlags.set('globe_alignment_layout', true);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      }),
+    );
+
+    renderGlobeLayout();
+
+    await waitFor(() =>
+      expect(posthogCaptureMock).toHaveBeenCalledWith('cluster_fetch_failed', {
+        error: 'Cluster fetch failed with status 503',
+        statusCode: 503,
+        source: 'homepage',
+      }),
+    );
   });
 
   it('keeps Layer 2 idle effects gated to quiet returning states', () => {

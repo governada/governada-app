@@ -27,7 +27,7 @@ Path or URL: `/Users/tim/dev/governada/governada-brain/plans/homepage-mvp.md` li
 
 - Phase 0/4/5/6 telemetry exists for `first_visit`, `homepage_viewed`, `seneca_interaction`, `cinema_state_chosen`, `match_started`, `match_completed`, `entity_inspected`, `delegation_completed`, and `delegated`.
 - `cinema_arrival_state` was not present in the current codebase despite the Phase 6 dashboard note; the dispatcher currently emits only globe commands.
-- `wallet_connected` was not present as a raw funnel event; wallet success paths currently emit `wallet_authenticated` or `quick_connect_succeeded`.
+- `wallet_connected` already exists in the wallet provider; modal and quick-connect success paths should not duplicate that provider-owned funnel event.
 - Region-suggestion shown/dismissed telemetry already exists.
 - Seneca panel open telemetry exists; panel dismiss, mechanical asked, guided path taken, and observation surfaced are missing.
 
@@ -49,6 +49,7 @@ Test files referencing changed APIs:
 
 - `__tests__/components/GlobeLayout.test.tsx`
 - `__tests__/components/GlobeConstellation.layer1.test.tsx`
+- `__tests__/components/SenecaThread.telemetry.test.tsx`
 - `__tests__/components/SenecaMatch.test.tsx`
 - `__tests__/components/WalletConnectModal.test.tsx`
 - `__tests__/globe/cinematicDispatcher.test.ts`
@@ -75,7 +76,7 @@ In:
 
 - Add missing Phase 8 PostHog events at existing call sites.
 - Keep payloads compact and avoid large object capture.
-- Add focused tests for each event trigger and the funnel event inventory.
+- Add focused tests for each event trigger and verify the funnel event ownership boundary.
 - Use one small performance helper because `time_to_interactive`, `time_to_seneca_ready`, and `time_to_cinema_fire` share one-shot mark/measure behavior.
 
 Out:
@@ -83,7 +84,7 @@ Out:
 - Cinema choreography behavior changes.
 - Seneca prompt/voice changes.
 - Match algorithm changes.
-- Auth behavior changes beyond dual-emitting the missing raw funnel event.
+- Auth behavior changes; wallet-connected telemetry remains provider-owned to avoid double-counting.
 - PostHog infrastructure changes.
 - Schema migrations.
 
@@ -115,7 +116,7 @@ Commands run:
 - `rg -n` telemetry and funnel call-site searches.
 - `npx prettier --check <changed files>`
 - `npm run type-check`
-- `npm run test -- __tests__/globe/cinematicDispatcher.test.ts __tests__/telemetry/perfMarks.test.ts __tests__/telemetry/homepageEvents.test.ts __tests__/components/PageViewTracker.test.tsx __tests__/components/GlobeLayout.test.tsx __tests__/components/GlobeConstellation.layer1.test.tsx __tests__/components/SenecaMatch.test.tsx __tests__/hooks/useQuickConnect.test.tsx __tests__/components/WalletConnectModal.test.tsx`
+- `npm run test -- __tests__/globe/cinematicDispatcher.test.ts __tests__/telemetry/perfMarks.test.ts __tests__/components/PageViewTracker.test.tsx __tests__/components/SenecaThread.telemetry.test.tsx __tests__/components/GlobeLayout.test.tsx __tests__/components/GlobeConstellation.layer1.test.tsx __tests__/components/SenecaMatch.test.tsx __tests__/hooks/useQuickConnect.test.tsx __tests__/components/WalletConnectModal.test.tsx`
 - `npm run agent:validate`
 - Playwright screenshot smoke at `http://127.0.0.1:3068/` using dummy non-secret env values: desktop and 375px mobile screenshots were nonblank with visible canvas regions.
 - `.claude/hooks/pre-done.sh --url http://127.0.0.1:3068/ --screenshot /private/tmp/homepage-phase-8-desktop.png --grep-evidence <perf helper near-duplicate check>`
@@ -124,5 +125,5 @@ Claims verified:
 
 - Existing app checkout was clean before creating the managed worktree.
 - Phase 8 branch was created from `origin/main`.
-- Current code lacks several Phase 8 events and the raw `wallet_connected` funnel event.
+- Current code lacked several Phase 8 events; the raw `wallet_connected` funnel event was already provider-owned and remains single-emitted.
 - Local acceptance criteria 1-9 are covered by event inventory, trigger tests, compact payload trimming, formatting/type-check, the agent constraint validator, and homepage visual smoke. Live PostHog funnel screenshots remain acceptance criterion 10 after preview deployment exists.

@@ -376,10 +376,11 @@ export function SenecaThread({
       },
       (error) => {
         const state = homepageCinematic?.queue.primary.state ?? 'returning_quiet';
-        // PostHog payload: { error, intent }.
+        // PostHog payload: { error, intent, panel_route }.
         posthog.capture('seneca_answer_failed', {
           error: getErrorMessage(error),
           intent: turnIntent,
+          panel_route: panelRoute,
         });
         onUpdateLastAssistant(getEvergreenFallback(state));
         captureSenecaInteraction({

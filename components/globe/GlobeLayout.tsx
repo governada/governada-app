@@ -270,10 +270,11 @@ export function GlobeLayout({
         );
       })
       .catch((error) => {
-        // PostHog payload: { error, statusCode }.
+        // PostHog payload: { error, statusCode, source }.
         posthog.capture('cluster_fetch_failed', {
           error: getErrorMessage(error),
           statusCode: getStatusCode(error),
+          source: 'homepage',
         });
       });
   }, [clusterFlagEnabled]);

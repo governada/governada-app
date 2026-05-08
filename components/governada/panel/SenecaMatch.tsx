@@ -493,10 +493,11 @@ export function SenecaMatch({ onBack, onStartConversation }: SenecaMatchProps) {
                 }
               })
               .catch((clusterError) => {
-                // PostHog payload: { error, statusCode }.
+                // PostHog payload: { error, statusCode, source }.
                 posthog.capture('cluster_fetch_failed', {
                   error: getErrorMessage(clusterError),
                   statusCode: getStatusCode(clusterError),
+                  source: 'match',
                 });
               });
 

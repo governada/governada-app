@@ -71,12 +71,10 @@ export const generateStateOfGovernance = inngest.createFunction(
       }));
 
       // DRep participation
-      const dreps = await fetchAll<{ info: unknown }>(() =>
-        supabase.from('dreps').select('info').not('info', 'is', null),
+      const dreps = await fetchAll<{ is_active: boolean }>(() =>
+        supabase.from('dreps').select('is_active'),
       );
-      const activeDreps = (dreps ?? []).filter(
-        (d) => (d.info as Record<string, unknown> | null)?.isActive,
-      );
+      const activeDreps = (dreps ?? []).filter((d) => d.is_active);
       const participationRate =
         dreps.length > 0 ? Math.round((activeDreps.length / dreps.length) * 100) : 0;
 

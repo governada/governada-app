@@ -213,13 +213,11 @@ async function main() {
   const { data: dreps } = await supabase
     .from('dreps')
     .select(
-      'id, composite_score, engagement_quality, effective_participation, reliability, governance_identity, info',
+      'id, composite_score, engagement_quality, effective_participation, reliability, governance_identity, is_active',
     )
-    .not('info->isActive', 'is', null);
+    .eq('is_active', true);
 
-  const activeDreps = (dreps ?? []).filter(
-    (d) => (d.info as Record<string, unknown> | null)?.isActive,
-  );
+  const activeDreps = dreps ?? [];
   console.log(`Active DReps: ${activeDreps.length}`);
 
   const drepPillarScores = new Map<string, Record<string, number>>();

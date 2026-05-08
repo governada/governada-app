@@ -25,7 +25,7 @@ export const GET = withRouteHandler(
         supabase
           .from('dreps')
           .select(
-            'score, participation_rate, rationale_rate, effective_participation, info, size_tier',
+            'score, participation_rate, rationale_rate, effective_participation, info, size_tier, is_active',
           )
           .range(0, 9999),
         supabase.from('dreps').select('id', { count: 'exact', head: true }),
@@ -52,7 +52,7 @@ export const GET = withRouteHandler(
       const dreps = drepsResult.data || [];
       const proposals = proposalsResult.data || [];
 
-      const activeDReps = dreps.filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
+      const activeDReps = dreps.filter((d) => d.is_active);
       const totalAdaGovernedLovelace = activeDReps.reduce((sum, d) => {
         const lovelace = parseInt(
           String((d.info as Record<string, unknown> | null)?.votingPowerLovelace || '0'),

@@ -16,9 +16,10 @@ test.describe('Smoke tests', () => {
 
   test('health API responds', async ({ request }) => {
     const res = await request.get('/api/health');
-    expect(res.ok()).toBeTruthy();
     const body = await res.json();
+
     expect(body).toHaveProperty('status');
+    expect(res.status()).toBe(body.status === 'critical' ? 503 : 200);
   });
 });
 

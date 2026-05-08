@@ -101,7 +101,7 @@ export const syncDrepScores = inngest.createFunction(
                 supabase
                   .from('dreps')
                   .select(
-                    'id, info, metadata, metadata_hash_verified, anchor_hash, updated_at, profile_last_changed_at',
+                    'id, info, is_active, metadata, metadata_hash_verified, anchor_hash, updated_at, profile_last_changed_at',
                   )
                   .range(0, 99999),
                 supabase
@@ -566,10 +566,7 @@ export const syncDrepScores = inngest.createFunction(
             );
 
             // Log snapshot completeness
-            const activeDreps =
-              drepRows?.filter(
-                (d) => (d.info as Record<string, unknown> | null)?.isActive !== false,
-              ).length ?? 0;
+            const activeDreps = drepRows?.filter((d) => d.is_active).length ?? 0;
             const scored = finalScores.size;
             const coveragePct =
               activeDreps > 0 ? Math.round((scored / activeDreps) * 10000) / 100 : 100;

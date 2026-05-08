@@ -30,11 +30,16 @@ for (const [name, route, maxMs] of endpoints) {
   try {
     const response = await fetchWithTimeout(url, {}, 10000);
     const durationMs = Math.round(performance.now() - startedAt);
+    const healthBody =
+      route === '/api/health' ? await response.json().catch(() => ({ status: 'unknown' })) : null;
     detail = `${response.status} ${durationMs}ms`;
 
     if (response.status !== 200) {
       status = 'FAIL';
-      detail = `${response.status} (expected 200)`;
+      detail =
+        route === '/api/health' && healthBody?.status
+          ? `${response.status} status=${healthBody.status}`
+          : `${response.status} (expected 200)`;
       failed += 1;
     } else if (durationMs > maxMs) {
       status = 'SLOW';

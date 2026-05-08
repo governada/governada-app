@@ -197,6 +197,7 @@ async function main() {
       anchorUrl: drep.anchorUrl,
       epochVoteCounts: drep.epochVoteCounts,
     },
+    is_active: drep.isActive,
     votes: [],
     score: drep.drepScore,
     participation_rate: drep.participationRate,

@@ -120,6 +120,18 @@ export function getSmokeChecks(
   const baseChecks: VerificationCheck[] = [
     readinessCheck,
     {
+      name: 'Health (broad)',
+      path: '/api/health',
+      expectedStatus: 200,
+      maxResponseMs: 3000,
+      validate: (body) =>
+        validateHealthStatus(
+          body,
+          profile === 'production' ? ['healthy'] : ['healthy', 'degraded'],
+          'Broad health',
+        ),
+    },
+    {
       name: 'Health (deep)',
       path: '/api/health/deep',
       expectedStatus: 200,

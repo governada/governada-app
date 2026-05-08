@@ -6,7 +6,7 @@
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { blockTimeToEpoch } from '@/lib/koios';
-import { errMsg, fetchAll, pingHeartbeat } from '@/lib/sync-utils';
+import { errMsg, pingHeartbeat } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import { detectClusters } from '@/lib/globe/clusterDetection';
 import { nameAllClusters } from '@/lib/globe/clusterNaming';
@@ -16,8 +16,13 @@ import { buildDelegationSnapshotInsert } from '@/lib/scoring/delegationSnapshots
 import type { DelegationSnapshotData } from '@/lib/scoring/types';
 import type { LayoutInput } from '@/lib/constellation/globe-layout';
 import { withCronMonitor } from '@/lib/sentry-cron';
+import {
+  backfillMissingGovernanceParticipationSnapshots,
+  ensureGovernanceParticipationSnapshot,
+} from '@/lib/sync/governanceParticipationSnapshots';
 
 const USER_BATCH = 50;
+const PARTICIPATION_SNAPSHOT_HEAL_WINDOW_EPOCHS = 14;
 
 export const generateEpochSummary = inngest.createFunction(
   {
@@ -55,11 +60,40 @@ export const generateEpochSummary = inngest.createFunction(
         return { currentEpoch, previousEpoch: currentEpoch - 1, isNewEpoch, storedEpoch };
       });
 
+      const participationCatchUp = await step.run(
+        'heal-missing-governance-participation-snapshots',
+        async () => {
+          const toEpoch = epochInfo.currentEpoch - 1;
+          const fromEpoch = Math.max(1, toEpoch - PARTICIPATION_SNAPSHOT_HEAL_WINDOW_EPOCHS + 1);
+
+          if (toEpoch < fromEpoch) {
+            return { skipped: true, reason: 'no finalized epochs' };
+          }
+
+          const supabase = getSupabaseAdmin();
+          const result = await backfillMissingGovernanceParticipationSnapshots(
+            supabase,
+            fromEpoch,
+            toEpoch,
+          );
+
+          if (result.inserted > 0) {
+            logger.warn('[epoch-summary] Healed missing participation snapshots', result);
+          }
+
+          return result;
+        },
+      );
+
       if (!epochInfo.isNewEpoch) {
         await step.run('heartbeat-epoch-summary', () =>
           pingHeartbeat('HEARTBEAT_URL_EPOCH_SUMMARY'),
         );
-        return { skipped: true, reason: `epoch ${epochInfo.currentEpoch} already processed` };
+        return {
+          skipped: true,
+          reason: `epoch ${epochInfo.currentEpoch} already processed`,
+          participationCatchUp,
+        };
       }
 
       const epoch = epochInfo.previousEpoch;
@@ -404,10 +438,7 @@ export const generateEpochSummary = inngest.createFunction(
         // DRep participation: count DReps who voted this epoch vs total active
         const [votersResult, totalDrepsResult] = await Promise.all([
           supabase.from('drep_votes').select('drep_id').eq('epoch_no', epoch),
-          supabase
-            .from('dreps')
-            .select('id', { count: 'exact', head: true })
-            .not('info->isActive', 'eq', false),
+          supabase.from('dreps').select('id', { count: 'exact', head: true }).eq('is_active', true),
         ]);
 
         const uniqueVoters = new Set((votersResult.data || []).map((v) => v.drep_id)).size;
@@ -500,83 +531,19 @@ Output ONLY the narrative paragraph, nothing else.`,
       const participationSnapshot = await step.run(
         'snapshot-governance-participation',
         async () => {
-          try {
-            const supabase = getSupabaseAdmin();
+          const supabase = getSupabaseAdmin();
+          const result = await ensureGovernanceParticipationSnapshot(supabase, epoch);
 
-            const { data: existing } = await supabase
-              .from('governance_participation_snapshots')
-              .select('epoch')
-              .eq('epoch', epoch)
-              .maybeSingle();
-            if (existing) return { skipped: true };
-
-            const [votersResult, totalDrepsResult, totalPowerRows, rationaleResult] =
-              await Promise.all([
-                supabase.from('drep_votes').select('drep_id').eq('epoch_no', epoch),
-                supabase
-                  .from('dreps')
-                  .select('id', { count: 'exact', head: true })
-                  .not('info->isActive', 'eq', false),
-                fetchAll<{ info: unknown }>(() =>
-                  supabase.from('dreps').select('info').not('info->isActive', 'eq', false),
-                ),
-                supabase
-                  .from('drep_votes')
-                  .select('vote_tx_hash', { count: 'exact', head: true })
-                  .eq('epoch_no', epoch)
-                  .eq('has_rationale', true),
-              ]);
-
-            const uniqueVoters = new Set((votersResult.data || []).map((v) => v.drep_id));
-            const activeDreps = uniqueVoters.size;
-            const totalDreps = totalDrepsResult.count || 1;
-            const participationRate = Math.round((activeDreps / totalDreps) * 10000) / 100;
-
-            const totalVotes = votersResult.data?.length ?? 0;
-            const rationaleCount = rationaleResult.count ?? 0;
-            const rationaleRate =
-              totalVotes > 0 ? Math.round((rationaleCount / totalVotes) * 10000) / 100 : 0;
-
-            const totalPower = totalPowerRows.reduce((sum, row) => {
-              const info = row.info as Record<string, unknown>;
-              return sum + BigInt((info?.votingPowerLovelace as string) || '0');
-            }, BigInt(0));
-
-            const { error } = await supabase.from('governance_participation_snapshots').insert({
-              epoch,
-              active_drep_count: activeDreps,
-              total_drep_count: totalDreps,
-              participation_rate: participationRate,
-              rationale_rate: rationaleRate,
-              total_voting_power_lovelace: totalPower.toString(),
-            });
-
-            if (error) throw new Error(error.message);
-
-            await supabase.from('snapshot_completeness_log').upsert(
-              {
-                snapshot_type: 'governance_participation',
-                epoch_no: epoch,
-                snapshot_date: new Date().toISOString().slice(0, 10),
-                record_count: 1,
-                expected_count: 1,
-                coverage_pct: 100,
-                metadata: { participation_rate: participationRate },
-              },
-              { onConflict: 'snapshot_type,epoch_no,snapshot_date' },
-            );
-
+          if (result.inserted) {
             logger.info('[epoch-summary] Participation snapshot stored', {
-              activeDreps,
-              totalDreps,
-              participationRate,
+              activeDreps: result.activeDreps,
+              totalDreps: result.totalDreps,
+              participationRate: result.participationRate,
               epoch,
             });
-            return { inserted: true, activeDreps, totalDreps, participationRate };
-          } catch (err) {
-            logger.error('[epoch-summary] Participation snapshot failed', { error: err });
-            return { error: errMsg(err) };
           }
+
+          return result;
         },
       );
 
@@ -882,6 +849,7 @@ Output ONLY the narrative paragraph, nothing else.`,
         ...proposalStats,
         recap: recapResult,
         enrichment: enrichResult,
+        participationCatchUp,
         participation: participationSnapshot,
         epochStats,
         voteSnapshots,

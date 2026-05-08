@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const supabase = createClient();
     const [drepsRes, proposalsRes] = await Promise.all([
-      supabase.from('dreps').select('score, info').limit(2000),
+      supabase.from('dreps').select('score, info, is_active').limit(2000),
       supabase
         .from('proposals')
         .select('tx_hash')
@@ -20,7 +20,7 @@ export async function GET() {
     ]);
 
     const dreps = drepsRes.data || [];
-    const activeDReps = dreps.filter((d) => d.info?.isActive);
+    const activeDReps = dreps.filter((d) => d.is_active);
     const totalAda =
       activeDReps.reduce(
         (s: number, d) => s + parseInt(d.info?.votingPowerLovelace || '0', 10),

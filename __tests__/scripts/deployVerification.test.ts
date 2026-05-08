@@ -47,9 +47,10 @@ describe('deploy verification helpers', () => {
     expect(releaseMatchesExpected('fedcba98', 'abcdef12')).toBe(false);
   });
 
-  it('verifies production deploys against core health without depending on broad /api/health', async () => {
+  it('verifies production deploys against broad and core health', async () => {
     const fetch = createFetch({
       '/api/health/ready': response({ status: 'ok', release: { commit_sha: 'abc123' } }),
+      '/api/health': response({ status: 'healthy' }),
       '/api/health/deep': response({ status: 'healthy' }),
       '/api/health/sync': response({
         status: 'healthy',
@@ -86,12 +87,60 @@ describe('deploy verification helpers', () => {
     });
 
     expect(result.failed).toBe(0);
+    expect(result.results.find((entry) => entry.name === 'Health (broad)')?.pass).toBe(true);
     expect(result.results.find((entry) => entry.name === 'Core sync health')?.pass).toBe(true);
+  });
+
+  it('fails production deploy verification when broad health is critical', async () => {
+    const fetch = createFetch({
+      '/api/health/ready': response({ status: 'ok', release: { commit_sha: 'abc123' } }),
+      '/api/health': response({ status: 'critical' }, 503),
+      '/api/health/deep': response({ status: 'healthy' }),
+      '/api/health/sync': response({
+        status: 'healthy',
+        core_syncs: [
+          { type: 'proposals', stale: false, lastSuccess: true },
+          { type: 'dreps', stale: false, lastSuccess: true },
+          { type: 'scoring', stale: false, lastSuccess: true },
+          { type: 'alignment', stale: false, lastSuccess: true },
+        ],
+      }),
+      '/api/dreps': response({ dreps: [{ id: 'drep1' }] }),
+      '/api/v1/dreps?limit=20': response({
+        data: Array.from({ length: 20 }, (_, index) => ({ id: `drep${index}`, score: 10 })),
+        meta: { api_version: '1.0' },
+      }),
+      '/api/v1/governance/health': response({
+        data: {
+          total_registered_dreps: 200,
+          total_votes: 5000,
+          total_proposals: 20,
+          score_distribution: {},
+        },
+      }),
+      '/api/auth/nonce': response({ nonce: 'n', signature: 's' }),
+    });
+
+    const result = await runSmokeChecks({
+      baseUrl: 'https://governada.io',
+      expectedSha: 'abc123',
+      fetchImpl: fetch,
+      profile: 'production',
+      quiet: true,
+      log: () => {},
+    });
+
+    expect(result.failed).toBe(1);
+    expect(result.results.find((entry) => entry.name === 'Health (broad)')).toMatchObject({
+      pass: false,
+      detail: expect.stringContaining('Expected 200, got 503'),
+    });
   });
 
   it('allows degraded health in preview smoke checks', async () => {
     const fetch = createFetch({
       '/api/health/ready': response({ status: 'ok', release: { commit_sha: 'abc123' } }),
+      '/api/health': response({ status: 'degraded' }),
       '/api/health/deep': response({ status: 'degraded' }),
       '/api/dreps': response({ dreps: [{ id: 'drep1' }] }),
       '/api/v1/dreps?limit=20': response({
@@ -114,7 +163,7 @@ describe('deploy verification helpers', () => {
     });
 
     expect(result.failed).toBe(0);
-    expect(getSmokeChecks('preview')).toHaveLength(6);
+    expect(getSmokeChecks('preview')).toHaveLength(7);
   });
 
   it('polls readiness until the expected release is live', async () => {

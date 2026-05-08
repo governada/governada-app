@@ -179,8 +179,38 @@ describe('GET /api/health', () => {
       syncs: Array<{ level: string }>;
     };
 
+    expect(res.status).toBe(503);
     expect(body.status).toBe('critical');
     expect(body.syncs[0]?.level).toBe('critical');
+  });
+
+  it('returns HTTP 503 when snapshot freshness is critical', async () => {
+    mockState.syncRows = [
+      {
+        sync_type: 'proposals',
+        last_run: new Date().toISOString(),
+        last_success: true,
+        success_count: 5,
+        failure_count: 0,
+      },
+    ];
+    mockState.currentEpoch = 100;
+    mockState.snapshotLatest = {
+      governance_participation_snapshots: { epoch: 96 },
+    };
+
+    const res = await GET(makeReq());
+    const body = (await parseJson(res)) as {
+      snapshots: { checks: Array<{ table: string; gap: number; level: string }> };
+      status: string;
+    };
+    const participationCheck = body.snapshots.checks.find(
+      (check) => check.table === 'governance_participation_snapshots',
+    );
+
+    expect(res.status).toBe(503);
+    expect(body.status).toBe('critical');
+    expect(participationCheck).toMatchObject({ gap: 4, level: 'critical' });
   });
 
   it('degrades overall status when a non-core sync fails', async () => {
@@ -295,7 +325,7 @@ describe('GET /api/health', () => {
     const res = await GET(makeReq());
     const body = (await parseJson(res)) as { status: string; reason: string; message: string };
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
     expect(body.status).toBe('critical');
     expect(body.reason).toBe('query_error');
     expect(body.message).toBe('Supabase read client is unavailable');
@@ -307,7 +337,7 @@ describe('GET /api/health', () => {
     const res = await GET(makeReq());
     const body = (await parseJson(res)) as { status: string; reason: string; error: string };
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
     expect(body.status).toBe('critical');
     expect(body.reason).toBe('sync_health_query_exception');
     expect(body.error).toBe('DB connection failed');

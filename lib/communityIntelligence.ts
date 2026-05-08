@@ -480,11 +480,11 @@ export async function computeGovernanceTemperature(
   const proposalVelocity = Math.min(25, Math.round(((activeProposals ?? 0) / 20) * 25));
 
   // 4. Participation rate (0-25)
-  const { data: dreps } = await supabase.from('dreps').select('info').not('info', 'is', null);
+  const { data: dreps } = await supabase.from('dreps').select('is_active');
 
   let participationRate = 0;
   if (dreps && dreps.length > 0) {
-    const activeDreps = dreps.filter((d) => (d.info as Record<string, unknown> | null)?.isActive);
+    const activeDreps = dreps.filter((d) => d.is_active);
     const totalDreps = dreps.length;
     participationRate =
       totalDreps > 0 ? Math.min(25, Math.round((activeDreps.length / totalDreps) * 25)) : 0;

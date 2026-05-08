@@ -22,10 +22,7 @@ async function handler(_request: NextRequest, ctx: ApiContext) {
       .is('enacted_epoch', null)
       .is('expired_epoch', null)
       .is('dropped_epoch', null),
-    supabase
-      .from('dreps')
-      .select('id', { count: 'exact', head: true })
-      .not('info->isActive', 'eq', false),
+    supabase.from('dreps').select('id', { count: 'exact', head: true }).eq('is_active', true),
   ]);
 
   const stats = statsResult.data;

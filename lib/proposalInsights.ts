@@ -102,7 +102,7 @@ export async function computeInsights(): Promise<GovernanceInsight[]> {
     const { data: topDreps } = await supabase
       .from('dreps')
       .select('id')
-      .eq('info->>isActive', 'true')
+      .eq('is_active', true)
       .order('score', { ascending: false })
       .limit(10);
 

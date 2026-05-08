@@ -13,7 +13,7 @@ import {
 
 const REPO = 'governada/app';
 const PROD_URL = 'https://governada.io';
-const HEALTH_ENDPOINT = '/api/health';
+const HEALTH_ENDPOINT = '/api/health/ready';
 
 const argSet = new Set(process.argv.slice(2));
 const revertCommit = argSet.has('--revert-commit');
@@ -177,7 +177,7 @@ console.log('');
 console.log('Step 1: Checking current production health...');
 const currentHealth = await fetchHealth();
 
-if (currentHealth.httpCode === '200' && currentHealth.healthStatus === 'healthy' && !force) {
+if (currentHealth.httpCode === '200' && currentHealth.healthStatus === 'ok' && !force) {
   console.log(
     `Production appears healthy (HTTP ${currentHealth.httpCode}, status=${currentHealth.healthStatus}).`,
   );

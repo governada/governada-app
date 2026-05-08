@@ -72,7 +72,7 @@ export async function getVotingPowerSummary(
         .eq('proposal_tx_hash', txHash)
         .eq('proposal_index', proposalIndex)
         .not('voting_power_lovelace', 'is', null),
-      supabase.from('dreps').select('info').eq('info->>isActive', 'true'),
+      supabase.from('dreps').select('info').eq('is_active', true),
     ]);
 
     const votes = votesResult.data;

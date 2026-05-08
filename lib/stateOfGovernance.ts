@@ -94,7 +94,7 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
 
   const { data: currentScores } = await supabase
     .from('dreps')
-    .select('id, score, info')
+    .select('id, score, info, is_active')
     .order('score', { ascending: false })
     .limit(500);
 
@@ -111,7 +111,7 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
   }
 
   const movers = (currentScores ?? [])
-    .filter((d) => (d.info as Record<string, unknown> | null)?.isActive && d.score != null)
+    .filter((d) => d.is_active && d.score != null)
     .map((d) => ({
       drepId: d.id,
       name:
@@ -130,9 +130,7 @@ export async function assembleReportData(targetEpoch?: number): Promise<ReportDa
     .select('vote_tx_hash', { count: 'exact', head: true })
     .eq('epoch_no', epoch);
 
-  const activeDreps = (currentScores ?? []).filter(
-    (d) => (d.info as Record<string, unknown> | null)?.isActive,
-  );
+  const activeDreps = (currentScores ?? []).filter((d) => d.is_active);
   const totalAda =
     activeDreps.reduce(
       (s: number, d) =>

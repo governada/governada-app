@@ -2652,6 +2652,7 @@ export type Database = {
           governance_identity_raw: number | null;
           id: string;
           info: Json | null;
+          is_active: boolean;
           last_personality_label: string | null;
           last_vote_time: number | null;
           metadata: Json | null;
@@ -2705,6 +2706,7 @@ export type Database = {
           governance_identity_raw?: number | null;
           id: string;
           info?: Json | null;
+          is_active?: boolean;
           last_personality_label?: string | null;
           last_vote_time?: number | null;
           metadata?: Json | null;
@@ -2758,6 +2760,7 @@ export type Database = {
           governance_identity_raw?: number | null;
           id?: string;
           info?: Json | null;
+          is_active?: boolean;
           last_personality_label?: string | null;
           last_vote_time?: number | null;
           metadata?: Json | null;

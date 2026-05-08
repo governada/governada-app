@@ -77,14 +77,14 @@ export const GET = withRouteHandler(async (request) => {
   });
 
   const similar = namedSimilarities.map((s) => {
-    const info = infoMap.get(s.drepId);
+    const profile = infoMap.get(s.drepId);
     return {
       drepId: s.drepId,
       similarity: Math.round(s.similarity * 100),
-      name: info?.name || null,
-      score: info?.score || 0,
-      isActive: info?.isActive ?? true,
-      delegatorCount: info?.delegatorCount ?? 0,
+      name: profile?.name || null,
+      score: profile?.score || 0,
+      isActive: profile?.isActive ?? true,
+      delegatorCount: profile?.delegatorCount ?? 0,
     };
   });
 

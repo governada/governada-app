@@ -50,7 +50,7 @@ export const generateAiContent = inngest.createFunction(
         .select(
           'id, info, score, engagement_quality, effective_participation_v3, reliability_v3, governance_identity, alignment_treasury_conservative, alignment_treasury_growth, alignment_decentralization, alignment_security, alignment_innovation, alignment_transparency',
         )
-        .not('info->isActive', 'eq', false);
+        .eq('is_active', true);
 
       if (drepsErr || !dreps) {
         logger.error('[ai-content] Failed to fetch DReps', { error: drepsErr });

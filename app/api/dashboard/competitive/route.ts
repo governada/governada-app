@@ -16,7 +16,7 @@ export const GET = withRouteHandler(async (request, { requestId }) => {
     .select(
       'id, score, info, participation_rate, rationale_rate, reliability_score, profile_completeness, effective_participation, metadata',
     )
-    .not('info->isActive', 'eq', false)
+    .eq('is_active', true)
     .order('score', { ascending: false });
 
   if (error || !allDreps) {

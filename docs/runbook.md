@@ -12,7 +12,7 @@
 ### Diagnosis
 
 1. Check Inngest dashboard: https://app.inngest.com — look for failed `sync-*` functions
-2. Check sync freshness: `GET /api/health` — look for stale sync types
+2. Check sync freshness: `GET /api/health` — HTTP 503 means the body `status` is `critical`; HTTP 200 with `healthy`, `degraded`, or `unknown` still requires reading the body for details.
 3. Check Koios status: `GET /api/health/deep` — `koios` dependency status
 4. Check sync_log table: `SELECT * FROM sync_log ORDER BY started_at DESC LIMIT 20;`
 
@@ -22,6 +22,7 @@
 - **Koios down**: No action needed — Inngest will retry. If extended outage (>6h), post in Discord.
 - **Transform error**: Check Inngest logs for the specific Zod validation error. Fix the schema in `utils/koios-schemas.ts` if Koios changed their response shape.
 - **Manual re-trigger**: In Inngest dashboard, click "Replay" on the failed function run. Or trigger via API: `POST /api/inngest` with the appropriate event.
+- **Missing `governance_participation_snapshots`**: `generate-epoch-summary` owns this table at epoch boundaries. `check-snapshot-completeness` self-heals the previous finalized epoch only, and `generate-epoch-summary` heals the last 14 finalized epochs on every run. Manual production backfills need Tim approval and should use the same idempotent helper path with a bounded epoch range, for example `backfillMissingGovernanceParticipationSnapshots(getSupabaseAdmin(), fromEpoch, toEpoch)`.
 
 ### Sync Types and Schedules
 

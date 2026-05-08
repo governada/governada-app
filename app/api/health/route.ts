@@ -27,6 +27,12 @@ type SnapshotProbeResult = {
   error: { message: string } | null;
 };
 
+type HealthResponseStatus = 'healthy' | 'degraded' | 'critical' | 'unknown';
+
+function healthJson<T extends { status: HealthResponseStatus }>(body: T): NextResponse<T> {
+  return NextResponse.json(body, { status: body.status === 'critical' ? 503 : 200 });
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'unknown error';
 }
@@ -52,7 +58,7 @@ export const GET = withRouteHandler(async () => {
   const readClient = await probeSupabaseReadClient();
 
   if (readClient.status !== 'healthy') {
-    return NextResponse.json({
+    return healthJson({
       status: 'critical',
       message: 'Supabase read client is unavailable',
       reason: readClient.reason,
@@ -70,7 +76,7 @@ export const GET = withRouteHandler(async () => {
   try {
     syncHealthResult = (await supabase.from('v_sync_health').select('*')) as SyncHealthQueryResult;
   } catch (error) {
-    return NextResponse.json({
+    return healthJson({
       status: 'critical',
       message: 'Sync health query failed',
       reason: 'sync_health_query_exception',
@@ -86,7 +92,7 @@ export const GET = withRouteHandler(async () => {
   const { data: rows, error: syncHealthError } = syncHealthResult;
 
   if (syncHealthError) {
-    return NextResponse.json({
+    return healthJson({
       status: 'critical',
       message: 'Sync health query failed',
       reason: 'sync_health_query_error',
@@ -100,7 +106,7 @@ export const GET = withRouteHandler(async () => {
   }
 
   if (!rows?.length) {
-    return NextResponse.json({
+    return healthJson({
       status: operations.status === 'healthy' ? 'unknown' : 'degraded',
       reason: 'no_sync_data',
       message: 'No sync data',
@@ -248,7 +254,7 @@ export const GET = withRouteHandler(async () => {
     worstLevel = mergeSyncHealthLevel(worstLevel, 'degraded');
   }
 
-  return NextResponse.json({
+  return healthJson({
     status: worstLevel,
     syncs,
     snapshots: snapshotHealth,

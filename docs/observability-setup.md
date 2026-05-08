@@ -129,9 +129,13 @@ Sign up at [betterstack.com](https://betterstack.com). The current tier-1 heartb
 
 ### Monitors to Create
 
-| Monitor     | URL                                    | Method | Interval | Expected                                  |
-| ----------- | -------------------------------------- | ------ | -------- | ----------------------------------------- |
-| Deep Health | `https://governada.io/api/health/deep` | GET    | 3 min    | status 200, body contains `"status":"ok"` |
+| Monitor      | URL                                     | Method | Interval | Expected                                       |
+| ------------ | --------------------------------------- | ------ | -------- | ---------------------------------------------- |
+| Broad Health | `https://governada.io/api/health`       | GET    | 3 min    | status 200, body contains `"status":"healthy"` |
+| Deep Health  | `https://governada.io/api/health/deep`  | GET    | 3 min    | status 200, body contains `"status":"healthy"` |
+| Readiness    | `https://governada.io/api/health/ready` | GET    | 1 min    | recommended liveness check; status 200 only    |
+
+`/api/health` returns HTTP 503 when its body status is `critical`, so uptime monitors that only check HTTP status will alert on critical sync or snapshot freshness. Railway should stay on `/api/health/ready`; do not point Railway deploy health checks at `/api/health` unless critical data freshness should restart the service.
 
 ### Heartbeat URLs
 

@@ -71,12 +71,12 @@ test.describe('Critical public journeys', () => {
     ]);
   });
 
-  test('health endpoint reports operational status', async ({ request }) => {
+  test('health endpoint reports honest operational status', async ({ request }) => {
     const response = await request.get('/api/health');
-    expect(response.ok()).toBeTruthy();
-
     const body = await response.json();
+
     expect(body).toHaveProperty('status');
     expect(body.status).not.toBe('error');
+    expect(response.status()).toBe(body.status === 'critical' ? 503 : 200);
   });
 });

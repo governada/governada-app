@@ -11,8 +11,10 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { alertCritical, alertDiscord, emitPostHog, type SyncType } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import { cronCheckIn, cronCheckOut } from '@/lib/sentry-cron';
+import { ensureGovernanceParticipationSnapshot } from '@/lib/sync/governanceParticipationSnapshots';
 
 interface CheckResult {
+  healEpoch?: number;
   name: string;
   passed: boolean;
   detail: string;
@@ -20,9 +22,9 @@ interface CheckResult {
 
 /**
  * Maps snapshot table names to the Inngest event that populates them.
- * Only includes tables that CAN be retriggered — epoch-transition tables
- * (governance_participation_snapshots, epoch_recaps, governance_epoch_stats)
- * are excluded since they're written on epoch boundaries, not on demand.
+ * Only includes tables that CAN be retriggered by event name. Participation
+ * snapshots use a dedicated idempotent self-heal step because they are written
+ * from immutable finalized epoch data rather than by an event-specific sync.
  */
 const SNAPSHOT_HEAL_MAP: Record<string, string> = {
   drep_score_history: 'drepscore/sync.scores',
@@ -230,6 +232,7 @@ export const checkSnapshotCompleteness = inngest.createFunction(
           name: 'governance_participation_snapshots',
           passed: !!partRow,
           detail: partRow ? `epoch ${prevEpoch} present` : `epoch ${prevEpoch} MISSING`,
+          healEpoch: prevEpoch,
         });
 
         // 12. Proposal classifications — not epoch-scoped; verify coverage vs active proposals
@@ -434,6 +437,49 @@ export const checkSnapshotCompleteness = inngest.createFunction(
                 `${skippedNames.join(', ')} have 3+ failures in 2h — not retriggering. Manual investigation needed.`,
               );
             }
+          });
+        }
+
+        const participationHealEpochs = [
+          ...new Set(
+            failures
+              .filter(
+                (failure) =>
+                  failure.name === 'governance_participation_snapshots' &&
+                  typeof failure.healEpoch === 'number',
+              )
+              .map((failure) => failure.healEpoch as number),
+          ),
+        ];
+
+        if (participationHealEpochs.length > 0) {
+          await step.run('self-heal-governance-participation-snapshots', async () => {
+            const supabase = getSupabaseAdmin();
+            const healed: number[] = [];
+            const skipped: number[] = [];
+
+            for (const epoch of participationHealEpochs) {
+              const result = await ensureGovernanceParticipationSnapshot(supabase, epoch);
+              if (result.inserted) {
+                healed.push(epoch);
+              } else {
+                skipped.push(epoch);
+              }
+            }
+
+            logger.info('[snapshot-completeness] Participation snapshot self-heal complete', {
+              healed,
+              skipped,
+            });
+
+            if (healed.length > 0) {
+              await alertDiscord(
+                'Governance Participation Snapshot Self-Healed',
+                `Inserted missing governance participation snapshots for epoch(s): ${healed.join(', ')}.`,
+              );
+            }
+
+            return { healed, skipped };
           });
         }
       }

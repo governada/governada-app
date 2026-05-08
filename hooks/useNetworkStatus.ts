@@ -9,7 +9,7 @@ export function useNetworkStatus() {
 
   const checkHealth = useCallback(async () => {
     try {
-      const res = await fetch('/api/health', { cache: 'no-store' });
+      const res = await fetch('/api/health/ready', { cache: 'no-store' });
       return res.ok;
     } catch {
       return false;

@@ -19,6 +19,8 @@ interface RawJudgeResponse {
   reasoning?: unknown;
 }
 
+const JUDGE_MAX_TOKENS = 350;
+const JUDGE_RETRY_DELAYS_MS = [250, 1_000, 4_000] as const;
 const OBSERVATIONAL_PROMPT_PATH = join(
   process.cwd(),
   'lib/seneca/prompts/evalJudge.observational.md',
@@ -39,9 +41,9 @@ export async function judgeOutput(output: string, intent: SenecaIntent): Promise
 
   try {
     const system = await loadJudgePrompt(intent);
-    const message: unknown = await client.messages.create({
+    const message: unknown = await createJudgeMessageWithRetry(client, {
       model: MODELS.FAST,
-      max_tokens: 220,
+      max_tokens: JUDGE_MAX_TOKENS,
       temperature: 0,
       system,
       messages: [
@@ -59,6 +61,25 @@ export async function judgeOutput(output: string, intent: SenecaIntent): Promise
   } catch {
     return JUDGE_FAILURE;
   }
+}
+
+async function createJudgeMessageWithRetry(
+  client: NonNullable<Awaited<ReturnType<typeof getAnthropicClient>>>,
+  params: Parameters<
+    NonNullable<Awaited<ReturnType<typeof getAnthropicClient>>>['messages']['create']
+  >[0],
+): Promise<unknown> {
+  for (let attempt = 0; attempt <= JUDGE_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await client.messages.create(params);
+    } catch (error) {
+      const hasRetryBudget = attempt < JUDGE_RETRY_DELAYS_MS.length;
+      if (!hasRetryBudget || !isTransientAnthropicError(error)) throw error;
+      await wait(JUDGE_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+
+  return JUDGE_FAILURE;
 }
 
 export async function loadJudgePrompt(intent: SenecaIntent): Promise<string> {
@@ -121,4 +142,25 @@ function toScore(value: number): 0 | 1 | 2 | 3 {
   if (value === 1) return 1;
   if (value === 2) return 2;
   return 3;
+}
+
+function isTransientAnthropicError(error: unknown): boolean {
+  const status = getErrorStatus(error);
+  if (status !== null) return status === 408 || status === 409 || status === 429 || status >= 500;
+
+  if (!error || typeof error !== 'object') return false;
+  const name = (error as { name?: unknown }).name;
+  return name === 'APIConnectionError' || name === 'TimeoutError';
+}
+
+function getErrorStatus(error: unknown): number | null {
+  if (!error || typeof error !== 'object') return null;
+  const candidate =
+    (error as { status?: unknown; statusCode?: unknown }).status ??
+    (error as { status?: unknown; statusCode?: unknown }).statusCode;
+  return typeof candidate === 'number' && Number.isFinite(candidate) ? candidate : null;
+}
+
+function wait(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
 }

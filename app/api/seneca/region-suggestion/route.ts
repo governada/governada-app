@@ -23,7 +23,6 @@ const PROMPT_PATH = join(process.cwd(), 'lib/seneca/prompts/regionSuggestion.md'
 
 const bodySchema = z.object({
   clusterId: z.string().min(1),
-  userContextRef: z.string().min(1).optional().nullable(),
 });
 
 export const POST = withRouteHandler(

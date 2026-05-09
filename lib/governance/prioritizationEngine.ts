@@ -187,10 +187,11 @@ async function missedVoteDeltaFromStoredVotes(
   userContext: UserCinematicContext,
 ): Promise<GovernanceDelta | null> {
   if (typeof userContext.missedVotesCount === 'number') return null;
-  if (!userContext.claimedDrepId) return null;
+  const drepId = userContext.claimedDrepId ?? userContext.delegatedDrepId ?? null;
+  if (!drepId) return null;
 
   const missedVotesCount = await countMissedVotesSincePriorVisit({
-    claimedDrepId: userContext.claimedDrepId,
+    drepId,
     sinceVisitAt: userContext.visitState?.priorVisitAt ?? null,
     sinceEpoch: userContext.lastEpochVisited ?? null,
   });
@@ -352,12 +353,13 @@ function quietCandidate(userContext: UserCinematicContext, surfacedAt: string): 
 }
 
 export async function countMissedVotesSincePriorVisit(input: {
-  claimedDrepId: string;
+  drepId?: string | null;
+  claimedDrepId?: string | null;
   sinceVisitAt?: string | Date | null;
   sinceEpoch?: number | null;
 }): Promise<number> {
-  const claimedDrepId = input.claimedDrepId.trim();
-  if (!claimedDrepId) return 0;
+  const drepId = (input.drepId ?? input.claimedDrepId ?? '').trim();
+  if (!drepId) return 0;
 
   const sinceEpoch =
     input.sinceEpoch ??
@@ -371,7 +373,10 @@ export async function countMissedVotesSincePriorVisit(input: {
   const { data: proposals, error: proposalsError } = await supabase
     .from('proposals')
     .select('tx_hash, proposal_index, proposal_type')
-    .gte('proposed_epoch', sinceEpoch);
+    .gte('proposed_epoch', sinceEpoch)
+    .or(
+      'ratified_epoch.not.is.null,dropped_epoch.not.is.null,expired_epoch.not.is.null,enacted_epoch.not.is.null',
+    );
 
   if (proposalsError) {
     throw new Error(`Failed to read proposals for missed-vote count: ${proposalsError.message}`);
@@ -386,7 +391,7 @@ export async function countMissedVotesSincePriorVisit(input: {
   const { data: votes, error: votesError } = await supabase
     .from('drep_votes')
     .select('proposal_tx_hash, proposal_index')
-    .eq('drep_id', claimedDrepId)
+    .eq('drep_id', drepId)
     .in('proposal_tx_hash', proposalTxHashes);
 
   if (votesError) {

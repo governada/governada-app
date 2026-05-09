@@ -28,37 +28,24 @@ function toIso(value?: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
-async function readLifecycleRecord(
-  supabase: SupabaseAdminClient,
-  userIdOrStakeAddress: string,
-  itemId: string,
-): Promise<ItemLifecycleRecord | null> {
-  const { data, error } = await supabase
-    .from('prioritization_acknowledgments')
-    .select('user_id_or_stake_address, item_id, acknowledged_at, dismissed_at')
-    .eq('user_id_or_stake_address', userIdOrStakeAddress)
-    .eq('item_id', itemId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to read prioritization item lifecycle: ${error.message}`);
-  }
-
-  return (data as ItemLifecycleRecord | null) ?? null;
-}
-
-async function upsertLifecycleRecord(
+async function mergeLifecycleRecord(
   supabase: SupabaseAdminClient,
   row: ItemLifecycleRecord,
   action: 'acknowledge' | 'dismiss',
-): Promise<void> {
-  const { error } = await supabase
-    .from('prioritization_acknowledgments')
-    .upsert(row, { onConflict: 'user_id_or_stake_address,item_id' });
+): Promise<ItemLifecycleRecord> {
+  const { data, error } = await supabase.rpc('ack_dismiss_merge', {
+    p_user_id_or_stake_address: row.user_id_or_stake_address,
+    p_item_id: row.item_id,
+    p_ack_at: row.acknowledged_at ?? null,
+    p_dismiss_at: row.dismissed_at ?? null,
+  });
 
   if (error) {
     throw new Error(`Failed to ${action} prioritization item: ${error.message}`);
   }
+
+  const record = Array.isArray(data) ? data[0] : data;
+  return isLifecycleRecord(record) ? record : row;
 }
 
 export async function acknowledgeItem(input: ItemLifecycleInput): Promise<ItemLifecycleRecord> {
@@ -68,17 +55,14 @@ export async function acknowledgeItem(input: ItemLifecycleInput): Promise<ItemLi
   );
   const itemId = normalizeIdentifier(input.itemId, 'itemId');
   const supabase = getSupabaseAdmin();
-  const existing = await readLifecycleRecord(supabase, userIdOrStakeAddress, itemId);
   const row: ItemLifecycleRecord = {
     user_id_or_stake_address: userIdOrStakeAddress,
     item_id: itemId,
     acknowledged_at: toIso(input.at),
-    dismissed_at: existing?.dismissed_at ?? null,
+    dismissed_at: null,
   };
 
-  await upsertLifecycleRecord(supabase, row, 'acknowledge');
-
-  return row;
+  return mergeLifecycleRecord(supabase, row, 'acknowledge');
 }
 
 export async function dismissItem(input: ItemLifecycleInput): Promise<ItemLifecycleRecord> {
@@ -88,15 +72,18 @@ export async function dismissItem(input: ItemLifecycleInput): Promise<ItemLifecy
   );
   const itemId = normalizeIdentifier(input.itemId, 'itemId');
   const supabase = getSupabaseAdmin();
-  const existing = await readLifecycleRecord(supabase, userIdOrStakeAddress, itemId);
   const row: ItemLifecycleRecord = {
     user_id_or_stake_address: userIdOrStakeAddress,
     item_id: itemId,
-    acknowledged_at: existing?.acknowledged_at ?? null,
+    acknowledged_at: null,
     dismissed_at: toIso(input.at),
   };
 
-  await upsertLifecycleRecord(supabase, row, 'dismiss');
+  return mergeLifecycleRecord(supabase, row, 'dismiss');
+}
 
-  return row;
+function isLifecycleRecord(value: unknown): value is ItemLifecycleRecord {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Partial<Record<keyof ItemLifecycleRecord, unknown>>;
+  return typeof record.user_id_or_stake_address === 'string' && typeof record.item_id === 'string';
 }

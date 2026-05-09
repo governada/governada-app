@@ -9,6 +9,7 @@ import {
   fetchDRepsWithDetails,
   checkKoiosHealth,
   parseMetadataFields,
+  normalizeDRepInfo,
 } from '@/utils/koios';
 import { logger } from '@/lib/logger';
 import { withRetry } from '@/lib/retry';
@@ -280,6 +281,7 @@ export async function getEnrichedDReps(
       const proposalCtx = options?.proposalContextMap;
 
       const batchDreps: DRep[] = sortedInfo.map((drepInfo) => {
+        const normalizedInfo = normalizeDRepInfo(drepInfo);
         const drepMetadata = metadata.find((m) => m.drep_id === drepInfo.drep_id);
         const votes = votesMap[drepInfo.drep_id] || [];
 
@@ -288,7 +290,7 @@ export async function getEnrichedDReps(
         const abstainVotes = votes.filter((v) => v.vote === 'Abstain').length;
 
         const { name, ticker, description } = parseMetadataFields(drepMetadata);
-        const votingPower = lovelaceToAda(drepInfo.amount || '0');
+        const votingPower = lovelaceToAda(normalizedInfo.amount || '0');
 
         const participationRate = calculateParticipationRate(votes.length, actualProposalCount);
 
@@ -324,14 +326,14 @@ export async function getEnrichedDReps(
         );
 
         return {
-          drepId: drepInfo.drep_id,
-          drepHash: drepInfo.drep_hash,
+          drepId: normalizedInfo.drepId,
+          drepHash: normalizedInfo.drepHash,
           handle: null,
           name,
           ticker,
           description,
           votingPower,
-          votingPowerLovelace: drepInfo.amount || '0',
+          votingPowerLovelace: normalizedInfo.amount || '0',
           participationRate,
           rationaleRate,
           reliabilityScore,
@@ -347,9 +349,9 @@ export async function getEnrichedDReps(
           yesVotes,
           noVotes,
           abstainVotes,
-          isActive: drepInfo.registered && drepInfo.amount !== '0',
-          anchorUrl: drepInfo.anchor_url,
-          anchorHash: drepInfo.anchor_hash,
+          isActive: normalizedInfo.active,
+          anchorUrl: normalizedInfo.anchorUrl,
+          anchorHash: normalizedInfo.anchorHash,
           metadata: metadataBody as Record<string, unknown> | null,
           epochVoteCounts,
           profileCompleteness,

@@ -24,6 +24,11 @@ export const KoiosDRepInfoSchema = z
     // Fields renamed in Koios API update (2026-03):
     // drep_hash → removed (use hex), registered → drep_status,
     // anchor_url → meta_url, anchor_hash → meta_hash, active_epoch → expires_epoch_no
+    drep_status: z.string().nullable().optional(),
+    active: z.boolean().optional(),
+    meta_url: z.string().nullable().optional(),
+    meta_hash: z.string().nullable().optional(),
+    expires_epoch_no: z.number().nullable().optional(),
   })
   .passthrough();
 

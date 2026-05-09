@@ -14,17 +14,21 @@ const {
   mockLoadCachedDRepVotes: vi.fn(),
 }));
 
-vi.mock('@/utils/koios', () => ({
-  fetchAllDReps: mockFetchAllDReps,
-  fetchDRepsWithDetails: mockFetchDRepsWithDetails,
-  fetchDRepVotes: mockFetchDRepVotes,
-  checkKoiosHealth: mockCheckKoiosHealth,
-  parseMetadataFields: vi.fn().mockReturnValue({
-    name: 'DRep One',
-    ticker: 'DR1',
-    description: 'Example DRep',
-  }),
-}));
+vi.mock('@/utils/koios', async () => {
+  const actual = await vi.importActual<typeof import('@/utils/koios')>('@/utils/koios');
+  return {
+    ...actual,
+    fetchAllDReps: mockFetchAllDReps,
+    fetchDRepsWithDetails: mockFetchDRepsWithDetails,
+    fetchDRepVotes: mockFetchDRepVotes,
+    checkKoiosHealth: mockCheckKoiosHealth,
+    parseMetadataFields: vi.fn().mockReturnValue({
+      name: 'DRep One',
+      ticker: 'DR1',
+      description: 'Example DRep',
+    }),
+  };
+});
 
 vi.mock('@/lib/retry', () => ({
   withRetry: (fn: () => Promise<unknown>) => fn(),

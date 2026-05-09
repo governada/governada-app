@@ -57,6 +57,7 @@ describe('sync-utils', () => {
       const result = await batchUpsert(supabase, 'test', rows, 'id', 'test');
       expect(result.success).toBe(5);
       expect(result.errors).toBe(0);
+      expect(result.errorMessages).toEqual([]);
     });
 
     it('retries on transient error', async () => {
@@ -78,7 +79,27 @@ describe('sync-utils', () => {
       const result = await batchUpsert(supabase, 'test', rows, 'id', 'test');
       expect(result.success).toBe(0);
       expect(result.errors).toBe(1);
+      expect(result.errorMessages).toEqual(['violates foreign key constraint']);
       expect(mockUpsert).toHaveBeenCalledTimes(1);
+    });
+
+    it('captures sampled batch errors for sync_log diagnostics', async () => {
+      mockUpsert
+        .mockResolvedValueOnce({ error: { message: 'first batch failed' } })
+        .mockResolvedValueOnce({ error: { message: 'second batch failed' } })
+        .mockResolvedValueOnce({ error: { message: 'third batch failed' } })
+        .mockResolvedValueOnce({ error: { message: 'fourth batch failed' } });
+
+      const rows = Array.from({ length: 350 }, (_, i) => ({ id: i }));
+      const result = await batchUpsert(supabase, 'test', rows, 'id', 'test');
+
+      expect(result.success).toBe(0);
+      expect(result.errors).toBe(350);
+      expect(result.errorMessages).toEqual([
+        'first batch failed',
+        'second batch failed',
+        'third batch failed',
+      ]);
     });
 
     it('handles multiple batches', async () => {

@@ -5902,6 +5902,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      source_health_events: {
+        Row: {
+          endpoint: string;
+          error_class: string | null;
+          id: number;
+          latency_ms: number;
+          source: string;
+          started_at: string;
+          status_code: number | null;
+          success: boolean;
+        };
+        Insert: {
+          endpoint: string;
+          error_class?: string | null;
+          id?: number;
+          latency_ms: number;
+          source: string;
+          started_at?: string;
+          status_code?: number | null;
+          success: boolean;
+        };
+        Update: {
+          endpoint?: string;
+          error_class?: string | null;
+          id?: number;
+          latency_ms?: number;
+          source?: string;
+          started_at?: string;
+          status_code?: number | null;
+          success?: boolean;
+        };
+        Relationships: [];
+      };
       spo_alignment_snapshots: {
         Row: {
           alignment_decentralization: number | null;
@@ -7657,6 +7690,21 @@ export type Database = {
           yes_30d: number;
           yes_90d: number;
           yes_all_time: number;
+        }[];
+      };
+      get_source_health_summary: {
+        Args: { input_window_minutes: number };
+        Returns: {
+          call_count: number;
+          endpoint: string;
+          error_breakdown: Json;
+          last_failure_at: string;
+          last_success_at: string;
+          p50_latency_ms: number;
+          p95_latency_ms: number;
+          source: string;
+          success_rate: number;
+          window_minutes: number;
         }[];
       };
       match_embeddings: {

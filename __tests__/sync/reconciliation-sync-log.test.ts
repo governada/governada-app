@@ -63,4 +63,18 @@ describe('buildReconciliationSyncLogEntry', () => {
     expect(entry.started_at).toBe('2026-04-04T09:59:58.500Z');
     expect(entry.finished_at).toBe('2026-04-04T10:00:00.000Z');
   });
+
+  it('logs Tier 1 samples as separate sync_log entries', () => {
+    const entry = buildReconciliationSyncLogEntry(makeReport('match'), 'tier1_sample');
+
+    expect(entry.sync_type).toBe('tier1_sample');
+    expect(entry.metrics.tier_scope).toBe('tier1_sample');
+  });
+
+  it('logs Tier 2 reconciliation as a separate sync_log entry', () => {
+    const entry = buildReconciliationSyncLogEntry(makeReport('match'), 'tier2');
+
+    expect(entry.sync_type).toBe('tier2');
+    expect(entry.metrics.tier_scope).toBe('tier2');
+  });
 });

@@ -148,6 +148,7 @@ Create these heartbeat monitors in BetterStack:
 5. **Alignment Sync** - Expected every 24 hours
 6. **Freshness Guard** - Expected every 30 minutes
 7. **Epoch Summary** - Expected every 24 hours
+8. **Tier 1 Sampling** - Expected every 5 minutes
 
 Then set the following environment variables in Railway:
 
@@ -159,6 +160,7 @@ HEARTBEAT_URL_SCORING=<betterstack heartbeat URL 4>
 HEARTBEAT_URL_ALIGNMENT=<betterstack heartbeat URL 5>
 HEARTBEAT_URL_FRESHNESS_GUARD=<betterstack heartbeat URL 6>
 HEARTBEAT_URL_EPOCH_SUMMARY=<betterstack heartbeat URL 7>
+HEARTBEAT_URL_SAMPLE_TIER1=<betterstack heartbeat URL 8>
 ```
 
 The current tier-1 scheduled jobs map to those heartbeat URLs as follows:
@@ -170,6 +172,7 @@ The current tier-1 scheduled jobs map to those heartbeat URLs as follows:
 - `sync-alignment` -> `HEARTBEAT_URL_ALIGNMENT`
 - `sync-freshness-guard` -> `HEARTBEAT_URL_FRESHNESS_GUARD`
 - `generate-epoch-summary` -> `HEARTBEAT_URL_EPOCH_SUMMARY`
+- `sample-tier1` -> `HEARTBEAT_URL_SAMPLE_TIER1`
 
 The helper script `node scripts/uptime-check.mjs all` now knows all of these heartbeat types.
 

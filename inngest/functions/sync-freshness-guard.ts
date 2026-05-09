@@ -21,6 +21,7 @@ const RECENT_FAILURE_WINDOW_MS = 15 * 60 * 1000;
 const GHOST_THRESHOLD_MS = 30 * 60 * 1000;
 /** Entries older than 24h with finished_at IS NULL are definitely abandoned */
 const HISTORICAL_GHOST_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+const SOURCE_HEALTH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const SELF_HEAL_MAX_TRIGGERS = 3;
 const SELF_HEAL_WINDOW_MS = 2 * 60 * 60 * 1000;
 /** Any sync_log entry with duration > 4h is a metric anomaly (likely onFailure delay) */
@@ -123,6 +124,27 @@ export const syncFreshnessGuard = inngest.createFunction(
           count: anomalies.length,
         });
         return anomalies.length;
+      });
+
+      await step.run('cleanup-source-health-events', async () => {
+        const supabase = getSupabaseAdmin();
+        const cutoff = new Date(Date.now() - SOURCE_HEALTH_RETENTION_MS).toISOString();
+        const { count, error } = await supabase
+          .from('source_health_events')
+          .delete({ count: 'exact' })
+          .lt('started_at', cutoff);
+
+        if (error) {
+          logger.warn('[FreshnessGuard] Source health retention cleanup failed', {
+            error: error.message,
+          });
+          return 0;
+        }
+
+        if ((count ?? 0) > 0) {
+          logger.info('[FreshnessGuard] Cleaned up source health events', { count });
+        }
+        return count ?? 0;
       });
 
       const staleTypes = await step.run('check-freshness', async () => {

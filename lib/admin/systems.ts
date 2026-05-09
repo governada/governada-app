@@ -1,3 +1,5 @@
+import type { SourceHealthSummary } from '@/lib/sourceHealth';
+
 export type SystemsStatus = 'good' | 'warning' | 'critical' | 'bootstrap';
 export type SystemsConfidence = 'live' | 'partial' | 'manual' | 'bootstrap';
 export type JourneyGateLevel = 'L0' | 'L1' | 'L2';
@@ -7,7 +9,13 @@ export type SystemsAutomationSeverity = 'warning' | 'critical';
 export type SystemsAutomationFollowupStatus = 'open' | 'acknowledged' | 'resolved';
 export type SystemsPerformanceBaselineEnvironment = 'production' | 'preview' | 'local';
 export type SystemsLaunchDecision = 'ready' | 'risky' | 'blocked';
-export type SystemsWorkspaceSection = 'launch' | 'queue' | 'incidents' | 'evidence' | 'history';
+export type SystemsWorkspaceSection =
+  | 'launch'
+  | 'queue'
+  | 'incidents'
+  | 'evidence'
+  | 'sources'
+  | 'history';
 export type SystemsProvenanceKind =
   | 'live_probe'
   | 'durable_record'
@@ -580,11 +588,18 @@ export interface SystemsHistoryViewData {
   incidentEvents: SystemsIncidentEventRecord[];
 }
 
+export interface SystemsSourcesViewData {
+  summary: SystemsWorkspaceSummary;
+  sourceHealth: SourceHealthSummary[];
+  windowMinutes: number;
+}
+
 export const SYSTEMS_SECTION_HREFS: Record<SystemsWorkspaceSection, string> = {
   launch: '/admin/systems/launch',
   queue: '/admin/systems/queue',
   incidents: '/admin/systems/incidents',
   evidence: '/admin/systems/evidence',
+  sources: '/admin/systems/sources',
   history: '/admin/systems/history',
 };
 

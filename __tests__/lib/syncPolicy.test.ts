@@ -4,6 +4,7 @@ import {
   getSyncHealthLevel,
   getSyncPolicy,
   mergeSyncHealthLevel,
+  SYNC_POLICY,
 } from '@/lib/syncPolicy';
 
 describe('syncPolicy', () => {
@@ -33,5 +34,11 @@ describe('syncPolicy', () => {
   it('merges health levels by worst severity', () => {
     expect(mergeSyncHealthLevel('healthy', 'degraded')).toBe('degraded');
     expect(mergeSyncHealthLevel('degraded', 'critical')).toBe('critical');
+  });
+
+  it('keeps Tier 1 sampling faster than Tier 2 reconciliation', () => {
+    expect(SYNC_POLICY.sample_tier1.cadenceMinutes).toBeLessThan(
+      SYNC_POLICY.tier2?.cadenceMinutes ?? Infinity,
+    );
   });
 });

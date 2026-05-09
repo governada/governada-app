@@ -31,10 +31,12 @@ response.json
 # local IDE settings
 .vscode/
 .cursor/
-.mcp.json
 
 # Claude Code - track commands, rules, agents, hooks, skills, settings.
-# Local MCP config stays private; use .mcp.example.json as the template.
+# .mcp.json is tracked as repo-scoped infrastructure (see bin/supabase-mcp.sh
+# wrapper + .claude/hooks/migration-pr-binding.sh hook). Local MCP overrides
+# can be added by editing .mcp.json in your working tree — but they will show
+# as a tracked-file modification.
 
 # debug
 npm-debug.log*

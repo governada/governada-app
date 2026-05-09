@@ -4,6 +4,7 @@
  */
 
 import {
+  DRepInfo,
   DRepListResponse,
   DRepInfoResponse,
   DRepMetadata,
@@ -307,6 +308,41 @@ async function fetchAllDRepList(): Promise<DRepListResponse> {
 export async function fetchAllDReps(): Promise<DRepListResponse> {
   const data = await fetchAllDRepList();
   return data || [];
+}
+
+export interface NormalizedDRepInfo {
+  drepId: string;
+  drepHash: string;
+  registered: boolean;
+  active: boolean;
+  amount: string;
+  anchorUrl: string | null;
+  anchorHash: string | null;
+}
+
+const INACTIVE_DREP_STATUSES = new Set(['deregistered', 'unregistered', 'retired', 'expired']);
+
+export function normalizeDRepInfo(row: DRepInfo): NormalizedDRepInfo {
+  const status = row.drep_status?.toLowerCase() ?? null;
+  const registered =
+    typeof row.registered === 'boolean'
+      ? row.registered
+      : status
+        ? !INACTIVE_DREP_STATUSES.has(status)
+        : Boolean(row.active);
+  const hasVotingPower = row.amount !== '0';
+  const active =
+    typeof row.active === 'boolean' ? row.active && hasVotingPower : registered && hasVotingPower;
+
+  return {
+    drepId: row.drep_id,
+    drepHash: row.drep_hash ?? row.hex,
+    registered,
+    active,
+    amount: row.amount,
+    anchorUrl: row.anchor_url ?? row.meta_url ?? null,
+    anchorHash: row.anchor_hash ?? row.meta_hash ?? null,
+  };
 }
 
 /**

@@ -80,9 +80,10 @@ export async function batchUpsert<T extends Record<string, unknown>>(
   rows: T[],
   onConflict: string,
   label: string,
-): Promise<{ success: number; errors: number }> {
+): Promise<{ success: number; errors: number; errorMessages: string[] }> {
   let success = 0,
     errors = 0;
+  const errorMessages: string[] = [];
   const total = Math.ceil(rows.length / BATCH_SIZE);
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
@@ -103,12 +104,14 @@ export async function batchUpsert<T extends Record<string, unknown>>(
       );
       success += batch.length;
     } catch (err) {
-      logger.error(`[Sync] ${label} batch error`, { error: errMsg(err) });
+      const message = errMsg(err);
+      if (errorMessages.length < 3) errorMessages.push(message);
+      logger.error(`[Sync] ${label} batch error`, { error: message });
       errors += batch.length;
     }
   }
   if (total > 1) logger.info(`[Sync] ${label} batch complete`, { success, errors, batches: total });
-  return { success, errors };
+  return { success, errors, errorMessages };
 }
 
 export function authorizeCron(request: NextRequest): NextResponse | null {

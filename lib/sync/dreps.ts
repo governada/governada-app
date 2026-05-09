@@ -113,6 +113,7 @@ export interface FetchDRepsResult {
 export interface UpsertDRepsResult {
   success: number;
   errors: number;
+  errorMessages: string[];
   durationMs: number;
 }
 
@@ -473,6 +474,7 @@ export async function phaseUpsertDReps(
   return {
     success: drepResult.success,
     errors: drepResult.errors,
+    errorMessages: drepResult.errorMessages,
     durationMs: Date.now() - start,
   };
 }
@@ -591,7 +593,13 @@ export async function phaseFinalize(
   const finalErrors = [...allErrors];
 
   if (totalErrors > 0) {
-    finalErrors.push(`Upsert errors: ${totalErrors} dreps (${(errorRate * 100).toFixed(1)}% rate)`);
+    const examples =
+      upsertResult.errorMessages.length > 0
+        ? ` Sample errors: ${upsertResult.errorMessages.join(' | ')}`
+        : '';
+    finalErrors.push(
+      `Upsert errors: ${totalErrors} dreps (${(errorRate * 100).toFixed(1)}% rate).${examples}`,
+    );
   }
 
   const success = errorRate < 0.05 && finalErrors.length === 0;
@@ -607,6 +615,7 @@ export async function phaseFinalize(
   const metrics = {
     dreps_synced: upsertResult.success,
     drep_errors: upsertResult.errors,
+    drep_error_samples: upsertResult.errorMessages,
     handles_resolved: handlesResolved,
     ...phaseTiming,
     ...getKoiosMetrics(),

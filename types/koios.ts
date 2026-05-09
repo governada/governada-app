@@ -12,7 +12,7 @@ export interface KoiosResponse<T> {
 // DRep List Response
 export interface DRepListItem {
   drep_id: string;
-  drep_hash: string;
+  drep_hash?: string;
   hex: string;
   has_script: boolean;
   registered: boolean;
@@ -23,15 +23,20 @@ export type DRepListResponse = DRepListItem[];
 // DRep Info Response
 export interface DRepInfo {
   drep_id: string;
-  drep_hash: string;
+  drep_hash?: string;
   hex: string;
   has_script: boolean;
-  registered: boolean;
+  registered?: boolean;
+  drep_status?: string | null;
+  active?: boolean;
   deposit: string | null;
-  anchor_url: string | null;
-  anchor_hash: string | null;
+  anchor_url?: string | null;
+  anchor_hash?: string | null;
+  meta_url?: string | null;
+  meta_hash?: string | null;
   amount: string; // Total voting power in lovelace
-  active_epoch: number | null;
+  active_epoch?: number | null;
+  expires_epoch_no?: number | null;
 }
 
 export type DRepInfoResponse = DRepInfo[];

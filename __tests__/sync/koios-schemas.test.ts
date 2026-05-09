@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   KoiosDRepListItemSchema,
+  KoiosDRepInfoSchema,
   KoiosProposalSchema,
   KoiosVoteListSchema,
   KoiosTreasurySchema,
   validateArray,
 } from '@/utils/koios-schemas';
+import { normalizeDRepInfo } from '@/utils/koios';
 
 describe('Koios Schema Validation', () => {
   describe('KoiosDRepListItemSchema', () => {
@@ -41,6 +43,95 @@ describe('Koios Schema Validation', () => {
       });
       expect(result.success).toBe(true);
       expect((result as any).data.extra_field).toBe('allowed');
+    });
+  });
+
+  describe('KoiosDRepInfoSchema', () => {
+    it('accepts current Koios DRep detail fields', () => {
+      const result = KoiosDRepInfoSchema.safeParse({
+        drep_id: 'drep1abc',
+        hex: 'abc123',
+        has_script: false,
+        drep_status: 'registered',
+        active: true,
+        deposit: '500000000',
+        expires_epoch_no: 626,
+        amount: '1000000',
+        meta_url: 'https://example.com/drep.json',
+        meta_hash: 'hash123',
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('normalizes current Koios detail fields to stable sync fields', () => {
+      const normalized = normalizeDRepInfo({
+        drep_id: 'drep1abc',
+        hex: 'abc123',
+        has_script: false,
+        drep_status: 'registered',
+        active: true,
+        deposit: '500000000',
+        expires_epoch_no: 626,
+        amount: '1000000',
+        meta_url: 'https://example.com/drep.json',
+        meta_hash: 'hash123',
+      });
+
+      expect(normalized).toEqual({
+        drepId: 'drep1abc',
+        drepHash: 'abc123',
+        registered: true,
+        active: true,
+        amount: '1000000',
+        anchorUrl: 'https://example.com/drep.json',
+        anchorHash: 'hash123',
+      });
+    });
+
+    it('normalizes deregistered current Koios detail fields as inactive', () => {
+      const normalized = normalizeDRepInfo({
+        drep_id: 'drep1abc',
+        hex: 'abc123',
+        has_script: false,
+        drep_status: 'deregistered',
+        active: false,
+        deposit: null,
+        expires_epoch_no: null,
+        amount: '0',
+        meta_url: null,
+        meta_hash: null,
+      });
+
+      expect(normalized.registered).toBe(false);
+      expect(normalized.active).toBe(false);
+      expect(normalized.anchorUrl).toBeNull();
+      expect(normalized.anchorHash).toBeNull();
+    });
+
+    it('keeps compatibility with legacy Koios DRep detail fields', () => {
+      const normalized = normalizeDRepInfo({
+        drep_id: 'drep1legacy',
+        drep_hash: 'legacyhash',
+        hex: 'hexhash',
+        has_script: false,
+        registered: true,
+        deposit: '500000000',
+        amount: '2000000',
+        anchor_url: 'https://example.com/legacy.json',
+        anchor_hash: 'legacy-anchor-hash',
+        active_epoch: 620,
+      });
+
+      expect(normalized).toEqual({
+        drepId: 'drep1legacy',
+        drepHash: 'legacyhash',
+        registered: true,
+        active: true,
+        amount: '2000000',
+        anchorUrl: 'https://example.com/legacy.json',
+        anchorHash: 'legacy-anchor-hash',
+      });
     });
   });
 

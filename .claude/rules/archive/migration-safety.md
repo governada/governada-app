@@ -9,6 +9,18 @@ paths:
 
 All database migrations MUST follow this safety procedure:
 
+## How Agents Apply Migrations
+
+The Supabase MCP is registered as a repo-scoped stdio server in `.mcp.json` under the name **"supabase"** (so tools appear as `mcp__supabase__apply_migration`, etc., matching the existing allowlist). The wrapper at `bin/supabase-mcp.sh` resolves the access token from 1Password at runtime and pins the connection to the Governada production project via `--project-ref`.
+
+`mcp__supabase__apply_migration` is gated by the **PR-binding hook** at `.claude/hooks/migration-pr-binding.sh`. The contract is:
+
+- The `name` arg passed to the MCP must correspond to a committed file at `supabase/migrations/<timestamp>_<name>.sql`.
+- The `query` arg must byte-match the file contents (after normalizing trailing whitespace).
+- If either fails, the hook denies the call. Agents cannot improvise SQL in chat and ship it to production — the SQL must come from a code-reviewed file on disk.
+
+This is what gives the safety classifier durable trust signal. Apply migrations through the MCP path; do NOT use the Supabase CLI, dashboard SQL editor, or `mcp__supabase__execute_sql` for DDL.
+
 ## Before Applying to Production
 
 1. **Generate rollback SQL**: For every migration, write the inverse operation.
@@ -84,6 +96,7 @@ When asking for approval, include:
 
 - 2026-05-07: Phase 9 migration applied via Supabase MCP after explicit approval. Migration was a CREATE TABLE in the SAFE class.
 - 2026-05-08: `governance_participation_snapshots` restore via `backfillMissingGovernanceParticipationSnapshots` for epochs 623-628. Function shipped in `codex/diagnose-gps-health` (PR pending). Tested, idempotent, bounded.
+- 2026-05-08: Repo-scoped Supabase MCP shipped (`.mcp.json` + `bin/supabase-mcp.sh` + `.claude/hooks/migration-pr-binding.sh`). Agents can apply migrations autonomously when the SQL byte-matches a committed file in `supabase/migrations/`. Plan: `governada-brain/plans/repo-scoped-supabase-mcp.md`.
 
 ## Post-Migration Verification
 

@@ -74,6 +74,15 @@
             "command": "bash .claude/hooks/brain-freshness-at-pr.sh --hook-mode"
           }
         ]
+      },
+      {
+        "matcher": "mcp__supabase__apply_migration",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/migration-pr-binding.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [

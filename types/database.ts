@@ -7624,9 +7624,40 @@ export type Database = {
       };
     };
     Functions: {
+      ack_dismiss_merge: {
+        Args: {
+          p_ack_at: string;
+          p_dismiss_at: string;
+          p_item_id: string;
+          p_user_id_or_stake_address: string;
+        };
+        Returns: {
+          acknowledged_at: string;
+          dismissed_at: string;
+          item_id: string;
+          user_id_or_stake_address: string;
+        }[];
+      };
       embedding_similarity: {
         Args: { embedding_a: string; embedding_b: string };
         Returns: number;
+      };
+      get_cluster_treasury_behavior: {
+        Args: { drep_ids: string[] };
+        Returns: {
+          approved_180d: number;
+          approved_30d: number;
+          approved_90d: number;
+          approved_all_time: number;
+          proposals_180d: number;
+          proposals_30d: number;
+          proposals_90d: number;
+          proposals_all_time: number;
+          yes_180d: number;
+          yes_30d: number;
+          yes_90d: number;
+          yes_all_time: number;
+        }[];
       };
       match_embeddings: {
         Args: {

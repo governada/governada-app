@@ -36,9 +36,7 @@ describe('alert-suppressions', () => {
     });
 
     it('includes the documented Total registered DReps suppression', () => {
-      const drepSuppression = ALERT_SUPPRESSIONS.find(
-        (s) => s.metric === 'Total registered DReps',
-      );
+      const drepSuppression = ALERT_SUPPRESSIONS.find((s) => s.metric === 'Total registered DReps');
       expect(drepSuppression).toBeDefined();
       expect(drepSuppression?.reason).toContain('Koios');
       expect(drepSuppression?.reason).toContain('Blockfrost');
@@ -107,9 +105,9 @@ describe('alert-suppressions', () => {
     });
 
     it('returns mismatch when any surfaced has mismatch status', () => {
-      expect(
-        effectiveStatusAfterSuppression([{ status: 'drift' }, { status: 'mismatch' }]),
-      ).toBe('mismatch');
+      expect(effectiveStatusAfterSuppression([{ status: 'drift' }, { status: 'mismatch' }])).toBe(
+        'mismatch',
+      );
     });
 
     it('returns drift when surfaced contains only drift', () => {
@@ -119,9 +117,9 @@ describe('alert-suppressions', () => {
     });
 
     it('escalates to mismatch even if drift comes first', () => {
-      expect(
-        effectiveStatusAfterSuppression([{ status: 'drift' }, { status: 'mismatch' }]),
-      ).toBe('mismatch');
+      expect(effectiveStatusAfterSuppression([{ status: 'drift' }, { status: 'mismatch' }])).toBe(
+        'mismatch',
+      );
     });
   });
 
@@ -134,10 +132,7 @@ describe('alert-suppressions', () => {
     });
 
     it('persistent DRep mismatch + novel mismatch → still alerts on the novel one', () => {
-      const reportMismatches = [
-        mismatch('Total registered DReps'),
-        mismatch('Total proposals'),
-      ];
+      const reportMismatches = [mismatch('Total registered DReps'), mismatch('Total proposals')];
       const { surfaced, suppressed } = partitionMismatches(reportMismatches);
       expect(effectiveStatusAfterSuppression(surfaced)).toBe('mismatch');
       expect(surfaced.map((m) => m.metric)).toEqual(['Total proposals']);

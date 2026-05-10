@@ -15,6 +15,10 @@ import { logger } from '@/lib/logger';
 import { runReconciliation } from '@/lib/reconciliation/comparator';
 import { isAvailable } from '@/lib/reconciliation/blockfrost';
 import { buildReconciliationSyncLogEntry } from '@/lib/reconciliation/sync-log';
+import {
+  effectiveStatusAfterSuppression,
+  partitionMismatches,
+} from '@/lib/reconciliation/alert-suppressions';
 
 export const reconcileData = inngest.createFunction(
   {
@@ -46,6 +50,9 @@ export const reconcileData = inngest.createFunction(
       return runReconciliation({ tier1: false, tier2: true });
     });
 
+    const { surfaced, suppressed } = partitionMismatches(report.mismatches);
+    const effectiveStatus = effectiveStatusAfterSuppression(surfaced);
+
     // Step 3: Store results
     await step.run('store-results', async () => {
       const supabase = getSupabaseAdmin();
@@ -57,7 +64,13 @@ export const reconcileData = inngest.createFunction(
         overall_status: report.overallStatus,
         mismatches: report.mismatches.length > 0 ? report.mismatches : null,
         duration_ms: report.durationMs,
-        metadata: { checkCount: report.results.length, mismatchCount: report.mismatches.length },
+        metadata: {
+          checkCount: report.results.length,
+          mismatchCount: report.mismatches.length,
+          surfacedMismatchCount: surfaced.length,
+          suppressedMismatchCount: suppressed.length,
+          suppressedMetrics: suppressed.map((m) => m.metric),
+        },
       });
 
       // Also log to sync_log for unified monitoring
@@ -65,31 +78,36 @@ export const reconcileData = inngest.createFunction(
     });
 
     // Step 4: Alert on issues
-    if (report.overallStatus !== 'match') {
+    if (effectiveStatus !== 'match') {
       await step.run('alert-discrepancies', async () => {
-        const mismatchSummary = report.mismatches
+        const mismatchSummary = surfaced
           .map((m) => `• ${m.metric}: ${m.status.toUpperCase()} — ${m.detail || 'no detail'}`)
           .join('\n');
 
         const title =
-          report.overallStatus === 'mismatch'
+          effectiveStatus === 'mismatch'
             ? '🚨 Data MISMATCH detected — Blockfrost cross-reference'
             : '⚠️ Data drift detected — Blockfrost cross-reference';
 
+        const suppressedNote = suppressed.length
+          ? `\n(Also suppressed ${suppressed.length} known persistent mismatch(es): ${suppressed.map((m) => m.metric).join(', ')} — see lib/reconciliation/alert-suppressions.ts)`
+          : '';
+
         const details = [
-          `Status: ${report.overallStatus.toUpperCase()}`,
-          `Checks: ${report.results.length} total, ${report.mismatches.length} issues`,
+          `Status: ${effectiveStatus.toUpperCase()}`,
+          `Checks: ${report.results.length} total, ${surfaced.length} surfaced (${report.mismatches.length} raw)`,
           `Duration: ${report.durationMs}ms`,
           '',
           'Issues:',
           mismatchSummary,
+          suppressedNote,
           '',
-          report.overallStatus === 'mismatch'
+          effectiveStatus === 'mismatch'
             ? 'ACTION: GHI computation will show a cross-reference alert until this is resolved.'
             : 'INFO: Minor drift detected. May resolve on next sync cycle.',
         ].join('\n');
 
-        if (report.overallStatus === 'mismatch') {
+        if (effectiveStatus === 'mismatch') {
           await alertCritical(title, details);
         } else {
           await alertDiscord(title, details);
@@ -99,8 +117,11 @@ export const reconcileData = inngest.createFunction(
 
     return {
       overallStatus: report.overallStatus,
+      effectiveStatus,
       checks: report.results.length,
       mismatches: report.mismatches.length,
+      surfacedMismatches: surfaced.length,
+      suppressedMismatches: suppressed.length,
       durationMs: report.durationMs,
       tierScope: 'tier2',
     };

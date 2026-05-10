@@ -59,6 +59,7 @@ import { scoreProposers } from '@/inngest/functions/score-proposers';
 import { scoreAiQuality } from '@/inngest/functions/score-ai-quality';
 import { generateAiContent } from '@/inngest/functions/generateAiContent';
 import { reconcileData } from '@/inngest/functions/reconcile-data';
+import { sampleTier1 } from '@/inngest/functions/sample-tier1';
 import { precomputeProposalIntelligence } from '@/inngest/functions/precompute-proposal-intelligence';
 import { updatePassagePredictions } from '@/inngest/functions/update-passage-predictions';
 import { backfillGhi } from '@/inngest/functions/backfill-ghi';
@@ -129,6 +130,7 @@ export const { GET, POST, PUT } = serve({
     scoreProposers,
     scoreAiQuality,
     generateAiContent,
+    sampleTier1,
     reconcileData,
     precomputeProposalIntelligence,
     updatePassagePredictions,

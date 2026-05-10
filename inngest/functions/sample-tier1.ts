@@ -1,58 +1,52 @@
 /**
- * Tier 2 Data Reconciliation — Inngest cron function.
+ * Tier 1 Reconciliation Sampling — Inngest cron function.
  *
- * Cross-references Governada's Supabase data against Blockfrost's independent
- * Cardano db-sync for the expensive Tier 2 spot checks.
- *
- * Schedule: every 6 hours at :00.
- * Tier 1 continuous sampling lives in sample-tier1.ts.
+ * Runs the cheap Blockfrost cross-reference checks every 5 minutes so
+ * Governada detects user-visible source drift quickly.
  */
 
 import { inngest } from '@/lib/inngest';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { alertDiscord, alertCritical } from '@/lib/sync-utils';
+import { alertDiscord, alertCritical, pingHeartbeat } from '@/lib/sync-utils';
 import { logger } from '@/lib/logger';
 import { runReconciliation } from '@/lib/reconciliation/comparator';
 import { isAvailable } from '@/lib/reconciliation/blockfrost';
 import { buildReconciliationSyncLogEntry } from '@/lib/reconciliation/sync-log';
 
-export const reconcileData = inngest.createFunction(
+export const sampleTier1 = inngest.createFunction(
   {
-    id: 'reconcile-data',
+    id: 'sample-tier1',
     retries: 1,
-    concurrency: { limit: 1, scope: 'env', key: '"reconcile-data"' },
+    concurrency: { limit: 1, scope: 'env', key: '"sample-tier1"' },
     onFailure: async ({ error }) => {
-      logger.error(`[Reconcile] Function failed: ${error.message}`);
+      logger.error(`[SampleTier1] Function failed: ${error.message}`);
       await alertDiscord(
-        'Reconciliation function failed',
-        `Error: ${error.message}\n\nBlockfrost cross-reference checks are not running. Check BLOCKFROST_PROJECT_ID env var and Blockfrost service status.`,
+        'Tier 1 sampling function failed',
+        `Error: ${error.message}\n\nBlockfrost Tier 1 cross-reference checks are not running. Check BLOCKFROST_PROJECT_ID env var and Blockfrost service status.`,
       ).catch(() => {});
     },
-    triggers: { cron: '0 */6 * * *' },
+    triggers: { cron: '*/5 * * * *' },
   },
   async ({ step }) => {
-    // Step 1: Check if Blockfrost is configured
     const available = await step.run('check-availability', async () => {
       return isAvailable();
     });
 
     if (!available) {
-      logger.warn('[Reconcile] Blockfrost not configured or unreachable, skipping');
+      logger.warn('[SampleTier1] Blockfrost not configured or unreachable, skipping');
       return { skipped: true, reason: 'blockfrost_unavailable' };
     }
 
-    // Step 2: Run Tier 2 reconciliation
     const report = await step.run('run-reconciliation', async () => {
-      return runReconciliation({ tier1: false, tier2: true });
+      return runReconciliation({ tier1: true, tier2: false });
     });
 
-    // Step 3: Store results
     await step.run('store-results', async () => {
       const supabase = getSupabaseAdmin();
       await supabase.from('reconciliation_log').insert({
         checked_at: report.checkedAt,
         source: report.source,
-        tier_scope: 'tier2',
+        tier_scope: 'tier1_sample',
         results: report.results,
         overall_status: report.overallStatus,
         mismatches: report.mismatches.length > 0 ? report.mismatches : null,
@@ -60,11 +54,11 @@ export const reconcileData = inngest.createFunction(
         metadata: { checkCount: report.results.length, mismatchCount: report.mismatches.length },
       });
 
-      // Also log to sync_log for unified monitoring
-      await supabase.from('sync_log').insert(buildReconciliationSyncLogEntry(report, 'tier2'));
+      await supabase
+        .from('sync_log')
+        .insert(buildReconciliationSyncLogEntry(report, 'tier1_sample'));
     });
 
-    // Step 4: Alert on issues
     if (report.overallStatus !== 'match') {
       await step.run('alert-discrepancies', async () => {
         const mismatchSummary = report.mismatches
@@ -73,8 +67,8 @@ export const reconcileData = inngest.createFunction(
 
         const title =
           report.overallStatus === 'mismatch'
-            ? '🚨 Data MISMATCH detected — Blockfrost cross-reference'
-            : '⚠️ Data drift detected — Blockfrost cross-reference';
+            ? '🚨 Tier 1 data MISMATCH detected — Blockfrost cross-reference'
+            : '⚠️ Tier 1 data drift detected — Blockfrost cross-reference';
 
         const details = [
           `Status: ${report.overallStatus.toUpperCase()}`,
@@ -97,12 +91,14 @@ export const reconcileData = inngest.createFunction(
       });
     }
 
+    await step.run('heartbeat-sample-tier1', () => pingHeartbeat('HEARTBEAT_URL_SAMPLE_TIER1'));
+
     return {
       overallStatus: report.overallStatus,
       checks: report.results.length,
       mismatches: report.mismatches.length,
       durationMs: report.durationMs,
-      tierScope: 'tier2',
+      tierScope: 'tier1_sample',
     };
   },
 );

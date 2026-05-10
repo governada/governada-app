@@ -18,6 +18,7 @@ import {
   KoiosAccountInfo,
 } from '@/types/koios';
 import { logger } from '@/lib/logger';
+import { recordSourceCall } from '@/lib/sourceHealth';
 import {
   KoiosDRepInfoSchema,
   KoiosVoteSchema,
@@ -73,6 +74,21 @@ function retryDelay(attempt: number, status?: number): number {
  * and circuit breaker for 503 Service Unavailable.
  */
 async function koiosFetch<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  retryCount = 0,
+): Promise<T> {
+  return recordSourceCall('koios', getKoiosEndpointLabel(endpoint), () =>
+    koiosFetchRaw<T>(endpoint, options, retryCount),
+  );
+}
+
+function getKoiosEndpointLabel(endpoint: string): string {
+  const path = endpoint.split('?')[0] ?? endpoint;
+  return path.replace(/^\/+/u, '') || 'root';
+}
+
+async function koiosFetchRaw<T>(
   endpoint: string,
   options: RequestInit = {},
   retryCount = 0,
@@ -156,7 +172,7 @@ async function koiosFetch<T>(
           `[Koios] ${response.status} on ${endpoint}, retrying in ${Math.round(waitTime)}ms (${retryCount + 1}/${MAX_RETRIES})${retryAfter ? ` [Retry-After: ${retryAfter}]` : ''}...`,
         );
         await new Promise((resolve) => setTimeout(resolve, waitTime));
-        return koiosFetch<T>(endpoint, options, retryCount + 1);
+        return koiosFetchRaw<T>(endpoint, options, retryCount + 1);
       }
 
       // Report to Sentry when retries are exhausted
@@ -183,7 +199,7 @@ async function koiosFetch<T>(
         `[Koios] Timeout on ${endpoint}, retrying in ${Math.round(waitTime)}ms (${retryCount + 1}/${MAX_RETRIES})...`,
       );
       await new Promise((r) => setTimeout(r, waitTime));
-      return koiosFetch<T>(endpoint, options, retryCount + 1);
+      return koiosFetchRaw<T>(endpoint, options, retryCount + 1);
     }
 
     const isTimeout = error instanceof Error && error.name === 'AbortError';

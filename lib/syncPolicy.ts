@@ -16,7 +16,28 @@ const HOUR = 60;
 const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
 
+const SAMPLE_TIER1_POLICY: SyncPolicy = {
+  label: 'Tier 1 Sampling',
+  schedule: 'every 5m',
+  cadenceMinutes: 5,
+  retriggerAfterMinutes: 15,
+  degradedAfterMinutes: 20,
+  criticalAfterMinutes: 60,
+  externalCriticalAfterMinutes: 30,
+};
+
 export const SYNC_POLICY: Record<string, SyncPolicy> = {
+  sample_tier1: SAMPLE_TIER1_POLICY,
+  tier1_sample: SAMPLE_TIER1_POLICY,
+  tier2: {
+    label: 'Tier 2 Reconciliation',
+    schedule: 'every 6h',
+    cadenceMinutes: 6 * HOUR,
+    retriggerAfterMinutes: 8 * HOUR,
+    degradedAfterMinutes: 12 * HOUR,
+    criticalAfterMinutes: 24 * HOUR,
+    externalCriticalAfterMinutes: 12 * HOUR,
+  },
   proposals: {
     label: 'Proposals Sync',
     schedule: 'every 30m',

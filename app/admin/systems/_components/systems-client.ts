@@ -21,6 +21,7 @@ import type {
   SystemsProvenanceStamp,
   SystemsQueueViewData,
   SystemsReviewDraft,
+  SystemsSourcesViewData,
   SystemsStatus,
   SystemsTrustSurfaceReviewRecord,
   SystemsWorkspaceSection,
@@ -97,6 +98,7 @@ export type SystemsWorkspaceDataMap = {
   queue: SystemsQueueViewData;
   incidents: SystemsIncidentsViewData;
   evidence: SystemsEvidenceViewData;
+  sources: SystemsSourcesViewData;
   history: SystemsHistoryViewData;
 };
 
@@ -105,6 +107,7 @@ const SECTION_ENDPOINTS: Record<SystemsWorkspaceSection, string> = {
   queue: '/api/admin/systems/queue',
   incidents: '/api/admin/systems/incidents',
   evidence: '/api/admin/systems/evidence',
+  sources: '/api/admin/systems/sources',
   history: '/api/admin/systems/history',
 };
 
@@ -647,6 +650,8 @@ export function workspaceTitle(section: SystemsWorkspaceSection) {
       return 'Incidents & Drills';
     case 'evidence':
       return 'Evidence';
+    case 'sources':
+      return 'Source Health';
     default:
       return 'History';
   }
@@ -665,6 +670,8 @@ export function workspaceDescription(
       return 'Keep incident state honest, drills current, and status transitions explicit and auditable.';
     case 'evidence':
       return 'Review the proof behind the current call: SLOs, journey verification, performance baselines, trust reviews, and scorecard drift.';
+    case 'sources':
+      return 'Watch Koios and Blockfrost per-endpoint health so vendor degradation is visible before it becomes user-facing drift.';
     default:
       return 'Audit the operating trail: reviews, automation runs, escalations, review drafts, and incident state transitions.';
   }

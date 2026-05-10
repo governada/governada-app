@@ -10,6 +10,7 @@
 
 import * as Sentry from '@sentry/nextjs';
 import { logger } from '@/lib/logger';
+import { recordSourceCall } from '@/lib/sourceHealth';
 import type {
   BlockfrostDRep,
   BlockfrostProposal,
@@ -33,6 +34,9 @@ const CIRCUIT_BREAKER_COOLDOWN_MS = 30_000;
 let _lastBlockfrost429 = 0;
 let _callCount = 0;
 let _totalMs = 0;
+let _dailyCallCount = 0;
+let _dailyWindowStart = new Date().toISOString().slice(0, 10);
+let _dailyQuotaWarningLogged = false;
 
 export function getBlockfrostMetrics() {
   return {
@@ -58,6 +62,23 @@ function retryDelay(attempt: number, status?: number): number {
   return Math.pow(2, attempt) * 1000 + Math.random() * 500;
 }
 
+function recordBlockfrostRequest() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== _dailyWindowStart) {
+    _dailyWindowStart = today;
+    _dailyCallCount = 0;
+    _dailyQuotaWarningLogged = false;
+  }
+
+  _dailyCallCount++;
+  if (_dailyCallCount > 40_000 && !_dailyQuotaWarningLogged) {
+    _dailyQuotaWarningLogged = true;
+    logger.warn('[Blockfrost] Daily request count above 40k; free-tier quota is 50k/day', {
+      dailyCallCount: _dailyCallCount,
+    });
+  }
+}
+
 async function blockfrostFetch<T>(endpoint: string, retryCount = 0): Promise<T> {
   if (!BLOCKFROST_PROJECT_ID) {
     throw new Error('BLOCKFROST_PROJECT_ID not configured — cannot run reconciliation checks');
@@ -81,6 +102,7 @@ async function blockfrostFetch<T>(endpoint: string, retryCount = 0): Promise<T> 
 
   try {
     const startTime = Date.now();
+    recordBlockfrostRequest();
     const response = await Sentry.startSpan(
       { name: `blockfrost${endpoint}`, op: 'http.client', attributes: { 'http.method': 'GET' } },
       async () =>
@@ -157,27 +179,37 @@ async function fetchAllPages<T>(endpoint: string, maxPages = 20): Promise<T[]> {
 
 /** Fetch all registered DReps (paginated) */
 export async function fetchDReps(): Promise<BlockfrostDRep[]> {
-  return fetchAllPages<BlockfrostDRep>('/governance/dreps');
+  return recordSourceCall('blockfrost', 'governance_dreps', () =>
+    fetchAllPages<BlockfrostDRep>('/governance/dreps'),
+  );
 }
 
 /** Fetch all governance proposals (paginated) */
 export async function fetchProposals(): Promise<BlockfrostProposal[]> {
-  return fetchAllPages<BlockfrostProposal>('/governance/proposals');
+  return recordSourceCall('blockfrost', 'governance_proposals', () =>
+    fetchAllPages<BlockfrostProposal>('/governance/proposals'),
+  );
 }
 
 /** Fetch the latest (current) epoch */
 export async function fetchLatestEpoch(): Promise<BlockfrostEpoch> {
-  return blockfrostFetch<BlockfrostEpoch>('/epochs/latest');
+  return recordSourceCall('blockfrost', 'epochs_latest', () =>
+    blockfrostFetch<BlockfrostEpoch>('/epochs/latest'),
+  );
 }
 
 /** Fetch network info (includes treasury balance) */
 export async function fetchNetwork(): Promise<BlockfrostNetwork> {
-  return blockfrostFetch<BlockfrostNetwork>('/network');
+  return recordSourceCall('blockfrost', 'network', () =>
+    blockfrostFetch<BlockfrostNetwork>('/network'),
+  );
 }
 
 /** Fetch constitutional committee info */
 export async function fetchCommittee(): Promise<BlockfrostCommittee> {
-  return blockfrostFetch<BlockfrostCommittee>('/governance/committee');
+  return recordSourceCall('blockfrost', 'governance_committee', () =>
+    blockfrostFetch<BlockfrostCommittee>('/governance/committee'),
+  );
 }
 
 /** Fetch votes for a specific proposal */
@@ -185,14 +217,16 @@ export async function fetchProposalVotes(
   txHash: string,
   certIndex: number,
 ): Promise<BlockfrostProposalVotes[]> {
-  return fetchAllPages<BlockfrostProposalVotes>(
-    `/governance/proposals/${txHash}/${certIndex}/votes`,
+  return recordSourceCall('blockfrost', 'proposal_votes', () =>
+    fetchAllPages<BlockfrostProposalVotes>(`/governance/proposals/${txHash}/${certIndex}/votes`),
   );
 }
 
 /** Fetch a specific DRep's details */
 export async function fetchDRepDetail(drepId: string): Promise<BlockfrostDRep> {
-  return blockfrostFetch<BlockfrostDRep>(`/governance/dreps/${drepId}`);
+  return recordSourceCall('blockfrost', 'drep_detail', () =>
+    blockfrostFetch<BlockfrostDRep>(`/governance/dreps/${drepId}`),
+  );
 }
 
 // ---------------------------------------------------------------------------

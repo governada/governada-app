@@ -2,7 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ClipboardList, History, Radar, ShieldAlert, Siren, Sparkles } from 'lucide-react';
+import {
+  ClipboardList,
+  History,
+  RadioTower,
+  Radar,
+  ShieldAlert,
+  Siren,
+  Sparkles,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SystemsWorkspaceSection } from '@/lib/admin/systems';
 
@@ -42,6 +50,13 @@ const NAV_ITEMS: Array<{
     summary: 'SLOs, journey proof, trust, performance',
   },
   {
+    section: 'sources',
+    label: 'Sources',
+    href: '/admin/systems/sources',
+    icon: RadioTower,
+    summary: 'Koios and Blockfrost endpoint health',
+  },
+  {
     section: 'history',
     label: 'History',
     href: '/admin/systems/history',
@@ -71,7 +86,7 @@ export function SystemsWorkspaceLayout({ children }: { children: React.ReactNode
             </div>
           </div>
 
-          <nav aria-label="Systems workspace navigation" className="grid gap-2 md:grid-cols-5">
+          <nav aria-label="Systems workspace navigation" className="grid gap-2 md:grid-cols-6">
             {NAV_ITEMS.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               const Icon = item.icon;

@@ -9,6 +9,50 @@ TEXT_SOURCES=()
 explicit=0
 hook_mode=0
 
+git_common_dir() {
+  git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true
+}
+
+git_toplevel() {
+  git -C "$1" rev-parse --show-toplevel 2>/dev/null || true
+}
+
+commit_message_file() {
+  local git_dir=""
+  local gitdir_line=""
+  local cwd=""
+
+  git_dir=$(git rev-parse --path-format=absolute --git-dir 2>/dev/null || true)
+  if [ -n "$git_dir" ] && [ -f "$git_dir/COMMIT_EDITMSG" ]; then
+    printf '%s\n' "$git_dir/COMMIT_EDITMSG"
+    return 0
+  fi
+
+  if [ -f .git/COMMIT_EDITMSG ]; then
+    printf '%s\n' ".git/COMMIT_EDITMSG"
+    return 0
+  fi
+
+  if [ -f .git ]; then
+    gitdir_line=$(sed -nE 's/^gitdir:[[:space:]]*//p' .git | head -1)
+    if [ -n "$gitdir_line" ]; then
+      case "$gitdir_line" in
+        /*) git_dir="$gitdir_line" ;;
+        *)
+          cwd=$(pwd -P)
+          git_dir="$cwd/$gitdir_line"
+          ;;
+      esac
+      if [ -f "$git_dir/COMMIT_EDITMSG" ]; then
+        printf '%s\n' "$git_dir/COMMIT_EDITMSG"
+        return 0
+      fi
+    fi
+  fi
+
+  return 1
+}
+
 usage() {
   cat <<'EOF'
 plan-required.sh verifies that non-trivial work references an existing plan.
@@ -67,7 +111,7 @@ fi
 
 if [ "$hook_mode" -eq 1 ]; then
   command=$(printf '%s\n' "$stdin_payload" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-  if ! printf '%s\n' "$command" | grep -Eq 'git commit|gh pr create|pull request|PR'; then
+  if ! printf '%s\n' "$command" | grep -Eq 'git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+commit|gh pr create|pull request|PR'; then
     exit 0
   fi
   if printf '%s\n' "$command" | grep -Eq -- '--body-file[= ]([^ ]+)'; then
@@ -82,7 +126,8 @@ if [ "$hook_mode" -eq 1 ]; then
   # the hook's own CWD instead of the commit's actual target — producing false
   # positives on cross-repo commits (e.g., brain repo) and on commits to
   # worktrees of the same repo where the main checkout has unrelated state.
-  app_repo_root=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)
+  app_repo_root=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd -P)
+  app_common_dir=$(git_common_dir "$app_repo_root")
   target_dir=""
   if printf '%s\n' "$command" | grep -Eq '(^|[[:space:]]|;|&&|\|\|)cd[[:space:]]+'; then
     target_dir=$(printf '%s\n' "$command" | sed -nE 's/.*(^|[[:space:]]|;|&&|\|\|)cd[[:space:]]+([^[:space:]]+).*/\2/p' | head -1 | tr -d "'\"")
@@ -90,16 +135,17 @@ if [ "$hook_mode" -eq 1 ]; then
     target_dir=$(printf '%s\n' "$command" | sed -nE 's/.*git[[:space:]]+-C[[:space:]]+([^[:space:]]+).*/\1/p' | head -1 | tr -d "'\"")
   fi
   if [ -n "$target_dir" ] && [ -n "$app_repo_root" ]; then
-    target_repo_root=$(cd "$target_dir" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null || echo "")
+    target_repo_root=$(git_toplevel "$target_dir")
+    target_common_dir=$(git_common_dir "$target_dir")
     if [ -n "$target_repo_root" ]; then
-      if [ "$target_repo_root" != "$app_repo_root" ]; then
+      if [ -z "$target_common_dir" ] || [ -z "$app_common_dir" ] || [ "$target_common_dir" != "$app_common_dir" ]; then
         # Different repo entirely (e.g., brain repo). Hook doesn't apply.
         exit 0
       fi
-      # Same repo, possibly different worktree. cd into target so the
+      # Same repo, possibly different worktree. cd into target root so the
       # change-counting git diff/status checks below see the worktree's
       # actual state, not whatever CWD the hook inherited.
-      cd "$target_dir" 2>/dev/null || true
+      cd "$target_repo_root" 2>/dev/null || true
     fi
   fi
 fi
@@ -134,9 +180,14 @@ $source"
   done
 fi
 
-if [ "$explicit" -eq 0 ] && [ -f .git/COMMIT_EDITMSG ]; then
+commit_msg_file=""
+if [ "$explicit" -eq 0 ]; then
+  commit_msg_file=$(commit_message_file || true)
+fi
+
+if [ "$explicit" -eq 0 ] && [ -n "$commit_msg_file" ]; then
   text="$text
-$(cat .git/COMMIT_EDITMSG)"
+$(cat "$commit_msg_file")"
 fi
 
 plan_refs=$(printf '%s\n' "$text" | grep -Eo 'brain/plans/[A-Za-z0-9._/-]+\.md' | sort -u || true)

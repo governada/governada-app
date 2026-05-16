@@ -97,6 +97,7 @@ export async function batchUpsert<T extends Record<string, unknown>>(
         async () => {
           const { error } = await supabase
             .from(table)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase v2.105.4 added RejectExcessProperties<T>; generic Record<string, unknown> has no keys for the wrapper to validate against. Runtime behavior unchanged. See PR #998.
             .upsert(batch as any, { onConflict, ignoreDuplicates: false });
           if (error) throw error;
         },

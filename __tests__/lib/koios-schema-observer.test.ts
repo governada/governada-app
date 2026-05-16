@@ -4,10 +4,12 @@ import {
   getKoiosSchemaEndpointKey,
   hashShape,
   inferKoiosShape,
+  INSTRUMENTED_KOIOS_ENDPOINT_KEYS,
   recordKoiosSchema,
   type KnownKoiosShapesFile,
   type SchemaDriftEventData,
 } from '@/lib/koios/schemaObserver';
+import knownShapesJson from '@/lib/koios/knownShapes.json';
 
 vi.mock('@/lib/inngest', () => ({
   inngest: {
@@ -128,5 +130,16 @@ describe('Koios schema observer', () => {
     expect(
       getKoiosSchemaEndpointKey('/vote_list?voter_role=eq.ConstitutionalCommittee&limit=1'),
     ).toBe('vote_list_cc');
+  });
+
+  it('treats committed known shapes as non-drift baselines for the local soak substitute', () => {
+    const knownShapes = knownShapesJson as KnownKoiosShapesFile;
+
+    for (const endpoint of INSTRUMENTED_KOIOS_ENDPOINT_KEYS) {
+      const known = knownShapes.endpoints[endpoint];
+
+      expect(known, `${endpoint} should have a committed known shape`).toBeDefined();
+      expect(findSchemaDrift(known!.shape, known!.shape, new Map())).toEqual([]);
+    }
   });
 });

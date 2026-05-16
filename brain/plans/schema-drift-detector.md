@@ -67,7 +67,7 @@ In:
 - Observe successful Koios responses through the existing fetch/metrics path.
 - Compare stable endpoint shapes against committed `knownShapes.json`.
 - Emit schema-drift Inngest events for novel fields or type changes.
-- Open governed draft PRs via `bin/gh.sh pr create --draft`.
+- Open draft PRs from production via the GitHub App REST API; retain the governed `bin/gh.sh pr create --draft` path for local agent-wrapper runs.
 - Add a CI guard that known shapes cover every instrumented endpoint key.
 
 Out:
@@ -85,6 +85,7 @@ Out:
 - Mobile 375px: no UI surface.
 - A11y: no UI surface.
 - Auth: GitHub writes go through `bin/gh.sh`; pushes go through the governed lane in local publication.
+- Runtime: production PR creation uses `GOVERNADA_GITHUB_CLIENT_ID`, `GOVERNADA_GITHUB_INSTALLATION_ID`, and `GOVERNADA_GITHUB_APP_PRIVATE_KEY` with GitHub App REST endpoints so the Railway standalone container does not need `.git`, `git`, `gh`, `op`, or `bin/`.
 - Data freshness: committed known shapes prevent production fetches from false-triggering for already observed fields.
 
 ## Verification Plan

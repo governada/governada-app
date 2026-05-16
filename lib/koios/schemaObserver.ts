@@ -5,6 +5,7 @@ import knownShapesJson from './knownShapes.json';
 
 export const KOIOS_SCHEMA_DRIFT_EVENT = 'drepscore/schema-drift.detected';
 export const KOIOS_SCHEMA_TARGET_FILE = 'utils/koios-schemas.ts';
+export const KOIOS_SCHEMA_PRECEDENT_PR = 'https://github.com/governada/app/pull/664';
 
 export const INSTRUMENTED_KOIOS_ENDPOINT_KEYS = [
   'account_assets',
@@ -75,10 +76,11 @@ export type SchemaDriftEventData = {
   observedAt: string;
   knownShapeHash: string | null;
   observedShapeHash: string;
+  driftFingerprint: string;
   changes: SchemaDriftChange[];
   observedShape: SchemaShape;
   targetFile: typeof KOIOS_SCHEMA_TARGET_FILE;
-  precedentPr: 'https://github.com/governada/app/pull/664';
+  precedentPr: string;
 };
 
 type RecordOptions = {
@@ -113,6 +115,26 @@ function stableStringify(value: unknown): string {
 
 export function hashShape(shape: SchemaShape): string {
   return createHash('sha256').update(stableStringify(shape)).digest('hex');
+}
+
+export function hashSchemaDrift(
+  endpoint: InstrumentedKoiosEndpointKey,
+  changes: SchemaDriftChange[],
+): string {
+  return createHash('sha256')
+    .update(
+      stableStringify({
+        endpoint,
+        changes: changes.map((change) => ({
+          kind: change.kind,
+          path: change.path,
+          knownTypes: change.knownTypes,
+          observedTypes: change.observedTypes,
+          suggestedZod: change.suggestedZod,
+        })),
+      }),
+    )
+    .digest('hex');
 }
 
 function valueType(value: unknown): ShapeValueType {
@@ -183,6 +205,7 @@ function inferShapeForValue(
   }
 
   if (Array.isArray(value)) {
+    // Sampling 25 items keeps observation cheap on paginated Koios responses while merging mixed row shapes.
     const items = value
       .slice(0, 25)
       .reduce<SchemaShape | null>(
@@ -400,10 +423,11 @@ export async function recordKoiosSchema(
       observedAt: (options.now ?? (() => new Date()))().toISOString(),
       knownShapeHash: known?.shapeHash ?? null,
       observedShapeHash,
+      driftFingerprint: hashSchemaDrift(endpointKey, changes),
       changes,
       observedShape: observed.shape,
       targetFile: KOIOS_SCHEMA_TARGET_FILE,
-      precedentPr: 'https://github.com/governada/app/pull/664',
+      precedentPr: KOIOS_SCHEMA_PRECEDENT_PR,
     };
 
     await (options.sendEvent ?? sendSchemaDriftEvent)(eventData);

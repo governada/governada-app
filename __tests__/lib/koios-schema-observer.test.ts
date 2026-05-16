@@ -95,6 +95,7 @@ describe('Koios schema observer', () => {
       rawEndpoint: '/drep_info',
       observedAt: '2026-05-16T04:05:00.000Z',
       targetFile: 'utils/koios-schemas.ts',
+      driftFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/u),
       changes: [
         expect.objectContaining({
           kind: 'novel_field',
@@ -105,6 +106,30 @@ describe('Koios schema observer', () => {
         }),
       ],
     });
+  });
+
+  it('keeps the same drift fingerprint when only surrounding response shape changes', async () => {
+    const knownResponse = [{ drep_id: 'drep1', amount: '10', meta_json: { nested: true } }];
+    const sendEvent = vi.fn(async (_data: SchemaDriftEventData) => null);
+    const knownShapes = knownShapesFor('drep_info', knownResponse);
+
+    await recordKoiosSchema(
+      [{ drep_id: 'drep1', amount: '10', new_koios_field: 'surprise' }],
+      '/drep_info',
+      { knownShapes, sendEvent },
+    );
+    await recordKoiosSchema(
+      [{ drep_id: 'drep1', amount: '10', meta_json: { nested: true }, new_koios_field: 'later' }],
+      '/drep_info',
+      { knownShapes, sendEvent },
+    );
+
+    expect(sendEvent.mock.calls[0][0].observedShapeHash).not.toBe(
+      sendEvent.mock.calls[1][0].observedShapeHash,
+    );
+    expect(sendEvent.mock.calls[0][0].driftFingerprint).toBe(
+      sendEvent.mock.calls[1][0].driftFingerprint,
+    );
   });
 
   it('flags type drift without treating missing fields in partial Koios selects as drift', () => {

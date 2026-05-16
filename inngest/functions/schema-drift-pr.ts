@@ -1,6 +1,6 @@
 import { inngest } from '@/lib/inngest';
 import { logger } from '@/lib/logger';
-import { alertCritical } from '@/lib/sync-utils';
+import { alertCritical, alertDiscord } from '@/lib/sync-utils';
 import { KOIOS_SCHEMA_DRIFT_EVENT, type SchemaDriftEventData } from '@/lib/koios/schemaObserver';
 import { openSchemaDriftPullRequest } from '@/lib/koios/schemaDriftPr';
 
@@ -11,7 +11,7 @@ export const schemaDriftPr = inngest.createFunction(
     retries: 1,
     concurrency: { limit: 1, scope: 'env', key: '"schema-drift-pr"' },
     debounce: {
-      key: 'event.data.observedShapeHash',
+      key: 'event.data.driftFingerprint',
       period: '5m',
     },
     onFailure: async ({ error, event }) => {
@@ -43,6 +43,19 @@ export const schemaDriftPr = inngest.createFunction(
         changes: data.changes.length,
       };
     });
+
+    if (summary.status === 'opened') {
+      await step.run('notify-schema-drift', async () => {
+        await alertDiscord(
+          `Koios schema drift detected: ${data.endpoint}`,
+          [
+            `Draft PR: ${summary.url ?? '(unknown URL)'}`,
+            `Field/type changes: ${data.changes.map((change) => change.path).join(', ')}`,
+            `Review ${data.targetFile} and confirm benign vs breaking drift.`,
+          ].join('\n'),
+        );
+      });
+    }
 
     return summary;
   },

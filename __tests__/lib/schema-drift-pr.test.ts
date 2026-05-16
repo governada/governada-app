@@ -7,30 +7,44 @@ import {
   openSchemaDriftPullRequest,
   schemaDriftBranchName,
 } from '@/lib/koios/schemaDriftPr';
-import { hashShape, inferKoiosShape, type SchemaDriftEventData } from '@/lib/koios/schemaObserver';
+import {
+  hashSchemaDrift,
+  hashShape,
+  inferKoiosShape,
+  type SchemaDriftEventData,
+} from '@/lib/koios/schemaObserver';
 
 function makeEvent(): SchemaDriftEventData {
   const observedShape = inferKoiosShape([{ drep_id: 'drep1', new_koios_field: 'surprise' }]).shape;
+  const changes: SchemaDriftEventData['changes'] = [
+    {
+      kind: 'novel_field',
+      path: '[].new_koios_field',
+      knownTypes: [],
+      observedTypes: ['string'],
+      observedSample: 'surprise',
+      suggestedZod: 'z.string().optional()',
+    },
+  ];
   return {
     endpoint: 'drep_info',
     rawEndpoint: '/drep_info',
     observedAt: '2026-05-16T04:05:00.000Z',
     knownShapeHash: 'known-shape-hash',
     observedShapeHash: hashShape(observedShape),
+    driftFingerprint: hashSchemaDrift('drep_info', changes),
     observedShape,
     targetFile: 'utils/koios-schemas.ts',
     precedentPr: 'https://github.com/governada/app/pull/664',
-    changes: [
-      {
-        kind: 'novel_field',
-        path: '[].new_koios_field',
-        knownTypes: [],
-        observedTypes: ['string'],
-        observedSample: 'surprise',
-        suggestedZod: 'z.string().optional()',
-      },
-    ],
+    changes,
   };
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 describe('schema drift PR automation', () => {
@@ -49,6 +63,19 @@ describe('schema drift PR automation', () => {
     expect(body).toContain('[PR #664](https://github.com/governada/app/pull/664)');
     expect(body).toContain('Confirm the novel field is benign/additive');
     expect(body).toContain('Confirm the proposed Zod type matches the observed sample value');
+  });
+
+  it('uses the stable drift fingerprint, not surrounding shape hash, for branch names', () => {
+    const first = makeEvent();
+    const second = {
+      ...first,
+      observedShapeHash: 'different-observed-shape-hash',
+      observedShape: inferKoiosShape([
+        { drep_id: 'drep1', meta_json: { body: { givenName: 'Ada' } }, new_koios_field: 'later' },
+      ]).shape,
+    };
+
+    expect(schemaDriftBranchName(first)).toBe(schemaDriftBranchName(second));
   });
 
   it('deduplicates the same novel shape inside the 24-hour window', async () => {
@@ -146,5 +173,75 @@ describe('schema drift PR automation', () => {
     );
 
     await rm(repoRoot, { recursive: true, force: true });
+  });
+
+  it('opens draft PRs through the runtime-safe GitHub API mode', async () => {
+    const data = makeEvent();
+    const branch = schemaDriftBranchName(data);
+    const knownShapes = { version: 1, generatedAt: data.observedAt, source: 'test', endpoints: {} };
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, init: init ?? {} });
+
+      if (url.includes('/pulls?')) return jsonResponse([]);
+      if (url.endsWith('/git/ref/heads/main')) {
+        return jsonResponse({ object: { sha: 'base-sha' } });
+      }
+      if (url.endsWith('/git/refs') && init?.method === 'POST') {
+        return jsonResponse({ object: { sha: 'base-sha' } }, 201);
+      }
+      if (url.includes('/contents/lib/koios/knownShapes.json') && init?.method === 'GET') {
+        return jsonResponse({
+          sha: 'known-shapes-sha',
+          encoding: 'base64',
+          content: Buffer.from(JSON.stringify(knownShapes), 'utf8').toString('base64'),
+        });
+      }
+      if (url.endsWith('/contents/lib/koios/knownShapes.json') && init?.method === 'PUT') {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        expect(body).toMatchObject({
+          branch,
+          sha: 'known-shapes-sha',
+        });
+        const next = JSON.parse(
+          Buffer.from(String(body.content), 'base64').toString('utf8'),
+        ) as Record<string, unknown>;
+        expect(next).toHaveProperty('endpoints.drep_info.shapeHash', data.observedShapeHash);
+        return jsonResponse({ commit: { sha: 'schema-drift-commit' } });
+      }
+      if (url.endsWith('/pulls') && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        expect(body).toMatchObject({
+          base: 'main',
+          head: branch,
+          draft: true,
+        });
+        return jsonResponse({ html_url: 'https://github.com/governada/app/pull/6642' }, 201);
+      }
+
+      throw new Error(`unexpected GitHub API call: ${init?.method ?? 'GET'} ${url}`);
+    });
+
+    const result = await openSchemaDriftPullRequest(data, {
+      mode: 'github-api',
+      githubToken: 'ghs_test',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      now: () => new Date('2026-05-16T04:30:00.000Z'),
+    });
+
+    expect(result).toMatchObject({
+      status: 'opened',
+      branch,
+      url: 'https://github.com/governada/app/pull/6642',
+    });
+    expect(calls.map(({ init }) => init.method ?? 'GET')).toEqual([
+      'GET',
+      'GET',
+      'POST',
+      'GET',
+      'PUT',
+      'POST',
+    ]);
   });
 });

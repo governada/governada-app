@@ -1,11 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { hashShape, inferKoiosShape, type SchemaDriftEventData } from '@/lib/koios/schemaObserver';
+import {
+  hashSchemaDrift,
+  hashShape,
+  inferKoiosShape,
+  type SchemaDriftEventData,
+} from '@/lib/koios/schemaObserver';
 
 const createFunctionMock = vi.hoisted(() => vi.fn());
 const openSchemaDriftPullRequestMock = vi.hoisted(() => vi.fn());
 const alertCriticalMock = vi.hoisted(() => vi.fn());
+const alertDiscordMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/inngest', () => ({
   inngest: {
@@ -19,6 +25,7 @@ vi.mock('@/lib/koios/schemaDriftPr', () => ({
 
 vi.mock('@/lib/sync-utils', () => ({
   alertCritical: alertCriticalMock,
+  alertDiscord: alertDiscordMock,
 }));
 
 vi.mock('@/lib/logger', () => ({
@@ -31,25 +38,27 @@ vi.mock('@/lib/logger', () => ({
 
 function makeEventData(): SchemaDriftEventData {
   const observedShape = inferKoiosShape([{ new_koios_field: 'surprise' }]).shape;
+  const changes: SchemaDriftEventData['changes'] = [
+    {
+      kind: 'novel_field',
+      path: '[].new_koios_field',
+      knownTypes: [],
+      observedTypes: ['string'],
+      observedSample: 'surprise',
+      suggestedZod: 'z.string().optional()',
+    },
+  ];
   return {
     endpoint: 'drep_info',
     rawEndpoint: '/drep_info',
     observedAt: '2026-05-16T04:05:00.000Z',
     knownShapeHash: 'known-shape-hash',
     observedShapeHash: hashShape(observedShape),
+    driftFingerprint: hashSchemaDrift('drep_info', changes),
     observedShape,
     targetFile: 'utils/koios-schemas.ts',
     precedentPr: 'https://github.com/governada/app/pull/664',
-    changes: [
-      {
-        kind: 'novel_field',
-        path: '[].new_koios_field',
-        knownTypes: [],
-        observedTypes: ['string'],
-        observedSample: 'surprise',
-        suggestedZod: 'z.string().optional()',
-      },
-    ],
+    changes,
   };
 }
 
@@ -76,7 +85,7 @@ describe('schemaDriftPr Inngest function', () => {
         triggers: { event: 'drepscore/schema-drift.detected' },
         concurrency: { limit: 1, scope: 'env', key: '"schema-drift-pr"' },
         debounce: {
-          key: 'event.data.observedShapeHash',
+          key: 'event.data.driftFingerprint',
           period: '5m',
         },
       }),
@@ -115,6 +124,10 @@ describe('schemaDriftPr Inngest function', () => {
         observedShapeHash: data.observedShapeHash,
         changes: 1,
       }),
+    );
+    expect(alertDiscordMock).toHaveBeenCalledWith(
+      'Koios schema drift detected: drep_info',
+      expect.stringContaining('Draft PR: https://github.com/governada/app/pull/6641'),
     );
   });
 });

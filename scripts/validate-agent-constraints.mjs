@@ -116,12 +116,54 @@ function validateRequiredFiles() {
     path.join(root, '.claude', 'settings.json'),
     path.join(root, 'app', 'api', 'inngest', 'route.ts'),
     path.join(root, 'inngest', 'functions'),
+    path.join(root, 'lib', 'koios', 'knownShapes.json'),
   ];
 
   for (const target of required) {
     if (!existsSync(target)) {
       errors.push(
         `${toPosix(path.relative(root, target))}: required file or directory is missing.`,
+      );
+    }
+  }
+}
+
+function validateKoiosKnownShapes() {
+  const observerPath = path.join(root, 'lib', 'koios', 'schemaObserver.ts');
+  const knownShapesPath = path.join(root, 'lib', 'koios', 'knownShapes.json');
+  if (!existsSync(observerPath) || !existsSync(knownShapesPath)) {
+    return;
+  }
+
+  const observerContent = readFileSync(observerPath, 'utf8');
+  const endpointListMatch = observerContent.match(
+    /INSTRUMENTED_KOIOS_ENDPOINT_KEYS\s*=\s*\[([\s\S]*?)\]\s*as const/u,
+  );
+  if (!endpointListMatch) {
+    errors.push('lib/koios/schemaObserver.ts: missing INSTRUMENTED_KOIOS_ENDPOINT_KEYS export.');
+    return;
+  }
+
+  const endpoints = [...endpointListMatch[1].matchAll(/'([^']+)'/gu)].map((match) => match[1]);
+  let knownShapes;
+  try {
+    knownShapes = JSON.parse(readFileSync(knownShapesPath, 'utf8'));
+  } catch (error) {
+    errors.push(
+      `lib/koios/knownShapes.json: invalid JSON (${error instanceof Error ? error.message : String(error)}).`,
+    );
+    return;
+  }
+
+  const known =
+    knownShapes?.endpoints && typeof knownShapes.endpoints === 'object'
+      ? knownShapes.endpoints
+      : {};
+  for (const endpoint of endpoints) {
+    const entry = known[endpoint];
+    if (!entry?.shape || !entry?.shapeHash) {
+      errors.push(
+        `lib/koios/knownShapes.json: missing known shape entry for instrumented Koios endpoint "${endpoint}".`,
       );
     }
   }
@@ -178,6 +220,7 @@ if (errors.length === 0) {
   validateRepoIdentityReferences();
   validateRouteRenderPolicy();
   validateInngestRegistration();
+  validateKoiosKnownShapes();
 }
 
 if (errors.length > 0) {

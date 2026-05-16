@@ -19,6 +19,7 @@ import {
 } from '@/types/koios';
 import { logger } from '@/lib/logger';
 import { recordSourceCall } from '@/lib/sourceHealth';
+import { recordKoiosSchema } from '@/lib/koios/schemaObserver';
 import {
   KoiosDRepInfoSchema,
   KoiosVoteSchema,
@@ -189,6 +190,7 @@ async function koiosFetchRaw<T>(
     if (_lastKoios429) _lastKoios429 = 0;
 
     const data = await response.json();
+    await recordKoiosSchema(data, endpoint);
     return data as T;
   } catch (error) {
     clearTimeout(timeoutId);

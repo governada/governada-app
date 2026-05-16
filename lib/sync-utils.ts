@@ -97,7 +97,7 @@ export async function batchUpsert<T extends Record<string, unknown>>(
         async () => {
           const { error } = await supabase
             .from(table)
-            .upsert(batch, { onConflict, ignoreDuplicates: false });
+            .upsert(batch as any, { onConflict, ignoreDuplicates: false });
           if (error) throw error;
         },
         {

@@ -15,6 +15,7 @@
       "NotebookEdit",
       "mcp__linear__*",
       "mcp__supabase__*",
+      "mcp__supabase-staging__*",
       "mcp__sentry__*",
       "mcp__github__*",
       "mcp__railway__*",
@@ -77,6 +78,15 @@
       },
       {
         "matcher": "mcp__supabase__apply_migration",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/migration-pr-binding.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__supabase-staging__apply_migration",
         "hooks": [
           {
             "type": "command",

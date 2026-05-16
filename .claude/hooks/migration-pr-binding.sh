@@ -77,9 +77,10 @@ except Exception:
   pass
 ' 2>/dev/null)
 
-if [[ "$tool_name" != "mcp__supabase__apply_migration" ]]; then
-  exit 0
-fi
+case "$tool_name" in
+  mcp__supabase__apply_migration|mcp__supabase-staging__apply_migration) ;;
+  *) exit 0 ;;
+esac
 
 # Extract name and query from tool_input. Use python for reliable JSON parsing
 # since the SQL body can contain quotes, escapes, multi-line content, etc.

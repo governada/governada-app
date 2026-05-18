@@ -1,0 +1,2645 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-16T04:31:37.260Z",
+  "source": "Seeded from one live production Koios fetch per instrumented endpoint for Phase 6 schema drift detector.",
+  "endpoints": {
+    "account_assets": {
+      "endpoint": "account_assets",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "b116803c4a6f0876d6909d788b0b544d25fe4dfeae16fa4c2a3406100b7a2fb0",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "asset_name": {
+              "types": ["string"]
+            },
+            "decimals": {
+              "types": ["number"]
+            },
+            "fingerprint": {
+              "types": ["string"]
+            },
+            "policy_id": {
+              "types": ["string"]
+            },
+            "quantity": {
+              "types": ["string"]
+            },
+            "stake_address": {
+              "types": ["string"]
+            }
+          }
+        }
+      }
+    },
+    "account_info": {
+      "endpoint": "account_info",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "41c19de187903446a0f607674e8f2b163bc4796ad489c9c545389b801bfdb6ec",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "delegated_drep": {
+              "types": ["null"]
+            },
+            "delegated_pool": {
+              "types": ["string"]
+            },
+            "deposit": {
+              "types": ["string"]
+            },
+            "proposal_refund": {
+              "types": ["string"]
+            },
+            "reserves": {
+              "types": ["string"]
+            },
+            "rewards": {
+              "types": ["string"]
+            },
+            "rewards_available": {
+              "types": ["string"]
+            },
+            "stake_address": {
+              "types": ["string"]
+            },
+            "status": {
+              "types": ["string"]
+            },
+            "total_balance": {
+              "types": ["string"]
+            },
+            "treasury": {
+              "types": ["string"]
+            },
+            "utxo": {
+              "types": ["string"]
+            },
+            "withdrawals": {
+              "types": ["string"]
+            }
+          }
+        }
+      }
+    },
+    "committee_info": {
+      "endpoint": "committee_info",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "9b575feff69bc005e0ac99e10bc93ea71124531643cb46c23ebd9060a47171a8",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "members": {
+              "types": ["array"],
+              "items": {
+                "types": ["object"],
+                "fields": {
+                  "cc_cold_has_script": {
+                    "types": ["boolean"]
+                  },
+                  "cc_cold_hex": {
+                    "types": ["string"]
+                  },
+                  "cc_cold_id": {
+                    "types": ["string"]
+                  },
+                  "cc_hot_has_script": {
+                    "types": ["boolean", "null"]
+                  },
+                  "cc_hot_hex": {
+                    "types": ["null", "string"]
+                  },
+                  "cc_hot_id": {
+                    "types": ["null", "string"]
+                  },
+                  "expiration_epoch": {
+                    "types": ["number"]
+                  },
+                  "status": {
+                    "types": ["string"]
+                  }
+                }
+              }
+            },
+            "proposal_id": {
+              "types": ["string"]
+            },
+            "proposal_index": {
+              "types": ["number"]
+            },
+            "proposal_tx_hash": {
+              "types": ["string"]
+            },
+            "quorum_denominator": {
+              "types": ["number"]
+            },
+            "quorum_numerator": {
+              "types": ["number"]
+            }
+          }
+        }
+      }
+    },
+    "drep_delegators": {
+      "endpoint": "drep_delegators",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "0a55c86274bb5fbedf9afc6516c0041ca76d45e6bb7bc8d1d53607813cd9594c",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "amount": {
+              "types": ["string"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            },
+            "script_hash": {
+              "types": ["null"]
+            },
+            "stake_address": {
+              "types": ["string"]
+            },
+            "stake_address_hex": {
+              "types": ["string"]
+            }
+          }
+        }
+      }
+    },
+    "drep_epoch_summary": {
+      "endpoint": "drep_epoch_summary",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "f0418012b37bf7779b976952a5c05f19a4f5160da262c9a41003f0cbcbff4f0d",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "amount": {
+              "types": ["string"]
+            },
+            "dreps": {
+              "types": ["number"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            }
+          }
+        }
+      }
+    },
+    "drep_info": {
+      "endpoint": "drep_info",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "adf9abde28554ec49fe6374ac82358111985bc8d2a73ba22dd295a55cce567b4",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "active": {
+              "types": ["boolean"]
+            },
+            "amount": {
+              "types": ["string"]
+            },
+            "deposit": {
+              "types": ["null"]
+            },
+            "drep_id": {
+              "types": ["string"]
+            },
+            "drep_status": {
+              "types": ["string"]
+            },
+            "expires_epoch_no": {
+              "types": ["null"]
+            },
+            "has_script": {
+              "types": ["boolean"]
+            },
+            "hex": {
+              "types": ["string"]
+            },
+            "meta_hash": {
+              "types": ["null"]
+            },
+            "meta_url": {
+              "types": ["null"]
+            }
+          }
+        }
+      }
+    },
+    "drep_list": {
+      "endpoint": "drep_list",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "6316fd95104a51c7148c2b1a77a4c767fddb27cd972a3a187bd89dde7875e55c",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "drep_id": {
+              "types": ["string"]
+            },
+            "has_script": {
+              "types": ["boolean"]
+            },
+            "hex": {
+              "types": ["string"]
+            },
+            "registered": {
+              "types": ["boolean"]
+            }
+          }
+        }
+      }
+    },
+    "drep_metadata": {
+      "endpoint": "drep_metadata",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "12dcfacc6aede47291850598348ee8527523437ac14523b71b16ecc75bea87c1",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "bytes": {
+              "types": ["null"]
+            },
+            "comment": {
+              "types": ["null"]
+            },
+            "drep_id": {
+              "types": ["string"]
+            },
+            "has_script": {
+              "types": ["boolean"]
+            },
+            "hex": {
+              "types": ["string"]
+            },
+            "is_valid": {
+              "types": ["null"]
+            },
+            "language": {
+              "types": ["null"]
+            },
+            "meta_hash": {
+              "types": ["null"]
+            },
+            "meta_json": {
+              "types": ["null"]
+            },
+            "meta_url": {
+              "types": ["null"]
+            },
+            "warning": {
+              "types": ["null"]
+            }
+          }
+        }
+      }
+    },
+    "drep_updates": {
+      "endpoint": "drep_updates",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "091f393a3f5e00d6d70613fef3260fc15f8615bb6d8a7306a332980c38d2267d",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "action": {
+              "types": ["string"]
+            },
+            "block_time": {
+              "types": ["number"]
+            },
+            "cert_index": {
+              "types": ["number"]
+            },
+            "deposit": {
+              "types": ["null", "string"]
+            },
+            "drep_id": {
+              "types": ["string"]
+            },
+            "has_script": {
+              "types": ["boolean"]
+            },
+            "hex": {
+              "types": ["string"]
+            },
+            "meta_hash": {
+              "types": ["null", "string"]
+            },
+            "meta_json": {
+              "types": ["null", "object"],
+              "fields": {
+                "@context": {
+                  "types": ["object"],
+                  "fields": {
+                    "@language": {
+                      "types": ["string"]
+                    },
+                    "CIP100": {
+                      "types": ["string"]
+                    },
+                    "CIP119": {
+                      "types": ["string"]
+                    },
+                    "authors": {
+                      "types": ["object"],
+                      "fields": {
+                        "@container": {
+                          "types": ["string"]
+                        },
+                        "@context": {
+                          "types": ["object"],
+                          "fields": {
+                            "name": {
+                              "types": ["string"]
+                            },
+                            "witness": {
+                              "types": ["object"],
+                              "fields": {
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "publicKey": {
+                                      "types": ["string"]
+                                    },
+                                    "signature": {
+                                      "types": ["string"]
+                                    },
+                                    "witnessAlgorithm": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "@id": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "body": {
+                      "types": ["object"],
+                      "fields": {
+                        "@context": {
+                          "types": ["object"],
+                          "fields": {
+                            "bio": {
+                              "types": ["string"]
+                            },
+                            "dRepName": {
+                              "types": ["string"]
+                            },
+                            "doNotList": {
+                              "types": ["string"]
+                            },
+                            "email": {
+                              "types": ["string"]
+                            },
+                            "givenName": {
+                              "types": ["string"]
+                            },
+                            "image": {
+                              "types": ["object"],
+                              "fields": {
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "ImageObject": {
+                                      "types": ["string"]
+                                    },
+                                    "contentUrl": {
+                                      "types": ["string"]
+                                    },
+                                    "sha256": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            },
+                            "motivations": {
+                              "types": ["string"]
+                            },
+                            "objectives": {
+                              "types": ["string"]
+                            },
+                            "paymentAddress": {
+                              "types": ["string"]
+                            },
+                            "qualifications": {
+                              "types": ["string"]
+                            },
+                            "references": {
+                              "types": ["object"],
+                              "fields": {
+                                "@container": {
+                                  "types": ["string"]
+                                },
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "GovernanceMetadata": {
+                                      "types": ["string"]
+                                    },
+                                    "Identity": {
+                                      "types": ["string"]
+                                    },
+                                    "Link": {
+                                      "types": ["string"]
+                                    },
+                                    "Other": {
+                                      "types": ["string"]
+                                    },
+                                    "label": {
+                                      "types": ["string"]
+                                    },
+                                    "referenceHash": {
+                                      "types": ["object"],
+                                      "fields": {
+                                        "@context": {
+                                          "types": ["object"],
+                                          "fields": {
+                                            "hashAlgorithm": {
+                                              "types": ["string"]
+                                            },
+                                            "hashDigest": {
+                                              "types": ["string"]
+                                            }
+                                          }
+                                        },
+                                        "@id": {
+                                          "types": ["string"]
+                                        }
+                                      }
+                                    },
+                                    "uri": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "@id": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "hashAlgorithm": {
+                      "types": ["string"]
+                    }
+                  }
+                },
+                "@type": {
+                  "types": ["string"]
+                },
+                "authors": {
+                  "types": ["array"],
+                  "items": {
+                    "types": ["unknown"]
+                  }
+                },
+                "body": {
+                  "types": ["object"],
+                  "fields": {
+                    "bio": {
+                      "types": ["object", "string"],
+                      "fields": {
+                        "@value": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "dRepName": {
+                      "types": ["object"],
+                      "fields": {
+                        "@value": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "doNotList": {
+                      "types": ["boolean"]
+                    },
+                    "email": {
+                      "types": ["object"],
+                      "fields": {
+                        "@value": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "givenName": {
+                      "types": ["string"]
+                    },
+                    "image": {
+                      "types": ["object"],
+                      "fields": {
+                        "@type": {
+                          "types": ["string"]
+                        },
+                        "contentUrl": {
+                          "types": ["string"]
+                        },
+                        "sha256": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "motivations": {
+                      "types": ["string"]
+                    },
+                    "objectives": {
+                      "types": ["string"]
+                    },
+                    "paymentAddress": {
+                      "types": ["string"]
+                    },
+                    "policy": {
+                      "types": ["string"]
+                    },
+                    "qualifications": {
+                      "types": ["string"]
+                    },
+                    "references": {
+                      "types": ["array"],
+                      "items": {
+                        "types": ["object", "unknown"],
+                        "fields": {
+                          "@type": {
+                            "types": ["string"]
+                          },
+                          "label": {
+                            "types": ["string"]
+                          },
+                          "uri": {
+                            "types": ["string"]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "hashAlgorithm": {
+                  "types": ["object", "string"],
+                  "fields": {
+                    "@value": {
+                      "types": ["string"]
+                    }
+                  }
+                },
+                "signature": {
+                  "types": ["string"]
+                }
+              }
+            },
+            "meta_url": {
+              "types": ["null", "string"]
+            },
+            "update_tx_hash": {
+              "types": ["string"]
+            }
+          }
+        }
+      }
+    },
+    "drep_votes": {
+      "endpoint": "drep_votes",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "c72ffe146e38b5e2a9eb4e4de6256c808deed16391826e893fd885c61078d708",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "block_time": {
+              "types": ["number"]
+            },
+            "meta_hash": {
+              "types": ["null", "string"]
+            },
+            "meta_url": {
+              "types": ["null", "string"]
+            },
+            "proposal_id": {
+              "types": ["string"]
+            },
+            "proposal_index": {
+              "types": ["number"]
+            },
+            "proposal_tx_hash": {
+              "types": ["string"]
+            },
+            "vote": {
+              "types": ["string"]
+            },
+            "vote_tx_hash": {
+              "types": ["string"]
+            }
+          }
+        }
+      }
+    },
+    "drep_voting_power_history": {
+      "endpoint": "drep_voting_power_history",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "e749816582c0581d653dcf594f6ffa60ebef2dca1a89a3002b579293155c1f7c",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "amount": {
+              "types": ["string"]
+            },
+            "drep_id": {
+              "types": ["string"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            }
+          }
+        }
+      }
+    },
+    "epoch_info": {
+      "endpoint": "epoch_info",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "005c4c1612a1b2fcc86832eb93ea184b8095c6cc6a33ff7ff769997805e56735",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "active_stake": {
+              "types": ["string"]
+            },
+            "avg_blk_reward": {
+              "types": ["null", "string"]
+            },
+            "blk_count": {
+              "types": ["number"]
+            },
+            "end_time": {
+              "types": ["number"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            },
+            "era": {
+              "types": ["string"]
+            },
+            "fees": {
+              "types": ["string"]
+            },
+            "first_block_time": {
+              "types": ["number"]
+            },
+            "last_block_time": {
+              "types": ["number"]
+            },
+            "out_sum": {
+              "types": ["string"]
+            },
+            "start_time": {
+              "types": ["number"]
+            },
+            "total_rewards": {
+              "types": ["null", "string"]
+            },
+            "tx_count": {
+              "types": ["number"]
+            }
+          }
+        }
+      }
+    },
+    "epoch_params": {
+      "endpoint": "epoch_params",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "ad7e0fddfcd50e00604c3a3e009a94cdfd6caa140085596d4c9f417c7c7e5a3b",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "block_hash": {
+              "types": ["string"]
+            },
+            "coins_per_utxo_size": {
+              "types": ["string"]
+            },
+            "collateral_percent": {
+              "types": ["number"]
+            },
+            "committee_max_term_length": {
+              "types": ["number"]
+            },
+            "committee_min_size": {
+              "types": ["number"]
+            },
+            "cost_models": {
+              "types": ["object"],
+              "fields": {
+                "PlutusV1": {
+                  "types": ["array"],
+                  "items": {
+                    "types": ["number"]
+                  }
+                },
+                "PlutusV2": {
+                  "types": ["array"],
+                  "items": {
+                    "types": ["number"]
+                  }
+                },
+                "PlutusV3": {
+                  "types": ["array"],
+                  "items": {
+                    "types": ["number"]
+                  }
+                }
+              }
+            },
+            "decentralisation": {
+              "types": ["number"]
+            },
+            "drep_activity": {
+              "types": ["number"]
+            },
+            "drep_deposit": {
+              "types": ["string"]
+            },
+            "dvt_committee_no_confidence": {
+              "types": ["number"]
+            },
+            "dvt_committee_normal": {
+              "types": ["number"]
+            },
+            "dvt_hard_fork_initiation": {
+              "types": ["number"]
+            },
+            "dvt_motion_no_confidence": {
+              "types": ["number"]
+            },
+            "dvt_p_p_economic_group": {
+              "types": ["number"]
+            },
+            "dvt_p_p_gov_group": {
+              "types": ["number"]
+            },
+            "dvt_p_p_network_group": {
+              "types": ["number"]
+            },
+            "dvt_p_p_technical_group": {
+              "types": ["number"]
+            },
+            "dvt_treasury_withdrawal": {
+              "types": ["number"]
+            },
+            "dvt_update_to_constitution": {
+              "types": ["number"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            },
+            "era": {
+              "types": ["string"]
+            },
+            "extra_entropy": {
+              "types": ["null"]
+            },
+            "gov_action_deposit": {
+              "types": ["string"]
+            },
+            "gov_action_lifetime": {
+              "types": ["number"]
+            },
+            "influence": {
+              "types": ["number"]
+            },
+            "key_deposit": {
+              "types": ["string"]
+            },
+            "max_bh_size": {
+              "types": ["number"]
+            },
+            "max_block_ex_mem": {
+              "types": ["number"]
+            },
+            "max_block_ex_steps": {
+              "types": ["number"]
+            },
+            "max_block_size": {
+              "types": ["number"]
+            },
+            "max_collateral_inputs": {
+              "types": ["number"]
+            },
+            "max_epoch": {
+              "types": ["number"]
+            },
+            "max_tx_ex_mem": {
+              "types": ["number"]
+            },
+            "max_tx_ex_steps": {
+              "types": ["number"]
+            },
+            "max_tx_size": {
+              "types": ["number"]
+            },
+            "max_val_size": {
+              "types": ["number"]
+            },
+            "min_fee_a": {
+              "types": ["number"]
+            },
+            "min_fee_b": {
+              "types": ["number"]
+            },
+            "min_fee_ref_script_cost_per_byte": {
+              "types": ["number"]
+            },
+            "min_pool_cost": {
+              "types": ["string"]
+            },
+            "min_utxo_value": {
+              "types": ["string"]
+            },
+            "monetary_expand_rate": {
+              "types": ["number"]
+            },
+            "nonce": {
+              "types": ["string"]
+            },
+            "optimal_pool_count": {
+              "types": ["number"]
+            },
+            "pool_deposit": {
+              "types": ["string"]
+            },
+            "price_mem": {
+              "types": ["number"]
+            },
+            "price_step": {
+              "types": ["number"]
+            },
+            "protocol_major": {
+              "types": ["number"]
+            },
+            "protocol_minor": {
+              "types": ["number"]
+            },
+            "pvt_committee_no_confidence": {
+              "types": ["number"]
+            },
+            "pvt_committee_normal": {
+              "types": ["number"]
+            },
+            "pvt_hard_fork_initiation": {
+              "types": ["number"]
+            },
+            "pvt_motion_no_confidence": {
+              "types": ["number"]
+            },
+            "pvtpp_security_group": {
+              "types": ["number"]
+            },
+            "treasury_growth_rate": {
+              "types": ["number"]
+            }
+          }
+        }
+      }
+    },
+    "proposal_list": {
+      "endpoint": "proposal_list",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "6c691d479da274b549bbac29eecbd29cc1c13020eef02e725cf56ceb0d2b3111",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "block_time": {
+              "types": ["number"]
+            },
+            "deposit": {
+              "types": ["string"]
+            },
+            "dropped_epoch": {
+              "types": ["null", "number"]
+            },
+            "enacted_epoch": {
+              "types": ["null", "number"]
+            },
+            "expiration": {
+              "types": ["number"]
+            },
+            "expired_epoch": {
+              "types": ["null", "number"]
+            },
+            "meta_comment": {
+              "types": ["null"]
+            },
+            "meta_hash": {
+              "types": ["string"]
+            },
+            "meta_is_valid": {
+              "types": ["boolean"]
+            },
+            "meta_json": {
+              "types": ["object"],
+              "fields": {
+                "@context": {
+                  "types": ["object"],
+                  "fields": {
+                    "@context": {
+                      "types": ["object"],
+                      "fields": {
+                        "CIP100": {
+                          "types": ["string"]
+                        },
+                        "CIP108": {
+                          "types": ["string"]
+                        },
+                        "CIP116": {
+                          "types": ["string"]
+                        },
+                        "CIP169": {
+                          "types": ["string"]
+                        },
+                        "authors": {
+                          "types": ["object"],
+                          "fields": {
+                            "@container": {
+                              "types": ["string"]
+                            },
+                            "@context": {
+                              "types": ["object"],
+                              "fields": {
+                                "did": {
+                                  "types": ["string"]
+                                },
+                                "name": {
+                                  "types": ["string"]
+                                },
+                                "witness": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "@context": {
+                                      "types": ["object"],
+                                      "fields": {
+                                        "publicKey": {
+                                          "types": ["string"]
+                                        },
+                                        "signature": {
+                                          "types": ["string"]
+                                        },
+                                        "witnessAlgorithm": {
+                                          "types": ["string"]
+                                        }
+                                      }
+                                    },
+                                    "@id": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "@id": {
+                              "types": ["string"]
+                            }
+                          }
+                        },
+                        "body": {
+                          "types": ["object"],
+                          "fields": {
+                            "@context": {
+                              "types": ["object"],
+                              "fields": {
+                                "abstract": {
+                                  "types": ["string"]
+                                },
+                                "motivation": {
+                                  "types": ["string"]
+                                },
+                                "onChain": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "@context": {
+                                      "types": ["object"],
+                                      "fields": {
+                                        "deposit": {
+                                          "types": ["object"],
+                                          "fields": {
+                                            "@id": {
+                                              "types": ["string"]
+                                            },
+                                            "@type": {
+                                              "types": ["string"]
+                                            }
+                                          }
+                                        },
+                                        "gov_action": {
+                                          "types": ["object"],
+                                          "fields": {
+                                            "@context": {
+                                              "types": ["object"],
+                                              "fields": {
+                                                "key": {
+                                                  "types": ["object"],
+                                                  "fields": {
+                                                    "@id": {
+                                                      "types": ["string"]
+                                                    },
+                                                    "@type": {
+                                                      "types": ["string"]
+                                                    }
+                                                  }
+                                                },
+                                                "rewards": {
+                                                  "types": ["object"],
+                                                  "fields": {
+                                                    "@container": {
+                                                      "types": ["string"]
+                                                    },
+                                                    "@id": {
+                                                      "types": ["string"]
+                                                    }
+                                                  }
+                                                },
+                                                "tag": {
+                                                  "types": ["string"]
+                                                },
+                                                "value": {
+                                                  "types": ["object"],
+                                                  "fields": {
+                                                    "@id": {
+                                                      "types": ["string"]
+                                                    },
+                                                    "@type": {
+                                                      "types": ["string"]
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            },
+                                            "@id": {
+                                              "types": ["string"]
+                                            }
+                                          }
+                                        },
+                                        "reward_account": {
+                                          "types": ["object"],
+                                          "fields": {
+                                            "@id": {
+                                              "types": ["string"]
+                                            },
+                                            "@type": {
+                                              "types": ["string"]
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "@id": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "rationale": {
+                                  "types": ["string"]
+                                },
+                                "references": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "@container": {
+                                      "types": ["string"]
+                                    },
+                                    "@context": {
+                                      "types": ["object"],
+                                      "fields": {
+                                        "GovernanceMetadata": {
+                                          "types": ["string"]
+                                        },
+                                        "Other": {
+                                          "types": ["string"]
+                                        },
+                                        "label": {
+                                          "types": ["string"]
+                                        },
+                                        "referenceHash": {
+                                          "types": ["object"],
+                                          "fields": {
+                                            "@context": {
+                                              "types": ["object"],
+                                              "fields": {
+                                                "hashAlgorithm": {
+                                                  "types": ["string"]
+                                                },
+                                                "hashDigest": {
+                                                  "types": ["string"]
+                                                }
+                                              }
+                                            },
+                                            "@id": {
+                                              "types": ["string"]
+                                            }
+                                          }
+                                        },
+                                        "uri": {
+                                          "types": ["string"]
+                                        }
+                                      }
+                                    },
+                                    "@id": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "title": {
+                                  "types": ["string"]
+                                }
+                              }
+                            },
+                            "@id": {
+                              "types": ["string"]
+                            }
+                          }
+                        },
+                        "hashAlgorithm": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "@language": {
+                      "types": ["string"]
+                    },
+                    "CIP100": {
+                      "types": ["string"]
+                    },
+                    "CIP108": {
+                      "types": ["string"]
+                    },
+                    "CIP116": {
+                      "types": ["string"]
+                    },
+                    "CIP169": {
+                      "types": ["string"]
+                    },
+                    "authors": {
+                      "types": ["object"],
+                      "fields": {
+                        "@container": {
+                          "types": ["string"]
+                        },
+                        "@context": {
+                          "types": ["object"],
+                          "fields": {
+                            "did": {
+                              "types": ["string"]
+                            },
+                            "name": {
+                              "types": ["string"]
+                            },
+                            "witness": {
+                              "types": ["object"],
+                              "fields": {
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "publicKey": {
+                                      "types": ["string"]
+                                    },
+                                    "signature": {
+                                      "types": ["string"]
+                                    },
+                                    "witnessAlgorithm": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "@id": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "body": {
+                      "types": ["object"],
+                      "fields": {
+                        "@context": {
+                          "types": ["object"],
+                          "fields": {
+                            "abstract": {
+                              "types": ["string"]
+                            },
+                            "motivation": {
+                              "types": ["string"]
+                            },
+                            "onChain": {
+                              "types": ["object"],
+                              "fields": {
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "deposit": {
+                                      "types": ["object"],
+                                      "fields": {
+                                        "@id": {
+                                          "types": ["string"]
+                                        },
+                                        "@type": {
+                                          "types": ["string"]
+                                        }
+                                      }
+                                    },
+                                    "gov_action": {
+                                      "types": ["object"],
+                                      "fields": {
+                                        "@context": {
+                                          "types": ["object"],
+                                          "fields": {
+                                            "key": {
+                                              "types": ["object"],
+                                              "fields": {
+                                                "@id": {
+                                                  "types": ["string"]
+                                                },
+                                                "@type": {
+                                                  "types": ["string"]
+                                                }
+                                              }
+                                            },
+                                            "rewards": {
+                                              "types": ["object"],
+                                              "fields": {
+                                                "@container": {
+                                                  "types": ["string"]
+                                                },
+                                                "@id": {
+                                                  "types": ["string"]
+                                                }
+                                              }
+                                            },
+                                            "tag": {
+                                              "types": ["string"]
+                                            },
+                                            "value": {
+                                              "types": ["object"],
+                                              "fields": {
+                                                "@id": {
+                                                  "types": ["string"]
+                                                },
+                                                "@type": {
+                                                  "types": ["string"]
+                                                }
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "@id": {
+                                          "types": ["string"]
+                                        }
+                                      }
+                                    },
+                                    "reward_account": {
+                                      "types": ["object"],
+                                      "fields": {
+                                        "@id": {
+                                          "types": ["string"]
+                                        },
+                                        "@type": {
+                                          "types": ["string"]
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            },
+                            "rationale": {
+                              "types": ["string"]
+                            },
+                            "references": {
+                              "types": ["object", "string"],
+                              "fields": {
+                                "@container": {
+                                  "types": ["string"]
+                                },
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "GovernanceMetadata": {
+                                      "types": ["string"]
+                                    },
+                                    "Other": {
+                                      "types": ["string"]
+                                    },
+                                    "label": {
+                                      "types": ["string"]
+                                    },
+                                    "referenceHash": {
+                                      "types": ["object"],
+                                      "fields": {
+                                        "@context": {
+                                          "types": ["object"],
+                                          "fields": {
+                                            "hashAlgorithm": {
+                                              "types": ["string"]
+                                            },
+                                            "hashDigest": {
+                                              "types": ["string"]
+                                            }
+                                          }
+                                        },
+                                        "@id": {
+                                          "types": ["string"]
+                                        }
+                                      }
+                                    },
+                                    "uri": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            },
+                            "title": {
+                              "types": ["string"]
+                            }
+                          }
+                        },
+                        "@id": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "hashAlgorithm": {
+                      "types": ["string"]
+                    }
+                  }
+                },
+                "authors": {
+                  "types": ["array"],
+                  "items": {
+                    "types": ["object", "unknown"],
+                    "fields": {
+                      "name": {
+                        "types": ["string"]
+                      },
+                      "witness": {
+                        "types": ["object"],
+                        "fields": {
+                          "publicKey": {
+                            "types": ["string"]
+                          },
+                          "signature": {
+                            "types": ["string"]
+                          },
+                          "witnessAlgorithm": {
+                            "types": ["string"]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "body": {
+                  "types": ["object"],
+                  "fields": {
+                    "abstract": {
+                      "types": ["string"]
+                    },
+                    "motivation": {
+                      "types": ["string"]
+                    },
+                    "onChain": {
+                      "types": ["object"],
+                      "fields": {
+                        "deposit": {
+                          "types": ["string"]
+                        },
+                        "gov_action": {
+                          "types": ["object"],
+                          "fields": {
+                            "rewards": {
+                              "types": ["array"],
+                              "items": {
+                                "types": ["object"],
+                                "fields": {
+                                  "key": {
+                                    "types": ["string"]
+                                  },
+                                  "value": {
+                                    "types": ["string"]
+                                  }
+                                }
+                              }
+                            },
+                            "tag": {
+                              "types": ["string"]
+                            }
+                          }
+                        },
+                        "reward_account": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "rationale": {
+                      "types": ["string"]
+                    },
+                    "references": {
+                      "types": ["array"],
+                      "items": {
+                        "types": ["object", "unknown"],
+                        "fields": {
+                          "@type": {
+                            "types": ["string"]
+                          },
+                          "label": {
+                            "types": ["string"]
+                          },
+                          "referenceHash": {
+                            "types": ["object"],
+                            "fields": {
+                              "hashAlgorithm": {
+                                "types": ["string"]
+                              },
+                              "hashDigest": {
+                                "types": ["string"]
+                              }
+                            }
+                          },
+                          "uri": {
+                            "types": ["string"]
+                          }
+                        }
+                      }
+                    },
+                    "title": {
+                      "types": ["string"]
+                    }
+                  }
+                },
+                "hashAlgorithm": {
+                  "types": ["string"]
+                }
+              }
+            },
+            "meta_language": {
+              "types": ["string"]
+            },
+            "meta_url": {
+              "types": ["string"]
+            },
+            "param_proposal": {
+              "types": ["null"]
+            },
+            "proposal_description": {
+              "types": ["object"],
+              "fields": {
+                "contents": {
+                  "types": ["array"],
+                  "items": {
+                    "types": ["array", "string"],
+                    "items": {
+                      "types": ["array", "unknown"],
+                      "items": {
+                        "types": ["number", "object", "unknown"],
+                        "fields": {
+                          "credential": {
+                            "types": ["object"],
+                            "fields": {
+                              "keyHash": {
+                                "types": ["string"]
+                              },
+                              "scriptHash": {
+                                "types": ["string"]
+                              }
+                            }
+                          },
+                          "network": {
+                            "types": ["string"]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "tag": {
+                  "types": ["string"]
+                }
+              }
+            },
+            "proposal_id": {
+              "types": ["string"]
+            },
+            "proposal_index": {
+              "types": ["number"]
+            },
+            "proposal_tx_hash": {
+              "types": ["string"]
+            },
+            "proposal_type": {
+              "types": ["string"]
+            },
+            "proposed_epoch": {
+              "types": ["number"]
+            },
+            "ratified_epoch": {
+              "types": ["null", "number"]
+            },
+            "return_address": {
+              "types": ["string"]
+            },
+            "withdrawal": {
+              "types": ["array"],
+              "items": {
+                "types": ["object", "unknown"],
+                "fields": {
+                  "amount": {
+                    "types": ["string"]
+                  },
+                  "stake_address": {
+                    "types": ["string"]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "proposal_voting_summary": {
+      "endpoint": "proposal_voting_summary",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "c1a6cdfec46bf61a3808936227e6942bbf7e8b22c1dced2829706b39e5782f58",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "committee_abstain_votes_cast": {
+              "types": ["number"]
+            },
+            "committee_no_pct": {
+              "types": ["number"]
+            },
+            "committee_no_votes_cast": {
+              "types": ["number"]
+            },
+            "committee_yes_pct": {
+              "types": ["number"]
+            },
+            "committee_yes_votes_cast": {
+              "types": ["number"]
+            },
+            "drep_abstain_votes_cast": {
+              "types": ["number"]
+            },
+            "drep_active_abstain_vote_power": {
+              "types": ["string"]
+            },
+            "drep_active_no_vote_power": {
+              "types": ["string"]
+            },
+            "drep_active_yes_vote_power": {
+              "types": ["string"]
+            },
+            "drep_always_abstain_vote_power": {
+              "types": ["string"]
+            },
+            "drep_always_no_confidence_vote_power": {
+              "types": ["string"]
+            },
+            "drep_no_pct": {
+              "types": ["number"]
+            },
+            "drep_no_vote_power": {
+              "types": ["string"]
+            },
+            "drep_no_votes_cast": {
+              "types": ["number"]
+            },
+            "drep_yes_pct": {
+              "types": ["number"]
+            },
+            "drep_yes_vote_power": {
+              "types": ["string"]
+            },
+            "drep_yes_votes_cast": {
+              "types": ["number"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            },
+            "pool_abstain_votes_cast": {
+              "types": ["number"]
+            },
+            "pool_active_abstain_vote_power": {
+              "types": ["string"]
+            },
+            "pool_active_no_vote_power": {
+              "types": ["string"]
+            },
+            "pool_active_yes_vote_power": {
+              "types": ["string"]
+            },
+            "pool_no_pct": {
+              "types": ["number"]
+            },
+            "pool_no_vote_power": {
+              "types": ["string"]
+            },
+            "pool_no_votes_cast": {
+              "types": ["number"]
+            },
+            "pool_passive_always_abstain_vote_power": {
+              "types": ["string"]
+            },
+            "pool_passive_always_abstain_votes_assigned": {
+              "types": ["number"]
+            },
+            "pool_passive_always_no_confidence_vote_power": {
+              "types": ["string"]
+            },
+            "pool_passive_always_no_confidence_votes_assigned": {
+              "types": ["number"]
+            },
+            "pool_yes_pct": {
+              "types": ["number"]
+            },
+            "pool_yes_vote_power": {
+              "types": ["string"]
+            },
+            "pool_yes_votes_cast": {
+              "types": ["number"]
+            },
+            "proposal_type": {
+              "types": ["string"]
+            }
+          }
+        }
+      }
+    },
+    "tip": {
+      "endpoint": "tip",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "2fd28352ff14e07ba175a376a49b318f9aea0d1bc8864b18906ae29dcf4fcec7",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "abs_slot": {
+              "types": ["number"]
+            },
+            "block_height": {
+              "types": ["number"]
+            },
+            "block_no": {
+              "types": ["number"]
+            },
+            "block_time": {
+              "types": ["number"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            },
+            "epoch_slot": {
+              "types": ["number"]
+            },
+            "era": {
+              "types": ["string"]
+            },
+            "hash": {
+              "types": ["string"]
+            }
+          }
+        }
+      }
+    },
+    "totals": {
+      "endpoint": "totals",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "d008f8bcef991ff06f47ae95419451d28f8c0857a5e6a3fd5d382f9e34ee9c18",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "circulation": {
+              "types": ["string"]
+            },
+            "deposits_drep": {
+              "types": ["string"]
+            },
+            "deposits_proposal": {
+              "types": ["string"]
+            },
+            "deposits_stake": {
+              "types": ["string"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            },
+            "fees": {
+              "types": ["string"]
+            },
+            "reserves": {
+              "types": ["string"]
+            },
+            "reserves_withdrawal": {
+              "types": ["null"]
+            },
+            "reward": {
+              "types": ["string"]
+            },
+            "supply": {
+              "types": ["string"]
+            },
+            "treasury": {
+              "types": ["string"]
+            },
+            "treasury_donation": {
+              "types": ["null"]
+            },
+            "treasury_withdrawal": {
+              "types": ["null"]
+            }
+          }
+        }
+      }
+    },
+    "vote_list_cc": {
+      "endpoint": "vote_list_cc",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "8e2d49777e3c3d7f62ebc351c531ff6dc16c2d363e4d77b716d688cbb19fb84a",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "block_height": {
+              "types": ["number"]
+            },
+            "block_time": {
+              "types": ["number"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            },
+            "meta_hash": {
+              "types": ["string"]
+            },
+            "meta_json": {
+              "types": ["object"],
+              "fields": {
+                "@context": {
+                  "types": ["object"],
+                  "fields": {
+                    "@language": {
+                      "types": ["string"]
+                    },
+                    "CIP100": {
+                      "types": ["string"]
+                    },
+                    "CIP129": {
+                      "types": ["string"]
+                    },
+                    "CIP136": {
+                      "types": ["string"]
+                    },
+                    "authors": {
+                      "types": ["object"],
+                      "fields": {
+                        "@container": {
+                          "types": ["string"]
+                        },
+                        "@context": {
+                          "types": ["object"],
+                          "fields": {
+                            "did": {
+                              "types": ["string"]
+                            },
+                            "name": {
+                              "types": ["string"]
+                            },
+                            "witness": {
+                              "types": ["object"],
+                              "fields": {
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "publicKey": {
+                                      "types": ["string"]
+                                    },
+                                    "signature": {
+                                      "types": ["string"]
+                                    },
+                                    "witnessAlgorithm": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "@id": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "body": {
+                      "types": ["object"],
+                      "fields": {
+                        "@context": {
+                          "types": ["object"],
+                          "fields": {
+                            "conclusion": {
+                              "types": ["string"]
+                            },
+                            "counterargumentDiscussion": {
+                              "types": ["string"]
+                            },
+                            "govActionId": {
+                              "types": ["string"]
+                            },
+                            "internalVote": {
+                              "types": ["object"],
+                              "fields": {
+                                "@container": {
+                                  "types": ["string"]
+                                },
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "abstain": {
+                                      "types": ["string"]
+                                    },
+                                    "againstVote": {
+                                      "types": ["string"]
+                                    },
+                                    "constitutional": {
+                                      "types": ["string"]
+                                    },
+                                    "didNotVote": {
+                                      "types": ["string"]
+                                    },
+                                    "unconstitutional": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            },
+                            "precedentDiscussion": {
+                              "types": ["string"]
+                            },
+                            "rationaleStatement": {
+                              "types": ["string"]
+                            },
+                            "references": {
+                              "types": ["object"],
+                              "fields": {
+                                "@container": {
+                                  "types": ["string"]
+                                },
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "GovernanceMetadata": {
+                                      "types": ["string"]
+                                    },
+                                    "Other": {
+                                      "types": ["string"]
+                                    },
+                                    "RelevantArticles": {
+                                      "types": ["string"]
+                                    },
+                                    "hash": {
+                                      "types": ["string"]
+                                    },
+                                    "label": {
+                                      "types": ["string"]
+                                    },
+                                    "uri": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            },
+                            "summary": {
+                              "types": ["string"]
+                            }
+                          }
+                        },
+                        "@id": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "hashAlgorithm": {
+                      "types": ["string"]
+                    }
+                  }
+                },
+                "authors": {
+                  "types": ["array"],
+                  "items": {
+                    "types": ["object"],
+                    "fields": {
+                      "name": {
+                        "types": ["string"]
+                      },
+                      "witness": {
+                        "types": ["object"],
+                        "fields": {
+                          "publicKey": {
+                            "types": ["string"]
+                          },
+                          "signature": {
+                            "types": ["string"]
+                          },
+                          "witnessAlgorithm": {
+                            "types": ["string"]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "body": {
+                  "types": ["object"],
+                  "fields": {
+                    "conclusion": {
+                      "types": ["string"]
+                    },
+                    "counterargumentDiscussion": {
+                      "types": ["string"]
+                    },
+                    "govActionId": {
+                      "types": ["string"]
+                    },
+                    "internalVote": {
+                      "types": ["array", "object"],
+                      "fields": {
+                        "abstain": {
+                          "types": ["number"]
+                        },
+                        "againstVote": {
+                          "types": ["number"]
+                        },
+                        "constitutional": {
+                          "types": ["number"]
+                        },
+                        "didNotVote": {
+                          "types": ["number"]
+                        },
+                        "unconstitutional": {
+                          "types": ["number"]
+                        }
+                      },
+                      "items": {
+                        "types": ["object", "unknown"],
+                        "fields": {
+                          "abstain": {
+                            "types": ["number"]
+                          },
+                          "againstVote": {
+                            "types": ["number"]
+                          },
+                          "constitutional": {
+                            "types": ["number"]
+                          },
+                          "didNotVote": {
+                            "types": ["number"]
+                          },
+                          "unconstitutional": {
+                            "types": ["number"]
+                          }
+                        }
+                      }
+                    },
+                    "precedentDiscussion": {
+                      "types": ["string"]
+                    },
+                    "rationaleStatement": {
+                      "types": ["string"]
+                    },
+                    "references": {
+                      "types": ["array"],
+                      "items": {
+                        "types": ["object", "unknown"],
+                        "fields": {
+                          "@type": {
+                            "types": ["string"]
+                          },
+                          "label": {
+                            "types": ["string"]
+                          },
+                          "uri": {
+                            "types": ["string"]
+                          }
+                        }
+                      }
+                    },
+                    "summary": {
+                      "types": ["string"]
+                    }
+                  }
+                },
+                "hashAlgorithm": {
+                  "types": ["string"]
+                }
+              }
+            },
+            "meta_url": {
+              "types": ["string"]
+            },
+            "proposal_id": {
+              "types": ["string"]
+            },
+            "proposal_index": {
+              "types": ["number"]
+            },
+            "proposal_tx_hash": {
+              "types": ["string"]
+            },
+            "proposal_type": {
+              "types": ["string"]
+            },
+            "vote": {
+              "types": ["string"]
+            },
+            "vote_tx_hash": {
+              "types": ["string"]
+            },
+            "voter_id": {
+              "types": ["string"]
+            },
+            "voter_role": {
+              "types": ["string"]
+            }
+          }
+        }
+      }
+    },
+    "vote_list_drep": {
+      "endpoint": "vote_list_drep",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "9b47de7c1dd55ba876db3119d28a4f710de800c62b5e7710fb10f779ef94f674",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "block_height": {
+              "types": ["number"]
+            },
+            "block_time": {
+              "types": ["number"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            },
+            "meta_hash": {
+              "types": ["null", "string"]
+            },
+            "meta_json": {
+              "types": ["null", "object"],
+              "fields": {
+                "@context": {
+                  "types": ["object"],
+                  "fields": {
+                    "@language": {
+                      "types": ["string"]
+                    },
+                    "CIP100": {
+                      "types": ["string"]
+                    },
+                    "CIP129": {
+                      "types": ["string"]
+                    },
+                    "CIP136": {
+                      "types": ["string"]
+                    },
+                    "authors": {
+                      "types": ["object"],
+                      "fields": {
+                        "@container": {
+                          "types": ["string"]
+                        },
+                        "@context": {
+                          "types": ["object"],
+                          "fields": {
+                            "did": {
+                              "types": ["string"]
+                            },
+                            "name": {
+                              "types": ["string"]
+                            },
+                            "witness": {
+                              "types": ["object"],
+                              "fields": {
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "publicKey": {
+                                      "types": ["string"]
+                                    },
+                                    "signature": {
+                                      "types": ["string"]
+                                    },
+                                    "witnessAlgorithm": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "@id": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "body": {
+                      "types": ["object"],
+                      "fields": {
+                        "@context": {
+                          "types": ["object"],
+                          "fields": {
+                            "comment": {
+                              "types": ["string"]
+                            },
+                            "conclusion": {
+                              "types": ["string"]
+                            },
+                            "counterargumentDiscussion": {
+                              "types": ["string"]
+                            },
+                            "externalUpdates": {
+                              "types": ["object"],
+                              "fields": {
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "title": {
+                                      "types": ["string"]
+                                    },
+                                    "uri": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            },
+                            "govActionId": {
+                              "types": ["string"]
+                            },
+                            "internalVote": {
+                              "types": ["object"],
+                              "fields": {
+                                "@container": {
+                                  "types": ["string"]
+                                },
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "abstain": {
+                                      "types": ["string"]
+                                    },
+                                    "againstVote": {
+                                      "types": ["string"]
+                                    },
+                                    "constitutional": {
+                                      "types": ["string"]
+                                    },
+                                    "didNotVote": {
+                                      "types": ["string"]
+                                    },
+                                    "unconstitutional": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            },
+                            "precedentDiscussion": {
+                              "types": ["string"]
+                            },
+                            "rationaleStatement": {
+                              "types": ["string"]
+                            },
+                            "references": {
+                              "types": ["object"],
+                              "fields": {
+                                "@container": {
+                                  "types": ["string"]
+                                },
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "GovernanceMetadata": {
+                                      "types": ["string"]
+                                    },
+                                    "Other": {
+                                      "types": ["string"]
+                                    },
+                                    "RelevantArticles": {
+                                      "types": ["string"]
+                                    },
+                                    "label": {
+                                      "types": ["string"]
+                                    },
+                                    "referenceHash": {
+                                      "types": ["object"],
+                                      "fields": {
+                                        "@context": {
+                                          "types": ["object"],
+                                          "fields": {
+                                            "hashAlgorithm": {
+                                              "types": ["string"]
+                                            },
+                                            "hashDigest": {
+                                              "types": ["string"]
+                                            }
+                                          }
+                                        },
+                                        "@id": {
+                                          "types": ["string"]
+                                        }
+                                      }
+                                    },
+                                    "uri": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            },
+                            "summary": {
+                              "types": ["string"]
+                            }
+                          }
+                        },
+                        "@id": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "hashAlgorithm": {
+                      "types": ["string"]
+                    }
+                  }
+                },
+                "body": {
+                  "types": ["object"],
+                  "fields": {
+                    "comment": {
+                      "types": ["string"]
+                    },
+                    "govActionId": {
+                      "types": ["string"]
+                    },
+                    "rationaleStatement": {
+                      "types": ["string"]
+                    },
+                    "references": {
+                      "types": ["array"],
+                      "items": {
+                        "types": ["object"],
+                        "fields": {
+                          "@type": {
+                            "types": ["string"]
+                          },
+                          "label": {
+                            "types": ["string"]
+                          },
+                          "uri": {
+                            "types": ["string"]
+                          }
+                        }
+                      }
+                    },
+                    "summary": {
+                      "types": ["string"]
+                    }
+                  }
+                },
+                "hashAlgorithm": {
+                  "types": ["string"]
+                }
+              }
+            },
+            "meta_url": {
+              "types": ["null", "string"]
+            },
+            "proposal_id": {
+              "types": ["string"]
+            },
+            "proposal_index": {
+              "types": ["number"]
+            },
+            "proposal_tx_hash": {
+              "types": ["string"]
+            },
+            "proposal_type": {
+              "types": ["string"]
+            },
+            "vote": {
+              "types": ["string"]
+            },
+            "vote_tx_hash": {
+              "types": ["string"]
+            },
+            "voter_id": {
+              "types": ["string"]
+            },
+            "voter_role": {
+              "types": ["string"]
+            }
+          }
+        }
+      }
+    },
+    "vote_list_spo": {
+      "endpoint": "vote_list_spo",
+      "observedAt": "2026-05-16T04:31:37.260Z",
+      "shapeHash": "02136186462abcebe1db344fed0fbe92ad24fecd047d9c46fc43e594e3565d67",
+      "shape": {
+        "types": ["array"],
+        "items": {
+          "types": ["object"],
+          "fields": {
+            "block_height": {
+              "types": ["number"]
+            },
+            "block_time": {
+              "types": ["number"]
+            },
+            "epoch_no": {
+              "types": ["number"]
+            },
+            "meta_hash": {
+              "types": ["null", "string"]
+            },
+            "meta_json": {
+              "types": ["null", "object"],
+              "fields": {
+                "@context": {
+                  "types": ["object"],
+                  "fields": {
+                    "CIP100": {
+                      "types": ["string"]
+                    },
+                    "authors": {
+                      "types": ["object"],
+                      "fields": {
+                        "@container": {
+                          "types": ["string"]
+                        },
+                        "@context": {
+                          "types": ["object"],
+                          "fields": {
+                            "name": {
+                              "types": ["string"]
+                            },
+                            "witness": {
+                              "types": ["object"],
+                              "fields": {
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "publicKey": {
+                                      "types": ["string"]
+                                    },
+                                    "signature": {
+                                      "types": ["string"]
+                                    },
+                                    "witnessAlgorithm": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "@id": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "body": {
+                      "types": ["object"],
+                      "fields": {
+                        "@context": {
+                          "types": ["object"],
+                          "fields": {
+                            "comment": {
+                              "types": ["string"]
+                            },
+                            "externalUpdates": {
+                              "types": ["object"],
+                              "fields": {
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "title": {
+                                      "types": ["string"]
+                                    },
+                                    "uri": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            },
+                            "references": {
+                              "types": ["object"],
+                              "fields": {
+                                "@container": {
+                                  "types": ["string"]
+                                },
+                                "@context": {
+                                  "types": ["object"],
+                                  "fields": {
+                                    "GovernanceMetadata": {
+                                      "types": ["string"]
+                                    },
+                                    "Other": {
+                                      "types": ["string"]
+                                    },
+                                    "label": {
+                                      "types": ["string"]
+                                    },
+                                    "referenceHash": {
+                                      "types": ["object"],
+                                      "fields": {
+                                        "@context": {
+                                          "types": ["object"],
+                                          "fields": {
+                                            "hashAlgorithm": {
+                                              "types": ["string"]
+                                            },
+                                            "hashDigest": {
+                                              "types": ["string"]
+                                            }
+                                          }
+                                        },
+                                        "@id": {
+                                          "types": ["string"]
+                                        }
+                                      }
+                                    },
+                                    "uri": {
+                                      "types": ["string"]
+                                    }
+                                  }
+                                },
+                                "@id": {
+                                  "types": ["string"]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "@id": {
+                          "types": ["string"]
+                        }
+                      }
+                    },
+                    "hashAlgorithm": {
+                      "types": ["string"]
+                    }
+                  }
+                },
+                "authors": {
+                  "types": ["array"],
+                  "items": {
+                    "types": ["unknown"]
+                  }
+                },
+                "body": {
+                  "types": ["object"],
+                  "fields": {
+                    "comment": {
+                      "types": ["string"]
+                    }
+                  }
+                },
+                "hashAlgorithm": {
+                  "types": ["string"]
+                }
+              }
+            },
+            "meta_url": {
+              "types": ["null", "string"]
+            },
+            "proposal_id": {
+              "types": ["string"]
+            },
+            "proposal_index": {
+              "types": ["number"]
+            },
+            "proposal_tx_hash": {
+              "types": ["string"]
+            },
+            "proposal_type": {
+              "types": ["string"]
+            },
+            "vote": {
+              "types": ["string"]
+            },
+            "vote_tx_hash": {
+              "types": ["string"]
+            },
+            "voter_id": {
+              "types": ["string"]
+            },
+            "voter_role": {
+              "types": ["string"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

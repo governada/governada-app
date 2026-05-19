@@ -34,7 +34,7 @@
           },
           {
             "type": "command",
-            "command": "node scripts/sync-worktree.mjs"
+            "command": "node scripts/check-checkout-freshness.mjs --mode session-start"
           }
         ]
       }
